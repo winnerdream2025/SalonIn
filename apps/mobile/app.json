@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "SalonIn",
+    "slug": "salonin",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "salonin",
+    "userInterfaceStyle": "dark",
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0A0A0A"
+      },
+      "package": "com.salonin.app"
+    },
+    "ios": {
+      "bundleIdentifier": "com.salonin.app",
+      "supportsTablet": false
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

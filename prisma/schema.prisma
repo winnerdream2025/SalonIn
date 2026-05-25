@@ -1,0 +1,193 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum Role {
+  WORKER
+  SALON
+  ADMIN
+}
+
+enum Availability {
+  NOW
+  TODAY
+  WEEKEND
+  NOT_AVAILABLE
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  TEMPORARY
+  WEEKEND
+  EMERGENCY
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+}
+
+enum AppStatus {
+  PENDING
+  VIEWED
+  ACCEPTED
+  DECLINED
+}
+
+enum ReportType {
+  FAKE_PROFILE
+  NO_SHOW
+  INAPPROPRIATE
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  DISMISSED
+}
+
+// ─── Models ───────────────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String?
+  phone        String?
+  role         Role     @default(WORKER)
+  createdAt    DateTime @default(now())
+
+  workerProfile WorkerProfile?
+  salonProfile  SalonProfile?
+  isActive      Boolean  @default(true)
+  sentMessages  Message[]                @relation("SentMessages")
+  conversations ConversationParticipant[]
+  reportsGiven    Report[] @relation("ReportGiver")
+  reportsReceived Report[] @relation("ReportReceiver")
+}
+
+model WorkerProfile {
+  id              String           @id @default(uuid())
+  userId          String           @unique
+  user            User             @relation(fields: [userId], references: [id])
+  name            String
+  bio             String?
+  photoUrl        String?
+  specialties     String[]
+  experienceYears Int              @default(0)
+  radiusMiles     Int              @default(15)
+  availability    Availability     @default(NOT_AVAILABLE)
+  location        Unsupported("geography(Point, 4326)")?
+  languages       String[]
+  expectedPay     String?
+  employmentTypes EmploymentType[]
+  isVerified      Boolean          @default(false)
+  stripeSessionId String?
+  licenseNumber   String?
+  cityId          String
+
+  portfolioItems  PortfolioItem[]
+  jobApplications JobApplication[]
+}
+
+model SalonProfile {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id])
+  name        String
+  description String?
+  photoUrls   String[]
+  specialties String[]
+  isHiring    Boolean  @default(false)
+  isVerified  Boolean  @default(false)
+  ein         String?
+  cityId      String
+  location    Unsupported("geography(Point, 4326)")?
+
+  jobPosts JobPost[]
+}
+
+model JobPost {
+  id           String         @id @default(uuid())
+  salonId      String
+  salon        SalonProfile   @relation(fields: [salonId], references: [id])
+  title        String
+  description  String
+  specialty    String
+  payStructure String
+  type         EmploymentType
+  isUrgent     Boolean        @default(false)
+  cityId       String
+  expiresAt    DateTime
+  createdAt    DateTime       @default(now())
+  isActive     Boolean        @default(true)
+
+  applications JobApplication[]
+}
+
+model JobApplication {
+  id        String        @id @default(uuid())
+  jobId     String
+  job       JobPost       @relation(fields: [jobId], references: [id])
+  workerId  String
+  worker    WorkerProfile @relation(fields: [workerId], references: [id])
+  status    AppStatus     @default(PENDING)
+  createdAt DateTime      @default(now())
+}
+
+model PortfolioItem {
+  id        String        @id @default(uuid())
+  workerId  String
+  worker    WorkerProfile @relation(fields: [workerId], references: [id])
+  mediaUrl  String
+  type      MediaType
+  caption   String?
+  createdAt DateTime      @default(now())
+}
+
+model Conversation {
+  id           String                    @id @default(uuid())
+  participants ConversationParticipant[]
+  messages     Message[]
+  createdAt    DateTime                  @default(now())
+}
+
+model ConversationParticipant {
+  conversationId String
+  userId         String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  user           User         @relation(fields: [userId], references: [id])
+
+  @@id([conversationId, userId])
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  senderId       String
+  sender         User         @relation("SentMessages", fields: [senderId], references: [id])
+  content        String?
+  mediaUrl       String?
+  createdAt      DateTime     @default(now())
+  isRead         Boolean      @default(false)
+}
+
+model Report {
+  id         String       @id @default(uuid())
+  reporterId String
+  reporter   User         @relation("ReportGiver", fields: [reporterId], references: [id])
+  reportedId String
+  reported   User         @relation("ReportReceiver", fields: [reportedId], references: [id])
+  type       ReportType
+  reason     String?
+  status     ReportStatus @default(PENDING)
+  createdAt  DateTime     @default(now())
+}

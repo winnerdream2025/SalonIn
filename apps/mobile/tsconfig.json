@@ -1,0 +1,12 @@
+{
+  "extends": "../../packages/config/tsconfig/react-native.json",
+  "include": [
+    "src/**/*",
+    "app/**/*",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
