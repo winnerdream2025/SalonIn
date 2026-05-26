@@ -9,6 +9,9 @@ export interface UpdateSalonPayload {
 }
 
 export const salonsApi = {
+  getMe: (): Promise<SalonCardData> =>
+    api.get<SalonCardData>('/salons/me').then((r) => r.data),
+
   getById: (id: string): Promise<SalonCardData> =>
     api.get<SalonCardData>(`/salons/${id}`).then((r) => r.data),
 

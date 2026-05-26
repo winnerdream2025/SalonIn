@@ -17,6 +17,12 @@ import { UpdateHiringStatusDto } from './dto/update-hiring-status.dto'
 export class SalonsController {
   constructor(private readonly salonsService: SalonsService) {}
 
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  getMe(@CurrentUser() user: User) {
+    return this.salonsService.getMe(user.id)
+  }
+
   @Get(':id')
   getProfile(@Param('id') id: string) {
     return this.salonsService.getProfile(id)

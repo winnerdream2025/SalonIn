@@ -7,6 +7,21 @@ import type { UpdateHiringStatusDto } from './dto/update-hiring-status.dto'
 export class SalonsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async getMe(userId: string) {
+    const profile = await this.prisma.salonProfile.findUnique({
+      where: { userId },
+      include: {
+        user: { select: { email: true, role: true, createdAt: true } },
+        jobPosts: {
+          where: { isActive: true },
+          orderBy: { createdAt: 'desc' },
+        },
+      },
+    })
+    if (!profile) throw new NotFoundException('Salon profile not found')
+    return profile
+  }
+
   async getProfile(id: string) {
     const profile = await this.prisma.salonProfile.findUnique({
       where: { id },
