@@ -1,32 +1,27 @@
 # ---- Stage 1: Builder ----
 FROM node:20-alpine AS builder
 
+RUN apk add --no-cache openssl
 RUN corepack enable && corepack prepare pnpm@9.4.0 --activate
 
 WORKDIR /app
 
-# Copy monorepo manifests + pnpm config
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+# Copy manifests + pnpm config
+COPY package.json pnpm-lock.yaml .npmrc ./
 
-# Copy workspace package manifests so pnpm lockfile validation passes
-COPY packages/config/package.json   ./packages/config/package.json
-COPY packages/types/package.json    ./packages/types/package.json
-COPY packages/utils/package.json    ./packages/utils/package.json
-COPY packages/ui/package.json       ./packages/ui/package.json
-COPY packages/api-client/package.json ./packages/api-client/package.json
-COPY apps/api/package.json          ./apps/api/package.json
-COPY apps/mobile/package.json       ./apps/mobile/package.json
+# Create a workspace manifest scoped to only what the web app needs
+RUN printf 'packages:\n  - packages/config\n  - packages/types\n  - packages/utils\n  - packages/api-client\n  - apps/web\n' > pnpm-workspace.yaml
 
-# Copy full source for packages the web app uses
-COPY packages/config/  ./packages/config/
-COPY packages/types/   ./packages/types/
-COPY packages/utils/   ./packages/utils/
+# Copy the packages the web app depends on
+COPY packages/config/     ./packages/config/
+COPY packages/types/      ./packages/types/
+COPY packages/utils/      ./packages/utils/
 COPY packages/api-client/ ./packages/api-client/
-COPY apps/web/         ./apps/web/
-COPY prisma/           ./prisma/
+COPY apps/web/            ./apps/web/
+COPY prisma/              ./prisma/
 
-# Install all deps
-RUN pnpm install --frozen-lockfile
+# Install deps
+RUN pnpm install --no-frozen-lockfile
 
 # Generate Prisma client (types package depends on it)
 RUN pnpm exec prisma generate
@@ -41,12 +36,9 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-# Copy built output + required files
+# Copy built standalone output
 COPY --from=builder /app/apps/web/.next/standalone ./
 COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
-# public/ may not exist — create it to avoid COPY failure
-RUN mkdir -p ./apps/web/public
-COPY --from=builder /app/apps/web/public* ./apps/web/public/
 
 EXPOSE 8080
 ENV PORT=8080
