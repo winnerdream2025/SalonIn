@@ -17,7 +17,9 @@ export type {
 
 // ─── Enum re-exports (runtime values) ────────────────────────────────────────
 
-export { Role, Availability, EmploymentType, MediaType, AppStatus, ReportType, ReportStatus } from '@prisma/client'
+export { Role, Availability, EmploymentType, MediaType, AppStatus, ReportType, ReportStatus, Platform } from '@prisma/client'
+
+export type { UserDevice } from '@prisma/client'
 
 // ─── DTOs ─────────────────────────────────────────────────────────────────────
 

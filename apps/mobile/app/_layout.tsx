@@ -2,6 +2,7 @@ import React from 'react'
 import { Stack } from 'expo-router'
 import * as Sentry from '@sentry/react-native'
 import { configureClient } from '@salonin/api-client'
+import { useNotifications } from '../src/hooks/useNotifications'
 
 Sentry.init({
   dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
@@ -15,6 +16,7 @@ configureClient({
 })
 
 function RootLayout() {
+  useNotifications()
   return <Stack screenOptions={{ headerShown: false }} />
 }
 

@@ -6,7 +6,7 @@ import {
   IsString,
   MinLength,
 } from 'class-validator'
-import { Role } from '@salonin/types'
+import { Role } from '@prisma/client'
 
 export class RegisterDto {
   @IsEmail()

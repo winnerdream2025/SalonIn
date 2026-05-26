@@ -11,6 +11,7 @@ import { JobsModule } from './modules/jobs/jobs.module'
 import { MessagingModule } from './modules/messaging/messaging.module'
 import { VerifyModule } from './modules/verify/verify.module'
 import { ReportsModule } from './modules/reports/reports.module'
+import { NotificationsModule } from './modules/notifications/notifications.module'
 import { MetricsModule } from './common/metrics/metrics.module'
 import { HealthModule } from './health/health.module'
 
@@ -31,6 +32,7 @@ import { HealthModule } from './health/health.module'
     SalonsModule,
     MediaModule,
     JobsModule,
+    NotificationsModule,
     MessagingModule,
     VerifyModule,
     ReportsModule,

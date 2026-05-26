@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useTheme, MessageBubble, MessageBubbleSkeleton, ReportModal } from '@salonin/ui'
 import type { Message } from '@salonin/types'
@@ -21,6 +21,7 @@ import { useAuthStore } from '../../store/authStore'
 const SKELETON_COUNT = 8
 
 export default function ChatScreen() {
+  const { bottom } = useSafeAreaInsets()
   const { theme } = useTheme()
   const { id, name, otherUserId } = useLocalSearchParams<{ id: string; name: string; otherUserId?: string }>()
   const currentUserId = useAuthStore((s) => s.user?.id)
@@ -73,7 +74,7 @@ export default function ChatScreen() {
   const othersTyping = typingUsers.filter((uid) => uid !== currentUserId)
 
   return (
-    <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]}>
+    <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]} edges={['top', 'left', 'right']}>
       <View style={[styles.header, { borderBottomColor: theme.border.default }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
           <Text style={[styles.backArrow, { color: theme.brand.primary }]}>{'‹'}</Text>
@@ -127,7 +128,7 @@ export default function ChatScreen() {
           </View>
         )}
 
-        <View style={[styles.inputRow, { borderTopColor: theme.border.default, backgroundColor: theme.bg.surface }]}>
+        <View style={[styles.inputRow, { borderTopColor: theme.border.default, backgroundColor: theme.bg.surface, paddingBottom: Math.max(bottom, 12) }]}>
           <TextInput
             ref={inputRef}
             style={[styles.input, { backgroundColor: theme.bg.elevated, color: theme.text.primary }]}
