@@ -21,7 +21,14 @@ import { HealthModule } from './health/health.module'
     BullModule.forRootAsync({
       useFactory: (config: ConfigService) => {
         const url = new URL(config.getOrThrow<string>('REDIS_URL'))
-        return { connection: { host: url.hostname, port: Number(url.port) } }
+        return {
+          connection: {
+            host: url.hostname,
+            port: Number(url.port),
+            username: url.username || undefined,
+            password: url.password || undefined,
+          },
+        }
       },
       inject: [ConfigService],
     }),
