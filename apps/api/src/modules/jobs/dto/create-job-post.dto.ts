@@ -1,4 +1,4 @@
-import { IsBoolean, IsDateString, IsEnum, IsOptional, IsString } from 'class-validator'
+import { IsBoolean, IsDateString, IsIn, IsOptional, IsString } from 'class-validator'
 import { EmploymentType } from '@prisma/client'
 
 export class CreateJobPostDto {
@@ -14,7 +14,7 @@ export class CreateJobPostDto {
   @IsString()
   payStructure!: string
 
-  @IsEnum(EmploymentType)
+  @IsIn(Object.values(EmploymentType))
   type!: EmploymentType
 
   @IsOptional()

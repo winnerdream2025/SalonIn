@@ -1,7 +1,7 @@
-import { IsEnum } from 'class-validator'
+import { IsIn } from 'class-validator'
 import { Availability } from '@prisma/client'
 
 export class UpdateAvailabilityDto {
-  @IsEnum(Availability)
+  @IsIn(Object.values(Availability))
   availability!: Availability
 }

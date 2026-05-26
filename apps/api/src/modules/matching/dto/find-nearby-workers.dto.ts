@@ -1,4 +1,4 @@
-import { IsEnum, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator'
+import { IsIn, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator'
 import { Transform } from 'class-transformer'
 import { Availability } from '@prisma/client'
 
@@ -29,7 +29,7 @@ export class FindNearbyWorkersDto {
   specialty?: string
 
   @IsOptional()
-  @IsEnum(Availability)
+  @IsIn(Object.values(Availability))
   availability?: Availability
 
   @IsOptional()

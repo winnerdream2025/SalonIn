@@ -1,6 +1,6 @@
 import {
   IsEmail,
-  IsEnum,
+  IsIn,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -16,7 +16,7 @@ export class RegisterDto {
   @MinLength(8)
   password!: string
 
-  @IsEnum(Role)
+  @IsIn(Object.values(Role))
   role!: Role
 
   @IsString()
