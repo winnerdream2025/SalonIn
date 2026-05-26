@@ -49,8 +49,9 @@ COPY prisma/ ./prisma/
 # Install production deps only
 RUN pnpm install --no-frozen-lockfile --prod
 
-# Generate Prisma client in runner (needed at runtime)
-RUN pnpm exec prisma generate
+# Copy generated Prisma client from builder (prisma CLI is devDep, unavailable here)
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
 
 # Copy webpack bundle from builder
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
