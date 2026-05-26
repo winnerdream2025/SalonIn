@@ -39,6 +39,7 @@ export class JobsService {
       cityId: dto.cityId,
       isActive: true,
       expiresAt: { gt: new Date() },
+      ...(dto.salonId ? { salonId: dto.salonId } : {}),
       ...(dto.specialty ? { specialty: dto.specialty } : {}),
       ...(dto.type ? { type: dto.type } : {}),
     }

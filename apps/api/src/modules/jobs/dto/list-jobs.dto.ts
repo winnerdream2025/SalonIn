@@ -8,6 +8,10 @@ export class ListJobsDto {
 
   @IsOptional()
   @IsString()
+  salonId?: string
+
+  @IsOptional()
+  @IsString()
   specialty?: string
 
   @IsOptional()
