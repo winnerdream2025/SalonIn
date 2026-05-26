@@ -1,6 +1,6 @@
 import { IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator'
 import { Transform } from 'class-transformer'
-import { EmploymentType } from '@prisma/client'
+import type { EmploymentType } from '@prisma/client'
 
 export class ListJobsDto {
   @IsString()
@@ -15,7 +15,7 @@ export class ListJobsDto {
   specialty?: string
 
   @IsOptional()
-  @IsIn(Object.values(EmploymentType))
+  @IsIn(['FULL_TIME', 'PART_TIME', 'TEMPORARY', 'WEEKEND', 'EMERGENCY'])
   type?: EmploymentType
 
   @Transform(({ value }: { value: unknown }) =>

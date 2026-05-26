@@ -1,7 +1,7 @@
 import { IsIn } from 'class-validator'
-import { Availability } from '@prisma/client'
+import type { Availability } from '@prisma/client'
 
 export class UpdateAvailabilityDto {
-  @IsIn(Object.values(Availability))
+  @IsIn(['NOW', 'TODAY', 'WEEKEND', 'NOT_AVAILABLE'])
   availability!: Availability
 }

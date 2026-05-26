@@ -1,11 +1,11 @@
 import { IsIn, IsOptional, IsString, IsUUID } from 'class-validator'
-import { ReportType } from '@prisma/client'
+import type { ReportType } from '@prisma/client'
 
 export class CreateReportDto {
   @IsUUID()
   reportedUserId!: string
 
-  @IsIn(Object.values(ReportType))
+  @IsIn(['FAKE_PROFILE', 'NO_SHOW', 'INAPPROPRIATE'])
   type!: ReportType
 
   @IsOptional()
