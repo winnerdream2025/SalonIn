@@ -9,7 +9,7 @@ import {
   MaxLength,
   Min,
 } from 'class-validator'
-import { EmploymentType } from '@salonin/types'
+import { EmploymentType } from '@prisma/client'
 
 export class UpdateWorkerProfileDto {
   @IsOptional()

@@ -1,0 +1,109 @@
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  PNPM_VERSION: '9.4.0'
+  NODE_VERSION: '20'
+
+jobs:
+  # ------------------------------------------------------------------
+  # Job 1 — Deploy API to Railway
+  # ------------------------------------------------------------------
+  deploy-api:
+    name: Deploy API (Railway)
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success'
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - uses: actions/checkout@v4.2.2
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - uses: railwayapp/cli-action@v3
+        with:
+          command: railway up --service salonin-api --detach
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+  # ------------------------------------------------------------------
+  # Job 2 — Deploy Web to Railway
+  # ------------------------------------------------------------------
+  deploy-web:
+    name: Deploy Web (Railway)
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success'
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - uses: actions/checkout@v4.2.2
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - uses: railwayapp/cli-action@v3
+        with:
+          command: railway up --service salonin-web --detach
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+  # ------------------------------------------------------------------
+  # Job 3 — Expo EAS OTA update (only when apps/mobile/** changed)
+  # ------------------------------------------------------------------
+  deploy-mobile-ota:
+    name: OTA Update (Expo EAS)
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success'
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      EAS_NO_VCS: 1
+    steps:
+      - uses: actions/checkout@v4.2.2
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 2
+
+      - name: Check for mobile changes
+        id: mobile
+        run: |
+          if git diff --name-only HEAD~1 HEAD | grep -q '^apps/mobile/'; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: pnpm/action-setup@v4.1.0
+        if: steps.mobile.outputs.changed == 'true'
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4.4.0
+        if: steps.mobile.outputs.changed == 'true'
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        if: steps.mobile.outputs.changed == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - uses: expo/expo-github-action@v8.3.0
+        if: steps.mobile.outputs.changed == 'true'
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: EAS Update — production branch
+        if: steps.mobile.outputs.changed == 'true'
+        run: |
+          eas update --branch production \
+            --message "${{ github.event.workflow_run.head_commit.message }}"
+        working-directory: apps/mobile

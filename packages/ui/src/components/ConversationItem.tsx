@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
   avatarImg: { width: 44, height: 44 },
   avatarText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 
-  info: { flex: 1, gap: 3 },
+  info: { flex: 1, minWidth: 0, gap: 3 },
 
   nameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   name: { fontSize: 14, fontWeight: '600', flex: 1, marginRight: 8 },

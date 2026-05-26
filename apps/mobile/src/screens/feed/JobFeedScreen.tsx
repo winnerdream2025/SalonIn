@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { JobPostCard, JobPostCardSkeleton, Text, Button, useTheme } from '@salonin/ui'
 import type { JobPostCardData } from '@salonin/types'
@@ -27,6 +27,7 @@ const CITY_PRESETS = [
 const SKELETON_COUNT = 5
 
 export default function JobFeedScreen() {
+  const { bottom } = useSafeAreaInsets()
   const { theme } = useTheme()
   const cityId = useLocationStore((s) => s.cityId)
   const setLocation = useLocationStore((s) => s.setLocation)
@@ -132,7 +133,7 @@ export default function JobFeedScreen() {
           />
         )}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: 56 + bottom + 16 }]}
         ListHeaderComponent={SpecialtyFilters}
         ListEmptyComponent={
           isLoading ? (
@@ -202,7 +203,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
   },
-  listContent: { paddingHorizontal: 16, paddingBottom: 40 },
+  listContent: { paddingHorizontal: 16 },
   separator: { height: 8 },
   skeletonList: { gap: 8, paddingTop: 8 },
   footer: { paddingVertical: 16, alignItems: 'center' },

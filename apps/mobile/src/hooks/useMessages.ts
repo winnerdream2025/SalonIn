@@ -5,7 +5,7 @@ import { messagesApi } from '@salonin/api-client'
 import type { Message } from '@salonin/types'
 import { useAuthStore } from '../store/authStore'
 
-const WS_URL = 'http://localhost:4000'
+const WS_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000'
 
 export function useMessages(conversationId: string) {
   const userId = useAuthStore((s) => s.user?.id)

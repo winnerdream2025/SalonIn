@@ -71,13 +71,24 @@ export function JobPostCard({ job, onClick }: { job: JobPostCardData; onClick: (
             fontSize: 12,
             fontWeight: 600,
             overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
           }}
         >
           {job.title}
         </span>
-        <span style={{ color: '#888888', fontSize: 10 }}>{job.salonName}</span>
+        <span
+          style={{
+            color: '#888888',
+            fontSize: 10,
+            overflow: 'hidden',
+            whiteSpace: 'nowrap',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {job.salonName}
+        </span>
         <span style={{ color: '#666666', fontSize: 10 }}>
           {job.specialty} · {typeLabel}
         </span>

@@ -1,5 +1,5 @@
 import { IsBoolean, IsDateString, IsEnum, IsOptional, IsString } from 'class-validator'
-import { EmploymentType } from '@salonin/types'
+import { EmploymentType } from '@prisma/client'
 
 export class UpdateJobPostDto {
   @IsOptional()

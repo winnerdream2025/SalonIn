@@ -1,5 +1,5 @@
 import { IsEnum } from 'class-validator'
-import { Availability } from '@salonin/types'
+import { Availability } from '@prisma/client'
 
 export class UpdateAvailabilityDto {
   @IsEnum(Availability)

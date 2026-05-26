@@ -47,7 +47,7 @@ export function JobPostCard({ job, onPress, isLoading = false }: JobPostCardProp
 
       {/* Info */}
       <View style={INFO}>
-        <Text style={TITLE} numberOfLines={1}>{job.title}</Text>
+        <Text style={TITLE} numberOfLines={2} ellipsizeMode="tail">{job.title}</Text>
         <Text style={SALON_NAME} numberOfLines={1}>{job.salonName}</Text>
         <Text style={META} numberOfLines={1}>{job.specialty} · {typeLabel}</Text>
         <View style={BOTTOM_ROW}>
@@ -114,6 +114,7 @@ const AVATAR_INITIALS: TextStyle = {
 
 const INFO: ViewStyle = {
   flex: 1,
+  minWidth: 0,
   gap: 3,
 }
 

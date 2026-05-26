@@ -21,3 +21,5 @@ export type { MediaFile, MediaFolder } from './media.api'
 export { verifyApi } from './verify.api'
 
 export { reportsApi } from './reports.api'
+
+export { devicesApi } from './devices.api'

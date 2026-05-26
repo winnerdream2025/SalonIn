@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react'
 import { FlatList, StyleSheet, Text, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { useTheme, ConversationItem, ConversationItemSkeleton } from '@salonin/ui'
 import type { ConversationPreview } from '@salonin/types'
@@ -9,6 +9,7 @@ import { useConversations } from '../../hooks/useConversations'
 const SKELETON_COUNT = 6
 
 export default function ConversationsListScreen() {
+  const { bottom } = useSafeAreaInsets()
   const { theme } = useTheme()
   const { conversations, isLoading, error, refresh } = useConversations()
 
@@ -66,7 +67,7 @@ export default function ConversationsListScreen() {
         }
         refreshing={false}
         onRefresh={() => void refresh()}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, { paddingBottom: 56 + bottom + 16 }]}
         showsVerticalScrollIndicator={false}
         ItemSeparatorComponent={() => (
           <View style={[styles.separator, { backgroundColor: theme.border.default }]} />

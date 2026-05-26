@@ -5,8 +5,10 @@ import { getAvatarGradient } from '@salonin/utils'
 import { Skeleton } from '../primitives/Skeleton'
 import { useTheme } from '../hooks/useTheme'
 
+type MessageWithStringDate = Omit<Message, 'createdAt'> & { createdAt: Date | string }
+
 export interface MessageBubbleProps {
-  message: Message
+  message: MessageWithStringDate
   isSelf: boolean
   showAvatar?: boolean
   senderName?: string
@@ -21,7 +23,7 @@ export function MessageBubble({
   senderPhotoUrl,
 }: MessageBubbleProps) {
   const { theme } = useTheme()
-  const time = new Date(message.createdAt as unknown as string).toLocaleTimeString('en-US', {
+  const time = new Date(message.createdAt).toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit',
   })
@@ -115,7 +117,7 @@ const styles = StyleSheet.create({
   bubbleSelf: { borderBottomRightRadius: 4 },
   bubbleOther: { borderBottomLeftRadius: 4 },
 
-  media: { width: 200, height: 160, borderRadius: 10, marginBottom: 4 },
+  media: { width: 200, height: 160, maxWidth: '100%', borderRadius: 10, marginBottom: 4 },
 
   content: { fontSize: 14, lineHeight: 20 },
 

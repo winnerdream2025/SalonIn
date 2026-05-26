@@ -1,5 +1,5 @@
 import { IsEnum, IsOptional, IsString, IsUUID } from 'class-validator'
-import { ReportType } from '@salonin/types'
+import { ReportType } from '@prisma/client'
 
 export class CreateReportDto {
   @IsUUID()

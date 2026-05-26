@@ -71,10 +71,12 @@ export default function WorkersPage() {
         .wd-layout { display: flex; gap: 24px; max-width: 1280px; margin: 0 auto; padding: 24px 16px; align-items: flex-start; }
         .wd-sidebar { width: 220px; flex-shrink: 0; }
         .wd-main { flex: 1; min-width: 0; }
-        .wd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+        .wd-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+        @media (max-width: 1023px) { .wd-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
         @media (max-width: 767px) {
           .wd-layout { flex-direction: column; }
           .wd-sidebar { width: 100%; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+          .wd-grid { grid-template-columns: 1fr; }
         }
       `}</style>
 

@@ -1,6 +1,6 @@
 import { IsEnum, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator'
 import { Transform } from 'class-transformer'
-import { Availability } from '@salonin/types'
+import { Availability } from '@prisma/client'
 
 export class FindNearbyWorkersDto {
   @Transform(({ value }: { value: unknown }) => parseFloat(value as string))

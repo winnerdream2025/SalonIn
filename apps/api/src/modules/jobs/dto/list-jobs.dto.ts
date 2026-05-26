@@ -1,6 +1,6 @@
 import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator'
 import { Transform } from 'class-transformer'
-import { EmploymentType } from '@salonin/types'
+import { EmploymentType } from '@prisma/client'
 
 export class ListJobsDto {
   @IsString()

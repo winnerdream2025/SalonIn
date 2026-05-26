@@ -54,6 +54,11 @@ enum ReportStatus {
   DISMISSED
 }
 
+enum Platform {
+  IOS
+  ANDROID
+}
+
 // ─── Models ───────────────────────────────────────────────────────────────────
 
 model User {
@@ -71,6 +76,7 @@ model User {
   conversations ConversationParticipant[]
   reportsGiven    Report[] @relation("ReportGiver")
   reportsReceived Report[] @relation("ReportReceiver")
+  devices         UserDevice[]
 }
 
 model WorkerProfile {
@@ -178,6 +184,15 @@ model Message {
   mediaUrl       String?
   createdAt      DateTime     @default(now())
   isRead         Boolean      @default(false)
+}
+
+model UserDevice {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id])
+  expoPushToken String
+  platform      Platform
+  updatedAt     DateTime @updatedAt
 }
 
 model Report {

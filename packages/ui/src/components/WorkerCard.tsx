@@ -110,6 +110,7 @@ const AVATAR_INITIALS: TextStyle = {
 
 const INFO: ViewStyle = {
   flex: 1,
+  minWidth: 0,
   gap: 4,
 }
 

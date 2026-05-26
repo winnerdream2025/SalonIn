@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../../prisma/prisma.service'
+import { NotificationsService } from '../notifications/notifications.service'
 import type { ConversationPreview, CursorResponse } from '@salonin/types'
 import type { Message } from '@salonin/types'
 
@@ -7,7 +8,10 @@ const MESSAGES_LIMIT = 30
 
 @Injectable()
 export class MessagingService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   async createConversation(requesterId: string, otherUserId: string): Promise<ConversationPreview> {
     let conv = await this.prisma.conversation.findFirst({
@@ -132,9 +136,41 @@ export class MessagingService {
     }
     await this.assertParticipant(conversationId, senderId)
 
-    return this.prisma.message.create({
+    const message = await this.prisma.message.create({
       data: { conversationId, senderId, content, mediaUrl },
-    }) as Promise<Message>
+    })
+
+    void this.notifyRecipient(conversationId, senderId, content)
+
+    return message as Message
+  }
+
+  private async notifyRecipient(
+    conversationId: string,
+    senderId: string,
+    content?: string,
+  ): Promise<void> {
+    try {
+      const other = await this.prisma.conversationParticipant.findFirst({
+        where: { conversationId, userId: { not: senderId } },
+      })
+      if (!other) return
+
+      const sender = await this.prisma.user.findUnique({
+        where: { id: senderId },
+        select: {
+          workerProfile: { select: { name: true } },
+          salonProfile: { select: { name: true } },
+        },
+      })
+      const senderName =
+        sender?.workerProfile?.name ?? sender?.salonProfile?.name ?? 'Someone'
+      const preview = content ?? '📷 Media'
+
+      await this.notificationsService.notifyNewMessage(other.userId, senderName, preview)
+    } catch {
+      // graceful fail
+    }
   }
 
   async markAsRead(conversationId: string, userId: string): Promise<void> {
