@@ -8,6 +8,7 @@ import type {
 
 export interface ListJobsParams {
   cityId: string
+  salonId?: string | undefined
   specialty?: string | undefined
   type?: string | undefined
   page?: number | undefined
