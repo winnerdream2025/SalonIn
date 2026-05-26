@@ -25,6 +25,10 @@ RUN pnpm install --no-frozen-lockfile
 # Generate Prisma client
 RUN pnpm exec prisma generate
 
+# Export generated Prisma client to a stable path for the runner stage
+RUN PRISMA_SRC=$(find /app/node_modules/.pnpm -maxdepth 1 -name '@prisma+client@*' | head -1)/node_modules/@prisma/client && \
+    cp -rL "$PRISMA_SRC" /app/prisma-client
+
 # Build — webpack bundles @salonin/* inline, externalises node_modules
 RUN pnpm --filter @salonin/api build
 
@@ -49,9 +53,10 @@ COPY prisma/ ./prisma/
 # Install production deps only
 RUN pnpm install --no-frozen-lockfile --prod
 
-# Copy generated Prisma client from builder (prisma CLI is devDep, unavailable here)
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
+# Copy generated Prisma client from builder into runner's pnpm store
+RUN PRISMA_DST=$(find /app/node_modules/.pnpm -maxdepth 1 -name '@prisma+client@*' | head -1)/node_modules/@prisma/client && \
+    rm -rf "$PRISMA_DST" && \
+    cp -rL /app/prisma-client "$PRISMA_DST"
 
 # Copy webpack bundle from builder
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
