@@ -5,10 +5,19 @@ RUN corepack enable && corepack prepare pnpm@9.4.0 --activate
 
 WORKDIR /app
 
-# Copy monorepo manifests
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+# Copy monorepo manifests + pnpm config
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 
-# Copy only the packages the web app depends on at build time
+# Copy workspace package manifests so pnpm lockfile validation passes
+COPY packages/config/package.json   ./packages/config/package.json
+COPY packages/types/package.json    ./packages/types/package.json
+COPY packages/utils/package.json    ./packages/utils/package.json
+COPY packages/ui/package.json       ./packages/ui/package.json
+COPY packages/api-client/package.json ./packages/api-client/package.json
+COPY apps/api/package.json          ./apps/api/package.json
+COPY apps/mobile/package.json       ./apps/mobile/package.json
+
+# Copy full source for packages the web app uses
 COPY packages/config/  ./packages/config/
 COPY packages/types/   ./packages/types/
 COPY packages/utils/   ./packages/utils/
@@ -35,7 +44,9 @@ ENV NODE_ENV=production
 # Copy built output + required files
 COPY --from=builder /app/apps/web/.next/standalone ./
 COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
-COPY --from=builder /app/apps/web/public ./apps/web/public
+# public/ may not exist — create it to avoid COPY failure
+RUN mkdir -p ./apps/web/public
+COPY --from=builder /app/apps/web/public* ./apps/web/public/
 
 EXPOSE 8080
 ENV PORT=8080

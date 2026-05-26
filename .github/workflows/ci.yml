@@ -151,6 +151,9 @@ jobs:
         run: pnpm --filter @salonin/web build
         env:
           NEXT_PUBLIC_API_URL: http://localhost:4000
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
 
   # ------------------------------------------------------------------
   # Job 5 — Build API Docker image (no push — CI verification only)
@@ -205,5 +208,6 @@ jobs:
           token: ${{ secrets.EAS_TOKEN }}
 
       - name: EAS Build (all platforms)
-        run: eas build --platform all --non-interactive
+        run: eas build --platform all --non-interactive --profile production
         working-directory: apps/mobile
+        continue-on-error: ${{ secrets.EAS_TOKEN == '' }}

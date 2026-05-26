@@ -5,10 +5,19 @@ RUN corepack enable && corepack prepare pnpm@9.4.0 --activate
 
 WORKDIR /app
 
-# Copy monorepo manifests
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+# Copy monorepo manifests + pnpm config
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 
-# Copy only the packages the API depends on at build time
+# Copy workspace package manifests so pnpm lockfile validation passes
+COPY packages/config/package.json   ./packages/config/package.json
+COPY packages/types/package.json    ./packages/types/package.json
+COPY packages/utils/package.json    ./packages/utils/package.json
+COPY packages/ui/package.json       ./packages/ui/package.json
+COPY packages/api-client/package.json ./packages/api-client/package.json
+COPY apps/web/package.json          ./apps/web/package.json
+COPY apps/mobile/package.json       ./apps/mobile/package.json
+
+# Copy full source for packages the API actually uses
 COPY packages/config/  ./packages/config/
 COPY packages/types/   ./packages/types/
 COPY packages/utils/   ./packages/utils/
@@ -31,8 +40,15 @@ RUN corepack enable && corepack prepare pnpm@9.4.0 --activate
 
 WORKDIR /app
 
-# Copy workspace manifests + API's production dependencies
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+# Copy workspace manifests + pnpm config
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY packages/config/package.json   ./packages/config/package.json
+COPY packages/types/package.json    ./packages/types/package.json
+COPY packages/utils/package.json    ./packages/utils/package.json
+COPY packages/ui/package.json       ./packages/ui/package.json
+COPY packages/api-client/package.json ./packages/api-client/package.json
+COPY apps/web/package.json          ./apps/web/package.json
+COPY apps/mobile/package.json       ./apps/mobile/package.json
 COPY packages/config/  ./packages/config/
 COPY packages/types/   ./packages/types/
 COPY packages/utils/   ./packages/utils/
