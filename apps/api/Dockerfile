@@ -54,9 +54,11 @@ COPY prisma/ ./prisma/
 RUN pnpm install --no-frozen-lockfile --prod
 
 # Copy generated Prisma client from builder into runner's pnpm store
+COPY --from=builder /app/prisma-client /tmp/prisma-client
 RUN PRISMA_DST=$(find /app/node_modules/.pnpm -maxdepth 1 -name '@prisma+client@*' | head -1)/node_modules/@prisma/client && \
     rm -rf "$PRISMA_DST" && \
-    cp -rL /app/prisma-client "$PRISMA_DST"
+    cp -rL /tmp/prisma-client "$PRISMA_DST" && \
+    rm -rf /tmp/prisma-client
 
 # Copy webpack bundle from builder
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
