@@ -1,8 +1,19 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
   "display": "Base",
-  "extends": "../../../tsconfig.json",
   "compilerOptions": {
+    "strict": true,
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "moduleDetection": "force",
+    "isolatedModules": true,
     "lib": ["ES2022"],
     "target": "ES2022",
     "module": "ESNext",
@@ -10,5 +21,6 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true
-  }
+  },
+  "exclude": ["node_modules"]
 }
