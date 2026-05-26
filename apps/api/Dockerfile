@@ -7,7 +7,7 @@ RUN corepack enable && corepack prepare pnpm@9.4.0 --activate
 WORKDIR /app
 
 # Copy manifests + pnpm config
-COPY package.json pnpm-lock.yaml .npmrc ./
+COPY package.json pnpm-lock.yaml .npmrc tsconfig.json ./
 
 # Create a workspace manifest scoped to only what the API needs
 RUN printf 'packages:\n  - packages/config\n  - packages/types\n  - packages/utils\n  - apps/api\n' > pnpm-workspace.yaml
