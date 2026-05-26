@@ -77,11 +77,11 @@ Tu ne présumes RIEN. Tu travailles UNIQUEMENT depuis ce registre.
 [DONE] apps/api                   @salonin/api — NestJS scaffold: main.ts, AppModule, PrismaService/Module
 
 --- apps/api ENV VARS (required) ---
-SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, DATABASE_URL, REDIS_URL
-JWT_SECRET, SUPABASE_JWT_SECRET
+DATABASE_URL, REDIS_URL, JWT_SECRET, CORS_ORIGINS
 AWS_REGION, AWS_S3_BUCKET, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
 STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
-(no new env vars for Phase 5.2 — REDIS_URL reused for BullMQ connection)
+(optional) SENTRY_DSN, DD_SERVICE, DD_ENV, DD_AGENT_HOST
+(no Supabase — auth uses bcrypt + @nestjs/jwt directly)
 
 --- TOOLING ---
 [DONE] Package manager            pnpm@9.4.0 (installed 2.9.14)
@@ -474,8 +474,14 @@ STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
                                      build-web: pnpm --filter @salonin/web build (NEXT_PUBLIC_API_URL=localhost:4000)
                                      build-api-docker: docker/build-push-action@v5, no push, GHA cache
                                      build-mobile: EAS build --platform all, main branch only, requires EAS_TOKEN secret
-[DONE] apps/api/Dockerfile         multi-stage: builder (node:20-alpine, pnpm install, prisma generate, nest webpack build)
-                                     runner (pnpm install --prod, prisma generate, copy dist/)
+[DONE] apps/api/Dockerfile         multi-stage: builder (node:20-alpine, pnpm install, prisma generate, export prisma-client from pnpm store, nest webpack build)
+                                     runner (pnpm install --prod, COPY --from=builder prisma-client → overlay into runner pnpm store, copy dist/)
+                                     ⚠️ pnpm virtual store: prisma client lives under node_modules/.pnpm/@prisma+client@*/..., NOT flat node_modules/.prisma
+[DONE] apps/web/Dockerfile         multi-stage: builder (pnpm install, prisma generate, next build) → runner (standalone output, port 8080)
+[DONE] apps/api/railway.json       builder: DOCKERFILE, healthcheckPath: /health, restartPolicyType: ON_FAILURE (max 3)
+[DONE] apps/web/railway.json       builder: DOCKERFILE, healthcheckPath: /, restartPolicyType: ON_FAILURE (max 3)
+[DONE] DEPLOY.md                   Railway deployment guide — 8-step walkthrough, env vars reference, CI pipeline docs,
+                                     post-deploy checklist, rollback plan, troubleshooting (Docker, Railway, Prisma, CORS)
 [DONE] apps/api/nest-cli.json      webpack: true, webpackConfigPath: webpack.config.js
 [DONE] apps/api/webpack.config.js  nodeExternals allowlist: [/^@salonin\//] — workspace packages inlined in bundle
 [DONE] .dockerignore               node_modules, .env, .git, Windsurf/, dist, coverage excluded
@@ -520,8 +526,10 @@ STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
                                                  EXPO_PUBLIC_API_URL, SENTRY_AUTH_TOKEN added
                                                  SUPABASE_* removed
 [TODO] Integration tests           *.integration-spec.ts for GET /workers/nearby + auth flows
-[TODO] GitHub Actions deploy       api→ECS Fargate, web→Vercel, mobile→EAS OTA (deploy.yml)
+[TODO] GitHub Actions deploy       api→Railway (auto-deploy on main), web→Railway, mobile→EAS OTA (deploy.yml)
+                                     current: DEPLOY.md documents manual Railway setup; auto-deploy via GitHub integration
 [TODO] Datadog alerts              API p95 > 500ms, error rate > 1%, cache hit < 70% (Datadog UI config)
+[TODO] Custom domain               api.salonin.com + app.salonin.com — CNAME → Railway, update CORS_ORIGINS + API_URL vars
 
 ---
 
