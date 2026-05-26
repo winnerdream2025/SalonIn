@@ -9,7 +9,7 @@ import {
   MaxLength,
   Min,
 } from 'class-validator'
-import { EmploymentType } from '@prisma/client'
+import type { EmploymentType } from '@prisma/client'
 
 export class UpdateWorkerProfileDto {
   @IsOptional()
@@ -52,7 +52,7 @@ export class UpdateWorkerProfileDto {
 
   @IsOptional()
   @IsArray()
-  @IsIn(Object.values(EmploymentType), { each: true })
+  @IsIn(['FULL_TIME', 'PART_TIME', 'TEMPORARY', 'WEEKEND', 'EMERGENCY'], { each: true })
   employmentTypes?: EmploymentType[]
 
   @IsOptional()

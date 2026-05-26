@@ -1,5 +1,5 @@
 import { IsBoolean, IsDateString, IsIn, IsOptional, IsString } from 'class-validator'
-import { EmploymentType } from '@prisma/client'
+import type { EmploymentType } from '@prisma/client'
 
 export class CreateJobPostDto {
   @IsString()
@@ -14,7 +14,7 @@ export class CreateJobPostDto {
   @IsString()
   payStructure!: string
 
-  @IsIn(Object.values(EmploymentType))
+  @IsIn(['FULL_TIME', 'PART_TIME', 'TEMPORARY', 'WEEKEND', 'EMERGENCY'])
   type!: EmploymentType
 
   @IsOptional()

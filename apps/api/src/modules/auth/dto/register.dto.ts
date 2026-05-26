@@ -6,7 +6,7 @@ import {
   IsString,
   MinLength,
 } from 'class-validator'
-import { Role } from '@prisma/client'
+import type { Role } from '@prisma/client'
 
 export class RegisterDto {
   @IsEmail()
@@ -16,7 +16,7 @@ export class RegisterDto {
   @MinLength(8)
   password!: string
 
-  @IsIn(Object.values(Role))
+  @IsIn(['WORKER', 'SALON', 'ADMIN'])
   role!: Role
 
   @IsString()

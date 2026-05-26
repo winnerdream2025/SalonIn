@@ -1,6 +1,6 @@
 import { IsIn, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator'
 import { Transform } from 'class-transformer'
-import { Availability } from '@prisma/client'
+import type { Availability } from '@prisma/client'
 
 export class FindNearbyWorkersDto {
   @Transform(({ value }: { value: unknown }) => parseFloat(value as string))
@@ -29,7 +29,7 @@ export class FindNearbyWorkersDto {
   specialty?: string
 
   @IsOptional()
-  @IsIn(Object.values(Availability))
+  @IsIn(['NOW', 'TODAY', 'WEEKEND', 'NOT_AVAILABLE'])
   availability?: Availability
 
   @IsOptional()
