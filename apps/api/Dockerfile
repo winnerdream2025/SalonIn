@@ -28,6 +28,8 @@ RUN pnpm exec prisma generate
 # Export generated Prisma client to a stable path for the runner stage
 RUN PRISMA_SRC=$(find /app/node_modules/.pnpm -maxdepth 1 -name '@prisma+client@*' | head -1)/node_modules/@prisma/client && \
     cp -rL "$PRISMA_SRC" /app/prisma-client
+# Export generated .prisma/client runtime — contains enum values required at startup
+RUN cp -rL /app/node_modules/.prisma/client /app/prisma-runtime
 
 # Build — webpack bundles @salonin/* inline, externalises node_modules
 RUN pnpm --filter @salonin/api build
@@ -59,6 +61,11 @@ RUN PRISMA_DST=$(find /app/node_modules/.pnpm -maxdepth 1 -name '@prisma+client@
     rm -rf "$PRISMA_DST" && \
     cp -rL /tmp/prisma-client "$PRISMA_DST" && \
     rm -rf /tmp/prisma-client
+# Restore generated .prisma/client runtime (enum values loaded by @prisma/client at startup)
+COPY --from=builder /app/prisma-runtime /tmp/prisma-runtime
+RUN mkdir -p /app/node_modules/.prisma && \
+    cp -rL /tmp/prisma-runtime /app/node_modules/.prisma/client && \
+    rm -rf /tmp/prisma-runtime
 
 # Copy webpack bundle from builder
 COPY --from=builder /app/apps/api/dist ./apps/api/dist

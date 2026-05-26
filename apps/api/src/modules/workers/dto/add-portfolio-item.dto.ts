@@ -1,11 +1,11 @@
-import { IsEnum, IsOptional, IsString, IsUrl } from 'class-validator'
+import { IsIn, IsOptional, IsString, IsUrl } from 'class-validator'
 import { MediaType } from '@prisma/client'
 
 export class AddPortfolioItemDto {
   @IsUrl()
   mediaUrl!: string
 
-  @IsEnum(MediaType)
+  @IsIn(Object.values(MediaType))
   type!: MediaType
 
   @IsOptional()

@@ -1,11 +1,11 @@
-import { IsEnum, IsOptional, IsString, IsUUID } from 'class-validator'
+import { IsIn, IsOptional, IsString, IsUUID } from 'class-validator'
 import { ReportType } from '@prisma/client'
 
 export class CreateReportDto {
   @IsUUID()
   reportedUserId!: string
 
-  @IsEnum(ReportType)
+  @IsIn(Object.values(ReportType))
   type!: ReportType
 
   @IsOptional()

@@ -1,6 +1,6 @@
 import {
   IsArray,
-  IsEnum,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -52,7 +52,7 @@ export class UpdateWorkerProfileDto {
 
   @IsOptional()
   @IsArray()
-  @IsEnum(EmploymentType, { each: true })
+  @IsIn(Object.values(EmploymentType), { each: true })
   employmentTypes?: EmploymentType[]
 
   @IsOptional()
