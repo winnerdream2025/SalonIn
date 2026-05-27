@@ -19,6 +19,8 @@ COPY packages/utils/   ./packages/utils/
 COPY apps/api/         ./apps/api/
 COPY prisma/           ./prisma/
 
+COPY patches/ ./patches/
+
 # Install deps (lockfile used for version pinning, not strict validation)
 RUN pnpm install --no-frozen-lockfile
 
@@ -45,6 +47,7 @@ COPY packages/types/package.json   ./packages/types/package.json
 COPY packages/utils/package.json   ./packages/utils/package.json
 COPY apps/api/package.json ./apps/api/package.json
 COPY prisma/ ./prisma/
+COPY patches/ ./patches/
 
 # Install deps and generate Prisma client for this platform
 RUN pnpm install --no-frozen-lockfile
