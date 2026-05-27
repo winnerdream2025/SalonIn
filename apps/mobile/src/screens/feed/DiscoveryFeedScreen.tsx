@@ -14,6 +14,7 @@ import type { WorkerCardData } from '@salonin/types'
 import { reportsApi } from '@salonin/api-client'
 import { useNearbyWorkers } from '../../hooks/useNearbyWorkers'
 import { useLocationStore } from '../../store/locationStore'
+import { useDeviceLocation } from '../../hooks/useDeviceLocation'
 
 const SPECIALTIES = ['Haircut', 'Color', 'Balayage', 'Locs', 'Braids', 'Natural', 'Extensions', 'Weave']
 
@@ -29,6 +30,10 @@ export default function DiscoveryFeedScreen() {
   const { theme } = useTheme()
   const cityId = useLocationStore((s) => s.cityId)
   const setLocation = useLocationStore((s) => s.setLocation)
+  const isGPSLocation = useLocationStore((s) => s.isGPSLocation)
+  const clearLocation = useLocationStore((s) => s.clearLocation)
+
+  const { requestLocation, status } = useDeviceLocation()
 
   const [selectedSpecialty, setSelectedSpecialty] = useState<string | undefined>()
   const [reportTarget, setReportTarget] = useState<WorkerCardData | null>(null)
@@ -86,19 +91,45 @@ export default function DiscoveryFeedScreen() {
         <View style={styles.centerPane}>
           <Text variant="heading" style={styles.locTitle}>Where are you?</Text>
           <Text variant="body" color="secondary" style={styles.locSubtitle}>
-            Choose your city to find talent nearby
+            Use GPS or choose your city to find talent nearby
           </Text>
-          <View style={styles.cityList}>
-            {CITY_PRESETS.map((city) => (
-              <TouchableOpacity
-                key={city.cityId}
-                style={[styles.cityPill, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}
-                onPress={() => setLocation(city.cityId, city.lat, city.lng)}
-              >
-                <Text variant="body">{city.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+
+          {status === 'requesting' ? (
+            <View style={styles.gpsLoading}>
+              <ActivityIndicator color={theme.brand.primary} />
+              <Text variant="caption" color="secondary">Getting your location…</Text>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={[styles.gpsBtn, { backgroundColor: theme.brand.primary }]}
+              onPress={() => { void requestLocation() }}
+            >
+              <Text variant="body" style={styles.gpsBtnText}>📍  Use my location</Text>
+            </TouchableOpacity>
+          )}
+
+          {status === 'denied' && (
+            <Text variant="caption" color="secondary" style={styles.deniedText}>
+              Location access denied. Please select your city below.
+            </Text>
+          )}
+
+          {status !== 'requesting' && (
+            <>
+              <Text variant="caption" color="secondary" style={styles.orLabel}>or</Text>
+              <View style={styles.cityList}>
+                {CITY_PRESETS.map((city) => (
+                  <TouchableOpacity
+                    key={city.cityId}
+                    style={[styles.cityPill, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}
+                    onPress={() => setLocation(city.cityId, city.lat, city.lng)}
+                  >
+                    <Text variant="body">{city.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </>
+          )}
         </View>
       </SafeAreaView>
     )
@@ -108,7 +139,13 @@ export default function DiscoveryFeedScreen() {
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]}>
       <View style={[styles.header, { borderBottomColor: theme.border.default }]}>
         <Text variant="title">Discover</Text>
-        <Text variant="caption" color="secondary">{cityId.toUpperCase()}</Text>
+        {isGPSLocation ? (
+          <TouchableOpacity style={styles.gpsPill} onPress={clearLocation}>
+            <Text variant="caption" style={styles.gpsPillText}>📍 Using your location</Text>
+          </TouchableOpacity>
+        ) : (
+          <Text variant="caption" color="secondary">{cityId.toUpperCase()}</Text>
+        )}
       </View>
 
       <FlatList
@@ -224,4 +261,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   stateText: { textAlign: 'center' },
+  gpsLoading: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8 },
+  gpsBtn: { paddingHorizontal: 24, paddingVertical: 14, borderRadius: 14, alignItems: 'center', width: '100%' },
+  gpsBtnText: { color: '#FFFFFF', fontWeight: '600' as const },
+  deniedText: { textAlign: 'center', paddingHorizontal: 32 },
+  orLabel: { textAlign: 'center' },
+  gpsPill: {
+    paddingHorizontal: 12, paddingVertical: 5, borderRadius: 99,
+    backgroundColor: 'rgba(29,158,117,0.15)',
+    borderWidth: 1, borderColor: 'rgba(29,158,117,0.25)',
+  },
+  gpsPillText: { color: '#2DD4A0' },
 })
