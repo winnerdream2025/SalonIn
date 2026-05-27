@@ -4,8 +4,10 @@ import {
   ScrollView,
   Image,
   TouchableOpacity,
+  Pressable,
   StyleSheet,
   FlatList,
+  Alert,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
@@ -13,10 +15,38 @@ import { Text, Button, Skeleton, JobPostCard, useTheme } from '@salonin/ui'
 import type { Theme } from '@salonin/ui'
 import type { JobPostCardData } from '@salonin/types'
 import { useMySalonProfile } from '../../hooks/useMySalonProfile'
+import { authApi } from '@salonin/api-client'
+import { useAuthStore } from '../../store/authStore'
+import * as Haptics from 'expo-haptics'
 
 export default function SalonOwnProfileScreen() {
   const { salon, jobs, isLoading, error, refetch } = useMySalonProfile()
   const { theme } = useTheme()
+  const clearAuth = useAuthStore((s) => s.clearAuth)
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'This will permanently delete your profile, portfolio, and all your data. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete permanently',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await authApi.deleteAccount()
+              clearAuth()
+              router.replace('/(auth)/login')
+              await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
+            } catch {
+              Alert.alert('Error', 'Failed to delete account. Please try again.')
+            }
+          },
+        },
+      ],
+    )
+  }
 
   const handlePressJob = (job: JobPostCardData) => {
     router.push(`/jobs/${job.id}`)
@@ -142,6 +172,12 @@ export default function SalonOwnProfileScreen() {
             Edit Profile
           </Button>
         </View>
+
+        <Pressable onPress={handleDeleteAccount} style={styles.deleteBtn}>
+          <Text style={{ fontSize: 13, color: theme.semantic.error.text, fontWeight: '500' }}>
+            Delete Account
+          </Text>
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   )
@@ -251,6 +287,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginTop: 16,
   },
+  deleteBtn: { marginTop: 32, padding: 16, alignItems: 'center' },
   errorState: {
     flex: 1,
     alignItems: 'center',

@@ -7,6 +7,7 @@ export interface Theme {
   brand: { primary: string; light: string; dark: string }
   avail: { now: string; today: string; weekend: string; none: string }
   skeleton: { base: string; highlight: string }
+  semantic: { error: { text: string } }
 }
 
 const dark: Theme = {
@@ -21,6 +22,7 @@ const dark: Theme = {
   brand: { primary: '#D85A30', light: '#FF8C5A', dark: '#993C1D' },
   avail: { now: '#1D9E75', today: '#378ADD', weekend: '#EF9F27', none: '#555555' },
   skeleton: { base: '#1E1E1E', highlight: '#2A2A2A' },
+  semantic: { error: { text: '#E24B4A' } },
 }
 
 const light: Theme = {
@@ -35,6 +37,7 @@ const light: Theme = {
   brand: { primary: '#D85A30', light: '#FF8C5A', dark: '#993C1D' },
   avail: { now: '#1D9E75', today: '#378ADD', weekend: '#EF9F27', none: '#555555' },
   skeleton: { base: '#EEEEEE', highlight: '#F5F5F5' },
+  semantic: { error: { text: '#E24B4A' } },
 }
 
 export function useTheme() {

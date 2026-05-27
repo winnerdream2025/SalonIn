@@ -83,6 +83,43 @@ export class AuthService {
     await this.redis.del(`refresh:${refreshToken}`)
   }
 
+  async deleteAccount(userId: string): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      await tx.userDevice.deleteMany({ where: { userId } })
+
+      const worker = await tx.workerProfile.findUnique({ where: { userId }, select: { id: true } })
+      const salon = await tx.salonProfile.findUnique({ where: { userId }, select: { id: true } })
+
+      if (worker) {
+        await tx.portfolioItem.deleteMany({ where: { workerId: worker.id } })
+        await tx.jobApplication.deleteMany({ where: { workerId: worker.id } })
+      }
+
+      if (salon) {
+        const jobIds = (await tx.jobPost.findMany({ where: { salonId: salon.id }, select: { id: true } })).map((j) => j.id)
+        if (jobIds.length) await tx.jobApplication.deleteMany({ where: { jobId: { in: jobIds } } })
+        await tx.jobPost.deleteMany({ where: { salonId: salon.id } })
+      }
+
+      await tx.conversationParticipant.deleteMany({ where: { userId } })
+      await tx.message.deleteMany({ where: { senderId: userId } })
+      await tx.report.deleteMany({ where: { OR: [{ reporterId: userId }, { reportedId: userId }] } })
+
+      if (worker) await tx.workerProfile.delete({ where: { userId } })
+      if (salon) await tx.salonProfile.delete({ where: { userId } })
+
+      await tx.user.delete({ where: { id: userId } })
+    })
+
+    const keys = await this.redis.keys('refresh:*')
+    await Promise.all(
+      keys.map(async (key) => {
+        const val = await this.redis.get(key)
+        if (val === userId) await this.redis.del(key)
+      }),
+    )
+  }
+
   private async issueTokens(userId: string, email: string): Promise<AuthTokens> {
     const accessToken = this.jwt.sign({ sub: userId, email })
     const refreshToken = randomUUID()
