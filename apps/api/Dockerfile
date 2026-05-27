@@ -7,7 +7,7 @@ RUN corepack enable && corepack prepare pnpm@9.4.0 --activate
 WORKDIR /app
 
 # Copy manifests + pnpm config
-COPY package.json pnpm-lock.yaml .npmrc tsconfig.json ./
+COPY package.json pnpm-lock.yaml .npmrc tsconfig.json tsconfig.seed.json ./
 
 # Create a workspace manifest scoped to only what the API needs
 RUN printf 'packages:\n  - packages/config\n  - packages/types\n  - packages/utils\n  - apps/api\n' > pnpm-workspace.yaml
@@ -31,6 +31,9 @@ RUN pnpm exec prisma generate
 
 # Build — webpack bundles @salonin/* inline, externalises node_modules
 RUN pnpm --filter @salonin/api build
+
+# Compile seed script to JS (runs at deploy time via node, no ts-node needed)
+RUN pnpm exec tsc --project tsconfig.seed.json
 
 # ---- Stage 2: Runner ----
 FROM node:20-alpine AS runner
@@ -58,10 +61,11 @@ RUN node -e "const p=require('./package.json'); delete p.pnpm; require('fs').wri
 RUN pnpm install --no-frozen-lockfile
 RUN pnpm exec prisma generate
 
-# Copy webpack bundle from builder
+# Copy webpack bundle + compiled seed from builder
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
+COPY --from=builder /app/dist/seed ./dist/seed
 
 EXPOSE 4000
 ENV NODE_ENV=production
 
-CMD ["sh", "-c", "pnpm exec prisma migrate deploy && node apps/api/dist/main.js"]
+CMD ["sh", "-c", "pnpm exec prisma migrate deploy && node dist/seed/prisma/seed.js && node apps/api/dist/main.js"]
