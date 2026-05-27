@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import {
   View,
   ScrollView,
@@ -15,7 +15,7 @@ import { Text, Button, Skeleton, JobPostCard, useTheme } from '@salonin/ui'
 import type { Theme } from '@salonin/ui'
 import type { JobPostCardData } from '@salonin/types'
 import { useMySalonProfile } from '../../hooks/useMySalonProfile'
-import { authApi } from '@salonin/api-client'
+import { authApi, salonsApi } from '@salonin/api-client'
 import { useAuthStore } from '../../store/authStore'
 import * as Haptics from 'expo-haptics'
 
@@ -23,6 +23,26 @@ export default function SalonOwnProfileScreen() {
   const { salon, jobs, isLoading, error, refetch } = useMySalonProfile()
   const { theme } = useTheme()
   const clearAuth = useAuthStore((s) => s.clearAuth)
+  const [hiringOverride, setHiringOverride] = useState<boolean | null>(null)
+
+  const isHiring = hiringOverride ?? salon?.isHiring ?? false
+
+  const handleToggleHiring = async () => {
+    const newVal = !isHiring
+    setHiringOverride(newVal)
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    try {
+      await salonsApi.setHiringStatus(newVal)
+    } catch {
+      setHiringOverride(null)
+      refetch()
+    }
+  }
+
+  const handleSignOut = () => {
+    clearAuth()
+    router.replace('/(auth)/login')
+  }
 
   const handleDeleteAccount = () => {
     Alert.alert(
@@ -115,11 +135,17 @@ export default function SalonOwnProfileScreen() {
                 <Text variant="caption" style={{ color: '#1D9E75', fontWeight: '600' }}>✓ Verified</Text>
               </View>
             )}
-            {salon.isHiring && (
-              <View style={[styles.badge, { backgroundColor: 'rgba(216,90,48,0.15)' }]}>
-                <Text variant="caption" style={{ color: '#D85A30', fontWeight: '600' }}>Hiring</Text>
-              </View>
-            )}
+            <Pressable
+              onPress={handleToggleHiring}
+              style={({ pressed }) => [styles.badge, {
+                backgroundColor: isHiring ? 'rgba(216,90,48,0.15)' : 'rgba(85,85,85,0.12)',
+                transform: [{ scale: pressed ? 0.92 : 1 }],
+              }]}
+            >
+              <Text variant="caption" style={{ color: isHiring ? '#D85A30' : '#555555', fontWeight: '600' }}>
+                {isHiring ? 'Hiring now' : 'Not hiring'}
+              </Text>
+            </Pressable>
           </View>
         </View>
 
@@ -172,6 +198,12 @@ export default function SalonOwnProfileScreen() {
             Edit Profile
           </Button>
         </View>
+
+        <Pressable onPress={handleSignOut} style={styles.signOutBtn}>
+          <Text style={{ fontSize: 14, color: theme.text.secondary, fontWeight: '500' }}>
+            Sign out
+          </Text>
+        </Pressable>
 
         <Pressable onPress={handleDeleteAccount} style={styles.deleteBtn}>
           <Text style={{ fontSize: 13, color: theme.semantic.error.text, fontWeight: '500' }}>
@@ -287,7 +319,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginTop: 16,
   },
-  deleteBtn: { marginTop: 32, padding: 16, alignItems: 'center' },
+  signOutBtn: { marginTop: 24, padding: 16, alignItems: 'center' },
+  deleteBtn: { marginTop: 8, padding: 16, alignItems: 'center' },
   errorState: {
     flex: 1,
     alignItems: 'center',

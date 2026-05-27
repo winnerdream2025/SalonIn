@@ -1,20 +1,49 @@
-import React from 'react'
-import { View, ScrollView, TouchableOpacity, Pressable, StyleSheet, Alert } from 'react-native'
+import React, { useState } from 'react'
+import { View, ScrollView, TouchableOpacity, Pressable, StyleSheet, Alert, Modal } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Avatar, Text, AvailabilityBadge, PortfolioGrid, Skeleton, Button, useTheme } from '@salonin/ui'
 import type { Theme } from '@salonin/ui'
 import type { PortfolioItem } from '@salonin/types'
+import { Availability } from '@salonin/types'
 import { formatExperience } from '@salonin/utils'
 import { useMyWorkerProfile } from '../../hooks/useWorkerProfile'
-import { authApi } from '@salonin/api-client'
+import { authApi, workersApi } from '@salonin/api-client'
 import { useAuthStore } from '../../store/authStore'
 import * as Haptics from 'expo-haptics'
 
+const AVAIL_OPTIONS: Array<{ value: Availability; label: string; color: string }> = [
+  { value: Availability.NOW, label: 'Available now', color: '#1D9E75' },
+  { value: Availability.TODAY, label: 'Available today', color: '#378ADD' },
+  { value: Availability.WEEKEND, label: 'This weekend', color: '#EF9F27' },
+  { value: Availability.NOT_AVAILABLE, label: 'Not available', color: '#555555' },
+]
+
 export default function WorkerOwnProfileScreen() {
-  const { profile, isLoading } = useMyWorkerProfile()
+  const { profile, isLoading, refetch } = useMyWorkerProfile()
   const { theme } = useTheme()
   const clearAuth = useAuthStore((s) => s.clearAuth)
+  const [showAvailSheet, setShowAvailSheet] = useState(false)
+  const [currentAvail, setCurrentAvail] = useState<Availability | null>(null)
+
+  const availability = currentAvail ?? profile?.availability ?? Availability.NOT_AVAILABLE
+
+  const handleAvailChange = async (value: Availability) => {
+    setCurrentAvail(value)
+    setShowAvailSheet(false)
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    try {
+      await workersApi.updateAvailability({ availability: value })
+    } catch {
+      setCurrentAvail(null)
+      refetch()
+    }
+  }
+
+  const handleSignOut = () => {
+    clearAuth()
+    router.replace('/(auth)/login')
+  }
 
   const handleDeleteAccount = () => {
     Alert.alert(
@@ -75,7 +104,12 @@ export default function WorkerOwnProfileScreen() {
         <View style={styles.hero}>
           <Avatar uri={profile.photoUrl} name={profile.name} size="xl" />
           <Text variant="heading" style={styles.heroName}>{profile.name}</Text>
-          <AvailabilityBadge status={profile.availability} />
+          <Pressable
+            onPress={() => setShowAvailSheet(true)}
+            style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.95 : 1 }] })}
+          >
+            <AvailabilityBadge status={availability} />
+          </Pressable>
         </View>
 
         {profile.bio ? (
@@ -118,12 +152,43 @@ export default function WorkerOwnProfileScreen() {
           </Button>
         </View>
 
+        <Pressable onPress={handleSignOut} style={styles.signOutBtn}>
+          <Text style={{ fontSize: 14, color: theme.text.secondary, fontWeight: '500' }}>
+            Sign out
+          </Text>
+        </Pressable>
+
         <Pressable onPress={handleDeleteAccount} style={styles.deleteBtn}>
           <Text style={{ fontSize: 13, color: theme.semantic.error.text, fontWeight: '500' }}>
             Delete Account
           </Text>
         </Pressable>
       </ScrollView>
+
+      <Modal visible={showAvailSheet} transparent animationType="slide">
+        <Pressable style={styles.sheetOverlay} onPress={() => setShowAvailSheet(false)}>
+          <View style={[styles.sheet, { backgroundColor: theme.bg.elevated }]}>
+            <View style={[styles.sheetHandle, { backgroundColor: theme.border.default }]} />
+            <Text variant="title" style={styles.sheetTitle}>Set availability</Text>
+            {AVAIL_OPTIONS.map((opt) => (
+              <Pressable
+                key={opt.value}
+                onPress={() => handleAvailChange(opt.value)}
+                style={({ pressed }) => [
+                  styles.sheetOption,
+                  { backgroundColor: pressed ? theme.bg.input : 'transparent' },
+                ]}
+              >
+                <View style={[styles.sheetDot, { backgroundColor: opt.color }]} />
+                <Text variant="body" style={{ flex: 1 }}>{opt.label}</Text>
+                {availability === opt.value && (
+                  <Text style={{ color: '#D85A30', fontWeight: '700', fontSize: 16 }}>✓</Text>
+                )}
+              </Pressable>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   )
 }
@@ -175,6 +240,36 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   editSection: { marginTop: 16 },
-  deleteBtn: { marginTop: 32, padding: 16, alignItems: 'center' },
+  signOutBtn: { marginTop: 24, padding: 16, alignItems: 'center' },
+  deleteBtn: { marginTop: 8, padding: 16, alignItems: 'center' },
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  sheetOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 16,
+    paddingBottom: 40,
+  },
+  sheetHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginTop: 12,
+    marginBottom: 16,
+  },
+  sheetTitle: { marginBottom: 16 },
+  sheetOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    gap: 12,
+  },
+  sheetDot: { width: 10, height: 10, borderRadius: 5 },
 })
