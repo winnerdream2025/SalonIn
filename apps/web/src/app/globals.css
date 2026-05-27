@@ -10,6 +10,7 @@
   --color-text-secondary:       #6B6B6B;
   --color-text-tertiary:        #ABABAB;
   --color-border:               rgba(0, 0, 0, 0.09);
+  --color-border-subtle:        rgba(0, 0, 0, 0.05);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -21,5 +22,12 @@
     --color-text-secondary:       #9A9A9A;
     --color-text-tertiary:        #5A5A5A;
     --color-border:               rgba(255, 255, 255, 0.10);
+    --color-border-subtle:        rgba(255, 255, 255, 0.06);
   }
+}
+
+html,
+body {
+  overflow-x: hidden;
+  width: 100%;
 }
