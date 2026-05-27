@@ -19,7 +19,8 @@ COPY packages/utils/   ./packages/utils/
 COPY apps/api/         ./apps/api/
 COPY prisma/           ./prisma/
 
-COPY patches/ ./patches/
+# Strip expo patchedDependencies — those packages aren't in the API workspace
+RUN node -e "const p=require('./package.json'); delete p.pnpm; require('fs').writeFileSync('package.json', JSON.stringify(p,null,2)+'\n')"
 
 # Install deps (lockfile used for version pinning, not strict validation)
 RUN pnpm install --no-frozen-lockfile
@@ -38,7 +39,7 @@ RUN corepack enable && corepack prepare pnpm@9.4.0 --activate
 
 WORKDIR /app
 
-# Copy manifests + pnpm config
+# Copy manifests + pnpm config (no tsconfig needed at runtime)
 COPY package.json pnpm-lock.yaml .npmrc ./
 RUN printf 'packages:\n  - packages/config\n  - packages/types\n  - packages/utils\n  - apps/api\n' > pnpm-workspace.yaml
 
@@ -47,7 +48,9 @@ COPY packages/types/package.json   ./packages/types/package.json
 COPY packages/utils/package.json   ./packages/utils/package.json
 COPY apps/api/package.json ./apps/api/package.json
 COPY prisma/ ./prisma/
-COPY patches/ ./patches/
+
+# Strip expo patchedDependencies — those packages aren't in the API workspace
+RUN node -e "const p=require('./package.json'); delete p.pnpm; require('fs').writeFileSync('package.json', JSON.stringify(p,null,2)+'\n')"
 
 # Install deps and generate Prisma client for this platform
 RUN pnpm install --no-frozen-lockfile
