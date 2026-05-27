@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   HttpCode,
   HttpStatus,
   Post,
@@ -12,6 +13,8 @@ import { LoginDto } from './dto/login.dto'
 import { RefreshDto } from './dto/refresh.dto'
 import { LogoutDto } from './dto/logout.dto'
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
+import { CurrentUser } from '../../common/decorators/current-user.decorator'
+import type { User } from '@salonin/types'
 
 @Controller('auth')
 export class AuthController {
@@ -40,5 +43,12 @@ export class AuthController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async logout(@Body() dto: LogoutDto): Promise<void> {
     await this.authService.logout(dto.refreshToken)
+  }
+
+  @Delete('account')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteAccount(@CurrentUser() user: User): Promise<void> {
+    await this.authService.deleteAccount(user.id)
   }
 }

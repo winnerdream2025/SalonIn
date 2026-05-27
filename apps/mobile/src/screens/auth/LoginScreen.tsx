@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react'
-import { View, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native'
+import { View, StyleSheet, KeyboardAvoidingView, Platform, Linking, Text as RNText } from 'react-native'
 import { router } from 'expo-router'
 import { Input, Button, Text, useTheme } from '@salonin/ui'
 import { useAuth } from '../../hooks/useAuth'
@@ -60,6 +60,25 @@ export default function LoginScreen() {
         <Button variant="ghost" fullWidth onPress={() => router.push('/(auth)/role-select')}>
           Create an account
         </Button>
+
+        <View style={styles.footer}>
+          <RNText style={[styles.footerText, { color: theme.text.secondary }]}>
+            {'By continuing you agree to our '}
+            <RNText
+              style={{ color: theme.brand.primary }}
+              onPress={() => Linking.openURL('https://salonin-web-production.up.railway.app/terms')}
+            >
+              Terms of Service
+            </RNText>
+            {' and '}
+            <RNText
+              style={{ color: theme.brand.primary }}
+              onPress={() => Linking.openURL('https://salonin-web-production.up.railway.app/privacy')}
+            >
+              Privacy Policy
+            </RNText>
+          </RNText>
+        </View>
       </View>
     </KeyboardAvoidingView>
   )
@@ -72,4 +91,6 @@ const styles = StyleSheet.create({
   subtitle: { marginBottom: 32 },
   field: { marginBottom: 16 },
   action: { marginTop: 8, marginBottom: 8 },
+  footer: { marginTop: 24, paddingHorizontal: 8 },
+  footerText: { fontSize: 12, textAlign: 'center', lineHeight: 18 },
 })

@@ -1,0 +1,25 @@
+/* Salonin — CSS Design Tokens
+   Light mode is the default; dark overrides via media query.
+   These variables are consumed by all public Server Component pages. */
+
+:root {
+  --color-background-primary:   #F7F6F3;
+  --color-background-secondary: #FFFFFF;
+  --color-background-card:      #FFFFFF;
+  --color-text-primary:         #0F0F0F;
+  --color-text-secondary:       #6B6B6B;
+  --color-text-tertiary:        #ABABAB;
+  --color-border:               rgba(0, 0, 0, 0.09);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background-primary:   #0A0A0A;
+    --color-background-secondary: #111111;
+    --color-background-card:      #161616;
+    --color-text-primary:         #FFFFFF;
+    --color-text-secondary:       #9A9A9A;
+    --color-text-tertiary:        #5A5A5A;
+    --color-border:               rgba(255, 255, 255, 0.10);
+  }
+}

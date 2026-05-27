@@ -49,4 +49,9 @@ export const authApi = {
     await api.post('/auth/logout', { refreshToken })
     clearAuthTokens()
   },
+
+  deleteAccount: async (): Promise<void> => {
+    await api.delete('/auth/account')
+    clearAuthTokens()
+  },
 }

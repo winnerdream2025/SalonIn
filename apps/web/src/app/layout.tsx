@@ -1,3 +1,4 @@
+import './globals.css'
 import type { ReactNode } from 'react'
 import { configureClient } from '@salonin/api-client'
 
@@ -19,7 +20,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           padding: 0,
           fontFamily:
             '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-          backgroundColor: '#0A0A0A',
+          backgroundColor: 'var(--color-background-primary)',
           WebkitFontSmoothing: 'antialiased',
         }}
       >

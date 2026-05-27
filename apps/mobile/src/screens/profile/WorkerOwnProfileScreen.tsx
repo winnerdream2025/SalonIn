@@ -1,5 +1,5 @@
 import React from 'react'
-import { View, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native'
+import { View, ScrollView, TouchableOpacity, Pressable, StyleSheet, Alert } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Avatar, Text, AvailabilityBadge, PortfolioGrid, Skeleton, Button, useTheme } from '@salonin/ui'
@@ -7,10 +7,38 @@ import type { Theme } from '@salonin/ui'
 import type { PortfolioItem } from '@salonin/types'
 import { formatExperience } from '@salonin/utils'
 import { useMyWorkerProfile } from '../../hooks/useWorkerProfile'
+import { authApi } from '@salonin/api-client'
+import { useAuthStore } from '../../store/authStore'
+import * as Haptics from 'expo-haptics'
 
 export default function WorkerOwnProfileScreen() {
   const { profile, isLoading } = useMyWorkerProfile()
   const { theme } = useTheme()
+  const clearAuth = useAuthStore((s) => s.clearAuth)
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'This will permanently delete your profile, portfolio, and all your data. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete permanently',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await authApi.deleteAccount()
+              clearAuth()
+              router.replace('/(auth)/login')
+              await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
+            } catch {
+              Alert.alert('Error', 'Failed to delete account. Please try again.')
+            }
+          },
+        },
+      ],
+    )
+  }
 
   const handlePressItem = (item: PortfolioItem) => {
     if (item.caption) Alert.alert(item.caption)
@@ -89,6 +117,12 @@ export default function WorkerOwnProfileScreen() {
             Edit Profile
           </Button>
         </View>
+
+        <Pressable onPress={handleDeleteAccount} style={styles.deleteBtn}>
+          <Text style={{ fontSize: 13, color: theme.semantic.error.text, fontWeight: '500' }}>
+            Delete Account
+          </Text>
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   )
@@ -141,5 +175,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   editSection: { marginTop: 16 },
+  deleteBtn: { marginTop: 32, padding: 16, alignItems: 'center' },
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 })
