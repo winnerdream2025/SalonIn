@@ -20,6 +20,10 @@ COPY packages/api-client/ ./packages/api-client/
 COPY apps/web/            ./apps/web/
 COPY prisma/              ./prisma/
 
+# Strip expo patchedDependencies — those packages aren't in the web workspace
+RUN node -e "const p=require('./package.json'); delete p.pnpm; require('fs').writeFileSync('package.json', JSON.stringify(p,null,2)+'\n')" \
+    && sed -i '/^patchedDependencies:/,/^$/d' pnpm-lock.yaml
+
 # Install deps
 RUN pnpm install --no-frozen-lockfile
 
