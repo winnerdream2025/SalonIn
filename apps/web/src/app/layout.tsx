@@ -1,10 +1,6 @@
 import './globals.css'
 import type { ReactNode } from 'react'
-import { configureClient } from '@salonin/api-client'
-
-configureClient({
-  baseURL: process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000',
-})
+import { Providers } from '../components/Providers'
 
 export const metadata = {
   title: 'SalonIn',
@@ -24,7 +20,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           WebkitFontSmoothing: 'antialiased',
         }}
       >
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   )

@@ -20,7 +20,8 @@ COPY apps/api/         ./apps/api/
 COPY prisma/           ./prisma/
 
 # Strip expo patchedDependencies — those packages aren't in the API workspace
-RUN node -e "const p=require('./package.json'); delete p.pnpm; require('fs').writeFileSync('package.json', JSON.stringify(p,null,2)+'\n')"
+RUN node -e "const p=require('./package.json'); delete p.pnpm; require('fs').writeFileSync('package.json', JSON.stringify(p,null,2)+'\n')" \
+    && sed -i '/^patchedDependencies:/,/^$/d' pnpm-lock.yaml
 
 # Install deps (lockfile used for version pinning, not strict validation)
 RUN pnpm install --no-frozen-lockfile
@@ -50,7 +51,8 @@ COPY apps/api/package.json ./apps/api/package.json
 COPY prisma/ ./prisma/
 
 # Strip expo patchedDependencies — those packages aren't in the API workspace
-RUN node -e "const p=require('./package.json'); delete p.pnpm; require('fs').writeFileSync('package.json', JSON.stringify(p,null,2)+'\n')"
+RUN node -e "const p=require('./package.json'); delete p.pnpm; require('fs').writeFileSync('package.json', JSON.stringify(p,null,2)+'\n')" \
+    && sed -i '/^patchedDependencies:/,/^$/d' pnpm-lock.yaml
 
 # Install deps and generate Prisma client for this platform
 RUN pnpm install --no-frozen-lockfile

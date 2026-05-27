@@ -30,6 +30,10 @@ RUN pnpm install --no-frozen-lockfile
 # Generate Prisma client (types package depends on it)
 RUN pnpm exec prisma generate
 
+# NEXT_PUBLIC_* vars are inlined by webpack at build time — must be declared as ARG
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
 # Build Next.js
 RUN pnpm --filter @salonin/web build
 

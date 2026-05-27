@@ -288,6 +288,11 @@ async function main() {
       WHERE id = ${profile.id}
     `
 
+    const [wLoc] = await prisma.$queryRaw<Array<{ has_location: boolean }>>`
+      SELECT (location IS NOT NULL) AS has_location FROM "WorkerProfile" WHERE id = ${profile.id}
+    `
+    if (!wLoc?.has_location) console.warn(`  ⚠️  location IS NULL for ${w.name} — check PostGIS extension`)
+
     const existingPortfolio = await prisma.portfolioItem.count({
       where: { workerId: profile.id },
     })
@@ -342,8 +347,13 @@ async function main() {
       WHERE id = ${profile.id}
     `
 
+    const [sLoc] = await prisma.$queryRaw<Array<{ has_location: boolean }>>`
+      SELECT (location IS NOT NULL) AS has_location FROM "SalonProfile" WHERE id = ${profile.id}
+    `
+    if (!sLoc?.has_location) console.warn(`  ⚠️  location IS NULL for ${s.name} — check PostGIS extension`)
+
     salonProfileIdByEmail[s.email] = profile.id
-    console.log(`  ✓ ${s.name} — ${s.cityId.toUpperCase()}`)
+    console.log(`  ✓ ${s.name} — ${s.cityId.toUpperCase()} — location: ${sLoc?.has_location ? '✅' : '❌ NULL'}`)
   }
 
   // ── Job Posts ──────────────────────────────────────────────────────────────
