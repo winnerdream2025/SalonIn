@@ -24,7 +24,9 @@ export default function LoginPage() {
     setError(undefined)
     try {
       await login({ email, password })
-      router.replace('/dashboard')
+      const params = new URLSearchParams(window.location.search)
+      const redirectTo = params.get('redirect')
+      router.replace(redirectTo ?? '/workers')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Login failed')
     }

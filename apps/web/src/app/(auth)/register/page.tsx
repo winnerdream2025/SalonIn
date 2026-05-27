@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Role } from '@salonin/types'
 import { useAuth } from '../../../hooks/useAuth'
@@ -18,6 +18,11 @@ const ROLES: { value: Role; label: string }[] = [
   { value: 'SALON', label: 'Salon Owner' },
 ]
 
+const REASON_BANNERS: Record<string, string> = {
+  message: 'Create a free account to message beauty professionals',
+  apply:   'Create a free account to apply to job posts',
+}
+
 export default function RegisterPage() {
   const router = useRouter()
   const { register, isLoading } = useAuth()
@@ -26,12 +31,18 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | undefined>()
+  const [reasonBanner, setReasonBanner] = useState<string | null>(null)
+
+  useEffect(() => {
+    const reason = new URLSearchParams(window.location.search).get('reason')
+    if (reason && REASON_BANNERS[reason]) setReasonBanner(REASON_BANNERS[reason])
+  }, [])
 
   const handleSubmit = useCallback(async () => {
     setError(undefined)
     try {
       await register({ name, email, password, role, cityId: 'dmv' })
-      router.replace('/dashboard')
+      router.replace('/workers')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Registration failed')
     }
@@ -58,6 +69,23 @@ export default function RegisterPage() {
           border: `1px solid ${T.border.default}`,
         }}
       >
+        {reasonBanner !== null && (
+          <div
+            style={{
+              backgroundColor: 'rgba(216,90,48,0.08)',
+              border: '1px solid rgba(216,90,48,0.20)',
+              borderRadius: 10,
+              padding: '10px 14px',
+              marginBottom: 20,
+              fontSize: 13,
+              color: T.brand.primary,
+              lineHeight: 1.5,
+            }}
+          >
+            {reasonBanner}
+          </div>
+        )}
+
         <h1 style={{ color: T.text.primary, fontSize: 24, fontWeight: 700, margin: '0 0 8px 0' }}>
           Create account
         </h1>
