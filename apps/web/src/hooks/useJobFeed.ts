@@ -6,6 +6,7 @@ import { useLocationStore } from '../store/locationStore'
 export interface UseJobFeedOptions {
   specialty?: string
   type?: string
+  salonId?: string
 }
 
 export interface UseJobFeedResult {
@@ -20,7 +21,7 @@ export interface UseJobFeedResult {
 }
 
 export function useJobFeed(options: UseJobFeedOptions = {}): UseJobFeedResult {
-  const { specialty, type } = options
+  const { specialty, type, salonId } = options
   const cityId = useLocationStore((s) => s.cityId)
 
   const [jobs, setJobs] = useState<JobPostCardData[]>([])
@@ -59,7 +60,7 @@ export function useJobFeed(options: UseJobFeedOptions = {}): UseJobFeedResult {
     }
 
     jobsApi
-      .list({ cityId, specialty, type, page: 1, limit: 20 })
+      .list({ cityId, specialty, type, salonId, page: 1, limit: 20 })
       .then((res) => {
         if (!cancelled) {
           setJobs(res.data)
@@ -78,14 +79,14 @@ export function useJobFeed(options: UseJobFeedOptions = {}): UseJobFeedResult {
       })
 
     return () => { cancelled = true }
-  }, [cityId, specialty, type, tick])
+  }, [cityId, specialty, type, salonId, tick])
 
   const loadMore = useCallback(async () => {
     if (!hasMore || !cityId || isLoadingMore) return
     const nextPage = page + 1
     setIsLoadingMore(true)
     try {
-      const res = await jobsApi.list({ cityId, specialty, type, page: nextPage, limit: 20 })
+      const res = await jobsApi.list({ cityId, specialty, type, salonId, page: nextPage, limit: 20 })
       setJobs((prev) => [...prev, ...res.data])
       setPage(nextPage)
       setHasMore(res.hasMore)
@@ -94,7 +95,7 @@ export function useJobFeed(options: UseJobFeedOptions = {}): UseJobFeedResult {
     } finally {
       setIsLoadingMore(false)
     }
-  }, [hasMore, cityId, specialty, type, page, isLoadingMore])
+  }, [hasMore, cityId, specialty, type, salonId, page, isLoadingMore])
 
   return { jobs, isLoading, isRefreshing, isLoadingMore, hasMore, error, refresh, loadMore }
 }

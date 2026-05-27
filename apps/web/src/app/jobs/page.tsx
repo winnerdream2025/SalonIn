@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { JobPostCard, JobPostCardSkeleton } from '../../components/JobPostCard'
 import { useJobFeed } from '../../hooks/useJobFeed'
 import { useLocationStore } from '../../store/locationStore'
+import { useAuthStore } from '../../store/authStore'
+import { salonsApi } from '@salonin/api-client'
 
 const T = {
   bg: { base: '#0A0A0A', surface: '#111111', elevated: '#1A1A1A' },
@@ -28,11 +30,27 @@ export default function JobsPage() {
   const router = useRouter()
   const cityId = useLocationStore((s) => s.cityId)
   const setLocation = useLocationStore((s) => s.setLocation)
+  const user = useAuthStore((s) => s.user)
+  const isSalon = user?.role === 'SALON'
 
   const [selectedSpecialty, setSelectedSpecialty] = useState<string | undefined>()
+  const [salonId, setSalonId] = useState<string | undefined>()
+
+  useEffect(() => {
+    if (!isSalon) return
+    salonsApi.getMe()
+      .then((salon) => {
+        setSalonId(salon.id)
+        if (!useLocationStore.getState().cityId) {
+          const preset = CITY_PRESETS.find((c) => c.cityId === salon.cityId) ?? CITY_PRESETS[0]!
+          setLocation(preset.cityId, preset.lat, preset.lng)
+        }
+      })
+      .catch(() => { /* silently fall through to public feed */ })
+  }, [isSalon, setLocation])
 
   const { jobs, isLoading, isLoadingMore, hasMore, error, refresh, loadMore } =
-    useJobFeed({ specialty: selectedSpecialty })
+    useJobFeed({ specialty: selectedSpecialty, salonId })
 
   const sentinelRef = useRef<HTMLDivElement>(null)
 
@@ -90,24 +108,44 @@ export default function JobsPage() {
           }}
         >
           <span style={{ color: T.brand.primary, fontSize: 18, fontWeight: 800 }}>SalonIn</span>
-          <span style={{ color: T.text.secondary, fontSize: 13 }}>Hiring Posts</span>
-          {isLocationSet && (
-            <button
-              onClick={refresh}
-              style={{
-                marginLeft: 'auto',
-                backgroundColor: 'transparent',
-                border: `1px solid ${T.border.default}`,
-                color: T.text.secondary,
-                borderRadius: 8,
-                padding: '4px 12px',
-                fontSize: 12,
-                cursor: 'pointer',
-              }}
-            >
-              Refresh
-            </button>
-          )}
+          <span style={{ color: T.text.secondary, fontSize: 13 }}>
+            {isSalon ? 'My Job Posts' : 'Hiring Posts'}
+          </span>
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
+            {isSalon && (
+              <button
+                onClick={() => router.push('/jobs/create')}
+                style={{
+                  backgroundColor: T.brand.primary,
+                  border: 'none',
+                  color: '#FFFFFF',
+                  borderRadius: 8,
+                  padding: '6px 14px',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                + Post job
+              </button>
+            )}
+            {isLocationSet && (
+              <button
+                onClick={refresh}
+                style={{
+                  backgroundColor: 'transparent',
+                  border: `1px solid ${T.border.default}`,
+                  color: T.text.secondary,
+                  borderRadius: 8,
+                  padding: '4px 12px',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                }}
+              >
+                Refresh
+              </button>
+            )}
+          </div>
         </header>
 
         <div className="jd-layout">
@@ -193,7 +231,7 @@ export default function JobsPage() {
           <main className="jd-main">
             <div style={{ marginBottom: 16, display: 'flex', alignItems: 'baseline', gap: 8 }}>
               <h1 style={{ color: T.text.primary, fontSize: 20, fontWeight: 700, margin: 0 }}>
-                {isLocationSet ? `Hiring in ${locationLabel}` : 'Hiring Posts'}
+                {isSalon ? 'My Job Posts' : isLocationSet ? `Hiring in ${locationLabel}` : 'Hiring Posts'}
               </h1>
               {jobs.length > 0 && (
                 <span style={{ color: T.text.muted, fontSize: 13 }}>
@@ -202,7 +240,7 @@ export default function JobsPage() {
               )}
             </div>
 
-            {!isLocationSet ? (
+            {!isLocationSet && !isSalon ? (
               <div style={{ textAlign: 'center', paddingTop: 64, color: T.text.secondary, fontSize: 14 }}>
                 Select a city from the sidebar to view hiring posts.
               </div>
@@ -233,10 +271,34 @@ export default function JobsPage() {
               </div>
             ) : jobs.length === 0 ? (
               <div style={{ textAlign: 'center', paddingTop: 48 }}>
-                <p style={{ color: T.text.secondary, fontSize: 14 }}>No hiring posts found.</p>
-                <p style={{ color: T.text.muted, fontSize: 12 }}>
-                  Try clearing the specialty filter or choosing a different city.
-                </p>
+                {isSalon ? (
+                  <>
+                    <p style={{ color: T.text.secondary, fontSize: 14 }}>You haven&apos;t posted any jobs yet.</p>
+                    <button
+                      onClick={() => router.push('/jobs/create')}
+                      style={{
+                        marginTop: 12,
+                        backgroundColor: T.brand.primary,
+                        border: 'none',
+                        color: '#FFFFFF',
+                        borderRadius: 10,
+                        padding: '10px 24px',
+                        fontSize: 14,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Post your first job
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p style={{ color: T.text.secondary, fontSize: 14 }}>No hiring posts found.</p>
+                    <p style={{ color: T.text.muted, fontSize: 12 }}>
+                      Try clearing the specialty filter or choosing a different city.
+                    </p>
+                  </>
+                )}
               </div>
             ) : (
               <>
