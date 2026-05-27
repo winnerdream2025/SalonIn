@@ -1,4 +1,4 @@
-package com.salonin.app
+package com.winnerdream.salonin
 
 import android.os.Build
 import android.os.Bundle
