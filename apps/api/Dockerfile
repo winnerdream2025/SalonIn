@@ -33,7 +33,7 @@ RUN pnpm --filter @salonin/api build
 # ---- Stage 2: Runner ----
 FROM node:20-alpine AS runner
 
-RUN apk add --no-cache openssl
+RUN apk add --no-cache openssl python3 make g++
 RUN corepack enable && corepack prepare pnpm@9.4.0 --activate
 
 WORKDIR /app
