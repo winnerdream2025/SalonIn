@@ -2,6 +2,12 @@
   "expo": {
     "name": "Salonin",
     "slug": "salonin",
+    "owner": "winnerdream",
+    "extra": {
+      "eas": {
+        "projectId": "4b8c3233-ffb4-4c1d-b74b-bebdf9298f7b"
+      }
+    },
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "salonin",
