@@ -12,13 +12,19 @@
     "@prisma/client": "^5.0.0"
   },
   "devDependencies": {
+    "prettier": "^3.3.2",
     "prisma": "^5.0.0",
     "turbo": "^2.1.0",
-    "typescript": "^5.4.5",
-    "prettier": "^3.3.2"
+    "typescript": "^5.4.5"
   },
   "engines": {
     "node": ">=20.0.0"
   },
-  "packageManager": "pnpm@9.4.0"
+  "packageManager": "pnpm@9.4.0",
+  "pnpm": {
+    "patchedDependencies": {
+      "expo-modules-core@1.12.26": "patches/expo-modules-core@1.12.26.patch",
+      "expo-device@5.9.4": "patches/expo-device@5.9.4.patch"
+    }
+  }
 }
