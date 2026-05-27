@@ -3,6 +3,7 @@ import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Linking, 
 import { router, useLocalSearchParams } from 'expo-router'
 import { Input, Button, Text, useTheme } from '@salonin/ui'
 import { useAuth } from '../../hooks/useAuth'
+import { useLocationStore } from '../../store/locationStore'
 import type { Role } from '@salonin/types'
 
 export default function RegisterScreen() {
@@ -20,6 +21,7 @@ export default function RegisterScreen() {
     setError(undefined)
     try {
       await register({ name, email, password, role, cityId: 'dmv' })
+      useLocationStore.getState().setLocation('dmv', 38.9072, -77.0369)
       router.replace('/(tabs)')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Registration failed')
