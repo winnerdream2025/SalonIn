@@ -1,0 +1,12 @@
+{
+  "extends": "./packages/config/tsconfig/nestjs.json",
+  "compilerOptions": {
+    "isolatedModules": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "rootDir": ".",
+    "outDir": "./dist/seed"
+  },
+  "include": ["prisma/**/*.ts"],
+  "exclude": ["node_modules"]
+}
