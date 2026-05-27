@@ -12,6 +12,7 @@
     "@prisma/client": "^5.0.0"
   },
   "devDependencies": {
+    "bcryptjs": "^3.0.3",
     "prettier": "^3.3.2",
     "prisma": "^5.0.0",
     "turbo": "^2.1.0",
@@ -21,6 +22,9 @@
     "node": ">=20.0.0"
   },
   "packageManager": "pnpm@9.4.0",
+  "prisma": {
+    "seed": "ts-node --project tsconfig.seed.json prisma/seed.ts"
+  },
   "pnpm": {
     "patchedDependencies": {
       "expo-modules-core@1.12.26": "patches/expo-modules-core@1.12.26.patch",

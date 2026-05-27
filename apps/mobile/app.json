@@ -40,7 +40,8 @@
         "NSCameraUsageDescription": "Salonin needs camera access to upload your profile photo and portfolio images.",
         "NSPhotoLibraryUsageDescription": "Salonin needs photo library access to choose your profile and portfolio images.",
         "NSPhotoLibraryAddUsageDescription": "Salonin saves your portfolio images to your photo library.",
-        "NSUserNotificationsUsageDescription": "Salonin sends notifications when salons message you or post new job opportunities."
+        "NSUserNotificationsUsageDescription": "Salonin sends notifications when salons message you or post new job opportunities.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "plugins": [
