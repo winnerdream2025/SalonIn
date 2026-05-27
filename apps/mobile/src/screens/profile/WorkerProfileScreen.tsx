@@ -1,6 +1,6 @@
-import React from 'react'
+import React, { useCallback } from 'react'
 import { View, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Avatar, Text, AvailabilityBadge, PortfolioGrid, Skeleton, useTheme } from '@salonin/ui'
 import type { Theme } from '@salonin/ui'
@@ -16,6 +16,23 @@ export default function WorkerProfileScreen() {
   const { theme } = useTheme()
 
   const isOwner = Boolean(currentUser && profile && currentUser.id === profile.userId)
+  const { bottom } = useSafeAreaInsets()
+
+  const handleMessage = useCallback(() => {
+    if (currentUser) {
+      router.push(`/chat/${id}`)
+      return
+    }
+    Alert.alert(
+      'Sign in to message',
+      'Create a free account to message beauty professionals on Salonin.',
+      [
+        { text: 'Create account', onPress: () => router.push('/(auth)/register') },
+        { text: 'Sign in', onPress: () => router.push('/(auth)/login') },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    )
+  }, [currentUser, id])
 
   const handlePressItem = (item: PortfolioItem) => {
     if (item.caption) Alert.alert(item.caption)
@@ -56,7 +73,7 @@ export default function WorkerProfileScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: !isOwner && profile ? 80 + bottom : 24 }]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.hero}>
@@ -101,6 +118,18 @@ export default function WorkerProfileScreen() {
           />
         </View>
       </ScrollView>
+
+      {!isOwner && profile && (
+        <View style={[styles.messageBar, { paddingBottom: bottom + 12 }]}>
+          <TouchableOpacity
+            style={styles.messageBtn}
+            onPress={handleMessage}
+            activeOpacity={0.85}
+          >
+            <Text variant="body" style={styles.messageBtnText}>Send message</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </SafeAreaView>
   )
 }
@@ -152,4 +181,23 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  messageBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    backgroundColor: 'transparent',
+  },
+  messageBtn: {
+    backgroundColor: '#D85A30',
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  messageBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700' as const,
+  },
 })
