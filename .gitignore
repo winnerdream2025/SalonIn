@@ -1,6 +1,13 @@
 node_modules/
 dist/
 build/
+
+# Signing credentials — NEVER commit
+apps/mobile/credentials/*.keystore
+apps/mobile/credentials/*.jks
+apps/mobile/credentials/*.p12
+apps/mobile/credentials/*.mobileprovision
+apps/mobile/credentials/*.certSigningRequest
 .next/
 .expo/
 out/
