@@ -21,24 +21,28 @@ export class NotificationsService {
     data?: Record<string, unknown>,
   ): Promise<void> {
     try {
-      const device = await this.prisma.userDevice.findUnique({ where: { userId } })
-      if (!device) return
+      const devices = await this.prisma.userDevice.findMany({ where: { userId } })
+      if (!devices.length) return
 
-      const message: ExpoMessage = { to: device.expoPushToken, title, body }
-      if (data) message.data = data
+      await Promise.all(
+        devices.map(async (device) => {
+          const message: ExpoMessage = { to: device.expoPushToken, title, body }
+          if (data) message.data = data
 
-      const response = await fetch('https://exp.host/--/push/v2/send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        body: JSON.stringify(message),
-      })
+          const response = await fetch('https://exp.host/--/push/v2/send', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+            },
+            body: JSON.stringify(message),
+          })
 
-      if (!response.ok) {
-        this.logger.warn(`Expo push failed for userId=${userId}: HTTP ${response.status}`)
-      }
+          if (!response.ok) {
+            this.logger.warn(`Expo push failed for userId=${userId} token=${device.expoPushToken}: HTTP ${response.status}`)
+          }
+        }),
+      )
     } catch (err) {
       this.logger.warn(`sendPush error for userId=${userId}: ${String(err)}`)
     }
@@ -64,8 +68,8 @@ export class NotificationsService {
     platform: 'IOS' | 'ANDROID',
   ): Promise<void> {
     await this.prisma.userDevice.upsert({
-      where: { userId },
-      update: { expoPushToken, platform },
+      where: { userId_expoPushToken: { userId, expoPushToken } },
+      update: { platform },
       create: { userId, expoPushToken, platform },
     })
   }

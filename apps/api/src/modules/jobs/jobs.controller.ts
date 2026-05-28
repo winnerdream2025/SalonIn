@@ -11,6 +11,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common'
+import { Throttle } from '@nestjs/throttler'
 import type { User } from '@salonin/types'
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
 import { RolesGuard, Roles } from '../../common/guards/roles.guard'
@@ -34,6 +35,7 @@ export class JobsController {
   }
 
   @Get()
+  @Throttle({ short: { limit: 30, ttl: 60000 } })
   list(@Query() dto: ListJobsDto) {
     return this.jobsService.list(dto)
   }

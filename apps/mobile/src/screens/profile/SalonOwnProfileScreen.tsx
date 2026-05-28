@@ -132,7 +132,7 @@ export default function SalonOwnProfileScreen() {
             <Text variant="heading" style={styles.salonName}>{salon.name}</Text>
             {salon.isVerified && (
               <View style={[styles.badge, { backgroundColor: 'rgba(29,158,117,0.15)' }]}>
-                <Text variant="caption" style={{ color: '#1D9E75', fontWeight: '600' }}>✓ Verified</Text>
+                <Text variant="caption" style={{ color: theme.avail.now, fontWeight: '600' }}>✓ Verified</Text>
               </View>
             )}
             <Pressable
@@ -142,7 +142,7 @@ export default function SalonOwnProfileScreen() {
                 transform: [{ scale: pressed ? 0.92 : 1 }],
               }]}
             >
-              <Text variant="caption" style={{ color: isHiring ? '#D85A30' : '#555555', fontWeight: '600' }}>
+              <Text variant="caption" style={{ color: isHiring ? theme.brand.primary : theme.avail.none, fontWeight: '600' }}>
                 {isHiring ? 'Hiring now' : 'Not hiring'}
               </Text>
             </Pressable>

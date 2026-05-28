@@ -9,7 +9,7 @@ import {
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
-import { WorkerCard, WorkerCardSkeleton, Text, Button, useTheme, ReportModal } from '@salonin/ui'
+import { WorkerCard, WorkerCardSkeleton, Text, Button, useTheme, ReportModal } from '@salonin/ui' // Button kept for error/retry state
 import type { WorkerCardData } from '@salonin/types'
 import { reportsApi } from '@salonin/api-client'
 import { useNearbyWorkers } from '../../hooks/useNearbyWorkers'
@@ -140,8 +140,11 @@ export default function DiscoveryFeedScreen() {
       <View style={[styles.header, { borderBottomColor: theme.border.default }]}>
         <Text variant="title">Discover</Text>
         {isGPSLocation ? (
-          <TouchableOpacity style={styles.gpsPill} onPress={clearLocation}>
-            <Text variant="caption" style={styles.gpsPillText}>📍 Using your location</Text>
+          <TouchableOpacity
+            style={[styles.gpsPill, { backgroundColor: 'rgba(29,158,117,0.15)', borderColor: 'rgba(29,158,117,0.25)' }]}
+            onPress={clearLocation}
+          >
+            <Text variant="caption" style={{ color: theme.avail.now }}>📍 Using your location</Text>
           </TouchableOpacity>
         ) : (
           <Text variant="caption" color="secondary">{cityId.toUpperCase()}</Text>
@@ -189,15 +192,9 @@ export default function DiscoveryFeedScreen() {
           )
         }
         ListFooterComponent={
-          isLoadingMore ? (
+          hasMore && isLoadingMore ? (
             <View style={styles.footer}>
               <ActivityIndicator color={theme.brand.primary} />
-            </View>
-          ) : hasMore && workers.length > 0 ? (
-            <View style={styles.footer}>
-              <Button variant="ghost" onPress={loadMore}>
-                Load more
-              </Button>
             </View>
           ) : null
         }
@@ -268,8 +265,6 @@ const styles = StyleSheet.create({
   orLabel: { textAlign: 'center' },
   gpsPill: {
     paddingHorizontal: 12, paddingVertical: 5, borderRadius: 99,
-    backgroundColor: 'rgba(29,158,117,0.15)',
-    borderWidth: 1, borderColor: 'rgba(29,158,117,0.25)',
+    borderWidth: 1,
   },
-  gpsPillText: { color: '#2DD4A0' },
 })

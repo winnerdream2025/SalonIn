@@ -3,8 +3,21 @@ import type { ReactNode } from 'react'
 import { Providers } from '../components/Providers'
 
 export const metadata = {
-  title: 'SalonIn',
-  description: 'Beauty marketplace',
+  title: 'Salonin — Where beauty pros get hired locally',
+  description: 'Connect with salon owners hiring now. Browse portfolios, check availability, and message directly.',
+  icons: { icon: '/favicon.svg' },
+  openGraph: {
+    title: 'Salonin',
+    description: 'Where beauty pros get hired locally.',
+    url: 'https://salonin-production-77fc.up.railway.app',
+    siteName: 'Salonin',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Salonin',
+    description: 'Where beauty pros get hired locally.',
+  },
 }
 
 export default function RootLayout({ children }: { children: ReactNode }) {

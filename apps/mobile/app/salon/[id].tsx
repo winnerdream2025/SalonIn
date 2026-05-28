@@ -25,7 +25,8 @@ export default function SalonProfileScreen() {
   const isOwner = Boolean(
     currentUser &&
     salon &&
-    currentUser.role === Role.SALON
+    currentUser.role === Role.SALON &&
+    salon.user?.id === currentUser.id
   )
 
   const handlePressJob = (job: JobPostCardData) => {

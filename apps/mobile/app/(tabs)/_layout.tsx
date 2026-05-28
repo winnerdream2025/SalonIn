@@ -3,11 +3,16 @@ import { Platform } from 'react-native'
 import { Tabs } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuthStore } from '../../src/store/authStore'
+import { useConversations } from '../../src/hooks/useConversations'
+import { useTheme } from '@salonin/ui'
 import { Role } from '@salonin/types'
 
 export default function TabsLayout() {
   const role = useAuthStore((s) => s.user?.role)
   const isSalon = role === Role.SALON
+  const { theme } = useTheme()
+  const { conversations } = useConversations()
+  const unreadCount = conversations.reduce((sum, c) => sum + c.unreadCount, 0)
 
   return (
     <Tabs
@@ -51,6 +56,8 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="chatbubble-outline" size={size} color={color} />
           ),
+          tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
+          tabBarBadgeStyle: { backgroundColor: theme.brand.primary, fontSize: 10 },
         }}
       />
       <Tabs.Screen

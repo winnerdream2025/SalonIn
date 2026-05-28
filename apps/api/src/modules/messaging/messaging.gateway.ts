@@ -4,19 +4,71 @@ import {
   SubscribeMessage,
   MessageBody,
   ConnectedSocket,
+  OnGatewayInit,
 } from '@nestjs/websockets'
+import { Injectable, UnauthorizedException } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
+import { JwtService } from '@nestjs/jwt'
 import type { Server, Socket } from 'socket.io'
+import { PrismaService } from '../../prisma/prisma.service'
 
-@WebSocketGateway({ cors: { origin: '*' } })
-export class MessagingGateway {
+@WebSocketGateway({
+  cors: {
+    origin: process.env.CORS_ORIGINS?.split(',') ?? ['http://localhost:3000'],
+    credentials: true,
+  },
+})
+@Injectable()
+export class MessagingGateway implements OnGatewayInit {
   @WebSocketServer()
   server!: Server
 
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
+  ) {}
+
+  afterInit(server: Server): void {
+    server.use(async (socket, next) => {
+      try {
+        const token = socket.handshake.auth?.token || socket.handshake.headers?.authorization?.replace('Bearer ', '')
+        if (!token) return next(new Error('Unauthorized'))
+
+        const payload = this.jwtService.verify(token, {
+          secret: this.config.getOrThrow<string>('JWT_SECRET'),
+        })
+        const user = await this.prisma.user.findUnique({
+          where: { id: payload.sub },
+        })
+        if (!user || !user.isActive) return next(new Error('Unauthorized'))
+
+        socket.data.userId = user.id
+        next()
+      } catch {
+        next(new Error('Unauthorized'))
+      }
+    })
+  }
+
   @SubscribeMessage('join:conversation')
-  handleJoin(
+  async handleJoin(
     @MessageBody() data: { conversationId: string },
     @ConnectedSocket() client: Socket,
-  ): void {
+  ): Promise<void> {
+    const userId = client.data.userId
+    if (!userId) throw new UnauthorizedException()
+
+    const participant = await this.prisma.conversationParticipant.findUnique({
+      where: {
+        conversationId_userId: {
+          conversationId: data.conversationId,
+          userId,
+        },
+      },
+    })
+    if (!participant) throw new UnauthorizedException('Not a participant')
+
     void client.join(`conv:${data.conversationId}`)
   }
 

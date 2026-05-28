@@ -50,6 +50,12 @@ export default function LoginScreen() {
             secureTextEntry
             error={error}
           />
+          <RNText
+            style={[styles.forgotLink, { color: theme.brand.primary }]}
+            onPress={() => router.push('/(auth)/forgot-password' as never)}
+          >
+            Forgot password?
+          </RNText>
         </View>
 
         <View style={styles.action}>
@@ -93,4 +99,5 @@ const styles = StyleSheet.create({
   action: { marginTop: 8, marginBottom: 8 },
   footer: { marginTop: 24, paddingHorizontal: 8 },
   footerText: { fontSize: 12, textAlign: 'center', lineHeight: 18 },
+  forgotLink: { fontSize: 12, fontWeight: '500', textAlign: 'right', marginTop: 6 },
 })

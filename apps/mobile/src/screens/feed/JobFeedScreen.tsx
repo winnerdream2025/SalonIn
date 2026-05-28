@@ -35,7 +35,7 @@ export default function JobFeedScreen() {
 
   const [selectedSpecialty, setSelectedSpecialty] = useState<string | undefined>()
 
-  const { jobs, isLoading, isRefreshing, isLoadingMore, error, refresh, loadMore } =
+  const { jobs, isLoading, isRefreshing, isLoadingMore, hasMore, error, refresh, loadMore } =
     useJobFeed({ specialty: selectedSpecialty })
 
   const handlePressJob = useCallback((job: JobPostCardData) => {
@@ -161,7 +161,7 @@ export default function JobFeedScreen() {
           )
         }
         ListFooterComponent={
-          isLoadingMore ? (
+          hasMore && isLoadingMore ? (
             <View style={styles.footer}>
               <ActivityIndicator color={theme.brand.primary} />
             </View>

@@ -104,6 +104,10 @@ STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 
 --- CHECKPOINTS ---
 [PASS] turbo type-check           12 successful, 0 errors — sprint 2 job apps 20260527
+[PASS] turbo type-check           12 successful, 0 errors — sprint 3 web profile pages 20260527
+[PASS] turbo type-check           12 successful, 0 errors — sprint 4 UX improvements 20260528
+[PASS] turbo type-check           12 successful, 0 errors — P0 DB indexes + multi-device + password reset + job cleanup 20260528
+[PASS] Android debug build         BUILD SUCCESSFUL — sprint 4 after expo prebuild --clean (new sigs) 20260528
 [PASS] pnpm test (api)             35 tests, 4 suites, 0 failures — sprint 2 job apps 20260527
 [PASS] pnpm ls -r                 all 9 workspaces resolve
 [TODO] turbo build                pending (apps not scaffolded yet)
@@ -114,18 +118,23 @@ STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 [PASS] prisma db push             stripeSessionId+ein fields added — salonin DB 20260525
 [PASS] prisma db push             ReportType+ReportStatus enums, Report model, User.isActive — salonin DB 20260525
 [PASS] prisma db push             User.passwordHash String? added — Supabase removed 20260525
-[PASS] prisma migrate status      2 migrations tracked, database schema is up to date
+[PASS] prisma migrate status      5 migrations tracked, database schema is up to date
                                    20260525133337_init — full schema + PostGIS indexes
                                    20260525200000_add_reports_auth — isActive, passwordHash, stripeSessionId, ein, Report model
-[PASS] Android debug build         ./gradlew installDebug — BUILD SUCCESSFUL, APK installed on device
+                                   20260528010000_add_performance_indexes — 9 indexes: JobPost(cityId/isActive/expiresAt, salonId/isActive), WorkerProfile(cityId/availability, cityId/isVerified), Message(conversationId/createdAt, senderId/isRead), ConversationParticipant(userId), Report(reportedId/status)
+                                   20260528020000_fix_userdevice_multi — DROP INDEX UserDevice_userId_key; ADD CONSTRAINT UserDevice_userId_expoPushToken_key UNIQUE
+                                   20260528030000_add_password_reset — CREATE TABLE PasswordReset (id,userId,token UNIQUE,expiresAt,usedAt?,createdAt); FK→User CASCADE; indexes on token+userId
+[PASS] Android debug build         ./gradlew uninstallDebug installDebug — BUILD SUCCESSFUL, APK installed (465 tasks)
                                    JS bundle embedded (debuggableVariants=[], extraPackagerArgs=["--dev","true"])
                                    metro.config.js: singleton React, prisma-enums shim, monorepo watchFolders
+                                   android/settings.gradle: paths-constrained resolve for @react-native/gradle-plugin
+                                     workingDir=settingsDir.parentFile on providers.exec + paths fix for @0.74.87 vs @0.73.5 (pnpm)
 
 ---
 
 ## PRISMA & BASE DE DONNÉES
 
-[DONE] prisma/schema.prisma       10 modèles + 7 enums — source de vérité
+[DONE] prisma/schema.prisma       11 modèles + 7 enums — source de vérité
 [DONE] Enum Role                  WORKER | SALON | ADMIN
 [DONE] Enum Availability          NOW | TODAY | WEEKEND | NOT_AVAILABLE
 [DONE] Enum EmploymentType        FULL_TIME | PART_TIME | TEMPORARY | WEEKEND | EMERGENCY
@@ -134,6 +143,13 @@ STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 [DONE] Enum ReportType            FAKE_PROFILE | NO_SHOW | INAPPROPRIATE
 [DONE] Enum ReportStatus          PENDING | REVIEWED | DISMISSED
 [DONE] User.isActive              Boolean @default(true) — set false on auto-suspension (3+ reports)
+[DONE] PasswordReset model        id(cuid), userId→User(CASCADE), token(unique), expiresAt, usedAt?, createdAt; @@index([token]), @@index([userId])
+[DONE] UserDevice multi-device    userId no longer @unique; @@unique([userId,expoPushToken]) — allows multiple devices per user
+[DONE] Performance indexes        JobPost: @@index([cityId,isActive,expiresAt]), @@index([salonId,isActive])
+                                   WorkerProfile: @@index([cityId,availability]), @@index([cityId,isVerified])
+                                   Message: @@index([conversationId,createdAt]), @@index([senderId,isRead])
+                                   ConversationParticipant: @@index([userId])
+                                   Report: @@index([reportedId,status])
 [DONE] PostGIS field              WorkerProfile.location geography(Point,4326)
 [DONE] PostGIS field              SalonProfile.location geography(Point,4326)
 [DONE] cityId                     présent sur WorkerProfile, SalonProfile, JobPost
@@ -169,6 +185,9 @@ STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
                                    Report model: id, reporterId→User(ReportGiver), reportedId→User(ReportReceiver), type ReportType, reason String?, status ReportStatus @default(PENDING), createdAt
 [DONE] WorkerCardData              id, name, photoUrl, specialties, availability, distanceMiles, experienceYears, isVerified, cityId
 [DONE] SalonCardData               id, name, photoUrls, specialties, isHiring, isVerified, distanceMiles, cityId
+[DONE] SalonProfileFull            id, userId, name, bio, photoUrls, specialties, isHiring, isVerified, cityId, createdAt, updatedAt
+                                   jobPosts[]{id,title,specialty,payStructure,type,isUrgent,cityId,expiresAt,isActive,createdAt}
+                                   user{email,role,createdAt}
 [DONE] JobPostCardData             id, title, specialty, payStructure, type, isUrgent, cityId, expiresAt, salonName, salonPhotoUrl
 [DONE] PaginatedResponse<T>        data, total, page, limit, hasMore
 [DONE] ApiResponse<T>              success: true, data: T
@@ -196,9 +215,9 @@ STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 
 --- @salonin/api-client ---
 [DONE] client.ts                   axios.create + Bearer interceptor + 401 refresh queue + token store
-[DONE] auth.api.ts                 register(), login(), refresh(), logout() — calls setAuthTokens/clearAuthTokens
+[DONE] auth.api.ts                 register(), login(), refresh(), logout(), forgotPassword(email), resetPassword(token,newPassword) — calls setAuthTokens/clearAuthTokens
 [DONE] workers.api.ts              findNearby()→CursorResponse<WorkerCardData>, getMe(), getById()→WorkerProfileFull, updateProfile(), updateAvailability(), updateLocation(), addPortfolioItem()
-[DONE] salons.api.ts               getById(), updateProfile(), setHiringStatus()
+[DONE] salons.api.ts               getById()→SalonProfileFull (updated from SalonCardData), updateProfile(), setHiringStatus()
 [DONE] jobs.api.ts                 create(), list(), getById(), update(), remove()
 [DONE] messages.api.ts             createConversation(otherUserId), getConversations(), getMessages(id,cursor?), sendMessage(id,content?,mediaUrl?), markAsRead(id)
 [DONE] verify.api.ts               createIdentitySession() → {url,sessionId}; submitEin(ein)
@@ -247,9 +266,10 @@ STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 [DONE] src/common/guards/roles.guard.ts  Roles() decorator + RolesGuard — reads ROLES_KEY from reflector, ForbiddenException on mismatch
 [DONE] src/common/validators/city-id.validator.ts  IsSupportedCity() — validates against Object.keys(SUPPORTED_CITIES) from @salonin/config
 [DONE] src/common/validators/is-future.validator.ts  IsInFuture() — date > now && date <= now+90days
-[DONE] src/app.module.ts           ConfigModule.forRoot(isGlobal:true) + PrismaModule + RedisModule + AuthModule + WorkersModule + SalonsModule + MediaModule + JobsModule + MessagingModule + VerifyModule + ReportsModule
+[DONE] src/app.module.ts           ConfigModule.forRoot(isGlobal:true) + ScheduleModule.forRoot() + PrismaModule + RedisModule + AuthModule + WorkersModule + SalonsModule + MediaModule + JobsModule + MessagingModule + VerifyModule + ReportsModule
                                    BullModule.forRootAsync — parses REDIS_URL → {host,port} for BullMQ connection
                                    ThrottlerModule.forRoot([{name:'short', ttl:60000, limit:10}]) + APP_GUARD ThrottlerGuard global
+                                   @nestjs/schedule ^4.0.0 added to apps/api deps
 [DONE] src/prisma/prisma.service.ts  extends PrismaClient, datasources.db.url from process.env.DATABASE_URL, onModuleInit → $connect()
 [DONE] src/prisma/prisma.module.ts   @Global() — PrismaService provided + exported
 
@@ -272,12 +292,15 @@ STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 [DONE] src/screens/auth/RegisterScreen.tsx  name+email+password+role form — register() → router.replace('/(tabs)')
 [DONE] src/screens/auth/RoleSelectScreen.tsx  WORKER | SALON picker → router.push register with role param
 [DONE] app/_layout.tsx                Stack root layout (headerShown: false)
+                                  expo-linking prefix + linkingConfig export (worker/:id, salon/:id, jobs/:id)
+                                  AppState.addEventListener('change') → foreground refresh hook (sub.remove cleanup)
 [DONE] app/index.tsx                  Redirect → /(auth)/login or /(tabs) based on authStore
 [DONE] app/(auth)/_layout.tsx         Stack auth group (slide_from_right)
 [DONE] app/(auth)/login.tsx           re-export LoginScreen
 [DONE] app/(auth)/register.tsx        re-export RegisterScreen
 [DONE] app/(auth)/role-select.tsx     re-export RoleSelectScreen
 [DONE] app/(tabs)/_layout.tsx         Tabs layout — 4 tabs (Discover/Jobs/Messages/Profile), coral active tint, styled tabBar
+                                  Messages tab: tabBarBadge from useConversations().unreadCount — coral badge via theme.brand.primary
 [DONE] app/(tabs)/index.tsx           re-export DiscoveryFeedScreen — main feed tab
 [DONE] app/(tabs)/jobs.tsx            re-export JobFeedScreen — jobs/hiring tab
 [DONE] app/jobs/create.tsx            re-export CreateJobPostScreen
@@ -318,12 +341,12 @@ STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 [DONE] src/app/(auth)/register/page.tsx  'use client' — role toggle (WORKER|SALON) + name/email/password → useAuth.register()
 
 --- Modules ---
-[DONE] Module Auth                 register, login, refresh, logout — bcrypt + @nestjs/jwt
+[DONE] Module Auth                 register, login, refresh, logout, forgot-password, reset-password — bcrypt + @nestjs/jwt
                                    JWT payload: { sub, email, role } — expiresIn: 15m access / 7d refresh (Redis)
                                    RegisterDto: @IsIn(['WORKER','SALON']) — ADMIN removed
                                    RegisterDto, CreateJobPostDto, FindNearbyWorkersDto: @IsSupportedCity() validator
                                    CreateJobPostDto: @IsInFuture() — future date, max 90 days
-                                   Rate limiting: ThrottlerModule global 10/60s; login 5/60s, register 3/60s
+                                   Rate limiting: ThrottlerModule global 10/60s; login 5/60s, register 3/60s, forgot-password 3/60s, reset-password 5/60s
                                    @salonin/config added as API dep (packages/config/package.json +main field)
 [DONE] Module Workers              GET /workers/nearby(matching), GET /workers/me, GET /workers/:id, PATCH /workers/me, PATCH /workers/availability, POST /workers/location, POST /workers/portfolio
                                    GET /workers/me/applications — WORKER only, returns JobApplicationWithJob[]
@@ -345,7 +368,7 @@ STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
                                    POST /jobs/:id/apply — WORKER only, idempotent, creates JobApplication, sendPush to salon owner
                                    GET /jobs/:id/applicants — SALON only, ownership check, returns applicants with worker info
                                    PATCH /jobs/:id/applicants/:applicationId — SALON only, ownership check, updates status VIEWED/ACCEPTED/DECLINED
-                                   [TODO] BullMQ auto-expiration (deferred — query filter handles expiry correctly)
+                                   cleanupExpiredJobs(): @Cron(EVERY_DAY_AT_MIDNIGHT) — updateMany isActive=true+expiresAt<now → isActive=false
 [DONE] Module Messaging            POST/GET /conversations — idempotent createConversation, getConversations+preview+unreadCount
                                    createConversation: BadRequestException('Cannot message yourself') if requesterId===otherUserId
                                    GET /conversations/:id/messages — cursor pagination (30/page)
@@ -366,6 +389,8 @@ STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 [DONE] Module Notifications        @Global() — NotificationsService: sendPush, notifyNewMessage, notifyNewJobPost, upsertDevice
                                    POST /devices — upsertDevice (expoPushToken + platform IOS/ANDROID)
                                    NotificationsModule @Global — exports NotificationsService (auto-available to all modules)
+                                   sendPush: findMany (multi-device) — sends to ALL registered devices for a user
+                                   upsertDevice: where userId_expoPushToken composite unique — no duplicate token registrations
 [TODO] Module Analytics            events, métriques par ville
 [DONE] Common Guards               JwtAuthGuard — src/common/guards/jwt-auth.guard.ts
 [DONE] Common Guards               RolesGuard — src/common/guards/roles.guard.ts
@@ -380,6 +405,8 @@ STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 [DONE] POST /auth/login            → { accessToken, refreshToken, user }
 [DONE] POST /auth/refresh          → { accessToken, refreshToken } — Redis blacklist check
 [DONE] POST /auth/logout           → 204 — invalidates refreshToken in Redis (TTL 7d)
+[DONE] POST /auth/forgot-password  → 200 (always); creates PasswordReset token, logs reset URL; @Throttle 3/60s
+[DONE] POST /auth/reset-password   → 200; validates+uses token, updates passwordHash, invalidates all refresh tokens; @Throttle 5/60s
 [DONE] GET  /workers/nearby        lat, lng, radiusMiles, cityId, specialty?, availability?, cursor? → CursorResponse<WorkerCardData>
                                    PostGIS ST_DWithin CTE, ORDER BY distance ASC, LIMIT 51, Redis TTL 60s
                                    Cache invalidated on PATCH /workers/availability
@@ -393,9 +420,9 @@ STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 [DONE] GET  /salons/:id            → SalonProfile
 [DONE] PATCH /salons/me            JwtAuthGuard — owner check
 [DONE] PATCH /salons/hiring-status JwtAuthGuard
-[DONE] POST /media/upload          JwtAuthGuard — FileInterceptor(memoryStorage), ?folder= query param
+[DONE] POST /media/upload          JwtAuthGuard — FileInterceptor(memoryStorage), ?folder= query param; @Throttle 5/60s
 [DONE] POST /jobs                  JwtAuthGuard — salon only (ForbiddenException if no SalonProfile)
-[DONE] GET  /jobs                  cityId required, specialty?, type?, page?, limit? → PaginatedResponse<JobPostCardData>
+[DONE] GET  /jobs                  cityId required, specialty?, type?, page?, limit? → PaginatedResponse<JobPostCardData>; @Throttle 30/60s
 [DONE] GET  /jobs/:id              → JobPost + salon info
 [DONE] PATCH /jobs/:id             JwtAuthGuard — ownership check via salon.userId
 [DONE] DELETE /jobs/:id            JwtAuthGuard — soft delete (isActive: false)
@@ -421,6 +448,10 @@ STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 
 --- Auth ---
 [DONE] LoginScreen                 src/screens/auth/LoginScreen.tsx — email+password → useAuth.login() → /(tabs)
+                                   "Forgot password?" link below password field → /(auth)/forgot-password
+[DONE] ForgotPasswordScreen        src/screens/auth/ForgotPasswordScreen.tsx — email input → authApi.forgotPassword() → success message
+                                   Back to sign in button; matches LoginScreen design
+[DONE] app/(auth)/forgot-password.tsx  re-export ForgotPasswordScreen
 [DONE] RegisterScreen              src/screens/auth/RegisterScreen.tsx — name+email+password+role → useAuth.register()
                                    post-register: WORKER → router.replace('/onboarding'), SALON → router.replace('/(tabs)')
 [DONE] RoleSelectScreen            src/screens/auth/RoleSelectScreen.tsx — WORKER|SALON picker → register with role
@@ -434,13 +465,22 @@ STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 [DONE] DiscoveryFeedScreen         FlatList+WorkerCard, specialty pills (8 presets), pull-to-refresh, skeleton/empty/error states
                                    no-location: city preset picker (DMV, Atlanta) — app/(tabs)/index.tsx
                                    WorkerCard onLongPress → ReportModal (reportedUserId = WorkerProfile.id, resolved server-side)
+                                   GPS pill text → theme.avail.now (was hardcoded #2DD4A0)
+                                   ListFooter: hasMore && isLoadingMore → ActivityIndicator (removed 'Load more' button)
 [DONE] JobFeedScreen               FlatList+JobPostCard, specialty pills, pull-to-refresh, skeleton/empty/error states
                                    “Post Job” button visible for SALON role — app/(tabs)/jobs.tsx
+                                   hasMore destructured; ListFooter: hasMore && isLoadingMore → ActivityIndicator
 
 --- Profils ---
 [DONE] WorkerProfileScreen         hero(Avatar xl)+bio+specialties+portfolio+edit link(owner) — app/worker/[id].tsx
+[DONE] WorkerOwnProfileScreen      AVAIL_OPTIONS inside component → theme.avail.{now,today,weekend,none}; ✓ → theme.brand.primary
+                                  handlePressItem: router.push('/worker/portfolio-view?url='+mediaUrl) — no more Alert.alert
+[DONE] PortfolioViewScreen         app/worker/portfolio-view.tsx — react-native-fast-image + expo-sharing
+                                  ScrollView pinch-zoom (maximumZoomScale:4), back button top left, Share top right
+                                  expo-sharing ~12.0.0 (13.0.1 incompatible with Kotlin in RN 0.74)
 [DONE] EditProfileScreen           name+bio+specialties+exp+availability+photo upload (pickAvatar) — app/worker/edit.tsx
 [DONE] PortfolioUploadScreen       PortfolioGrid+addPhoto+addVideo buttons (useMediaUpload) — app/worker/portfolio.tsx
+[DONE] SalonOwnProfileScreen       src/screens/profile/SalonOwnProfileScreen.tsx — all colors via useTheme() (avail.now, brand.primary, avail.none)
 [TODO] SalonProfileScreen
 [DONE] CreateJobPostScreen         title+description+specialty+pay+type picker+duration picker+urgent toggle
                                    expiresAt computed from duration (7/14/30 days) — app/jobs/create.tsx
@@ -491,20 +531,40 @@ STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 
 ## WEB — PAGES (apps/web)
 
-[TODO] /                           landing page
+[DONE] /                           landing page — Server Component, CSS vars throughout (var(--color-*) from globals.css)
 [DONE] /workers                    workers page — CSS Grid auto-fill minmax(300px), sidebar filters, Intersection Observer infinite scroll
                                    web WorkerCard: same visuals as @salonin/ui, pure HTML/CSS (no RNW)
                                    web locationStore (Zustand) + web useNearbyWorkers (same interface as mobile)
-[TODO] /workers/[id]               profil worker
-[TODO] /salons/[id]                profil salon
+[DONE] /workers/[id]               Server Component — generateMetadata, async fetch /workers/:id → WorkerProfileFull
+                                   circle avatar + verified badge + avail pill + bio + specialties + employmentTypes + languages + portfolio grid
+                                   MessageButton (client component) — auth check → /register or messagesApi.createConversation + /messages
+[DONE] /salons/[id]                Server Component — generateMetadata, async fetch /salons/:id → SalonProfileFull
+                                   cover photo + gradient overlay + circle avatar + name + verified + hiring badges + bio + specialties
+                                   active jobPosts as linked job cards → /jobs/:id
 [DONE] /jobs                       web jobs feed — CSS Grid auto-fill, sidebar filters, Intersection Observer scroll
                                    web JobPostCard + web useJobFeed (same interface as mobile)
-[TODO] /jobs/[id]                  détail job
+[DONE] /jobs/[id]                  Server Component — generateMetadata, async fetch /jobs/:id → JobPostDetail
+                                   salon header + title + URGENT badge + specialty/type pills + 2×2 info grid (pay/type/location/applicants)
+                                   ApplyButton (client component) — SALON role → null; guest → /register; WORKER → jobsApi.apply()
+                                   expired post banner; description + salon description; View salon link
 [DONE] /messages                   split view — 300px sidebar (ConversationItem list) + main ChatPanel
                                    useConversations + useMessages(selectedId), WS typing indicator, skeleton loaders
 [DONE] /jobs/create                protected by Next.js middleware: no token → /login; token role≠SALON → /workers
 [DONE] /login                      src/app/(auth)/login/page.tsx — 'use client', email+password form
 [DONE] /register                   src/app/(auth)/register/page.tsx — 'use client', role toggle + name/email/password
+[DONE] /forgot-password            src/app/(auth)/forgot-password/page.tsx — 'use client', email form → authApi.forgotPassword(); success state with instructions
+[DONE] not-found.tsx               Server Component — branded 404 with Salonin logo, 404 number, back to home CTA
+[DONE] apps/web/public/favicon.svg  SVG favicon — coral #D85A30 rounded square with white 'S'
+[DONE] apps/web/src/app/layout.tsx  Updated metadata: title/description/OG/Twitter + icons.icon=/favicon.svg
+                                    globals.css: added --color-brand, --color-brand-ghost, --color-brand-border
+                                                --color-avail-{now,today,weekend,none} + -bg variants
+                                                --color-background-elevated (light:#FFF dark:#1A1A1A)
+                                                --color-error, --color-success
+[DONE] src/components/MessageButton.tsx  'use client' — auth check + messagesApi.createConversation() + router.push('/messages')
+                                          no-auth path: router.push('/register?reason=message')
+[DONE] src/components/ApplyButton.tsx   'use client' — SALON role → null; no-auth → /register?reason=apply
+                                          WORKER: jobsApi.apply(jobId) → applied state
+[DONE] apps/mobile/src/hooks/useSalonProfile.ts  salon state type: SalonCardData → SalonProfileFull (salonsApi.getById updated)
 
 ---
 
@@ -562,6 +622,9 @@ STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
   prisma/migrations baseline       2 migrations tracked, shadow-DB workaround via migrate diff --from-empty
                                      + migrate resolve --applied for already-synced local DB
                                      production CI can now use: prisma migrate deploy
+[DONE] auth: password reset        POST /auth/forgot-password — @Throttle 3/60s; accepts {email}, generates UUID token, creates PasswordReset (1h TTL), logs reset URL; always returns 200
+                                   POST /auth/reset-password — @Throttle 5/60s; validates token (exists/not-used/not-expired), bcrypt new hash, updates User.passwordHash, marks usedAt=now, invalidates all Redis refresh tokens for user
+                                   DTOs: ForgotPasswordDto (@IsEmail), ResetPasswordDto (@IsString token + @MinLength(8) newPassword)
 [DONE] auth: Supabase→PostgreSQL   removed @supabase/supabase-js entirely
                                    auth.service.ts: bcrypt ^5 (SALT_ROUNDS=12) + @nestjs/jwt ^10
                                      register: findUnique duplicate check → bcrypt.hash → prisma.user.create

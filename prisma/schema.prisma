@@ -77,6 +77,7 @@ model User {
   reportsGiven    Report[] @relation("ReportGiver")
   reportsReceived Report[] @relation("ReportReceiver")
   devices         UserDevice[]
+  passwordResets  PasswordReset[]
 }
 
 model WorkerProfile {
@@ -101,6 +102,9 @@ model WorkerProfile {
 
   portfolioItems  PortfolioItem[]
   jobApplications JobApplication[]
+
+  @@index([cityId, availability])
+  @@index([cityId, isVerified])
 }
 
 model SalonProfile {
@@ -136,6 +140,9 @@ model JobPost {
   isActive     Boolean        @default(true)
 
   applications JobApplication[]
+
+  @@index([cityId, isActive, expiresAt])
+  @@index([salonId, isActive])
 }
 
 model JobApplication {
@@ -172,6 +179,7 @@ model ConversationParticipant {
   user           User         @relation(fields: [userId], references: [id])
 
   @@id([conversationId, userId])
+  @@index([userId])
 }
 
 model Message {
@@ -184,15 +192,33 @@ model Message {
   mediaUrl       String?
   createdAt      DateTime     @default(now())
   isRead         Boolean      @default(false)
+
+  @@index([conversationId, createdAt])
+  @@index([senderId, isRead])
 }
 
 model UserDevice {
   id            String   @id @default(uuid())
-  userId        String   @unique
+  userId        String
   user          User     @relation(fields: [userId], references: [id])
   expoPushToken String
   platform      Platform
   updatedAt     DateTime @updatedAt
+
+  @@unique([userId, expoPushToken])
+}
+
+model PasswordReset {
+  id        String    @id @default(cuid())
+  userId    String
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
 }
 
 model Report {
@@ -205,4 +231,6 @@ model Report {
   reason     String?
   status     ReportStatus @default(PENDING)
   createdAt  DateTime     @default(now())
+
+  @@index([reportedId, status])
 }

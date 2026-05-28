@@ -147,6 +147,35 @@ export interface WorkerProfileFull {
   }
 }
 
+// ─── Full salon profile (GET /salons/:id response) ───────────────────────────
+
+export interface SalonProfileFull {
+  id: string
+  userId: string
+  name: string
+  bio: string | null
+  photoUrls: string[]
+  specialties: string[]
+  isHiring: boolean
+  isVerified: boolean
+  cityId: string
+  createdAt: string
+  updatedAt: string
+  jobPosts: Array<{
+    id: string
+    title: string
+    specialty: string
+    payStructure: string
+    type: EmploymentType
+    isUrgent: boolean
+    cityId: string
+    expiresAt: string
+    isActive: boolean
+    createdAt: string
+  }>
+  user: { id: string; role: Role; createdAt: string }
+}
+
 // ─── Job detail type (getById response) ──────────────────────────────────────
 
 export interface JobPostDetail {

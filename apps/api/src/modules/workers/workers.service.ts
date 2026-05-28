@@ -17,7 +17,7 @@ export class WorkersService {
     const profile = await this.prisma.workerProfile.findUnique({
       where: { id },
       include: {
-        user: { select: { email: true, role: true, createdAt: true } },
+        user: { select: { role: true, createdAt: true } },
         portfolioItems: { orderBy: { createdAt: 'desc' } },
       },
     })

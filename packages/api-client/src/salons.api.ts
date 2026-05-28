@@ -1,5 +1,5 @@
 import { api } from './client'
-import type { SalonCardData, SalonProfile } from '@salonin/types'
+import type { SalonCardData, SalonProfile, SalonProfileFull } from '@salonin/types'
 
 export interface UpdateSalonPayload {
   name?: string | undefined
@@ -12,8 +12,8 @@ export const salonsApi = {
   getMe: (): Promise<SalonCardData> =>
     api.get<SalonCardData>('/salons/me').then((r) => r.data),
 
-  getById: (id: string): Promise<SalonCardData> =>
-    api.get<SalonCardData>(`/salons/${id}`).then((r) => r.data),
+  getById: (id: string): Promise<SalonProfileFull> =>
+    api.get<SalonProfileFull>(`/salons/${id}`).then((r) => r.data),
 
   updateProfile: (data: UpdateSalonPayload): Promise<SalonProfile> =>
     api.patch<SalonProfile>('/salons/me', data).then((r) => r.data),

@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { salonsApi, jobsApi } from '@salonin/api-client'
-import type { SalonCardData, JobPostCardData } from '@salonin/types'
+import type { SalonProfileFull, JobPostCardData } from '@salonin/types'
 
 export interface SalonProfileState {
-  salon: SalonCardData | null
+  salon: SalonProfileFull | null
   jobs: JobPostCardData[]
   isLoading: boolean
   error: Error | null
@@ -11,7 +11,7 @@ export interface SalonProfileState {
 }
 
 export function useSalonProfile(id: string): SalonProfileState {
-  const [salon, setSalon] = useState<SalonCardData | null>(null)
+  const [salon, setSalon] = useState<SalonProfileFull | null>(null)
   const [jobs, setJobs] = useState<JobPostCardData[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)

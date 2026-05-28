@@ -12,16 +12,16 @@ import { authApi, workersApi } from '@salonin/api-client'
 import { useAuthStore } from '../../store/authStore'
 import * as Haptics from 'expo-haptics'
 
-const AVAIL_OPTIONS: Array<{ value: Availability; label: string; color: string }> = [
-  { value: Availability.NOW, label: 'Available now', color: '#1D9E75' },
-  { value: Availability.TODAY, label: 'Available today', color: '#378ADD' },
-  { value: Availability.WEEKEND, label: 'This weekend', color: '#EF9F27' },
-  { value: Availability.NOT_AVAILABLE, label: 'Not available', color: '#555555' },
-]
-
 export default function WorkerOwnProfileScreen() {
   const { profile, isLoading, refetch } = useMyWorkerProfile()
   const { theme } = useTheme()
+
+  const AVAIL_OPTIONS: Array<{ value: Availability; label: string; color: string }> = [
+    { value: Availability.NOW, label: 'Available now', color: theme.avail.now },
+    { value: Availability.TODAY, label: 'Available today', color: theme.avail.today },
+    { value: Availability.WEEKEND, label: 'This weekend', color: theme.avail.weekend },
+    { value: Availability.NOT_AVAILABLE, label: 'Not available', color: theme.avail.none },
+  ]
   const clearAuth = useAuthStore((s) => s.clearAuth)
   const [showAvailSheet, setShowAvailSheet] = useState(false)
   const [currentAvail, setCurrentAvail] = useState<Availability | null>(null)
@@ -70,7 +70,7 @@ export default function WorkerOwnProfileScreen() {
   }
 
   const handlePressItem = (item: PortfolioItem) => {
-    if (item.caption) Alert.alert(item.caption)
+    router.push(`/worker/portfolio-view?url=${encodeURIComponent(item.mediaUrl)}` as never)
   }
 
   if (isLoading) {
@@ -182,7 +182,7 @@ export default function WorkerOwnProfileScreen() {
                 <View style={[styles.sheetDot, { backgroundColor: opt.color }]} />
                 <Text variant="body" style={{ flex: 1 }}>{opt.label}</Text>
                 {availability === opt.value && (
-                  <Text style={{ color: '#D85A30', fontWeight: '700', fontSize: 16 }}>✓</Text>
+                  <Text style={{ color: theme.brand.primary, fontWeight: '700', fontSize: 16 }}>✓</Text>
                 )}
               </Pressable>
             ))}

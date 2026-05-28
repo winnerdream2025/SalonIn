@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common'
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { JwtService } from '@nestjs/jwt'
 import * as bcrypt from 'bcrypt'
@@ -12,6 +12,8 @@ import {
 } from '../../common/exceptions/auth.exceptions'
 import type { RegisterDto } from './dto/register.dto'
 import type { LoginDto } from './dto/login.dto'
+import type { ForgotPasswordDto } from './dto/forgot-password.dto'
+import type { ResetPasswordDto } from './dto/reset-password.dto'
 
 const REFRESH_TTL = 60 * 60 * 24 * 7
 const SALT_ROUNDS = 12
@@ -111,11 +113,72 @@ export class AuthService {
       await tx.user.delete({ where: { id: userId } })
     })
 
-    const keys = await this.redis.keys('refresh:*')
+    // Use SCAN instead of KEYS to avoid blocking Redis
+    const keys: string[] = []
+    let cursor = '0'
+    do {
+      const [next, found] = await this.redis.scan(cursor, 'MATCH', 'refresh:*', 'COUNT', 100)
+      cursor = next
+      keys.push(...found)
+    } while (cursor !== '0')
+
     await Promise.all(
       keys.map(async (key) => {
         const val = await this.redis.get(key)
         if (val === userId) await this.redis.del(key)
+      }),
+    )
+  }
+
+  async forgotPassword(dto: ForgotPasswordDto): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { email: dto.email } })
+    if (!user) return
+
+    const token = randomUUID()
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000)
+
+    await this.prisma.passwordReset.create({
+      data: { userId: user.id, token, expiresAt },
+    })
+
+    const baseUrl = process.env.WEB_URL ?? 'https://salonin-production-77fc.up.railway.app'
+    const resetUrl = `${baseUrl}/reset-password?token=${token}`
+    console.log(`[PasswordReset] userId=${user.id} url=${resetUrl}`)
+  }
+
+  async resetPassword(dto: ResetPasswordDto): Promise<void> {
+    const record = await this.prisma.passwordReset.findUnique({ where: { token: dto.token } })
+
+    if (!record) throw new BadRequestException('Invalid or expired reset token')
+    if (record.usedAt) throw new BadRequestException('Reset token already used')
+    if (record.expiresAt < new Date()) throw new BadRequestException('Reset token expired')
+
+    const passwordHash = await bcrypt.hash(dto.newPassword, SALT_ROUNDS)
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: record.userId },
+        data: { passwordHash },
+      }),
+      this.prisma.passwordReset.update({
+        where: { id: record.id },
+        data: { usedAt: new Date() },
+      }),
+    ])
+
+    // Use SCAN instead of KEYS to avoid blocking Redis
+    const refreshKeys: string[] = []
+    let cursor = '0'
+    do {
+      const [next, found] = await this.redis.scan(cursor, 'MATCH', 'refresh:*', 'COUNT', 100)
+      cursor = next
+      refreshKeys.push(...found)
+    } while (cursor !== '0')
+
+    await Promise.all(
+      refreshKeys.map(async (key) => {
+        const val = await this.redis.get(key)
+        if (val === record.userId) await this.redis.del(key)
       }),
     )
   }

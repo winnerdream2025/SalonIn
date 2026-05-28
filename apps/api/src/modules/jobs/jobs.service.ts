@@ -1,4 +1,5 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
+import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common'
+import { Cron, CronExpression } from '@nestjs/schedule'
 import { PrismaService } from '../../prisma/prisma.service'
 import { NotificationsService } from '../notifications/notifications.service'
 import type { JobPostCardData, PaginatedResponse } from '@salonin/types'
@@ -10,6 +11,8 @@ import { Availability } from '@prisma/client'
 
 @Injectable()
 export class JobsService {
+  private readonly logger = new Logger(JobsService.name)
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationsService: NotificationsService,
@@ -196,6 +199,15 @@ export class JobsService {
       where: { id },
       data: { isActive: false },
     })
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  async cleanupExpiredJobs(): Promise<void> {
+    const result = await this.prisma.jobPost.updateMany({
+      where: { isActive: true, expiresAt: { lt: new Date() } },
+      data: { isActive: false },
+    })
+    this.logger.log(`cleanupExpiredJobs: deactivated ${result.count} expired jobs`)
   }
 
   private async assertOwnership(id: string, userId: string): Promise<void> {

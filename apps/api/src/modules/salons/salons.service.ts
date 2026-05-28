@@ -26,7 +26,7 @@ export class SalonsService {
     const profile = await this.prisma.salonProfile.findUnique({
       where: { id },
       include: {
-        user: { select: { email: true, role: true, createdAt: true } },
+        user: { select: { id: true, role: true, createdAt: true } },
         jobPosts: {
           where: { isActive: true },
           orderBy: { createdAt: 'desc' },
