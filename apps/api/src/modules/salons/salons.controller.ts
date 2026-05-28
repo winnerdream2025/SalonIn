@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common'
 import type { User } from '@salonin/types'
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
+import { RolesGuard, Roles } from '../../common/guards/roles.guard'
 import { CurrentUser } from '../../common/decorators/current-user.decorator'
 import { SalonsService } from './salons.service'
 import { UpdateSalonProfileDto } from './dto/update-salon-profile.dto'
@@ -29,13 +30,15 @@ export class SalonsController {
   }
 
   @Patch('me')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SALON')
   updateProfile(@CurrentUser() user: User, @Body() dto: UpdateSalonProfileDto) {
     return this.salonsService.updateProfile(user.id, dto)
   }
 
   @Patch('hiring-status')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SALON')
   updateHiringStatus(@CurrentUser() user: User, @Body() dto: UpdateHiringStatusDto) {
     return this.salonsService.updateHiringStatus(user.id, dto)
   }

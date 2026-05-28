@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common'
 import type { User } from '@salonin/types'
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
+import { RolesGuard, Roles } from '../../common/guards/roles.guard'
 import { CurrentUser } from '../../common/decorators/current-user.decorator'
 import { JobsService } from './jobs.service'
 import { CreateJobPostDto } from './dto/create-job-post.dto'
@@ -24,7 +25,8 @@ export class JobsController {
   constructor(private readonly jobsService: JobsService) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SALON')
   @HttpCode(HttpStatus.CREATED)
   create(@CurrentUser() user: User, @Body() dto: CreateJobPostDto) {
     return this.jobsService.create(user.id, dto)

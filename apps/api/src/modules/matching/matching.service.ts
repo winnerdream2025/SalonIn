@@ -56,7 +56,7 @@ export class MatchingService {
 
     const availFilter = params.availability != null
       ? Prisma.sql`AND wp.availability = CAST(${params.availability} AS "Availability")`
-      : Prisma.sql``
+      : Prisma.sql`AND wp.availability != CAST('NOT_AVAILABLE' AS "Availability")`
 
     const specialtyFilter = params.specialty != null
       ? Prisma.sql`AND ${params.specialty} = ANY(wp.specialties)`
@@ -91,6 +91,11 @@ export class MatchingService {
             wp.location::geography,
             ST_SetSRID(ST_MakePoint(${params.lng}, ${params.lat}), 4326)::geography,
             ${radiusMeters}
+          )
+          AND EXISTS (
+            SELECT 1 FROM "User" u
+            WHERE u.id = wp."userId"
+            AND u."isActive" = true
           )
           ${availFilter}
           ${specialtyFilter}

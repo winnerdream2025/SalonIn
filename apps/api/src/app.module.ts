@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { BullModule } from '@nestjs/bullmq'
+import { APP_GUARD } from '@nestjs/core'
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler'
 import { PrismaModule } from './prisma/prisma.module'
 import { RedisModule } from './redis/redis.module'
 import { AuthModule } from './modules/auth/auth.module'
@@ -18,6 +20,11 @@ import { HealthModule } from './health/health.module'
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ThrottlerModule.forRoot([{
+      name: 'short',
+      ttl: 60000,
+      limit: 10,
+    }]),
     BullModule.forRootAsync({
       useFactory: (config: ConfigService) => {
         const url = new URL(config.getOrThrow<string>('REDIS_URL'))
@@ -45,6 +52,12 @@ import { HealthModule } from './health/health.module'
     ReportsModule,
     MetricsModule,
     HealthModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
   ],
 })
 export class AppModule {}

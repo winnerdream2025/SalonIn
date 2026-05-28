@@ -14,6 +14,10 @@ export class MessagingService {
   ) {}
 
   async createConversation(requesterId: string, otherUserId: string): Promise<ConversationPreview> {
+    if (requesterId === otherUserId) {
+      throw new BadRequestException('Cannot message yourself')
+    }
+
     let conv = await this.prisma.conversation.findFirst({
       where: {
         AND: [

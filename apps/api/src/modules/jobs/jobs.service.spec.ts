@@ -7,6 +7,7 @@ const mockPrisma = {
   salonProfile: { findUnique: jest.fn() },
   jobPost: {
     create: jest.fn(),
+    findFirst: jest.fn(),
     findUnique: jest.fn(),
     update: jest.fn(),
   },
@@ -81,14 +82,14 @@ describe('JobsService', () => {
 
   describe('getById', () => {
     it('throws NotFoundException when job not found', async () => {
-      mockPrisma.jobPost.findUnique.mockResolvedValue(null)
+      mockPrisma.jobPost.findFirst.mockResolvedValue(null)
 
       await expect(service.getById('missing-id')).rejects.toThrow(NotFoundException)
     })
 
     it('returns job post with salon when found', async () => {
       const post = { id: 'job-1', salon: { name: 'Glamour Studio', photoUrls: [] } }
-      mockPrisma.jobPost.findUnique.mockResolvedValue(post)
+      mockPrisma.jobPost.findFirst.mockResolvedValue(post)
 
       const result = await service.getById('job-1')
 

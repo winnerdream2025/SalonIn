@@ -2,7 +2,9 @@
   "name": "@salonin/config",
   "version": "0.0.0",
   "private": true,
+  "main": "./src/cities.ts",
   "exports": {
+    ".": "./src/cities.ts",
     "./tailwind": "./tailwind.config.js",
     "./cities": "./src/cities.ts"
   },

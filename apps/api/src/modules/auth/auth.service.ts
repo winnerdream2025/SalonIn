@@ -51,7 +51,7 @@ export class AuthService {
       },
     })
 
-    const tokens = await this.issueTokens(user.id, user.email)
+    const tokens = await this.issueTokens(user.id, user.email, user.role)
     return { ...tokens, user }
   }
 
@@ -64,7 +64,7 @@ export class AuthService {
 
     if (!user.isActive) throw new UnauthorizedException('Account suspended')
 
-    const tokens = await this.issueTokens(user.id, user.email)
+    const tokens = await this.issueTokens(user.id, user.email, user.role)
     return { ...tokens, user }
   }
 
@@ -76,7 +76,7 @@ export class AuthService {
     if (!user) throw new InvalidCredentialsException()
 
     await this.redis.del(`refresh:${refreshToken}`)
-    return this.issueTokens(user.id, user.email)
+    return this.issueTokens(user.id, user.email, user.role)
   }
 
   async logout(refreshToken: string): Promise<void> {
@@ -120,8 +120,8 @@ export class AuthService {
     )
   }
 
-  private async issueTokens(userId: string, email: string): Promise<AuthTokens> {
-    const accessToken = this.jwt.sign({ sub: userId, email })
+  private async issueTokens(userId: string, email: string, role: string): Promise<AuthTokens> {
+    const accessToken = this.jwt.sign({ sub: userId, email, role }, { expiresIn: '15m' })
     const refreshToken = randomUUID()
     await this.redis.set(`refresh:${refreshToken}`, userId, 'EX', REFRESH_TTL)
     return { accessToken, refreshToken }

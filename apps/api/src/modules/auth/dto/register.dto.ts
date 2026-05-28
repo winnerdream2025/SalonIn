@@ -7,6 +7,7 @@ import {
   MinLength,
 } from 'class-validator'
 import type { Role } from '@prisma/client'
+import { IsSupportedCity } from '../../../common/validators/city-id.validator'
 
 export class RegisterDto {
   @IsEmail()
@@ -16,7 +17,7 @@ export class RegisterDto {
   @MinLength(8)
   password!: string
 
-  @IsIn(['WORKER', 'SALON', 'ADMIN'])
+  @IsIn(['WORKER', 'SALON'])
   role!: Role
 
   @IsString()
@@ -25,6 +26,7 @@ export class RegisterDto {
 
   @IsString()
   @IsNotEmpty()
+  @IsSupportedCity()
   cityId!: string
 
   @IsOptional()

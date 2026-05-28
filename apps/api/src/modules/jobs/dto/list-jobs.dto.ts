@@ -32,6 +32,6 @@ export class ListJobsDto {
   @IsOptional()
   @IsInt()
   @Min(1)
-  @Max(50)
+  @Max(100)
   limit?: number
 }

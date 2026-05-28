@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common'
 import type { User } from '@salonin/types'
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
+import { RolesGuard, Roles } from '../../common/guards/roles.guard'
 import { CurrentUser } from '../../common/decorators/current-user.decorator'
 import { WorkersService } from './workers.service'
 import { UpdateWorkerProfileDto } from './dto/update-worker-profile.dto'
@@ -45,19 +46,22 @@ export class WorkersController {
   }
 
   @Patch('me')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('WORKER')
   updateProfile(@CurrentUser() user: User, @Body() dto: UpdateWorkerProfileDto) {
     return this.workersService.updateProfile(user.id, dto)
   }
 
   @Patch('availability')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('WORKER')
   updateAvailability(@CurrentUser() user: User, @Body() dto: UpdateAvailabilityDto) {
     return this.workersService.updateAvailability(user.id, dto)
   }
 
   @Post('location')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('WORKER')
   @HttpCode(HttpStatus.NO_CONTENT)
   async updateLocation(
     @CurrentUser() user: User,
@@ -67,7 +71,8 @@ export class WorkersController {
   }
 
   @Post('portfolio')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('WORKER')
   @HttpCode(HttpStatus.CREATED)
   addPortfolioItem(@CurrentUser() user: User, @Body() dto: AddPortfolioItemDto) {
     return this.workersService.addPortfolioItem(user.id, dto)

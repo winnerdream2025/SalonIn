@@ -76,8 +76,8 @@ export class JobsService {
   }
 
   async getById(id: string) {
-    const post = await this.prisma.jobPost.findUnique({
-      where: { id },
+    const post = await this.prisma.jobPost.findFirst({
+      where: { id, isActive: true },
       include: {
         salon: { select: { name: true, photoUrls: true, description: true, cityId: true } },
       },
