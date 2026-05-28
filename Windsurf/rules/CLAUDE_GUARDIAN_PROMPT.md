@@ -65,7 +65,13 @@ Tu ne présumes RIEN. Tu travailles UNIQUEMENT depuis ce registre.
                                   SalonCard.isVerified → same badge style
 [DONE] packages/utils             @salonin/utils — geo, formatting, availability, isJobExpired, getAvatarGradient
 [DONE] packages/api-client        @salonin/api-client — client.ts, auth.api.ts, workers/salons/jobs stubs; messages.api.ts updated
+                                   jobs.api.ts: +apply(jobId), +getApplicants(jobId), +updateApplicationStatus(jobId,appId,status)
+                                   workers.api.ts: +getMyApplications() → JobApplicationWithJob[]
+                                   jobs.api.ts: getById now returns JobPostDetail (with salon.userId + _count)
 [DONE] packages/types WorkerProfileFull  WorkerProfileFull interface: all WorkerProfile scalars + portfolioItems[] + user{email,role,createdAt}
+[DONE] packages/types JobPostDetail  JobPostDetail interface: all JobPost scalars + salon{name,photoUrls,description,cityId,userId} + _count{applications}
+[DONE] packages/types JobApplicationDetail  id/jobId/workerId/status/createdAt + worker{id,name,photoUrl,specialties,availability,isVerified,cityId,experienceYears}
+[DONE] packages/types JobApplicationWithJob  id/jobId/workerId/status/createdAt + job{...+salon{name,photoUrls}}
 [DONE] packages/types CursorResponse<T>  { data: T[], nextCursor: string|null, hasMore: boolean } — cursor-based pagination
 [DONE] packages/types FindNearbyWorkersDto  cursor?: string added
 [DONE] packages/api-client media  media.api.ts — mediaApi.uploadMedia(file, folder) → multipart FormData → POST /media/upload
@@ -97,8 +103,8 @@ STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 [DONE] avail.{now #1D9E75, today #378ADD, weekend #EF9F27, none #555}
 
 --- CHECKPOINTS ---
-[PASS] turbo type-check           12 successful, 0 errors — security sprint 20260527
-[PASS] pnpm test (api)             31 tests, 4 suites, 0 failures — security sprint 20260527
+[PASS] turbo type-check           12 successful, 0 errors — sprint 2 job apps 20260527
+[PASS] pnpm test (api)             35 tests, 4 suites, 0 failures — sprint 2 job apps 20260527
 [PASS] pnpm ls -r                 all 9 workspaces resolve
 [TODO] turbo build                pending (apps not scaffolded yet)
 [PASS] docker-compose up -d       2/2 containers Healthy (postgres:5433, redis:6380)
@@ -320,7 +326,9 @@ STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
                                    Rate limiting: ThrottlerModule global 10/60s; login 5/60s, register 3/60s
                                    @salonin/config added as API dep (packages/config/package.json +main field)
 [DONE] Module Workers              GET /workers/nearby(matching), GET /workers/me, GET /workers/:id, PATCH /workers/me, PATCH /workers/availability, POST /workers/location, POST /workers/portfolio
+                                   GET /workers/me/applications — WORKER only, returns JobApplicationWithJob[]
                                    updateAvailability → redis.delByPattern(nearby:{cityId}:*) — cache invalidation
+                                   updateLocation → redis.delByPattern(nearby:{cityId}:*) — cache invalidation (Sprint 2)
                                    PATCH/POST mutating endpoints: @UseGuards(JwtAuthGuard, RolesGuard) + @Roles('WORKER')
 [DONE] Module Matching/Redis       src/redis/redis.{service,module}.ts — @Global, ioredis wrapper: get/set(EX)/delByPattern(SCAN)
                                    src/modules/matching/matching.service.ts — PostGIS ST_DWithin CTE + cursor pagination + Redis TTL 60s
@@ -330,9 +338,13 @@ STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 [DONE] Module Media                POST /media/upload — AWS S3 + sharp (avatar 200×200 WebP, portfolio 800px JPEG, video passthrough)
 [DONE] Phase 2.4                   Mobile screens complete — WorkerProfileScreen, EditProfileScreen, PortfolioUploadScreen
 [DONE] Module Jobs                 POST/GET/PATCH/DELETE /jobs — salon-only create (RolesGuard SALON + ForbiddenException if no SalonProfile)
+                                   create: after creating, notifyNewJobPost(nearbyWorkers in same city, isActive, not NOT_AVAILABLE) fire+forget
                                    list: isActive+expiresAt>now filter, cityId required, specialty?/type? optional, PaginatedResponse; limit @Max(100)
-                                   getById: findFirst({ id, isActive:true }) — soft-deleted jobs return 404
+                                   getById: findFirst({ id, isActive:true }) — soft-deleted jobs return 404; includes salon.userId + _count.applications
                                    soft-delete: isActive=false, ownership via salon.userId check
+                                   POST /jobs/:id/apply — WORKER only, idempotent, creates JobApplication, sendPush to salon owner
+                                   GET /jobs/:id/applicants — SALON only, ownership check, returns applicants with worker info
+                                   PATCH /jobs/:id/applicants/:applicationId — SALON only, ownership check, updates status VIEWED/ACCEPTED/DECLINED
                                    [TODO] BullMQ auto-expiration (deferred — query filter handles expiry correctly)
 [DONE] Module Messaging            POST/GET /conversations — idempotent createConversation, getConversations+preview+unreadCount
                                    createConversation: BadRequestException('Cannot message yourself') if requesterId===otherUserId
@@ -351,7 +363,9 @@ STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
                                    ReportsProcessor: counts PENDING reports for reportedId → if ≥3 sets User.isActive=false
                                    BullMQ queue name: 'reports' — @nestjs/bullmq ^10.0.0 + bullmq ^5.0.0
                                    ReportsService: flexible lookup — accepts User.id OR WorkerProfile.id OR SalonProfile.id as reportedUserId
-[TODO] Module Notifications        push Expo, email
+[DONE] Module Notifications        @Global() — NotificationsService: sendPush, notifyNewMessage, notifyNewJobPost, upsertDevice
+                                   POST /devices — upsertDevice (expoPushToken + platform IOS/ANDROID)
+                                   NotificationsModule @Global — exports NotificationsService (auto-available to all modules)
 [TODO] Module Analytics            events, métriques par ville
 [DONE] Common Guards               JwtAuthGuard — src/common/guards/jwt-auth.guard.ts
 [DONE] Common Guards               RolesGuard — src/common/guards/roles.guard.ts
@@ -374,7 +388,7 @@ STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 [DONE] GET  /workers/:id           → WorkerProfileFull (id = WorkerProfile.id)
 [DONE] PATCH /workers/me           JwtAuthGuard — owner check via CurrentUser
 [DONE] PATCH /workers/availability JwtAuthGuard
-[DONE] POST /workers/location      JwtAuthGuard — PostGIS $executeRaw ST_SetSRID(ST_MakePoint)
+[DONE] POST /workers/location      JwtAuthGuard — PostGIS $executeRaw ST_SetSRID(ST_MakePoint); +cache invalidation nearby:{cityId}:*
 [DONE] POST /workers/portfolio     JwtAuthGuard — creates PortfolioItem{workerId,mediaUrl,type,caption?}
 [DONE] GET  /salons/:id            → SalonProfile
 [DONE] PATCH /salons/me            JwtAuthGuard — owner check
@@ -385,6 +399,10 @@ STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 [DONE] GET  /jobs/:id              → JobPost + salon info
 [DONE] PATCH /jobs/:id             JwtAuthGuard — ownership check via salon.userId
 [DONE] DELETE /jobs/:id            JwtAuthGuard — soft delete (isActive: false)
+[DONE] POST /jobs/:id/apply        JwtAuthGuard + WORKER — idempotent, creates JobApplication, sendPush salon owner
+[DONE] GET  /jobs/:id/applicants   JwtAuthGuard + SALON — ownership check → JobApplicationDetail[]
+[DONE] PATCH /jobs/:id/applicants/:appId  JwtAuthGuard + SALON — ownership check → status VIEWED|ACCEPTED|DECLINED
+[DONE] GET  /workers/me/applications  JwtAuthGuard + WORKER — returns JobApplicationWithJob[]
 [DONE] GET  /conversations           JwtAuthGuard — ConversationPreview[] with last message + unread count
 [DONE] POST /conversations           JwtAuthGuard — idempotent create/find conversation; BadRequestException if self-message
 [DONE] GET  /conversations/:id/messages  JwtAuthGuard — participant check, cursor pagination → CursorResponse<Message>
@@ -404,10 +422,13 @@ STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 --- Auth ---
 [DONE] LoginScreen                 src/screens/auth/LoginScreen.tsx — email+password → useAuth.login() → /(tabs)
 [DONE] RegisterScreen              src/screens/auth/RegisterScreen.tsx — name+email+password+role → useAuth.register()
+                                   post-register: WORKER → router.replace('/onboarding'), SALON → router.replace('/(tabs)')
 [DONE] RoleSelectScreen            src/screens/auth/RoleSelectScreen.tsx — WORKER|SALON picker → register with role
 
 --- Onboarding ---
-[TODO] OnboardingScreen            flow < 3 min
+[DONE] OnboardingScreen            app/onboarding.tsx — 4-step flow: Photo / Specialties / Availability / Location
+                                   progress bar, photo upload (pickAndUpload), specialty chips, availability picker, GPS share
+                                   auto-skip if profile.specialties already populated
 
 --- Feed ---
 [DONE] DiscoveryFeedScreen         FlatList+WorkerCard, specialty pills (8 presets), pull-to-refresh, skeleton/empty/error states
@@ -425,7 +446,14 @@ STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
                                    expiresAt computed from duration (7/14/30 days) — app/jobs/create.tsx
 
 --- Detail ---
-[DONE] JobDetailScreen             placeholder — app/jobs/[id].tsx (full detail screen Phase 4+)
+[DONE] JobDetailScreen             app/jobs/[id].tsx — full implementation
+                                   salon header (circle avatar + name + cityId), title fontWeight 800, URGENT badge
+                                   specialty+type pills, 2×2 info grid (pay/duration/type/applicants)
+                                   description + salon description, expiry date
+                                   WORKER: Apply now button → POST /jobs/:id/apply; Applied state (disabled); guest → Alert→login
+                                   SALON owner: applicants list with status badge PENDING/VIEWED/ACCEPTED/DECLINED per applicant
+                                   loading: ActivityIndicator; error: retry text + back button
+                                   useJobDetail(id) + useMyApplications() hooks in src/hooks/useJobDetail.ts
 
 --- Messagerie ---
 [DONE] ConversationsListScreen     FlatList+ConversationItem, pull-to-refresh, skeleton/empty states — app/(tabs)/messages.tsx
@@ -447,6 +475,8 @@ STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
                                    enabled only when cityId+lat+lng set; isRefreshRef tracks pull-to-refresh vs filter change
 [DONE] useJobFeed(opts)            src/hooks/useJobFeed.ts — offset pagination (page/limit), cityId from locationStore
                                    refresh() + loadMore() + isLoading/isRefreshing/isLoadingMore/hasMore/error
+[DONE] useJobDetail(id)            src/hooks/useJobDetail.ts — fetches JobPostDetail via GET /jobs/:id
+[DONE] useMyApplications()         src/hooks/useJobDetail.ts — fetches JobApplicationWithJob[] via GET /workers/me/applications
 [DONE] useLocationStore()          src/store/locationStore.ts — Zustand: cityId|lat|lng|null, setLocation(), clearLocation()
 [DONE] useMessages(conversationId) src/hooks/useMessages.ts — socket.io-client WS (join/leave room, message:received, typing)
                                    loadMore() cursor pagination + sendMessage() + setTyping()
