@@ -23,7 +23,8 @@ export default function LoginPage() {
   const handleSubmit = useCallback(async () => {
     setError(undefined)
     try {
-      await login({ email, password })
+      const result = await login({ email, password })
+      document.cookie = `accessToken=${result.accessToken}; path=/; SameSite=Strict; max-age=900`
       const params = new URLSearchParams(window.location.search)
       const redirectTo = params.get('redirect')
       router.replace(redirectTo ?? '/workers')

@@ -23,6 +23,7 @@ export function Navbar() {
 
   const handleLogout = useCallback(async () => {
     setDropdownOpen(false)
+    document.cookie = 'accessToken=; path=/; max-age=0'
     await logout()
     router.push('/')
   }, [logout, router])
@@ -133,30 +134,12 @@ export function Navbar() {
 
                 {dropdownOpen && (
                   <div className="nb-dropdown" role="menu">
-                    {role === 'SALON' ? (
-                      <>
-                        <a href="/salons/me" className="nb-dd-item" role="menuitem"
-                          onClick={() => setDropdownOpen(false)}>
-                          My salon
-                        </a>
-                        <a href="/jobs/create" className="nb-dd-item" role="menuitem"
-                          onClick={() => setDropdownOpen(false)}>
-                          Post job
-                        </a>
-                      </>
-                    ) : (
-                      <>
-                        <a href="/workers/me" className="nb-dd-item" role="menuitem"
-                          onClick={() => setDropdownOpen(false)}>
-                          My profile
-                        </a>
-                        <a href="/workers/edit" className="nb-dd-item" role="menuitem"
-                          onClick={() => setDropdownOpen(false)}>
-                          Edit profile
-                        </a>
-                      </>
+                    {role === 'SALON' && (
+                      <a href="/jobs/create" className="nb-dd-item" role="menuitem"
+                        onClick={() => setDropdownOpen(false)}>
+                        Post job
+                      </a>
                     )}
-                    <div className="nb-dd-divider" />
                     <button
                       className="nb-dd-item nb-dd-danger"
                       role="menuitem"

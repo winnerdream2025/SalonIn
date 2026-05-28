@@ -41,7 +41,10 @@ function RootLayout() {
   useEffect(() => {
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
-        // Refresh feeds when app returns to foreground
+        const { cityId, lat, lng } = useLocationStore.getState()
+        if (cityId && lat !== null && lng !== null) {
+          useLocationStore.getState().setLocation(cityId, lat, lng)
+        }
       }
     })
     return () => sub.remove()

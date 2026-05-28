@@ -1,6 +1,7 @@
 import './globals.css'
 import type { ReactNode } from 'react'
 import { Providers } from '../components/Providers'
+import { NavbarWrapper } from '../components/NavbarWrapper'
 
 export const metadata = {
   title: 'Salonin — Where beauty pros get hired locally',
@@ -33,7 +34,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           WebkitFontSmoothing: 'antialiased',
         }}
       >
-        <Providers>{children}</Providers>
+        <Providers>
+          <NavbarWrapper />
+          {children}
+        </Providers>
       </body>
     </html>
   )

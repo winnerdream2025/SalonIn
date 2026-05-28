@@ -41,7 +41,8 @@ export default function RegisterPage() {
   const handleSubmit = useCallback(async () => {
     setError(undefined)
     try {
-      await register({ name, email, password, role, cityId: 'dmv' })
+      const result = await register({ name, email, password, role, cityId: 'dmv' })
+      document.cookie = `accessToken=${result.accessToken}; path=/; SameSite=Strict; max-age=900`
       router.replace('/workers')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Registration failed')
