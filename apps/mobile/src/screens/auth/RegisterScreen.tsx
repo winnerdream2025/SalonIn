@@ -22,7 +22,11 @@ export default function RegisterScreen() {
     try {
       await register({ name, email, password, role, cityId: 'dmv' })
       useLocationStore.getState().setLocation('dmv', 38.9072, -77.0369)
-      router.replace('/(tabs)')
+      if (role === 'WORKER') {
+        router.replace('/onboarding')
+      } else {
+        router.replace('/(tabs)')
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Registration failed')
     }

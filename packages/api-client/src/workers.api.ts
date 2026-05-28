@@ -7,6 +7,7 @@ import type {
   FindNearbyWorkersDto,
   UpdateAvailabilityDto,
   CursorResponse,
+  JobApplicationWithJob,
 } from '@salonin/types'
 
 export interface UpdateWorkerPayload {
@@ -44,4 +45,7 @@ export const workersApi = {
 
   addPortfolioItem: (data: AddPortfolioItemInput): Promise<PortfolioItem> =>
     api.post<PortfolioItem>('/workers/portfolio', data).then((r) => r.data),
+
+  getMyApplications: (): Promise<JobApplicationWithJob[]> =>
+    api.get<JobApplicationWithJob[]>('/workers/me/applications').then((r) => r.data),
 }

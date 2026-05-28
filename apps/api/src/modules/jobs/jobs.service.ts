@@ -1,22 +1,28 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../../prisma/prisma.service'
+import { NotificationsService } from '../notifications/notifications.service'
 import type { JobPostCardData, PaginatedResponse } from '@salonin/types'
 import type { CreateJobPostDto } from './dto/create-job-post.dto'
 import type { UpdateJobPostDto } from './dto/update-job-post.dto'
 import type { ListJobsDto } from './dto/list-jobs.dto'
+import type { UpdateApplicationStatusDto } from './dto/update-application-status.dto'
+import { Availability } from '@prisma/client'
 
 @Injectable()
 export class JobsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   async create(userId: string, dto: CreateJobPostDto) {
     const salon = await this.prisma.salonProfile.findUnique({
       where: { userId },
-      select: { id: true },
+      select: { id: true, name: true },
     })
     if (!salon) throw new ForbiddenException('Salon profile required to create job posts')
 
-    return this.prisma.jobPost.create({
+    const post = await this.prisma.jobPost.create({
       data: {
         salonId: salon.id,
         title: dto.title,
@@ -29,6 +35,19 @@ export class JobsService {
         expiresAt: new Date(dto.expiresAt),
       },
     })
+
+    const nearbyWorkers = await this.prisma.workerProfile.findMany({
+      where: {
+        cityId: dto.cityId,
+        user: { isActive: true },
+        availability: { not: Availability.NOT_AVAILABLE },
+      },
+      select: { userId: true },
+    })
+    const workerIds = nearbyWorkers.map((w) => w.userId)
+    this.notificationsService.notifyNewJobPost(workerIds, dto.title, salon.name).catch(() => {})
+
+    return post
   }
 
   async list(dto: ListJobsDto): Promise<PaginatedResponse<JobPostCardData>> {
@@ -79,11 +98,80 @@ export class JobsService {
     const post = await this.prisma.jobPost.findFirst({
       where: { id, isActive: true },
       include: {
-        salon: { select: { name: true, photoUrls: true, description: true, cityId: true } },
+        salon: { select: { name: true, photoUrls: true, description: true, cityId: true, userId: true } },
+        _count: { select: { applications: true } },
       },
     })
     if (!post) throw new NotFoundException('Job post not found')
     return post
+  }
+
+  async applyToJob(jobId: string, userId: string): Promise<{ success: true }> {
+    const job = await this.prisma.jobPost.findFirst({
+      where: { id: jobId, isActive: true },
+      include: { salon: { select: { userId: true } } },
+    })
+    if (!job) throw new NotFoundException('Job post not found')
+
+    const worker = await this.prisma.workerProfile.findUnique({
+      where: { userId },
+      select: { id: true, name: true },
+    })
+    if (!worker) throw new ForbiddenException('Worker profile required to apply')
+
+    const existing = await this.prisma.jobApplication.findFirst({
+      where: { jobId, workerId: worker.id },
+    })
+    if (existing) return { success: true }
+
+    await this.prisma.jobApplication.create({
+      data: { jobId, workerId: worker.id },
+    })
+
+    this.notificationsService
+      .sendPush(job.salon.userId, 'New applicant', `${worker.name} applied`)
+      .catch(() => {})
+
+    return { success: true }
+  }
+
+  async getApplicants(jobId: string, userId: string) {
+    await this.assertOwnership(jobId, userId)
+    return this.prisma.jobApplication.findMany({
+      where: { jobId },
+      include: {
+        worker: {
+          select: {
+            id: true,
+            name: true,
+            photoUrl: true,
+            specialties: true,
+            availability: true,
+            isVerified: true,
+            cityId: true,
+            experienceYears: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+  }
+
+  async updateApplicationStatus(
+    jobId: string,
+    applicationId: string,
+    userId: string,
+    dto: UpdateApplicationStatusDto,
+  ) {
+    await this.assertOwnership(jobId, userId)
+    const app = await this.prisma.jobApplication.findFirst({
+      where: { id: applicationId, jobId },
+    })
+    if (!app) throw new NotFoundException('Application not found')
+    return this.prisma.jobApplication.update({
+      where: { id: applicationId },
+      data: { status: dto.status },
+    })
   }
 
   async update(id: string, userId: string, dto: UpdateJobPostDto) {

@@ -40,6 +40,13 @@ export class WorkersController {
     return this.workersService.getMyProfile(user.id)
   }
 
+  @Get('me/applications')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('WORKER')
+  getMyApplications(@CurrentUser() user: User) {
+    return this.workersService.getMyApplications(user.id)
+  }
+
   @Get(':id')
   getProfile(@Param('id') id: string) {
     return this.workersService.getProfile(id)

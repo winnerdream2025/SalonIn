@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing'
 import { ForbiddenException, NotFoundException } from '@nestjs/common'
 import { JobsService } from './jobs.service'
 import { PrismaService } from '../../prisma/prisma.service'
+import { NotificationsService } from '../notifications/notifications.service'
 
 const mockPrisma = {
   salonProfile: { findUnique: jest.fn() },
@@ -11,7 +12,22 @@ const mockPrisma = {
     findUnique: jest.fn(),
     update: jest.fn(),
   },
+  jobApplication: {
+    findFirst: jest.fn(),
+    create: jest.fn(),
+    findMany: jest.fn(),
+    update: jest.fn(),
+  },
+  workerProfile: {
+    findUnique: jest.fn(),
+    findMany: jest.fn(),
+  },
   $transaction: jest.fn(),
+}
+
+const mockNotifications = {
+  sendPush: jest.fn().mockResolvedValue(undefined),
+  notifyNewJobPost: jest.fn().mockResolvedValue(undefined),
 }
 
 const BASE_DTO = {
@@ -37,6 +53,7 @@ describe('JobsService', () => {
       providers: [
         JobsService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: NotificationsService, useValue: mockNotifications },
       ],
     }).compile()
 
@@ -53,8 +70,9 @@ describe('JobsService', () => {
     })
 
     it('creates job post when salon profile exists', async () => {
-      mockPrisma.salonProfile.findUnique.mockResolvedValue(SALON)
+      mockPrisma.salonProfile.findUnique.mockResolvedValue({ id: 'salon-1', name: 'Glamour' })
       mockPrisma.jobPost.create.mockResolvedValue({ id: 'job-1', ...BASE_DTO, salonId: SALON.id })
+      mockPrisma.workerProfile.findMany.mockResolvedValue([])
 
       await service.create(USER_ID, BASE_DTO)
 
@@ -69,13 +87,58 @@ describe('JobsService', () => {
     })
 
     it('passes isUrgent=true when set in dto', async () => {
-      mockPrisma.salonProfile.findUnique.mockResolvedValue(SALON)
+      mockPrisma.salonProfile.findUnique.mockResolvedValue({ id: 'salon-1', name: 'Glamour' })
       mockPrisma.jobPost.create.mockResolvedValue({ id: 'job-2' })
+      mockPrisma.workerProfile.findMany.mockResolvedValue([])
 
       await service.create(USER_ID, { ...BASE_DTO, isUrgent: true })
 
       expect(mockPrisma.jobPost.create).toHaveBeenCalledWith({
         data: expect.objectContaining({ isUrgent: true }),
+      })
+    })
+  })
+
+  describe('applyToJob', () => {
+    it('throws NotFoundException when job not found', async () => {
+      mockPrisma.jobPost.findFirst.mockResolvedValue(null)
+
+      await expect(service.applyToJob('job-1', USER_ID)).rejects.toThrow(NotFoundException)
+    })
+
+    it('throws ForbiddenException when no worker profile', async () => {
+      mockPrisma.jobPost.findFirst.mockResolvedValue({ id: 'job-1', salon: { userId: 'salon-user' } })
+      mockPrisma.workerProfile.findUnique.mockResolvedValue(null)
+
+      await expect(service.applyToJob('job-1', USER_ID)).rejects.toThrow(ForbiddenException)
+    })
+
+    it('is idempotent — returns success if already applied', async () => {
+      mockPrisma.jobPost.findFirst.mockResolvedValue({ id: 'job-1', salon: { userId: 'salon-user' } })
+      mockPrisma.workerProfile.findUnique.mockResolvedValue({ id: 'wp-1', name: 'Alice' })
+      mockPrisma.jobApplication.findFirst.mockResolvedValue({ id: 'app-existing' })
+
+      const result = await service.applyToJob('job-1', USER_ID)
+
+      expect(result).toEqual({ success: true })
+      expect(mockPrisma.jobApplication.create).not.toHaveBeenCalled()
+    })
+
+    it('creates application and notifies salon when first apply', async () => {
+      mockPrisma.jobPost.findFirst.mockResolvedValue({
+        id: 'job-1',
+        title: 'Stylist',
+        salon: { userId: 'salon-user' },
+      })
+      mockPrisma.workerProfile.findUnique.mockResolvedValue({ id: 'wp-1', name: 'Alice' })
+      mockPrisma.jobApplication.findFirst.mockResolvedValue(null)
+      mockPrisma.jobApplication.create.mockResolvedValue({ id: 'app-1' })
+
+      const result = await service.applyToJob('job-1', USER_ID)
+
+      expect(result).toEqual({ success: true })
+      expect(mockPrisma.jobApplication.create).toHaveBeenCalledWith({
+        data: { jobId: 'job-1', workerId: 'wp-1' },
       })
     })
   })

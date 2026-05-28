@@ -12,6 +12,7 @@ export type { UpdateSalonPayload } from './salons.api'
 
 export { jobsApi } from './jobs.api'
 export type { ListJobsParams } from './jobs.api'
+export type { JobApplicationDetail, JobApplicationWithJob } from '@salonin/types'
 
 export { messagesApi } from './messages.api'
 

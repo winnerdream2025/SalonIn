@@ -54,6 +54,13 @@ export class WorkersService {
       SET location = ST_SetSRID(ST_MakePoint(${dto.lng}, ${dto.lat}), 4326)::geography
       WHERE "userId" = ${userId}
     `
+    const profile = await this.prisma.workerProfile.findUnique({
+      where: { userId },
+      select: { cityId: true },
+    })
+    if (profile?.cityId) {
+      await this.redis.delByPattern(`nearby:${profile.cityId}:*`)
+    }
   }
 
   async getMyProfile(userId: string) {
@@ -66,6 +73,25 @@ export class WorkersService {
     })
     if (!profile) throw new NotFoundException('Worker profile not found')
     return profile
+  }
+
+  async getMyApplications(userId: string) {
+    const profile = await this.prisma.workerProfile.findUnique({
+      where: { userId },
+      select: { id: true },
+    })
+    if (!profile) throw new NotFoundException('Worker profile not found')
+    return this.prisma.jobApplication.findMany({
+      where: { workerId: profile.id },
+      include: {
+        job: {
+          include: {
+            salon: { select: { name: true, photoUrls: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    })
   }
 
   async addPortfolioItem(userId: string, dto: AddPortfolioItemDto) {

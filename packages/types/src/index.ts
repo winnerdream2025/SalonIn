@@ -1,4 +1,4 @@
-import type { Availability, EmploymentType, Role, PortfolioItem, ReportType } from '@prisma/client'
+import type { Availability, EmploymentType, Role, PortfolioItem, ReportType, AppStatus } from '@prisma/client'
 
 // ─── Prisma model re-exports ──────────────────────────────────────────────────
 
@@ -144,6 +144,72 @@ export interface WorkerProfileFull {
     email: string
     role: Role
     createdAt: string
+  }
+}
+
+// ─── Job detail type (getById response) ──────────────────────────────────────
+
+export interface JobPostDetail {
+  id: string
+  salonId: string
+  title: string
+  description: string
+  specialty: string
+  payStructure: string
+  type: EmploymentType
+  isUrgent: boolean
+  cityId: string
+  expiresAt: Date
+  isActive: boolean
+  createdAt: Date
+  updatedAt: Date
+  salon: {
+    name: string
+    photoUrls: string[]
+    description: string | null
+    cityId: string
+    userId: string
+  }
+  _count: { applications: number }
+}
+
+// ─── Application types ────────────────────────────────────────────────────────
+
+export interface JobApplicationDetail {
+  id: string
+  jobId: string
+  workerId: string
+  status: AppStatus
+  createdAt: Date
+  worker: {
+    id: string
+    name: string
+    photoUrl: string | null
+    specialties: string[]
+    availability: Availability
+    isVerified: boolean
+    cityId: string
+    experienceYears: number
+  }
+}
+
+export interface JobApplicationWithJob {
+  id: string
+  jobId: string
+  workerId: string
+  status: AppStatus
+  createdAt: Date
+  job: {
+    id: string
+    title: string
+    specialty: string
+    payStructure: string
+    type: EmploymentType
+    isUrgent: boolean
+    cityId: string
+    expiresAt: Date
+    isActive: boolean
+    salon: { name: string; photoUrls: string[] }
   }
 }
 
