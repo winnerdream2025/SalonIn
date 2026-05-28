@@ -74,6 +74,7 @@ Tu ne présumes RIEN. Tu travailles UNIQUEMENT depuis ce registre.
 [DONE] apps/mobile                @salonin/mobile — Expo 51, Expo Router, Zustand, auth flow (store + hook + 3 screens)
 [DONE] apps/web                   @salonin/web — Next.js 14 App Router, Zustand, auth flow (/login + /register)
                                    @salonin/utils added as dep (WorkerCard web component)
+[DONE] apps/web/src/middleware.ts  PROTECTED=['/messages','/jobs/create']; JWT decoded via atob(); /jobs/create requires role=SALON
 [DONE] apps/api                   @salonin/api — NestJS scaffold: main.ts, AppModule, PrismaService/Module
 
 --- apps/api ENV VARS (required) ---
@@ -96,8 +97,8 @@ STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 [DONE] avail.{now #1D9E75, today #378ADD, weekend #EF9F27, none #555}
 
 --- CHECKPOINTS ---
-[PASS] turbo type-check           12 successful, 0 errors — FULL TURBO 50ms (deploy-blockers fixed)
-[PASS] pnpm test (api)             31 tests, 4 suites, 0 failures
+[PASS] turbo type-check           12 successful, 0 errors — security sprint 20260527
+[PASS] pnpm test (api)             31 tests, 4 suites, 0 failures — security sprint 20260527
 [PASS] pnpm ls -r                 all 9 workspaces resolve
 [TODO] turbo build                pending (apps not scaffolded yet)
 [PASS] docker-compose up -d       2/2 containers Healthy (postgres:5433, redis:6380)
@@ -237,8 +238,12 @@ STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 [DONE] src/main.ts                 bootstrap, ValidationPipe(whitelist+transform), CORS origins: 3000/8081/19000/19006, port: process.env.PORT ?? 4000
                                    rawBody: true (Phase 5.1 — required for Stripe webhook signature verification)
 [DONE] src/modules/auth/jwt.strategy.ts  +isActive check: UnauthorizedException('Account suspended') if user.isActive === false
+[DONE] src/common/guards/roles.guard.ts  Roles() decorator + RolesGuard — reads ROLES_KEY from reflector, ForbiddenException on mismatch
+[DONE] src/common/validators/city-id.validator.ts  IsSupportedCity() — validates against Object.keys(SUPPORTED_CITIES) from @salonin/config
+[DONE] src/common/validators/is-future.validator.ts  IsInFuture() — date > now && date <= now+90days
 [DONE] src/app.module.ts           ConfigModule.forRoot(isGlobal:true) + PrismaModule + RedisModule + AuthModule + WorkersModule + SalonsModule + MediaModule + JobsModule + MessagingModule + VerifyModule + ReportsModule
                                    BullModule.forRootAsync — parses REDIS_URL → {host,port} for BullMQ connection
+                                   ThrottlerModule.forRoot([{name:'short', ttl:60000, limit:10}]) + APP_GUARD ThrottlerGuard global
 [DONE] src/prisma/prisma.service.ts  extends PrismaClient, datasources.db.url from process.env.DATABASE_URL, onModuleInit → $connect()
 [DONE] src/prisma/prisma.module.ts   @Global() — PrismaService provided + exported
 
@@ -307,29 +312,39 @@ STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 [DONE] src/app/(auth)/register/page.tsx  'use client' — role toggle (WORKER|SALON) + name/email/password → useAuth.register()
 
 --- Modules ---
-[DONE] Module Auth                 register, login, refresh, logout — Supabase Auth JWT
+[DONE] Module Auth                 register, login, refresh, logout — bcrypt + @nestjs/jwt
+                                   JWT payload: { sub, email, role } — expiresIn: 15m access / 7d refresh (Redis)
+                                   RegisterDto: @IsIn(['WORKER','SALON']) — ADMIN removed
+                                   RegisterDto, CreateJobPostDto, FindNearbyWorkersDto: @IsSupportedCity() validator
+                                   CreateJobPostDto: @IsInFuture() — future date, max 90 days
+                                   Rate limiting: ThrottlerModule global 10/60s; login 5/60s, register 3/60s
+                                   @salonin/config added as API dep (packages/config/package.json +main field)
 [DONE] Module Workers              GET /workers/nearby(matching), GET /workers/me, GET /workers/:id, PATCH /workers/me, PATCH /workers/availability, POST /workers/location, POST /workers/portfolio
                                    updateAvailability → redis.delByPattern(nearby:{cityId}:*) — cache invalidation
+                                   PATCH/POST mutating endpoints: @UseGuards(JwtAuthGuard, RolesGuard) + @Roles('WORKER')
 [DONE] Module Matching/Redis       src/redis/redis.{service,module}.ts — @Global, ioredis wrapper: get/set(EX)/delByPattern(SCAN)
                                    src/modules/matching/matching.service.ts — PostGIS ST_DWithin CTE + cursor pagination + Redis TTL 60s
                                    src/modules/matching/matching.module.ts — exports MatchingService
 [DONE] Module Salons               GET /salons/:id, PATCH /salons/me, PATCH /salons/hiring-status
+                                   PATCH endpoints: @UseGuards(JwtAuthGuard, RolesGuard) + @Roles('SALON')
 [DONE] Module Media                POST /media/upload — AWS S3 + sharp (avatar 200×200 WebP, portfolio 800px JPEG, video passthrough)
 [DONE] Phase 2.4                   Mobile screens complete — WorkerProfileScreen, EditProfileScreen, PortfolioUploadScreen
-[DONE] Module Jobs                 POST/GET/PATCH/DELETE /jobs — salon-only create (ForbiddenException if no SalonProfile)
-                                   list: isActive+expiresAt>now filter, cityId required, specialty?/type? optional, PaginatedResponse
+[DONE] Module Jobs                 POST/GET/PATCH/DELETE /jobs — salon-only create (RolesGuard SALON + ForbiddenException if no SalonProfile)
+                                   list: isActive+expiresAt>now filter, cityId required, specialty?/type? optional, PaginatedResponse; limit @Max(100)
+                                   getById: findFirst({ id, isActive:true }) — soft-deleted jobs return 404
                                    soft-delete: isActive=false, ownership via salon.userId check
                                    [TODO] BullMQ auto-expiration (deferred — query filter handles expiry correctly)
 [DONE] Module Messaging            POST/GET /conversations — idempotent createConversation, getConversations+preview+unreadCount
+                                   createConversation: BadRequestException('Cannot message yourself') if requesterId===otherUserId
                                    GET /conversations/:id/messages — cursor pagination (30/page)
-                                   POST /conversations/:id/messages — send + WS broadcast
+                                   POST /conversations/:id/messages — send + WS broadcast; SendMessageDto content @MaxLength(2000)
                                    PATCH /conversations/:id/read — mark all received msgs read
                                    MessagingGateway WS: join/leave:conversation rooms, typing:start/stop → emit 'typing', broadcastMessage()
                                    deps: @nestjs/websockets, @nestjs/platform-socket.io, socket.io
-[DONE] Module Verify               POST /verify/identity — WORKER only, creates Stripe Identity session → {url,sessionId}
+[DONE] Module Verify               POST /verify/identity — @Roles('WORKER') via RolesGuard, creates Stripe Identity session → {url,sessionId}
                                    POST /verify/webhook — raw body, constructEvent, sets isVerified:true on verified
-                                   PATCH /verify/salon/ein — SALON only, stores EIN on SalonProfile
-                                   PATCH /admin/salons/:id/verify — ADMIN only, manually sets SalonProfile.isVerified
+                                   PATCH /verify/salon/ein — @Roles('SALON') via RolesGuard, stores EIN on SalonProfile
+                                   PATCH /admin/salons/:id/verify — @Roles('ADMIN') via RolesGuard, manually sets SalonProfile.isVerified
                                    rawBody: true added to NestFactory.create() in main.ts
                                    stripe ^15.0.0 added to API deps
 [DONE] Module Reports              POST /reports — JwtAuthGuard, idempotent (no duplicate PENDING same type), enqueues BullMQ check-suspension job
@@ -339,7 +354,10 @@ STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 [TODO] Module Notifications        push Expo, email
 [TODO] Module Analytics            events, métriques par ville
 [DONE] Common Guards               JwtAuthGuard — src/common/guards/jwt-auth.guard.ts
-[TODO] Common Guards (remaining)   RolesGuard, OwnershipGuard
+[DONE] Common Guards               RolesGuard — src/common/guards/roles.guard.ts
+                                   exports Roles() decorator + ROLES_KEY + RolesGuard class
+                                   applied to: workers (WORKER), salons (SALON), jobs POST (SALON), verify (WORKER/SALON/ADMIN)
+[TODO] Common Guards (remaining)   OwnershipGuard
 [DONE] Common Pipes                ValidationPipe — global in main.ts (whitelist+transform+forbidNonWhitelisted)
 [DONE] Common Filters              GlobalExceptionFilter — src/common/filters/global-exception.filter.ts
 
@@ -351,6 +369,7 @@ STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 [DONE] GET  /workers/nearby        lat, lng, radiusMiles, cityId, specialty?, availability?, cursor? → CursorResponse<WorkerCardData>
                                    PostGIS ST_DWithin CTE, ORDER BY distance ASC, LIMIT 51, Redis TTL 60s
                                    Cache invalidated on PATCH /workers/availability
+                                   CTE WHERE: +EXISTS(User.isActive=true); default excludes NOT_AVAILABLE unless explicitly requested
 [DONE] GET  /workers/me            JwtAuthGuard — returns WorkerProfileFull (with portfolioItems + user)
 [DONE] GET  /workers/:id           → WorkerProfileFull (id = WorkerProfile.id)
 [DONE] PATCH /workers/me           JwtAuthGuard — owner check via CurrentUser
@@ -367,7 +386,7 @@ STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 [DONE] PATCH /jobs/:id             JwtAuthGuard — ownership check via salon.userId
 [DONE] DELETE /jobs/:id            JwtAuthGuard — soft delete (isActive: false)
 [DONE] GET  /conversations           JwtAuthGuard — ConversationPreview[] with last message + unread count
-[DONE] POST /conversations           JwtAuthGuard — idempotent create/find conversation
+[DONE] POST /conversations           JwtAuthGuard — idempotent create/find conversation; BadRequestException if self-message
 [DONE] GET  /conversations/:id/messages  JwtAuthGuard — participant check, cursor pagination → CursorResponse<Message>
 [DONE] POST /conversations/:id/messages  JwtAuthGuard — send + WS broadcastMessage → socket room conv:{id}
 [DONE] PATCH /conversations/:id/read     JwtAuthGuard — updateMany isRead:true for received messages
@@ -453,6 +472,7 @@ STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 [TODO] /jobs/[id]                  détail job
 [DONE] /messages                   split view — 300px sidebar (ConversationItem list) + main ChatPanel
                                    useConversations + useMessages(selectedId), WS typing indicator, skeleton loaders
+[DONE] /jobs/create                protected by Next.js middleware: no token → /login; token role≠SALON → /workers
 [DONE] /login                      src/app/(auth)/login/page.tsx — 'use client', email+password form
 [DONE] /register                   src/app/(auth)/register/page.tsx — 'use client', role toggle + name/email/password
 
