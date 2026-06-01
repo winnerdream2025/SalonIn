@@ -3,7 +3,7 @@ import type { SalonCardData, SalonProfile, SalonProfileFull } from '@salonin/typ
 
 export interface UpdateSalonPayload {
   name?: string | undefined
-  bio?: string | undefined
+  description?: string | undefined
   specialties?: string[] | undefined
   address?: string | undefined
 }

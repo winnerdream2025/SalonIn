@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   if (!salon) return { title: 'Salon not found — Salonin' }
   return {
     title: `${salon.name} — Salonin`,
-    description: salon.bio ?? `${salon.name} is a salon on Salonin${salon.isHiring ? ' currently hiring' : ''}.`,
+    description: salon.description ?? `${salon.name} is a salon on Salonin${salon.isHiring ? ' currently hiring' : ''}.`,
   }
 }
 
@@ -197,11 +197,11 @@ export default async function SalonProfilePage({ params }: { params: { id: strin
           </div>
         </div>
 
-        {salon.bio && (
+        {salon.description && (
           <div className="sp-section">
             <p className="sp-label">About</p>
             <p style={{ color: 'var(--color-text-secondary)', fontSize: 14, lineHeight: 1.65, margin: 0 }}>
-              {salon.bio}
+              {salon.description}
             </p>
           </div>
         )}

@@ -48,7 +48,7 @@ export default function SalonOnboardingScreen() {
     try {
       await salonsApi.updateProfile({
         name: salonName.trim() || undefined,
-        bio: bio.trim() || undefined,
+        description: bio.trim() || undefined,
         specialties: selectedSpecialties,
       })
       await salonsApi.setHiringStatus(isHiring)

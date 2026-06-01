@@ -153,7 +153,7 @@ export interface SalonProfileFull {
   id: string
   userId: string
   name: string
-  bio: string | null
+  description: string | null
   photoUrls: string[]
   specialties: string[]
   isHiring: boolean

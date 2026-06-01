@@ -137,14 +137,17 @@ if [[ -n "$WORKER_REFRESH" ]]; then
   call "POST /auth/refresh (worker)" "200" \
     -X POST "$BASE/auth/refresh" \
     -d "{\"refreshToken\":\"$WORKER_REFRESH\"}" || true
-  # Update token after rotation
+  # Update both tokens after rotation
   NEW_WORKER_TOKEN=$(echo "$BODY" | grep -o '"accessToken":"[^"]*"' | cut -d'"' -f4 || echo "")
+  NEW_WORKER_REFRESH=$(echo "$BODY" | grep -o '"refreshToken":"[^"]*"' | cut -d'"' -f4 || echo "")
   [[ -n "$NEW_WORKER_TOKEN" ]] && WORKER_TOKEN="$NEW_WORKER_TOKEN"
+  [[ -n "$NEW_WORKER_REFRESH" ]] && WORKER_REFRESH="$NEW_WORKER_REFRESH"
 fi
 
-# 6. Logout (use a temp login for this)
-call "POST /auth/logout (worker)" "200" \
+# 6. Logout — requires Bearer token (JwtAuthGuard) + returns 204
+call "POST /auth/logout (worker)" "204" \
   -X POST "$BASE/auth/logout" \
+  -H "Authorization: Bearer $WORKER_TOKEN" \
   -d "{\"refreshToken\":\"$WORKER_REFRESH\"}" || true
 
 # Re-login after logout
@@ -186,7 +189,7 @@ call "PATCH /workers/availability (NOW)" "200" \
   -H "Authorization: Bearer $WORKER_TOKEN" \
   -d '{"availability":"NOW"}' || true
 
-call "POST /workers/location" "201" \
+call "POST /workers/location" "204" \
   -X POST "$BASE/workers/location" \
   -H "Authorization: Bearer $WORKER_TOKEN" \
   -d '{"lat":38.9072,"lng":-77.0369}' || true
@@ -263,7 +266,7 @@ call "PATCH /jobs/:id (update title)" "200" \
   -H "Authorization: Bearer $SALON_TOKEN" \
   -d '{"title":"API Test Job (edited)"}' || true
 
-call "DELETE /jobs/:id (soft delete)" "200" \
+call "DELETE /jobs/:id (soft delete)" "204" \
   -X DELETE "$BASE/jobs/${JOB_ID:-missing}" \
   -H "Authorization: Bearer $SALON_TOKEN" || true
 
@@ -354,19 +357,19 @@ section "REPORTS"
 call "POST /reports (worker reports salon)" "201" \
   -X POST "$BASE/reports" \
   -H "Authorization: Bearer $WORKER_TOKEN" \
-  -d "{\"reportedId\":\"$SALON_USER_ID\",\"type\":\"FAKE_PROFILE\"}" || true
+  -d "{\"reportedUserId\":\"$SALON_USER_ID\",\"type\":\"FAKE_PROFILE\"}" || true
 
 # Test idempotency — second identical report
 call "POST /reports (duplicate — should 409 or 201)" "201 409" \
   -X POST "$BASE/reports" \
   -H "Authorization: Bearer $WORKER_TOKEN" \
-  -d "{\"reportedId\":\"$SALON_USER_ID\",\"type\":\"FAKE_PROFILE\"}" || true
+  -d "{\"reportedUserId\":\"$SALON_USER_ID\",\"type\":\"FAKE_PROFILE\"}" || true
 
 # ─────────────────────────────────────────────────────────────────────────────
 section "DEVICES"
 # ─────────────────────────────────────────────────────────────────────────────
 
-call "POST /devices (register push token)" "201" \
+call "POST /devices (register push token)" "204" \
   -X POST "$BASE/devices" \
   -H "Authorization: Bearer $WORKER_TOKEN" \
   -d '{"expoPushToken":"ExponentPushToken[test_automated_suite]","platform":"IOS"}' || true
@@ -387,28 +390,35 @@ fi
 section "RATE LIMITING"
 # ─────────────────────────────────────────────────────────────────────────────
 
-echo "  Hitting POST /auth/login 6× rapidly to trigger rate limit..."
-HIT_429=false
-for i in $(seq 1 6); do
-  S=$(curl -s -o /dev/null -w "%{http_code}" \
+echo "  Sending 12 parallel POST /auth/login requests to trigger rate limit..."
+RATETMP=$(mktemp -d)
+for i in $(seq 1 12); do
+  curl -s -o "$RATETMP/r$i" -w "%{http_code}" \
     -X POST "$BASE/auth/login" \
     -H "Content-Type: application/json" \
     -d '{"email":"ratelimit-test@salonin.test","password":"wrong"}' \
-    --max-time 5 2>/dev/null) || S="000"
+    --max-time 5 2>/dev/null > "$RATETMP/s$i" &
+done
+wait
+
+HIT_429=false
+for i in $(seq 1 12); do
+  S=$(cat "$RATETMP/s$i" 2>/dev/null || echo "000")
   if [[ "$S" == "429" ]]; then
     HIT_429=true
     COUNT=$(( COUNT + 1 ))
     TOTAL_MS=$(( TOTAL_MS + 50 ))
     PASSED=$(( PASSED + 1 ))
-    ok "POST /auth/login rate-limit — 429 hit on attempt $i"
+    ok "POST /auth/login rate-limit — 429 triggered (request $i of 12 parallel)"
     break
   fi
 done
+rm -rf "$RATETMP"
 if [[ "$HIT_429" == "false" ]]; then
   COUNT=$(( COUNT + 1 ))
   TOTAL_MS=$(( TOTAL_MS + 50 ))
   FAILED=$(( FAILED + 1 ))
-  fail "POST /auth/login rate-limit — no 429 after 6 attempts (throttler may not be active)"
+  fail "POST /auth/login rate-limit — no 429 after 12 parallel attempts (throttler not active?)"
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────

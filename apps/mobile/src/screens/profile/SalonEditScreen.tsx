@@ -44,7 +44,7 @@ export default function SalonEditScreen() {
     try {
       await salonsApi.updateProfile({
         name: name.trim(),
-        bio: bio.trim() || undefined,
+        description: bio.trim() || undefined,
         specialties,
         address: address.trim() || undefined,
       })
