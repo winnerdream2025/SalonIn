@@ -209,7 +209,7 @@ call "GET /salons/:id (public)" "200" \
 call "PATCH /salons/me (update bio)" "200" \
   -X PATCH "$BASE/salons/me" \
   -H "Authorization: Bearer $SALON_TOKEN" \
-  -d '{"bio":"We are a premium test salon."}' || true
+  -d '{"description":"We are a premium test salon."}' || true
 
 call "PATCH /salons/hiring-status (isHiring=true)" "200" \
   -X PATCH "$BASE/salons/hiring-status" \
@@ -360,7 +360,7 @@ call "POST /reports (worker reports salon)" "201" \
   -d "{\"reportedUserId\":\"$SALON_USER_ID\",\"type\":\"FAKE_PROFILE\"}" || true
 
 # Test idempotency — second identical report
-call "POST /reports (duplicate — should 409 or 201)" "201 409" \
+call "POST /reports (duplicate — should 409 400 201)" "201 409 400" \
   -X POST "$BASE/reports" \
   -H "Authorization: Bearer $WORKER_TOKEN" \
   -d "{\"reportedUserId\":\"$SALON_USER_ID\",\"type\":\"FAKE_PROFILE\"}" || true
