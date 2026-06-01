@@ -10,7 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Avatar, Text, Button, useTheme } from '@salonin/ui'
-import { jobsApi } from '@salonin/api-client'
+import { jobsApi, messagesApi } from '@salonin/api-client'
 import type { JobApplicationDetail } from '@salonin/types'
 import { useAuthStore } from '../../src/store/authStore'
 import { useJobDetail, useMyApplications } from '../../src/hooks/useJobDetail'
@@ -50,6 +50,7 @@ export default function JobDetailScreen() {
 
   const [isApplying, setIsApplying] = useState(false)
   const [applied, setApplied] = useState(false)
+  const [isMessaging, setIsMessaging] = useState(false)
   const [applicants, setApplicants] = useState<JobApplicationDetail[]>([])
   const [loadingApplicants, setLoadingApplicants] = useState(false)
 
@@ -95,13 +96,21 @@ export default function JobDetailScreen() {
     }
   }, [id, isGuest])
 
-  const handleMessage = useCallback(() => {
+  const handleMessage = useCallback(async () => {
     if (!job) return
     if (isGuest) {
       Alert.alert('Sign in required', 'Sign in to message this salon.')
       return
     }
-    router.push(`/chat/${job.salonId}`)
+    setIsMessaging(true)
+    try {
+      const conv = await messagesApi.createConversation(job.salon.userId)
+      router.push(`/chat/${conv.id}?name=${encodeURIComponent(job.salon.name)}` as never)
+    } catch {
+      Alert.alert('Error', 'Could not start conversation. Please try again.')
+    } finally {
+      setIsMessaging(false)
+    }
   }, [job, isGuest])
 
   if (isLoading) {
@@ -143,7 +152,11 @@ export default function JobDetailScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Salon header */}
-        <View style={styles.salonRow}>
+        <TouchableOpacity
+          style={styles.salonRow}
+          onPress={() => router.push(`/salon/${job.salonId}` as never)}
+          activeOpacity={0.75}
+        >
           <View style={[styles.avatarCircle, { backgroundColor: theme.bg.elevated }]}>
             <Avatar
               uri={job.salon.photoUrls[0] ?? null}
@@ -157,7 +170,8 @@ export default function JobDetailScreen() {
             </Text>
             <Text variant="caption" color="secondary">{job.salon.cityId.toUpperCase()}</Text>
           </View>
-        </View>
+          <Text style={{ color: theme.text.secondary, fontSize: 18 }}>›</Text>
+        </TouchableOpacity>
 
         {/* Title + urgent badge */}
         <View style={styles.titleRow}>
@@ -296,7 +310,7 @@ export default function JobDetailScreen() {
               {applied ? '✓ Applied' : 'Apply now'}
             </Button>
           )}
-          <Button variant="secondary" fullWidth onPress={handleMessage}>
+          <Button variant="secondary" fullWidth loading={isMessaging} onPress={() => void handleMessage()}>
             Message salon
           </Button>
         </View>

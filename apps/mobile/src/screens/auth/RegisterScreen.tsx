@@ -25,7 +25,7 @@ export default function RegisterScreen() {
       if (role === 'WORKER') {
         router.replace('/onboarding')
       } else {
-        router.replace('/(tabs)')
+        router.replace('/salon-onboarding' as never)
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Registration failed')

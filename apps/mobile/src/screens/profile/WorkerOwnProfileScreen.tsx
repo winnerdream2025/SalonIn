@@ -8,12 +8,16 @@ import type { PortfolioItem } from '@salonin/types'
 import { Availability } from '@salonin/types'
 import { formatExperience } from '@salonin/utils'
 import { useMyWorkerProfile } from '../../hooks/useWorkerProfile'
+import { useMyApplications } from '../../hooks/useJobDetail'
 import { authApi, workersApi } from '@salonin/api-client'
 import { useAuthStore } from '../../store/authStore'
+import { useAuth } from '../../hooks/useAuth'
 import * as Haptics from 'expo-haptics'
 
 export default function WorkerOwnProfileScreen() {
   const { profile, isLoading, refetch } = useMyWorkerProfile()
+  const { applications } = useMyApplications()
+  const pendingCount = applications.filter((a) => a.status === 'PENDING').length
   const { theme } = useTheme()
 
   const AVAIL_OPTIONS: Array<{ value: Availability; label: string; color: string }> = [
@@ -23,6 +27,7 @@ export default function WorkerOwnProfileScreen() {
     { value: Availability.NOT_AVAILABLE, label: 'Not available', color: theme.avail.none },
   ]
   const clearAuth = useAuthStore((s) => s.clearAuth)
+  const { logout } = useAuth()
   const [showAvailSheet, setShowAvailSheet] = useState(false)
   const [currentAvail, setCurrentAvail] = useState<Availability | null>(null)
 
@@ -40,8 +45,8 @@ export default function WorkerOwnProfileScreen() {
     }
   }
 
-  const handleSignOut = () => {
-    clearAuth()
+  const handleSignOut = async () => {
+    await logout()
     router.replace('/(auth)/login')
   }
 
@@ -152,7 +157,23 @@ export default function WorkerOwnProfileScreen() {
           </Button>
         </View>
 
-        <Pressable onPress={handleSignOut} style={styles.signOutBtn}>
+        <TouchableOpacity
+          style={[styles.applicationsBtn, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}
+          onPress={() => router.push('/worker/applications' as never)}
+          activeOpacity={0.8}
+        >
+          <View style={styles.applicationsBtnLeft}>
+            <Text variant="body" style={{ color: theme.text.primary, fontWeight: '600' }}>My Applications</Text>
+            {pendingCount > 0 && (
+              <View style={[styles.pendingBadge, { backgroundColor: theme.brand.primary }]}>
+                <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '700' }}>{pendingCount}</Text>
+              </View>
+            )}
+          </View>
+          <Text style={{ color: theme.text.secondary, fontSize: 18 }}>›</Text>
+        </TouchableOpacity>
+
+        <Pressable onPress={() => void handleSignOut()} style={styles.signOutBtn}>
           <Text style={{ fontSize: 14, color: theme.text.secondary, fontWeight: '500' }}>
             Sign out
           </Text>
@@ -240,6 +261,24 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   editSection: { marginTop: 16 },
+  applicationsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  applicationsBtnLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  pendingBadge: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
   signOutBtn: { marginTop: 24, padding: 16, alignItems: 'center' },
   deleteBtn: { marginTop: 8, padding: 16, alignItems: 'center' },
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center' },

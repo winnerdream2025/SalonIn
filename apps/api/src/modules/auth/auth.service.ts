@@ -82,7 +82,11 @@ export class AuthService {
   }
 
   async logout(refreshToken: string): Promise<void> {
+    const userId = await this.redis.get(`refresh:${refreshToken}`)
     await this.redis.del(`refresh:${refreshToken}`)
+    if (userId) {
+      await this.prisma.userDevice.deleteMany({ where: { userId } })
+    }
   }
 
   async deleteAccount(userId: string): Promise<void> {

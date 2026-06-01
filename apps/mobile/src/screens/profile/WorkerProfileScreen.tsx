@@ -1,5 +1,5 @@
-import React, { useCallback } from 'react'
-import { View, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native'
+import React, { useCallback, useState } from 'react'
+import { View, ScrollView, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Avatar, Text, AvailabilityBadge, PortfolioGrid, Skeleton, useTheme } from '@salonin/ui'
@@ -8,6 +8,7 @@ import type { PortfolioItem } from '@salonin/types'
 import { formatExperience } from '@salonin/utils'
 import { useWorkerProfile } from '../../hooks/useWorkerProfile'
 import { useAuthStore } from '../../store/authStore'
+import { messagesApi } from '@salonin/api-client'
 
 export default function WorkerProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
@@ -17,22 +18,32 @@ export default function WorkerProfileScreen() {
 
   const isOwner = Boolean(currentUser && profile && currentUser.id === profile.userId)
   const { bottom } = useSafeAreaInsets()
+  const [isMessaging, setIsMessaging] = useState(false)
 
-  const handleMessage = useCallback(() => {
-    if (currentUser) {
-      router.push(`/chat/${id}`)
+  const handleMessage = useCallback(async () => {
+    if (!currentUser) {
+      Alert.alert(
+        'Sign in to message',
+        'Create a free account to message beauty professionals on Salonin.',
+        [
+          { text: 'Create account', onPress: () => router.push('/(auth)/register') },
+          { text: 'Sign in', onPress: () => router.push('/(auth)/login') },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      )
       return
     }
-    Alert.alert(
-      'Sign in to message',
-      'Create a free account to message beauty professionals on Salonin.',
-      [
-        { text: 'Create account', onPress: () => router.push('/(auth)/register') },
-        { text: 'Sign in', onPress: () => router.push('/(auth)/login') },
-        { text: 'Cancel', style: 'cancel' },
-      ]
-    )
-  }, [currentUser, id])
+    if (!profile) return
+    setIsMessaging(true)
+    try {
+      const conv = await messagesApi.createConversation(profile.userId)
+      router.push(`/chat/${conv.id}?name=${encodeURIComponent(profile.name)}` as never)
+    } catch {
+      Alert.alert('Error', 'Could not start conversation. Please try again.')
+    } finally {
+      setIsMessaging(false)
+    }
+  }, [currentUser, profile])
 
   const handlePressItem = (item: PortfolioItem) => {
     if (item.caption) Alert.alert(item.caption)
@@ -122,11 +133,15 @@ export default function WorkerProfileScreen() {
       {!isOwner && profile && (
         <View style={[styles.messageBar, { paddingBottom: bottom + 12 }]}>
           <TouchableOpacity
-            style={styles.messageBtn}
-            onPress={handleMessage}
+            style={[styles.messageBtn, isMessaging && { opacity: 0.7 }]}
+            onPress={() => void handleMessage()}
             activeOpacity={0.85}
+            disabled={isMessaging}
           >
-            <Text variant="body" style={styles.messageBtnText}>Send message</Text>
+            {isMessaging
+              ? <ActivityIndicator color="#FFFFFF" />
+              : <Text variant="body" style={styles.messageBtnText}>Send message</Text>
+            }
           </TouchableOpacity>
         </View>
       )}

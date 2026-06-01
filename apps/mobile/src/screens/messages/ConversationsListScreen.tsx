@@ -11,7 +11,7 @@ const SKELETON_COUNT = 6
 export default function ConversationsListScreen() {
   const { bottom } = useSafeAreaInsets()
   const { theme } = useTheme()
-  const { conversations, isLoading, error, refresh } = useConversations()
+  const { conversations, isLoading, isRefreshing, error, refresh } = useConversations()
 
   const handlePress = useCallback((conv: ConversationPreview) => {
     router.push({
@@ -65,7 +65,7 @@ export default function ConversationsListScreen() {
             </View>
           )
         }
-        refreshing={false}
+        refreshing={isRefreshing}
         onRefresh={() => void refresh()}
         contentContainerStyle={[styles.list, { paddingBottom: 56 + bottom + 16 }]}
         showsVerticalScrollIndicator={false}

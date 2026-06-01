@@ -8,6 +8,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common'
+import { Throttle } from '@nestjs/throttler'
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
 import { CurrentUser } from '../../common/decorators/current-user.decorator'
 import type { User } from '@salonin/types'
@@ -26,6 +27,7 @@ export class MessagingController {
   ) {}
 
   @Post()
+  @Throttle({ short: { limit: 10, ttl: 60000 } })
   async createConversation(
     @CurrentUser() user: User,
     @Body() dto: CreateConversationDto,
@@ -34,6 +36,7 @@ export class MessagingController {
   }
 
   @Get()
+  @Throttle({ short: { limit: 60, ttl: 60000 } })
   async getConversations(@CurrentUser() user: User) {
     return this.messagingService.getConversations(user.id)
   }
@@ -48,6 +51,7 @@ export class MessagingController {
   }
 
   @Post(':id/messages')
+  @Throttle({ short: { limit: 30, ttl: 60000 } })
   async sendMessage(
     @Param('id') id: string,
     @CurrentUser() user: User,

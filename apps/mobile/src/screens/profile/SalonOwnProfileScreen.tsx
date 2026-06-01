@@ -17,12 +17,14 @@ import type { JobPostCardData } from '@salonin/types'
 import { useMySalonProfile } from '../../hooks/useMySalonProfile'
 import { authApi, salonsApi } from '@salonin/api-client'
 import { useAuthStore } from '../../store/authStore'
+import { useAuth } from '../../hooks/useAuth'
 import * as Haptics from 'expo-haptics'
 
 export default function SalonOwnProfileScreen() {
   const { salon, jobs, isLoading, error, refetch } = useMySalonProfile()
   const { theme } = useTheme()
   const clearAuth = useAuthStore((s) => s.clearAuth)
+  const { logout } = useAuth()
   const [hiringOverride, setHiringOverride] = useState<boolean | null>(null)
 
   const isHiring = hiringOverride ?? salon?.isHiring ?? false
@@ -39,8 +41,8 @@ export default function SalonOwnProfileScreen() {
     }
   }
 
-  const handleSignOut = () => {
-    clearAuth()
+  const handleSignOut = async () => {
+    await logout()
     router.replace('/(auth)/login')
   }
 
@@ -199,7 +201,7 @@ export default function SalonOwnProfileScreen() {
           </Button>
         </View>
 
-        <Pressable onPress={handleSignOut} style={styles.signOutBtn}>
+        <Pressable onPress={() => void handleSignOut()} style={styles.signOutBtn}>
           <Text style={{ fontSize: 14, color: theme.text.secondary, fontWeight: '500' }}>
             Sign out
           </Text>
