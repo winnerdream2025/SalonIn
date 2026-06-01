@@ -80,7 +80,7 @@ export function JobPostCard({ job, onClick }: { job: JobPostCardData; onClick: (
         </span>
         <span
           style={{
-            color: '#888888',
+            color: 'var(--color-text-tertiary)',
             fontSize: 10,
             overflow: 'hidden',
             whiteSpace: 'nowrap',
@@ -89,12 +89,12 @@ export function JobPostCard({ job, onClick }: { job: JobPostCardData; onClick: (
         >
           {job.salonName}
         </span>
-        <span style={{ color: '#666666', fontSize: 10 }}>
+        <span style={{ color: 'var(--color-text-secondary)', fontSize: 10 }}>
           {job.specialty} · {typeLabel}
         </span>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ color: '#D85A30', fontSize: 10, fontWeight: 600 }}>{job.payStructure}</span>
-          <span style={{ color: expired ? '#E74C3C' : '#555555', fontSize: 9 }}>{expiryStr}</span>
+          <span style={{ color: expired ? 'var(--color-error)' : 'var(--color-text-tertiary)', fontSize: 9 }}>{expiryStr}</span>
         </div>
       </div>
 

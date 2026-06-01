@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react'
 import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Linking, Text as RNText } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Input, Button, Text, useTheme } from '@salonin/ui'
 import { useAuth } from '../../hooks/useAuth'
@@ -9,6 +10,7 @@ import type { Role } from '@salonin/types'
 export default function RegisterScreen() {
   const { register, isLoading } = useAuth()
   const { theme } = useTheme()
+  const insets = useSafeAreaInsets()
   const params = useLocalSearchParams<{ role?: string }>()
   const role = (params.role ?? 'WORKER') as Role
 
@@ -37,7 +39,10 @@ export default function RegisterScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={[styles.container, { backgroundColor: theme.bg.base }]}
     >
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={[styles.scroll, { paddingTop: insets.top, paddingBottom: insets.bottom + 24 }]}
+        keyboardShouldPersistTaps="handled"
+      >
         <Text variant="heading" style={styles.title}>Create account</Text>
         <Text variant="body" color="secondary" style={styles.subtitle}>
           {role === 'WORKER' ? 'Join as a beauty professional' : 'Register your salon'}

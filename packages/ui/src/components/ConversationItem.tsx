@@ -53,7 +53,7 @@ export function ConversationItem({ conversation, onPress }: ConversationItemProp
             {otherParticipant.name}
           </Text>
           {lastMessage != null && (
-            <Text style={[styles.time, { color: theme.text.secondary }]}>
+            <Text style={[styles.time, { color: theme.text.secondary }]} numberOfLines={1}>
               {formatTime(lastMessage.createdAt)}
             </Text>
           )}
@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
 
   info: { flex: 1, minWidth: 0, gap: 3 },
 
-  nameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  nameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minWidth: 0 },
   name: { fontSize: 14, fontWeight: '600', flex: 1, marginRight: 8 },
   time: { fontSize: 11 },
 

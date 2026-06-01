@@ -43,6 +43,7 @@ export function PortfolioItemSkeleton() {
 
 const WRAP: ViewStyle = {
   flex: 1,
+  minWidth: 0,
   aspectRatio: 1,
   padding: 1,
   overflow: 'hidden',

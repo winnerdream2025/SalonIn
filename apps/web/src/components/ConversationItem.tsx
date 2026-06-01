@@ -95,7 +95,7 @@ export function ConversationItem({ conversation, isSelected, onClick }: Conversa
             {otherParticipant.name}
           </span>
           {lastMessage != null && (
-            <span style={{ color: '#555', fontSize: 11, flexShrink: 0 }}>
+            <span style={{ color: 'var(--color-text-tertiary)', fontSize: 11, flexShrink: 0 }}>
               {formatTime(lastMessage.createdAt)}
             </span>
           )}

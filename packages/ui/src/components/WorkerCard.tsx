@@ -56,7 +56,7 @@ export function WorkerCard({ worker, onPress, isLoading = false, onLongPress }: 
       {/* Meta — distance */}
       {worker.distanceMiles !== null && (
         <View style={META}>
-          <Text style={DIST}>{formatDistance(worker.distanceMiles)}</Text>
+          <Text style={DIST} numberOfLines={1}>{formatDistance(worker.distanceMiles)}</Text>
         </View>
       )}
     </TouchableOpacity>

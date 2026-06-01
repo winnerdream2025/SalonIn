@@ -51,7 +51,7 @@ export function JobPostCard({ job, onPress, isLoading = false }: JobPostCardProp
         <Text style={SALON_NAME} numberOfLines={1}>{job.salonName}</Text>
         <Text style={META} numberOfLines={1}>{job.specialty} · {typeLabel}</Text>
         <View style={BOTTOM_ROW}>
-          <Text style={PAY}>{job.payStructure}</Text>
+          <Text style={PAY} numberOfLines={1}>{job.payStructure}</Text>
           <Text style={expired ? EXPIRY_EXPIRED : EXPIRY}>{expiryStr}</Text>
         </View>
       </View>
@@ -153,7 +153,7 @@ const EXPIRY: TextStyle = {
 }
 
 const EXPIRY_EXPIRED: TextStyle = {
-  color: '#E74C3C',
+  color: '#E24B4A',
   fontSize: 9,
 }
 

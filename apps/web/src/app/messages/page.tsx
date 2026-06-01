@@ -45,7 +45,7 @@ export default function MessagesPage() {
                   style={{
                     padding: 40,
                     textAlign: 'center',
-                    color: '#555',
+                    color: 'var(--color-text-tertiary)',
                     fontSize: 14,
                   }}
                 >

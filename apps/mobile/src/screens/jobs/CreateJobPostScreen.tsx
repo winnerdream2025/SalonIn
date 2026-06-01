@@ -277,6 +277,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: '#FFFFFF',
   },
-  errorText: { color: '#E74C3C', marginBottom: 12 },
+  errorText: { color: '#E24B4A', marginBottom: 12 },
   submitWrap: { marginTop: 8 },
 })

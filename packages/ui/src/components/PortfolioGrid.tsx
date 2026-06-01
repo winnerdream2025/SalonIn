@@ -84,6 +84,7 @@ const SKELETON_CELL: ViewStyle = {
 
 const SKELETON_INNER: ViewStyle = {
   flex: 1,
+  minWidth: 0,
   backgroundColor: '#1E1E1E',
   borderRadius: 4,
 }

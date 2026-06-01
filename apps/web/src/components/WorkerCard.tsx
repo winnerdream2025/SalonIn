@@ -92,7 +92,7 @@ export function WorkerCard({ worker, onClick }: { worker: WorkerCardData; onClic
         </span>
         <span
           style={{
-            color: '#888888',
+            color: 'var(--color-text-tertiary)',
             fontSize: 10,
             overflow: 'hidden',
             textOverflow: 'ellipsis',

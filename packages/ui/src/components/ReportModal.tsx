@@ -160,6 +160,7 @@ const RADIO_ACTIVE: ViewStyle = {
 
 const OPTION_TEXT_WRAP: ViewStyle = {
   flex: 1,
+  minWidth: 0,
   gap: 2,
 }
 
