@@ -5,6 +5,7 @@ import { ScheduleModule } from '@nestjs/schedule'
 import { APP_GUARD } from '@nestjs/core'
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler'
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis'
+import Redis from 'ioredis'
 import { PrismaModule } from './prisma/prisma.module'
 import { RedisModule } from './redis/redis.module'
 import { AuthModule } from './modules/auth/auth.module'
@@ -25,10 +26,20 @@ import { HealthModule } from './health/health.module'
     ScheduleModule.forRoot(),
     ThrottlerModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (config: ConfigService) => ({
-        throttlers: [{ name: 'short', ttl: 60000, limit: 10 }],
-        storage: new ThrottlerStorageRedisService(config.getOrThrow<string>('REDIS_URL')),
-      }),
+      useFactory: (config: ConfigService) => {
+        const redisUrl = new URL(config.getOrThrow<string>('REDIS_URL'))
+        const redis = new Redis({
+          host: redisUrl.hostname,
+          port: Number(redisUrl.port),
+          username: redisUrl.username || undefined,
+          password: redisUrl.password || undefined,
+          tls: redisUrl.protocol === 'rediss:' ? {} : undefined,
+        })
+        return {
+          throttlers: [{ name: 'short', ttl: 60000, limit: 10 }],
+          storage: new ThrottlerStorageRedisService(redis),
+        }
+      },
       inject: [ConfigService],
     }),
     BullModule.forRootAsync({

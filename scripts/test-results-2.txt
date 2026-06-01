@@ -1,62 +1,60 @@
 
 ── AUTH FLOW ──────────────────────────────────────────────
-⚠️   POST /auth/register (worker) — 902ms (SLOW >500ms)
-⚠️   POST /auth/register (salon) — 680ms (SLOW >500ms)
-⚠️   POST /auth/login (worker) — 647ms (SLOW >500ms)
-✅  POST /auth/login (salon) — 414ms
-✅  POST /auth/refresh (worker) — 100ms
-✅  POST /auth/logout (worker) — 91ms
-✅  POST /auth/login (re-login after logout) — 406ms
+✅  POST /auth/register (worker) — 380ms
+✅  POST /auth/register (salon) — 314ms
+✅  POST /auth/login (worker) — 270ms
+✅  POST /auth/login (salon) — 268ms
+✅  POST /auth/refresh (worker) — 85ms
+✅  POST /auth/logout (worker) — 102ms
+✅  POST /auth/login (re-login after logout) — 296ms
 
 ── WORKERS ──────────────────────────────────────────────
-✅  GET /workers/nearby (PostGIS) — 106ms
-✅  GET /workers/me — 113ms
-✅  GET /workers/:id (public) — 111ms
-✅  PATCH /workers/me (update bio) — 107ms
-✅  PATCH /workers/availability (NOW) — 110ms
-✅  POST /workers/location — 109ms
+✅  GET /workers/nearby (PostGIS) — 167ms
+✅  GET /workers/me — 122ms
+✅  GET /workers/:id (public) — 91ms
+✅  PATCH /workers/me (update bio) — 117ms
+✅  PATCH /workers/availability (NOW) — 98ms
+✅  POST /workers/location — 115ms
 
 ── SALONS ──────────────────────────────────────────────
-✅  GET /salons/me — 101ms
-✅  GET /salons/:id (public) — 115ms
-❌  PATCH /salons/me (update bio) — HTTP 400 (expected 200) — 100ms
-     body: {"success":false,"error":"property bio should not exist","code":"BADREQUEST","statusCode":400}
-✅  PATCH /salons/hiring-status (isHiring=true) — 116ms
+✅  GET /salons/me — 121ms
+✅  GET /salons/:id (public) — 220ms
+✅  PATCH /salons/me (update bio) — 103ms
+✅  PATCH /salons/hiring-status (isHiring=true) — 114ms
 
 ── JOBS ──────────────────────────────────────────────
-✅  POST /jobs (create) — 112ms
-✅  GET /jobs?cityId=dmv — 102ms
-✅  GET /jobs/:id — 96ms
-✅  POST /jobs/:id/apply — 122ms
-✅  GET /jobs/:id/applicants (salon) — 111ms
-✅  GET /workers/me/applications — 113ms
-✅  PATCH /jobs/:id (update title) — 173ms
-✅  DELETE /jobs/:id (soft delete) — 118ms
+✅  POST /jobs (create) — 110ms
+✅  GET /jobs?cityId=dmv — 115ms
+✅  GET /jobs/:id — 87ms
+✅  POST /jobs/:id/apply — 113ms
+✅  GET /jobs/:id/applicants (salon) — 144ms
+✅  GET /workers/me/applications — 108ms
+✅  PATCH /jobs/:id (update title) — 127ms
+✅  DELETE /jobs/:id (soft delete) — 94ms
 
 ── MESSAGING ──────────────────────────────────────────────
-✅  POST /conversations (worker→salon) — 162ms
-✅  GET /conversations — 127ms
-✅  POST /conversations/:id/messages — 105ms
-✅  GET /conversations/:id/messages — 100ms
-✅  PATCH /conversations/:id/read — 109ms
+✅  POST /conversations (worker→salon) — 126ms
+✅  GET /conversations — 101ms
+✅  POST /conversations/:id/messages — 115ms
+✅  GET /conversations/:id/messages — 163ms
+✅  PATCH /conversations/:id/read — 93ms
 
 ── MEDIA ──────────────────────────────────────────────
-❌  POST /media/upload — HTTP 500 — 523ms
+❌  POST /media/upload — HTTP 500 — 441ms
 
 ── VERIFY ──────────────────────────────────────────────
-❌  POST /verify/identity — HTTP 500 (expected 200 201 402) — 221ms
+❌  POST /verify/identity — HTTP 500 (expected 200 201 402) — 272ms
      body: {"success":false,"error":"Internal server error","code":"INTERNAL_ERROR","statusCode":500}
 
 ── REPORTS ──────────────────────────────────────────────
-✅  POST /reports (worker reports salon) — 128ms
-❌  POST /reports (duplicate — should 409 or 201) — HTTP 400 (expected 201 409) — 106ms
-     body: {"success":false,"error":"You have already submitted this report","code":"BADREQUEST","statusCode":400}
+✅  POST /reports (worker reports salon) — 157ms
+✅  POST /reports (duplicate — should 409 400 201) — 96ms
 
 ── DEVICES ──────────────────────────────────────────────
-✅  POST /devices (register push token) — 113ms
+✅  POST /devices (register push token) — 88ms
 
 ── HEALTH ──────────────────────────────────────────────
-✅  GET /health — 81ms
+✅  GET /health — 92ms
 ✅  GET /health — db+cache verified
 
 ── RATE LIMITING ──────────────────────────────────────────────
@@ -66,9 +64,9 @@
 ── SUMMARY ──────────────────────────────────────────────
 
 ════════════════════════════════════════════
-  PASSED:       29
-  FAILED:       5
-  SLOW (>500ms): 3
-  AVG LATENCY:  191ms
+  PASSED:       34
+  FAILED:       3
+  SLOW (>500ms): 0
+  AVG LATENCY:  153ms
   TOTAL CALLS:  37
 ════════════════════════════════════════════
