@@ -1,0 +1,7 @@
+
+── AUTH FLOW ──────────────────────────────────────────────
+❌  POST /auth/register (worker) — HTTP 000 (expected 201) — 10048ms
+❌  POST /auth/register (salon) — HTTP 000 (expected 201) — 10049ms
+❌  POST /auth/login (worker) — HTTP 000 (expected 200) — 10051ms
+❌  POST /auth/login (salon) — HTTP 000 (expected 200) — 10045ms
+❌  POST /auth/logout (worker) — HTTP 000 (expected 204) — 10048ms
