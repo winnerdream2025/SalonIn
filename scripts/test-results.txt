@@ -1,0 +1,80 @@
+
+── AUTH FLOW ──────────────────────────────────────────────
+✅  POST /auth/register (worker) — 329ms
+✅  POST /auth/register (salon) — 318ms
+✅  POST /auth/login (worker) — 300ms
+✅  POST /auth/login (salon) — 304ms
+✅  POST /auth/refresh (worker) — 91ms
+❌  POST /auth/logout (worker) — HTTP 401 (expected 200) — 140ms
+     body: {"success":false,"error":"Unauthorized","code":"UNAUTHORIZED","statusCode":401}
+✅  POST /auth/login (re-login after logout) — 366ms
+
+── WORKERS ──────────────────────────────────────────────
+✅  GET /workers/nearby (PostGIS) — 80ms
+✅  GET /workers/me — 115ms
+✅  GET /workers/:id (public) — 92ms
+✅  PATCH /workers/me (update bio) — 98ms
+✅  PATCH /workers/availability (NOW) — 182ms
+❌  POST /workers/location — HTTP 204 (expected 201) — 100ms
+
+── SALONS ──────────────────────────────────────────────
+✅  GET /salons/me — 124ms
+✅  GET /salons/:id (public) — 96ms
+❌  PATCH /salons/me (update bio) — HTTP 400 (expected 200) — 94ms
+     body: {"success":false,"error":"property bio should not exist","code":"BADREQUEST","statusCode":400}
+✅  PATCH /salons/hiring-status (isHiring=true) — 104ms
+
+── JOBS ──────────────────────────────────────────────
+✅  POST /jobs (create) — 105ms
+✅  GET /jobs?cityId=dmv — 105ms
+✅  GET /jobs/:id — 143ms
+❌  POST /jobs/:id/apply — HTTP 404 (expected 201) — 71ms
+     body: {"success":false,"error":"Cannot POST /jobs/188e29e4-6002-4f2c-9fe0-813f95993bb7/apply","code":"NOTFOUND","statusCode":404}
+❌  GET /jobs/:id/applicants (salon) — HTTP 404 (expected 200) — 90ms
+     body: {"success":false,"error":"Cannot GET /jobs/188e29e4-6002-4f2c-9fe0-813f95993bb7/applicants","code":"NOTFOUND","statusCode":404}
+❌  GET /workers/me/applications — HTTP 404 (expected 200) — 94ms
+     body: {"success":false,"error":"Cannot GET /workers/me/applications","code":"NOTFOUND","statusCode":404}
+✅  PATCH /jobs/:id (update title) — 102ms
+❌  DELETE /jobs/:id (soft delete) — HTTP 204 (expected 200) — 99ms
+
+── MESSAGING ──────────────────────────────────────────────
+✅  POST /conversations (worker→salon) — 182ms
+✅  GET /conversations — 156ms
+✅  POST /conversations/:id/messages — 104ms
+✅  GET /conversations/:id/messages — 172ms
+✅  PATCH /conversations/:id/read — 123ms
+
+── MEDIA ──────────────────────────────────────────────
+❌  POST /media/upload — HTTP 500 — 631ms
+
+── VERIFY ──────────────────────────────────────────────
+❌  POST /verify/identity — HTTP 500 (expected 200 201 402) — 300ms
+     body: {"success":false,"error":"Internal server error","code":"INTERNAL_ERROR","statusCode":500}
+
+── REPORTS ──────────────────────────────────────────────
+❌  POST /reports (worker reports salon) — HTTP 400 (expected 201) — 92ms
+     body: {"success":false,"error":"property reportedId should not exist, reportedUserId must be a UUID","code":"BADREQUEST","statusCode":400}
+❌  POST /reports (duplicate — should 409 or 201) — HTTP 400 (expected 201 409) — 81ms
+     body: {"success":false,"error":"property reportedId should not exist, reportedUserId must be a UUID","code":"BADREQUEST","statusCode":400}
+
+── DEVICES ──────────────────────────────────────────────
+❌  POST /devices (register push token) — HTTP 500 (expected 201) — 108ms
+     body: {"success":false,"error":"Internal server error","code":"INTERNAL_ERROR","statusCode":500}
+
+── HEALTH ──────────────────────────────────────────────
+✅  GET /health — 88ms
+✅  GET /health — db+cache verified
+
+── RATE LIMITING ──────────────────────────────────────────────
+  Hitting POST /auth/login 6× rapidly to trigger rate limit...
+❌  POST /auth/login rate-limit — no 429 after 6 attempts (throttler may not be active)
+
+── SUMMARY ──────────────────────────────────────────────
+
+════════════════════════════════════════════
+  PASSED:       24
+  FAILED:       13
+  SLOW (>500ms): 0
+  AVG LATENCY:  157ms
+  TOTAL CALLS:  37
+════════════════════════════════════════════
