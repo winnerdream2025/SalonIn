@@ -312,9 +312,19 @@ call "PATCH /conversations/:id/read" "200" \
 section "MEDIA"
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Create a minimal 1x1 PNG (base64 encoded)
+# Create a valid 1x1 PNG via Python (printf mangled binary bytes in zsh)
 TMPIMG=$(mktemp /tmp/test-img-XXXX.png)
-printf '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\xf8\x0f\x00\x00\x01\x01\x00\x05\x18\xd8N\x00\x00\x00\x00IEND\xaeB`\x82' > "$TMPIMG"
+python3 - <<'PYEOF' > "$TMPIMG"
+import struct, zlib, sys
+sig = b'\x89PNG\r\n\x1a\n'
+def chunk(name, data):
+    c = struct.pack('>I', len(data)) + name + data
+    return c + struct.pack('>I', zlib.crc32(name + data) & 0xffffffff)
+ihdr = chunk(b'IHDR', struct.pack('>IIBBBBB', 1, 1, 8, 2, 0, 0, 0))
+idat = chunk(b'IDAT', zlib.compress(b'\x00\xff\x00\x00'))
+iend = chunk(b'IEND', b'')
+sys.stdout.buffer.write(sig + ihdr + idat + iend)
+PYEOF
 
 tmpfile=$(mktemp)
 start=$(now_ms)

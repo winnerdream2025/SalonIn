@@ -1,60 +1,60 @@
 
 ── AUTH FLOW ──────────────────────────────────────────────
-✅  POST /auth/register (worker) — 380ms
-✅  POST /auth/register (salon) — 314ms
-✅  POST /auth/login (worker) — 270ms
-✅  POST /auth/login (salon) — 268ms
-✅  POST /auth/refresh (worker) — 85ms
-✅  POST /auth/logout (worker) — 102ms
-✅  POST /auth/login (re-login after logout) — 296ms
+✅  POST /auth/register (worker) — 286ms
+✅  POST /auth/register (salon) — 295ms
+✅  POST /auth/login (worker) — 247ms
+✅  POST /auth/login (salon) — 244ms
+✅  POST /auth/refresh (worker) — 86ms
+✅  POST /auth/logout (worker) — 89ms
+✅  POST /auth/login (re-login after logout) — 253ms
 
 ── WORKERS ──────────────────────────────────────────────
-✅  GET /workers/nearby (PostGIS) — 167ms
-✅  GET /workers/me — 122ms
+✅  GET /workers/nearby (PostGIS) — 151ms
+✅  GET /workers/me — 98ms
 ✅  GET /workers/:id (public) — 91ms
-✅  PATCH /workers/me (update bio) — 117ms
-✅  PATCH /workers/availability (NOW) — 98ms
-✅  POST /workers/location — 115ms
+✅  PATCH /workers/me (update bio) — 103ms
+✅  PATCH /workers/availability (NOW) — 92ms
+✅  POST /workers/location — 104ms
 
 ── SALONS ──────────────────────────────────────────────
-✅  GET /salons/me — 121ms
-✅  GET /salons/:id (public) — 220ms
-✅  PATCH /salons/me (update bio) — 103ms
-✅  PATCH /salons/hiring-status (isHiring=true) — 114ms
+✅  GET /salons/me — 90ms
+✅  GET /salons/:id (public) — 115ms
+✅  PATCH /salons/me (update bio) — 131ms
+✅  PATCH /salons/hiring-status (isHiring=true) — 93ms
 
 ── JOBS ──────────────────────────────────────────────
-✅  POST /jobs (create) — 110ms
-✅  GET /jobs?cityId=dmv — 115ms
-✅  GET /jobs/:id — 87ms
-✅  POST /jobs/:id/apply — 113ms
-✅  GET /jobs/:id/applicants (salon) — 144ms
-✅  GET /workers/me/applications — 108ms
-✅  PATCH /jobs/:id (update title) — 127ms
-✅  DELETE /jobs/:id (soft delete) — 94ms
+✅  POST /jobs (create) — 98ms
+✅  GET /jobs?cityId=dmv — 101ms
+✅  GET /jobs/:id — 86ms
+✅  POST /jobs/:id/apply — 96ms
+✅  GET /jobs/:id/applicants (salon) — 111ms
+⚠️   GET /workers/me/applications — 621ms (SLOW >500ms)
+✅  PATCH /jobs/:id (update title) — 111ms
+✅  DELETE /jobs/:id (soft delete) — 95ms
 
 ── MESSAGING ──────────────────────────────────────────────
-✅  POST /conversations (worker→salon) — 126ms
-✅  GET /conversations — 101ms
-✅  POST /conversations/:id/messages — 115ms
-✅  GET /conversations/:id/messages — 163ms
-✅  PATCH /conversations/:id/read — 93ms
+✅  POST /conversations (worker→salon) — 138ms
+✅  GET /conversations — 111ms
+✅  POST /conversations/:id/messages — 124ms
+✅  GET /conversations/:id/messages — 90ms
+✅  PATCH /conversations/:id/read — 82ms
 
 ── MEDIA ──────────────────────────────────────────────
-❌  POST /media/upload — HTTP 500 — 441ms
+✅  POST /media/upload — 454ms
 
 ── VERIFY ──────────────────────────────────────────────
-❌  POST /verify/identity — HTTP 500 (expected 200 201 402) — 272ms
+❌  POST /verify/identity — HTTP 500 (expected 200 201 402) — 373ms
      body: {"success":false,"error":"Internal server error","code":"INTERNAL_ERROR","statusCode":500}
 
 ── REPORTS ──────────────────────────────────────────────
-✅  POST /reports (worker reports salon) — 157ms
-✅  POST /reports (duplicate — should 409 400 201) — 96ms
+✅  POST /reports (worker reports salon) — 145ms
+✅  POST /reports (duplicate — should 409 400 201) — 83ms
 
 ── DEVICES ──────────────────────────────────────────────
-✅  POST /devices (register push token) — 88ms
+✅  POST /devices (register push token) — 107ms
 
 ── HEALTH ──────────────────────────────────────────────
-✅  GET /health — 92ms
+✅  GET /health — 81ms
 ✅  GET /health — db+cache verified
 
 ── RATE LIMITING ──────────────────────────────────────────────
@@ -65,8 +65,8 @@
 
 ════════════════════════════════════════════
   PASSED:       34
-  FAILED:       3
-  SLOW (>500ms): 0
-  AVG LATENCY:  153ms
+  FAILED:       2
+  SLOW (>500ms): 1
+  AVG LATENCY:  154ms
   TOTAL CALLS:  37
 ════════════════════════════════════════════
