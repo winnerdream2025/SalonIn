@@ -1299,7 +1299,7 @@ DEPENDENCIES:
   - "EXNotifications (from `../../../node_modules/.pnpm/expo-notifications@0.28.19_expo@51.0.39_@babel+core@7.29.7_@babel+preset-env@7.29.7_@babel+co_okqbx5rgjjluiimxe7ueq3xauy/node_modules/expo-notifications/ios`)"
   - "Expo (from `../../../node_modules/.pnpm/expo@51.0.39_@babel+core@7.29.7_@babel+preset-env@7.29.7_@babel+core@7.29.7__react-native@0.7_e27fqrisfqffrw5uwvohu3upf4/node_modules/expo`)"
   - "ExpoAsset (from `../../../node_modules/.pnpm/expo-asset@10.0.10_expo@51.0.39_@babel+core@7.29.7_@babel+preset-env@7.29.7_@babel+core@7.29._gjw3drhnde2wkoyamjresjrdwy/node_modules/expo-asset/ios`)"
-  - "ExpoDevice (from `../../../node_modules/.pnpm/expo-device@5.9.4_patch_hash=pg6ipxoypx3uo54fwap2xhabj4_expo@51.0.39_@babel+core@7.29.7_@babe_4t6dnxjoy6acjaidebsklru5fq/node_modules/expo-device/ios`)"
+  - "ExpoDevice (from `../../../node_modules/.pnpm/expo-device@5.9.4_patch_hash=zfijnub3xho4jlgzyps6v2zw74_expo@51.0.39_@babel+core@7.29.7_@babe_7qqc7kvss7en567zlfso7idrw4/node_modules/expo-device/ios`)"
   - "ExpoFileSystem (from `../../../node_modules/.pnpm/expo-file-system@17.0.1_expo@51.0.39_@babel+core@7.29.7_@babel+preset-env@7.29.7_@babel+core@_owthmo43tkw2zny43x77yiug5q/node_modules/expo-file-system/ios`)"
   - "ExpoFont (from `../../../node_modules/.pnpm/expo-font@12.0.10_expo@51.0.39_@babel+core@7.29.7_@babel+preset-env@7.29.7_@babel+core@7.29.7_lcyou6zeegbf24u6fnd6evxgei/node_modules/expo-font/ios`)"
   - "ExpoHaptics (from `../../../node_modules/.pnpm/expo-haptics@13.0.1_expo@51.0.39_@babel+core@7.29.7_@babel+preset-env@7.29.7_@babel+core@7.29_44khl27f4kewrs3dbcl553c5lm/node_modules/expo-haptics/ios`)"
@@ -1394,7 +1394,7 @@ EXTERNAL SOURCES:
   ExpoAsset:
     :path: "../../../node_modules/.pnpm/expo-asset@10.0.10_expo@51.0.39_@babel+core@7.29.7_@babel+preset-env@7.29.7_@babel+core@7.29._gjw3drhnde2wkoyamjresjrdwy/node_modules/expo-asset/ios"
   ExpoDevice:
-    :path: "../../../node_modules/.pnpm/expo-device@5.9.4_patch_hash=pg6ipxoypx3uo54fwap2xhabj4_expo@51.0.39_@babel+core@7.29.7_@babe_4t6dnxjoy6acjaidebsklru5fq/node_modules/expo-device/ios"
+    :path: "../../../node_modules/.pnpm/expo-device@5.9.4_patch_hash=zfijnub3xho4jlgzyps6v2zw74_expo@51.0.39_@babel+core@7.29.7_@babe_7qqc7kvss7en567zlfso7idrw4/node_modules/expo-device/ios"
   ExpoFileSystem:
     :path: "../../../node_modules/.pnpm/expo-file-system@17.0.1_expo@51.0.39_@babel+core@7.29.7_@babel+preset-env@7.29.7_@babel+core@_owthmo43tkw2zny43x77yiug5q/node_modules/expo-file-system/ios"
   ExpoFont:

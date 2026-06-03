@@ -24,3 +24,5 @@ export { verifyApi } from './verify.api'
 export { reportsApi } from './reports.api'
 
 export { devicesApi } from './devices.api'
+
+export { chatRequestsApi } from './chat-requests.api'

@@ -1,14 +1,18 @@
-import React from 'react'
-import { View, Text, Image, TouchableOpacity } from 'react-native'
-import type { ViewStyle, TextStyle, ImageStyle } from 'react-native'
+import React, { useRef, useCallback } from 'react'
+import { View, Text, Pressable, Animated, StyleSheet } from 'react-native'
 import type { JobPostCardData } from '@salonin/types'
-import { isJobExpired, getAvatarGradient } from '@salonin/utils'
+import { isJobExpired } from '@salonin/utils'
 import { Skeleton } from '../primitives/Skeleton'
+import { Avatar } from '../primitives/Avatar'
+import { useTheme } from '../hooks/useTheme'
 
 export interface JobPostCardProps {
   job: JobPostCardData
   onPress: () => void
   isLoading?: boolean
+  onApply?: () => void
+  onSave?: () => void
+  isSaved?: boolean
 }
 
 const TYPE_LABEL: Record<string, string> = {
@@ -19,156 +23,244 @@ const TYPE_LABEL: Record<string, string> = {
   EMERGENCY: 'Emergency',
 }
 
-export function JobPostCard({ job, onPress, isLoading = false }: JobPostCardProps) {
+function daysUntil(expiresAt: string): number {
+  return Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 86_400_000)
+}
+
+export function JobPostCard({ job, onPress, isLoading = false, onApply, onSave, isSaved = false }: JobPostCardProps) {
+  const { theme } = useTheme()
+  const scale = useRef(new Animated.Value(1)).current
+
+  const animIn = useCallback(() => {
+    Animated.timing(scale, { toValue: 0.97, duration: 100, useNativeDriver: true }).start()
+  }, [scale])
+
+  const animOut = useCallback(() => {
+    Animated.timing(scale, { toValue: 1, duration: 150, useNativeDriver: true }).start()
+  }, [scale])
+
   if (isLoading) return <JobPostCardSkeleton />
 
-  const [bgColor] = getAvatarGradient(job.salonName)
   const expired = isJobExpired(job.expiresAt)
   const typeLabel = TYPE_LABEL[job.type] ?? job.type
-
-  const expiryStr = expired
-    ? 'Expired'
-    : `Exp ${new Date(job.expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+  const days = daysUntil(job.expiresAt)
+  const expiryColor = expired ? theme.semantic.error.text : days <= 2 ? theme.semantic.error.text : theme.text.tertiary
+  const expiryStr = expired ? 'Expired' : `Expires in ${days}d`
 
   return (
-    <TouchableOpacity style={CARD} onPress={onPress} activeOpacity={0.8}>
-      {/* Salon avatar */}
-      <View style={[AVATAR_WRAP, { backgroundColor: bgColor }]}>
-        {job.salonPhotoUrl ? (
-          <Image
-            source={{ uri: job.salonPhotoUrl }}
-            style={AVATAR_IMG}
-            resizeMode="cover"
-          />
-        ) : (
-          <Text style={AVATAR_INITIALS}>{job.salonName[0]?.toUpperCase() ?? 'S'}</Text>
+    <Animated.View style={{ transform: [{ scale }] }}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={animIn}
+        onPressOut={animOut}
+        style={[styles.card, {
+          backgroundColor: theme.bg.card,
+          borderColor: theme.border.default,
+        }]}
+      >
+        {/* ── Salon header ── */}
+        <View style={styles.salonRow}>
+          <Avatar uri={job.salonPhotoUrl} name={job.salonName} size="sm" />
+          <View style={styles.salonInfo}>
+            <Text style={[styles.salonName, { color: theme.text.secondary }]} numberOfLines={1}>
+              {job.salonName}
+            </Text>
+            <Text style={[styles.salonLoc, { color: theme.text.tertiary }]} numberOfLines={1}>
+              📍 {job.cityId.toUpperCase()}
+            </Text>
+          </View>
+          {job.isUrgent && !expired && (
+            <View style={styles.urgentPill}>
+              <View style={styles.urgentDot} />
+              <Text style={styles.urgentText}>Urgent</Text>
+            </View>
+          )}
+        </View>
+
+        {/* ── Separator ── */}
+        <View style={[styles.sep, { backgroundColor: theme.border.subtle }]} />
+
+        {/* ── Job title ── */}
+        <Text style={[styles.title, { color: theme.text.primary }]} numberOfLines={2} ellipsizeMode="tail">
+          {job.title}
+        </Text>
+
+        {/* ── Pills row ── */}
+        <View style={styles.pillsRow}>
+          <View style={[styles.pill, { backgroundColor: theme.bg.elevated }]}>
+            <Text style={[styles.pillText, { color: theme.text.secondary }]}>{job.specialty}</Text>
+          </View>
+          <View style={[styles.pill, { backgroundColor: 'rgba(55,138,221,0.12)' }]}>
+            <Text style={[styles.pillText, { color: '#60B4FF' }]}>{typeLabel}</Text>
+          </View>
+        </View>
+
+        {/* ── Separator ── */}
+        <View style={[styles.sep, { backgroundColor: theme.border.subtle }]} />
+
+        {/* ── Info rows ── */}
+        <View style={styles.infoRows}>
+          <Text style={[styles.infoRow, { color: theme.text.secondary }]} numberOfLines={1}>
+            {'💰  '}<Text style={{ color: '#D85A30', fontWeight: '700' }}>{job.payStructure}</Text>
+          </Text>
+          <Text style={[styles.infoRow, { color: expiryColor }]} numberOfLines={1}>
+            {'⏱  '}{expiryStr}
+          </Text>
+          {job.applicantCount !== undefined && (
+            <Text style={[styles.infoRow, { color: job.applicantCount > 10 ? '#EF9F27' : theme.text.secondary }]} numberOfLines={1}>
+              {'👥  '}{job.applicantCount} applicant{job.applicantCount !== 1 ? 's' : ''}
+            </Text>
+          )}
+        </View>
+
+        {/* ── Footer: save + apply ── */}
+        {(onSave ?? onApply) && (
+          <>
+            <View style={[styles.sep, { backgroundColor: theme.border.subtle }]} />
+            <View style={styles.footer}>
+              {onSave && (
+                <Pressable onPress={onSave} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Text style={[styles.saveBtn, { color: isSaved ? '#D85A30' : theme.text.tertiary }]}>
+                    {isSaved ? '🔖 Saved' : '🔖 Save'}
+                  </Text>
+                </Pressable>
+              )}
+              {onApply && !expired && (
+                <Pressable
+                  onPress={onApply}
+                  style={styles.applyBtn}
+                >
+                  <Text style={styles.applyBtnText}>Apply now →</Text>
+                </Pressable>
+              )}
+            </View>
+          </>
         )}
-      </View>
-
-      {/* Info */}
-      <View style={INFO}>
-        <Text style={TITLE} numberOfLines={2} ellipsizeMode="tail">{job.title}</Text>
-        <Text style={SALON_NAME} numberOfLines={1}>{job.salonName}</Text>
-        <Text style={META} numberOfLines={1}>{job.specialty} · {typeLabel}</Text>
-        <View style={BOTTOM_ROW}>
-          <Text style={PAY} numberOfLines={1}>{job.payStructure}</Text>
-          <Text style={expired ? EXPIRY_EXPIRED : EXPIRY}>{expiryStr}</Text>
-        </View>
-      </View>
-
-      {/* Urgent badge */}
-      {job.isUrgent && !expired && (
-        <View style={URGENT_WRAP}>
-          <Text style={URGENT_TEXT}>URGENT</Text>
-        </View>
-      )}
-    </TouchableOpacity>
+      </Pressable>
+    </Animated.View>
   )
 }
 
 export function JobPostCardSkeleton() {
+  const { theme } = useTheme()
   return (
-    <View style={CARD}>
-      <Skeleton width={44} height={44} radius={14} />
-      <View style={[INFO, { gap: 6 }]}>
-        <Skeleton width={140} height={12} radius={6} />
-        <Skeleton width={90} height={10} radius={5} />
-        <Skeleton width={110} height={10} radius={5} />
-        <Skeleton width={130} height={10} radius={5} />
+    <View style={[styles.card, { backgroundColor: theme.bg.card, borderColor: theme.border.default }]}>
+      <View style={styles.salonRow}>
+        <Skeleton width={32} height={32} radius={16} />
+        <View style={[styles.salonInfo, { gap: 6 }]}>
+          <Skeleton width={100} height={11} radius={5} />
+          <Skeleton width={70} height={10} radius={5} />
+        </View>
+      </View>
+      <View style={[styles.sep, { backgroundColor: theme.border.subtle }]} />
+      <Skeleton width={220} height={20} radius={5} />
+      <View style={styles.pillsRow}>
+        <Skeleton width={80} height={22} radius={11} />
+        <Skeleton width={70} height={22} radius={11} />
+      </View>
+      <View style={[styles.sep, { backgroundColor: theme.border.subtle }]} />
+      <View style={{ gap: 8 }}>
+        <Skeleton width={130} height={11} radius={5} />
+        <Skeleton width={100} height={11} radius={5} />
       </View>
     </View>
   )
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
-const CARD: ViewStyle = {
-  backgroundColor: '#1A1A1A',
-  borderRadius: 16,
-  padding: 12,
-  flexDirection: 'row',
-  alignItems: 'center',
-  gap: 10,
-}
-
-const AVATAR_WRAP: ViewStyle = {
-  width: 44,
-  height: 44,
-  borderRadius: 14,
-  overflow: 'hidden',
-  alignItems: 'center',
-  justifyContent: 'center',
-  flexShrink: 0,
-}
-
-const AVATAR_IMG: ImageStyle = {
-  width: 44,
-  height: 44,
-}
-
-const AVATAR_INITIALS: TextStyle = {
-  color: '#FFFFFF',
-  fontSize: 18,
-  fontWeight: '700',
-}
-
-const INFO: ViewStyle = {
-  flex: 1,
-  minWidth: 0,
-  gap: 3,
-}
-
-const TITLE: TextStyle = {
-  color: '#FFFFFF',
-  fontSize: 12,
-  fontWeight: '600',
-}
-
-const SALON_NAME: TextStyle = {
-  color: '#888888',
-  fontSize: 10,
-}
-
-const META: TextStyle = {
-  color: '#666666',
-  fontSize: 10,
-}
-
-const BOTTOM_ROW: ViewStyle = {
-  flexDirection: 'row',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  marginTop: 2,
-}
-
-const PAY: TextStyle = {
-  color: '#D85A30',
-  fontSize: 10,
-  fontWeight: '600',
-}
-
-const EXPIRY: TextStyle = {
-  color: '#555555',
-  fontSize: 9,
-}
-
-const EXPIRY_EXPIRED: TextStyle = {
-  color: '#E24B4A',
-  fontSize: 9,
-}
-
-const URGENT_WRAP: ViewStyle = {
-  backgroundColor: 'rgba(239,159,39,0.15)',
-  borderRadius: 6,
-  paddingHorizontal: 6,
-  paddingVertical: 3,
-  alignSelf: 'flex-start',
-  flexShrink: 0,
-}
-
-const URGENT_TEXT: TextStyle = {
-  color: '#EF9F27',
-  fontSize: 8,
-  fontWeight: '800',
-  letterSpacing: 0.5,
-}
+const styles = StyleSheet.create({
+  card: {
+    borderRadius: 16,
+    borderWidth: 0.5,
+    padding: 16,
+    marginBottom: 10,
+    gap: 12,
+  },
+  salonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  salonInfo: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  salonName: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  salonLoc: {
+    fontSize: 11,
+  },
+  urgentPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(239,159,39,0.15)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(239,159,39,0.3)',
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  urgentDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#EF9F27',
+  },
+  urgentText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#EF9F27',
+  },
+  sep: {
+    height: 0.5,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+    lineHeight: 24,
+  },
+  pillsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  pill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  pillText: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  infoRows: {
+    gap: 6,
+  },
+  infoRow: {
+    fontSize: 13,
+  },
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  saveBtn: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  applyBtn: {
+    backgroundColor: '#D85A30',
+    borderRadius: 10,
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+  },
+  applyBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+})

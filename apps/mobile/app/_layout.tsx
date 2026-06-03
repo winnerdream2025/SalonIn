@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react'
 import { AppState } from 'react-native'
 import { Stack } from 'expo-router'
+import { StatusBar } from 'expo-status-bar'
 import * as Linking from 'expo-linking'
 import { configureClient } from '@salonin/api-client'
 import { useNotifications } from '../src/hooks/useNotifications'
@@ -32,6 +33,8 @@ export const linkingConfig = {
       'worker/[id]': 'worker/:id',
       'salon/[id]': 'salon/:id',
       'jobs/[id]': 'jobs/:id',
+      'chat/[id]': 'chat/:id',
+      'chat-requests': 'chat-requests',
     },
   },
 }
@@ -51,7 +54,12 @@ function RootLayout() {
     return () => sub.remove()
   }, [])
 
-  return <Stack screenOptions={{ headerShown: false }} />
+  return (
+    <>
+      <StatusBar style="auto" />
+      <Stack screenOptions={{ headerShown: false }} />
+    </>
+  )
 }
 
 export default RootLayout

@@ -1,10 +1,12 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
+import { ChatRequestStatus } from '@prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
 import { NotificationsService } from '../notifications/notifications.service'
 import type { ConversationPreview, CursorResponse } from '@salonin/types'
 import type { Message } from '@salonin/types'
 
 const MESSAGES_LIMIT = 30
+const MAX_PENDING_MESSAGES = 3
 
 @Injectable()
 export class MessagingService {
@@ -140,6 +142,13 @@ export class MessagingService {
     }
     await this.assertParticipant(conversationId, senderId)
 
+    const other = await this.prisma.conversationParticipant.findFirst({
+      where: { conversationId, userId: { not: senderId } },
+    })
+    if (other) {
+      await this.enforceChatRequest(senderId, other.userId, conversationId)
+    }
+
     const message = await this.prisma.message.create({
       data: { conversationId, senderId, content, mediaUrl },
     })
@@ -147,6 +156,46 @@ export class MessagingService {
     void this.notifyRecipient(conversationId, senderId, content)
 
     return message as Message
+  }
+
+  private async enforceChatRequest(
+    senderId: string,
+    receiverId: string,
+    conversationId: string,
+  ): Promise<void> {
+    let req = await this.prisma.chatRequest.findUnique({
+      where: { senderId_receiverId: { senderId, receiverId } },
+    })
+
+    if (!req) {
+      req = await this.prisma.chatRequest.create({
+        data: {
+          senderId,
+          receiverId,
+          status: ChatRequestStatus.PENDING,
+          messageCount: 1,
+          conversationId,
+        },
+      })
+      return
+    }
+
+    if (req.status === ChatRequestStatus.ACCEPTED) return
+
+    if (req.status === ChatRequestStatus.DECLINED) {
+      throw new ForbiddenException('Chat request was declined')
+    }
+
+    if (req.messageCount >= MAX_PENDING_MESSAGES) {
+      throw new ForbiddenException(
+        JSON.stringify({ blocked: true, reason: 'REQUEST_PENDING' }),
+      )
+    }
+
+    await this.prisma.chatRequest.update({
+      where: { id: req.id },
+      data: { messageCount: { increment: 1 } },
+    })
   }
 
   private async notifyRecipient(

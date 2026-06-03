@@ -166,7 +166,7 @@ export default function WorkerOwnProfileScreen() {
             <Text variant="body" style={{ color: theme.text.primary, fontWeight: '600' }}>My Applications</Text>
             {pendingCount > 0 && (
               <View style={[styles.pendingBadge, { backgroundColor: theme.brand.primary }]}>
-                <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '700' }}>{pendingCount}</Text>
+                <Text style={{ color: theme.text.inverse, fontSize: 11, fontWeight: '700' }}>{pendingCount}</Text>
               </View>
             )}
           </View>

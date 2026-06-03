@@ -1,155 +1,208 @@
-import React from 'react'
-import { View, Text, Image, TouchableOpacity } from 'react-native'
-import type { ViewStyle, TextStyle, ImageStyle } from 'react-native'
+import React, { useRef, useCallback } from 'react'
+import { View, Text, Pressable, Animated, StyleSheet } from 'react-native'
 import type { WorkerCardData } from '@salonin/types'
-import { formatDistance, formatExperience, getAvatarGradient } from '@salonin/utils'
+import { formatDistance, formatExperience } from '@salonin/utils'
 import { Skeleton } from '../primitives/Skeleton'
 import { AvailabilityBadge } from './AvailabilityBadge'
+import { Avatar } from '../primitives/Avatar'
+import { useTheme } from '../hooks/useTheme'
 
 export interface WorkerCardProps {
   worker: WorkerCardData
   onPress: () => void
   isLoading?: boolean
   onLongPress?: () => void
+  onMessage?: () => void
 }
 
-export function WorkerCard({ worker, onPress, isLoading = false, onLongPress }: WorkerCardProps) {
-  if (isLoading) return <WorkerCardSkeleton />
+export function WorkerCard({ worker, onPress, isLoading = false, onLongPress, onMessage }: WorkerCardProps) {
+  const { theme } = useTheme()
+  const scale = useRef(new Animated.Value(1)).current
 
-  const [bgColor] = getAvatarGradient(worker.name)
-  const initials = worker.name
-    .trim()
-    .split(/\s+/)
-    .map(w => w[0] ?? '')
-    .slice(0, 2)
-    .join('')
-    .toUpperCase()
+  const animIn = useCallback(() => {
+    Animated.timing(scale, { toValue: 0.97, duration: 100, useNativeDriver: true }).start()
+  }, [scale])
+
+  const animOut = useCallback(() => {
+    Animated.timing(scale, { toValue: 1, duration: 150, useNativeDriver: true }).start()
+  }, [scale])
+
+  if (isLoading) return <WorkerCardSkeleton />
 
   const specialty = worker.specialties[0] ?? ''
   const expLabel = formatExperience(worker.experienceYears)
-  const sub = [specialty, expLabel].filter(Boolean).join(' · ')
+  const specialtyLine = [specialty, expLabel].filter(Boolean).join(' · ')
+  const extraSpecialties = worker.specialties.slice(1, 3)
 
   return (
-    <TouchableOpacity style={CARD} onPress={onPress} onLongPress={onLongPress} activeOpacity={0.8}>
-      {/* Avatar — 44×44, borderRadius 14 per design spec */}
-      <View style={[AVATAR_WRAP, { backgroundColor: bgColor }]}>
-        {worker.photoUrl
-          ? <Image source={{ uri: worker.photoUrl }} style={AVATAR_IMG} resizeMode="cover" />
-          : <Text style={AVATAR_INITIALS}>{initials}</Text>
-        }
-      </View>
+    <Animated.View style={{ transform: [{ scale }] }}>
+      <Pressable
+        onPress={onPress}
+        onLongPress={onLongPress}
+        onPressIn={animIn}
+        onPressOut={animOut}
+        style={[styles.card, {
+          backgroundColor: theme.bg.card,
+          borderColor: theme.border.default,
+        }]}
+      >
+        {/* ── Top row: avatar + name/specialty/location ── */}
+        <View style={styles.topRow}>
+          <Avatar uri={worker.photoUrl} name={worker.name} size="lg" isVerified={worker.isVerified} />
+          <View style={styles.topInfo}>
+            <Text style={[styles.name, { color: theme.text.primary }]} numberOfLines={1}>
+              {worker.name}
+            </Text>
+            <Text style={[styles.specialty, { color: theme.text.secondary }]} numberOfLines={1}>
+              {specialtyLine}
+            </Text>
+            <Text style={[styles.location, { color: theme.text.tertiary }]} numberOfLines={1}>
+              📍 {worker.cityId.toUpperCase()}
+              {worker.distanceMiles !== null ? `  ·  ${formatDistance(worker.distanceMiles)}` : ''}
+            </Text>
+          </View>
+        </View>
 
-      {/* Info */}
-      <View style={INFO}>
-        <Text style={NAME} numberOfLines={1}>{worker.name}</Text>
-        <Text style={SUB} numberOfLines={1}>{sub}</Text>
-        <View style={ROW}>
+        {/* ── Separator ── */}
+        <View style={[styles.sep, { backgroundColor: theme.border.subtle }]} />
+
+        {/* ── Tags row: availability + specialty pills ── */}
+        <View style={styles.tagsRow}>
           <AvailabilityBadge status={worker.availability} />
-          {worker.isVerified && (
-            <View style={VERIFIED_BADGE}>
-              <Text style={VERIFIED_TEXT}>✓ Verified</Text>
+          {extraSpecialties.map((s) => (
+            <View key={s} style={[styles.specPill, { backgroundColor: theme.bg.elevated }]}>
+              <Text style={[styles.specPillText, { color: theme.text.secondary }]} numberOfLines={1}>{s}</Text>
             </View>
+          ))}
+        </View>
+
+        {/* ── Separator ── */}
+        <View style={[styles.sep, { backgroundColor: theme.border.subtle }]} />
+
+        {/* ── Stats + Message button ── */}
+        <View style={styles.statsRow}>
+          <View style={styles.statsLeft}>
+            {worker.rating !== undefined && (
+              <Text style={[styles.statText, { color: theme.text.secondary }]}>
+                {'★ '}<Text style={{ color: '#EF9F27', fontWeight: '700' }}>{worker.rating.toFixed(1)}</Text>
+              </Text>
+            )}
+            {worker.jobsDone !== undefined && (
+              <Text style={[styles.statText, { color: theme.text.secondary }]}>
+                {'  ·  '}{worker.jobsDone} jobs
+              </Text>
+            )}
+            {worker.isVerified && (
+              <Text style={[styles.statText, { color: theme.text.secondary }]}>
+                {'  ·  '}<Text style={{ color: '#1D9E75' }}>✓ Verified</Text>
+              </Text>
+            )}
+          </View>
+          {onMessage && (
+            <Pressable
+              onPress={onMessage}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={styles.messageBtn}>Message →</Text>
+            </Pressable>
           )}
         </View>
-      </View>
-
-      {/* Meta — distance */}
-      {worker.distanceMiles !== null && (
-        <View style={META}>
-          <Text style={DIST} numberOfLines={1}>{formatDistance(worker.distanceMiles)}</Text>
-        </View>
-      )}
-    </TouchableOpacity>
+      </Pressable>
+    </Animated.View>
   )
 }
 
 export function WorkerCardSkeleton() {
+  const { theme } = useTheme()
   return (
-    <View style={CARD}>
-      <Skeleton width={44} height={44} radius={14} />
-      <View style={[INFO, { gap: 6 }]}>
-        <Skeleton width={120} height={12} radius={6} />
-        <Skeleton width={80} height={10} radius={5} />
-        <Skeleton width={90} height={18} radius={9} />
+    <View style={[styles.card, { backgroundColor: theme.bg.card, borderColor: theme.border.default }]}>
+      <View style={styles.topRow}>
+        <Skeleton width={56} height={56} radius={28} />
+        <View style={[styles.topInfo, { gap: 8 }]}>
+          <Skeleton width={130} height={14} radius={7} />
+          <Skeleton width={100} height={11} radius={5} />
+          <Skeleton width={80} height={10} radius={5} />
+        </View>
+      </View>
+      <View style={[styles.sep, { backgroundColor: theme.border.subtle }]} />
+      <View style={[styles.tagsRow, { gap: 6 }]}>
+        <Skeleton width={100} height={22} radius={11} />
+        <Skeleton width={70} height={22} radius={11} />
+      </View>
+      <View style={[styles.sep, { backgroundColor: theme.border.subtle }]} />
+      <View style={styles.statsRow}>
+        <Skeleton width={160} height={11} radius={5} />
+        <Skeleton width={70} height={11} radius={5} />
       </View>
     </View>
   )
 }
 
-// ─── Constant styles (not theme-dependent per design spec) ────────────────────
-
-const CARD: ViewStyle = {
-  backgroundColor: '#1A1A1A',
-  borderRadius: 16,
-  padding: 12,
-  flexDirection: 'row',
-  alignItems: 'center',
-  gap: 10,
-}
-
-const AVATAR_WRAP: ViewStyle = {
-  width: 44,
-  height: 44,
-  borderRadius: 14,
-  overflow: 'hidden',
-  alignItems: 'center',
-  justifyContent: 'center',
-  flexShrink: 0,
-}
-
-const AVATAR_IMG: ImageStyle = {
-  width: 44,
-  height: 44,
-}
-
-const AVATAR_INITIALS: TextStyle = {
-  color: '#FFFFFF',
-  fontSize: 15,
-  fontWeight: '700',
-}
-
-const INFO: ViewStyle = {
-  flex: 1,
-  minWidth: 0,
-  gap: 4,
-}
-
-const ROW: ViewStyle = {
-  flexDirection: 'row',
-  alignItems: 'center',
-  gap: 6,
-}
-
-const NAME: TextStyle = {
-  color: '#FFFFFF',
-  fontSize: 12,
-  fontWeight: '600',
-}
-
-const SUB: TextStyle = {
-  color: '#888888',
-  fontSize: 10,
-}
-
-const META: ViewStyle = {
-  alignItems: 'flex-end',
-  gap: 4,
-}
-
-const DIST: TextStyle = {
-  color: '#555555',
-  fontSize: 9,
-}
-
-const VERIFIED_BADGE: ViewStyle = {
-  backgroundColor: 'rgba(29,158,117,0.15)',
-  borderRadius: 20,
-  paddingVertical: 2,
-  paddingHorizontal: 6,
-}
-
-const VERIFIED_TEXT: TextStyle = {
-  color: '#1D9E75',
-  fontSize: 9,
-  fontWeight: '600',
-}
+const styles = StyleSheet.create({
+  card: {
+    borderRadius: 16,
+    borderWidth: 0.5,
+    padding: 16,
+    marginBottom: 10,
+    gap: 12,
+  },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  topInfo: {
+    flex: 1,
+    minWidth: 0,
+    gap: 3,
+    paddingTop: 2,
+  },
+  name: {
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+  specialty: {
+    fontSize: 13,
+  },
+  location: {
+    fontSize: 12,
+  },
+  sep: {
+    height: 0.5,
+  },
+  tagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 6,
+  },
+  specPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 20,
+  },
+  specPillText: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  statsLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    minWidth: 0,
+  },
+  statText: {
+    fontSize: 12,
+  },
+  messageBtn: {
+    color: '#D85A30',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+})

@@ -64,12 +64,12 @@ export default function MessagesTab() {
           marginBottom: 10,
         }}
       >
-        <Text style={{ color: '#fff', fontSize: 15, fontWeight: '800' }}>
+        <Text style={{ color: theme.text.inverse, fontSize: 15, fontWeight: '800' }}>
           Create free account
         </Text>
       </Pressable>
       <Pressable
-        onPress={() => router.push('/(auth)/login')}
+        onPress={() => router.push({ pathname: '/(auth)/login', params: { redirect: '/(tabs)/messages' } } as never)}
         style={{
           width: '100%',
           backgroundColor: theme.bg.elevated,

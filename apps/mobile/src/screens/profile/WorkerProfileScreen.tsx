@@ -1,9 +1,17 @@
 import React, { useCallback, useState } from 'react'
-import { View, ScrollView, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native'
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
+import {
+  View,
+  ScrollView,
+  TouchableOpacity,
+  Pressable,
+  StyleSheet,
+  Alert,
+  ActivityIndicator,
+} from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
+import * as Haptics from 'expo-haptics'
 import { Avatar, Text, AvailabilityBadge, PortfolioGrid, Skeleton, useTheme } from '@salonin/ui'
-import type { Theme } from '@salonin/ui'
 import type { PortfolioItem } from '@salonin/types'
 import { formatExperience } from '@salonin/utils'
 import { useWorkerProfile } from '../../hooks/useWorkerProfile'
@@ -14,13 +22,15 @@ export default function WorkerProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const { profile, isLoading } = useWorkerProfile(id)
   const currentUser = useAuthStore((s) => s.user)
-  const { theme } = useTheme()
+  const { theme, isDark } = useTheme()
+  const { top, bottom } = useSafeAreaInsets()
 
   const isOwner = Boolean(currentUser && profile && currentUser.id === profile.userId)
-  const { bottom } = useSafeAreaInsets()
   const [isMessaging, setIsMessaging] = useState(false)
+  const [bioExpanded, setBioExpanded] = useState(false)
 
   const handleMessage = useCallback(async () => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     if (!currentUser) {
       Alert.alert(
         'Sign in to message',
@@ -45,80 +55,149 @@ export default function WorkerProfileScreen() {
     }
   }, [currentUser, profile])
 
-  const handlePressItem = (item: PortfolioItem) => {
-    if (item.caption) Alert.alert(item.caption)
-  }
+  const handlePressItem = useCallback((item: PortfolioItem) => {
+    router.push((`/worker/portfolio-view?url=${encodeURIComponent(item.mediaUrl)}`) as never)
+  }, [])
 
   if (isLoading) {
     return (
-      <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]}>
-        <ProfileSkeleton theme={theme} />
-      </SafeAreaView>
+      <View style={[styles.screen, { backgroundColor: theme.bg.base }]}>
+        <ProfileSkeleton top={top} bottom={bottom} theme={theme} />
+      </View>
     )
   }
 
   if (!profile) {
     return (
-      <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]}>
+      <View style={[styles.screen, { backgroundColor: theme.bg.base, paddingTop: top }]}>
         <View style={styles.emptyState}>
           <Text variant="body" color="secondary">Profile not found</Text>
         </View>
-      </SafeAreaView>
+      </View>
     )
   }
 
+  const heroBg = isDark ? '#1A1A1A' : '#E8E8E8'
+
   return (
-    <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]}>
-      <View style={[styles.header, { borderBottomColor: theme.border.default }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.headerSide}>
-          <Text variant="body" color="brand">‹ Back</Text>
+    <View style={[styles.screen, { backgroundColor: theme.bg.base }]}>
+      {/* Floating back button */}
+      <View style={[styles.floatingHeader, { top: top + 8 }]}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={[styles.backBtn, { backgroundColor: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.85)' }]}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.backArrow, { color: theme.text.primary }]}>‹</Text>
         </TouchableOpacity>
-        <Text variant="title" numberOfLines={1} style={styles.headerCenter}>{profile.name}</Text>
-        {isOwner ? (
-          <TouchableOpacity onPress={() => router.push('/worker/edit')} style={styles.headerSide}>
-            <Text variant="caption" color="brand">Edit</Text>
+        {isOwner && (
+          <TouchableOpacity
+            onPress={() => router.push('/worker/edit')}
+            style={[styles.editBtn, { backgroundColor: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.85)' }]}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.editBtnText, { color: theme.brand.primary }]}>Edit</Text>
           </TouchableOpacity>
-        ) : (
-          <View style={styles.headerSide} />
         )}
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: !isOwner && profile ? 80 + bottom : 24 }]}
+        contentContainerStyle={{ paddingBottom: !isOwner ? 96 + bottom : 32 }}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.hero}>
-          <Avatar uri={profile.photoUrl} name={profile.name} size="xl" />
-          <Text variant="heading" style={styles.heroName}>{profile.name}</Text>
-          <AvailabilityBadge status={profile.availability} />
+        {/* ── Hero background ── */}
+        <View style={[styles.heroBg, { backgroundColor: heroBg, marginTop: top }]} />
+
+        {/* ── Profile section (overlapping hero) ── */}
+        <View style={[styles.profileSection, { backgroundColor: theme.bg.base }]}>
+          <Avatar
+            uri={profile.photoUrl}
+            name={profile.name}
+            size="xl"
+            isVerified={profile.isVerified}
+            style={styles.profileAvatar}
+          />
+          <Text style={[styles.profileName, { color: theme.text.primary }]} numberOfLines={1}>
+            {profile.name}
+          </Text>
+          <Text style={[styles.profileSpecialty, { color: theme.text.secondary }]} numberOfLines={1}>
+            {profile.specialties[0] ?? 'Beauty Professional'}{profile.experienceYears > 0 ? ` · ${formatExperience(profile.experienceYears)}` : ''}
+          </Text>
+          <Text style={[styles.profileLocation, { color: theme.text.tertiary }]} numberOfLines={1}>
+            📍 {profile.cityId.toUpperCase()}
+          </Text>
+          <View style={styles.availRow}>
+            <AvailabilityBadge status={profile.availability} />
+          </View>
+
+          {/* Stats row */}
+          <View style={[styles.statsRow, { borderColor: theme.border.subtle }]}>
+            <View style={styles.statItem}>
+              <Text style={[styles.statValue, { color: theme.text.primary }]}>
+                {profile.portfolioItems.length}
+              </Text>
+              <Text style={[styles.statLabel, { color: theme.text.tertiary }]}>Photos</Text>
+            </View>
+            <View style={[styles.statDivider, { backgroundColor: theme.border.subtle }]} />
+            <View style={styles.statItem}>
+              <Text style={[styles.statValue, { color: theme.text.primary }]}>
+                {formatExperience(profile.experienceYears)}
+              </Text>
+              <Text style={[styles.statLabel, { color: theme.text.tertiary }]}>Experience</Text>
+            </View>
+            {profile.isVerified && (
+              <>
+                <View style={[styles.statDivider, { backgroundColor: theme.border.subtle }]} />
+                <View style={styles.statItem}>
+                  <Text style={[styles.statValue, { color: '#1D9E75' }]}>✓</Text>
+                  <Text style={[styles.statLabel, { color: theme.text.tertiary }]}>Verified</Text>
+                </View>
+              </>
+            )}
+          </View>
         </View>
 
+        {/* ── About ── */}
         {profile.bio ? (
-          <View style={[styles.card, { backgroundColor: theme.bg.elevated }]}>
-            <Text variant="body" color="secondary">{profile.bio}</Text>
+          <View style={[styles.section, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
+            <Text style={[styles.sectionLabel, { color: theme.text.tertiary }]}>About</Text>
+            <Text
+              style={[styles.bioText, { color: theme.text.secondary }]}
+              numberOfLines={bioExpanded ? undefined : 3}
+            >
+              {profile.bio}
+            </Text>
+            {profile.bio.length > 120 && (
+              <TouchableOpacity onPress={() => setBioExpanded((v) => !v)}>
+                <Text style={[styles.showMore, { color: theme.brand.primary }]}>
+                  {bioExpanded ? 'Show less' : 'Show more'}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         ) : null}
 
-        <View style={[styles.card, { backgroundColor: theme.bg.elevated }]}>
-          <Text variant="label" color="secondary" style={styles.cardLabel}>EXPERIENCE</Text>
-          <Text variant="body">{formatExperience(profile.experienceYears)}</Text>
-          {profile.specialties.length > 0 && (
-            <View style={styles.pillRow}>
+        {/* ── Specialties ── */}
+        {profile.specialties.length > 0 && (
+          <View style={[styles.section, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
+            <Text style={[styles.sectionLabel, { color: theme.text.tertiary }]}>Specialties</Text>
+            <View style={styles.pillGrid}>
               {profile.specialties.map((s) => (
-                <View key={s} style={[styles.pill, { backgroundColor: theme.bg.input }]}>
-                  <Text variant="caption">{s}</Text>
+                <View key={s} style={[styles.specPill, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}>
+                  <Text style={[styles.specPillText, { color: theme.text.secondary }]}>{s}</Text>
                 </View>
               ))}
             </View>
-          )}
-        </View>
+          </View>
+        )}
 
-        <View style={styles.portfolioSection}>
-          <View style={styles.portfolioHeader}>
-            <Text variant="title">Portfolio</Text>
+        {/* ── Portfolio ── */}
+        <View style={[styles.section, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionLabel, { color: theme.text.tertiary }]}>Portfolio</Text>
             {isOwner && (
               <TouchableOpacity onPress={() => router.push('/worker/portfolio')}>
-                <Text variant="caption" color="brand">+ Add</Text>
+                <Text style={[styles.showMore, { color: theme.brand.primary }]}>+ Add</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -127,43 +206,69 @@ export default function WorkerProfileScreen() {
             onPressItem={handlePressItem}
             isLoading={false}
           />
+          {profile.portfolioItems.length === 0 && (
+            <Text style={[styles.emptyPortfolio, { color: theme.text.tertiary }]}>No portfolio photos yet</Text>
+          )}
         </View>
       </ScrollView>
 
-      {!isOwner && profile && (
-        <View style={[styles.messageBar, { paddingBottom: bottom + 12 }]}>
-          <TouchableOpacity
-            style={[styles.messageBtn, isMessaging && { opacity: 0.7 }]}
+      {/* ── Sticky CTA ── */}
+      {!isOwner && (
+        <View style={[styles.ctaBar, {
+          backgroundColor: theme.bg.surface,
+          borderTopColor: theme.border.subtle,
+          paddingBottom: Math.max(bottom, 16),
+        }]}>
+          <Pressable
             onPress={() => void handleMessage()}
-            activeOpacity={0.85}
             disabled={isMessaging}
+            style={({ pressed }) => [
+              styles.ctaBtn,
+              isMessaging && styles.ctaBtnDisabled,
+              pressed && { opacity: 0.85 },
+            ]}
           >
             {isMessaging
               ? <ActivityIndicator color="#FFFFFF" />
-              : <Text variant="body" style={styles.messageBtnText}>Send message</Text>
+              : <Text style={[styles.ctaBtnText, { color: theme.text.inverse }]}>Send message</Text>
             }
-          </TouchableOpacity>
+          </Pressable>
         </View>
       )}
-    </SafeAreaView>
+    </View>
   )
 }
 
-function ProfileSkeleton({ theme }: { theme: Theme }) {
+interface SkeletonProps { top: number; bottom: number; theme: ReturnType<typeof useTheme>['theme'] }
+function ProfileSkeleton({ top, theme }: SkeletonProps) {
   return (
-    <ScrollView contentContainerStyle={styles.content}>
-      <View style={styles.hero}>
+    <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
+      <View style={[styles.heroBg, { backgroundColor: theme.bg.elevated, marginTop: top }]} />
+      <View style={[styles.profileSection, { backgroundColor: theme.bg.base }]}>
         <Skeleton width={80} height={80} radius={40} />
-        <Skeleton width={160} height={24} radius={6} />
-        <Skeleton width={100} height={20} radius={10} />
+        <View style={{ marginTop: 12, gap: 8, alignItems: 'center' }}>
+          <Skeleton width={160} height={22} radius={6} />
+          <Skeleton width={120} height={14} radius={5} />
+          <Skeleton width={90} height={12} radius={5} />
+          <Skeleton width={110} height={24} radius={12} />
+        </View>
+        <View style={[styles.statsRow, { borderColor: theme.border.subtle, marginTop: 16 }]}>
+          <Skeleton width={60} height={32} radius={5} />
+          <Skeleton width={60} height={32} radius={5} />
+        </View>
       </View>
-      <View style={[styles.card, { backgroundColor: theme.bg.elevated }]}>
-        <Skeleton width="90%" height={14} radius={7} />
-        <Skeleton width="70%" height={14} radius={7} />
+      <View style={[styles.section, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle, gap: 8 }]}>
+        <Skeleton width={60} height={11} radius={5} />
+        <Skeleton width="90%" height={13} radius={5} />
+        <Skeleton width="70%" height={13} radius={5} />
       </View>
-      <View style={[styles.card, { backgroundColor: theme.bg.elevated }]}>
-        <Skeleton width={120} height={12} radius={6} />
-        <Skeleton width={80} height={14} radius={7} />
+      <View style={[styles.section, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle, gap: 8 }]}>
+        <Skeleton width={80} height={11} radius={5} />
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <Skeleton width={80} height={28} radius={14} />
+          <Skeleton width={70} height={28} radius={14} />
+          <Skeleton width={90} height={28} radius={14} />
+        </View>
       </View>
     </ScrollView>
   )
@@ -171,48 +276,147 @@ function ProfileSkeleton({ theme }: { theme: Theme }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  header: {
-    height: 56,
-    paddingHorizontal: 16,
+  floatingHeader: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    zIndex: 10,
   },
-  headerSide: { width: 60 },
-  headerCenter: { flex: 1, textAlign: 'center' },
-  content: { paddingHorizontal: 16, paddingBottom: 100 },
-  hero: { alignItems: 'center', paddingVertical: 28, gap: 10 },
-  heroName: { marginTop: 4 },
-  card: { borderRadius: 16, padding: 16, marginBottom: 12, gap: 8 },
-  cardLabel: { letterSpacing: 0.8, marginBottom: 4 },
-  pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
-  pill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
-  portfolioSection: { marginTop: 8 },
-  portfolioHeader: {
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backArrow: { fontSize: 26, lineHeight: 32, marginTop: -2 },
+  editBtn: {
+    height: 36,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editBtnText: { fontSize: 14, fontWeight: '600' },
+  heroBg: {
+    height: 140,
+  },
+  profileSection: {
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    alignItems: 'center',
+    marginTop: -40,
+  },
+  profileAvatar: {
+    borderWidth: 3,
+    borderColor: '#D85A30',
+    borderRadius: 40,
+  },
+  profileName: {
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  profileSpecialty: {
+    fontSize: 15,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  profileLocation: {
+    fontSize: 13,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  availRow: {
+    marginTop: 10,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 0.5,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    marginTop: 16,
+    gap: 16,
+    alignSelf: 'stretch',
+  },
+  statItem: { alignItems: 'center', gap: 2 },
+  statValue: { fontSize: 16, fontWeight: '700' },
+  statLabel: { fontSize: 11 },
+  statDivider: { width: 0.5, height: 30 },
+  section: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    borderRadius: 16,
+    borderWidth: 0.5,
+    padding: 16,
+    gap: 12,
+  },
+  sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+  },
+  bioText: {
+    fontSize: 14,
+    lineHeight: 22,
+  },
+  showMore: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  pillGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  specPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 0.5,
+  },
+  specPillText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  emptyPortfolio: {
+    fontSize: 13,
+    textAlign: 'center',
+    paddingVertical: 16,
   },
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  messageBar: {
+  ctaBar: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
     paddingHorizontal: 16,
     paddingTop: 12,
-    backgroundColor: 'transparent',
+    borderTopWidth: 0.5,
   },
-  messageBtn: {
+  ctaBtn: {
     backgroundColor: '#D85A30',
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
   },
-  messageBtnText: {
-    color: '#FFFFFF',
-    fontWeight: '700' as const,
+  ctaBtnDisabled: { opacity: 0.6 },
+  ctaBtnText: {
+    fontSize: 16,
+    fontWeight: '700',
   },
 })

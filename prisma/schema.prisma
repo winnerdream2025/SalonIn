@@ -59,6 +59,12 @@ enum Platform {
   ANDROID
 }
 
+enum ChatRequestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
 // ─── Models ───────────────────────────────────────────────────────────────────
 
 model User {
@@ -78,6 +84,8 @@ model User {
   reportsReceived Report[] @relation("ReportReceiver")
   devices         UserDevice[]
   passwordResets  PasswordReset[]
+  sentRequests     ChatRequest[] @relation("SentRequests")
+  receivedRequests ChatRequest[] @relation("ReceivedRequests")
 }
 
 model WorkerProfile {
@@ -169,6 +177,7 @@ model Conversation {
   id           String                    @id @default(uuid())
   participants ConversationParticipant[]
   messages     Message[]
+  chatRequest  ChatRequest?
   createdAt    DateTime                  @default(now())
 }
 
@@ -219,6 +228,23 @@ model PasswordReset {
 
   @@index([token])
   @@index([userId])
+}
+
+model ChatRequest {
+  id             String            @id @default(cuid())
+  senderId       String
+  receiverId     String
+  status         ChatRequestStatus @default(PENDING)
+  messageCount   Int               @default(0)
+  conversationId String?           @unique
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  sender         User              @relation("SentRequests", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver       User              @relation("ReceivedRequests", fields: [receiverId], references: [id], onDelete: Cascade)
+  conversation   Conversation?     @relation(fields: [conversationId], references: [id])
+
+  @@unique([senderId, receiverId])
+  @@index([receiverId, status])
 }
 
 model Report {

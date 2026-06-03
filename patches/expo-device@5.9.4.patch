@@ -14,11 +14,12 @@ diff --git a/ios/UIDevice.swift b/ios/UIDevice.swift
 index 94e44e391dea500e2d72336ad6da44e4e5760302..fe27d7d925f5a47cf2e1471894ba9256c2b850e8 100644
 --- a/ios/UIDevice.swift
 +++ b/ios/UIDevice.swift
-@@ -184,7 +184,7 @@ extension UIDevice {
-   // swiftlint:enable closure_body_length
-
-   // Credit: https://github.com/developerinsider/isJailBroken/blob/master/IsJailBroken/Extension/UIDevice%2BJailBroken.swift
+@@ -187,3 +187,7 @@ extension UIDevice {
    var isSimulator: Bool {
 -    return TARGET_OS_SIMULATOR != 0
-+    return #if targetEnvironment(simulator) true #else false #endif
++    #if targetEnvironment(simulator)
++    return true
++    #else
++    return false
++    #endif
    }

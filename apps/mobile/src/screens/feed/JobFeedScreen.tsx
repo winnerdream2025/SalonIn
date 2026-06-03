@@ -117,7 +117,7 @@ export default function JobFeedScreen() {
               onPress={() => router.push('/jobs/create')}
               style={[styles.postBtn, { backgroundColor: theme.brand.primary }]}
             >
-              <Text variant="caption" style={{ color: '#FFFFFF', fontWeight: '700' }}>+ Post</Text>
+              <Text variant="caption" style={{ color: theme.text.inverse, fontWeight: '700' }}>+ Post</Text>
             </TouchableOpacity>
           )}
         </View>

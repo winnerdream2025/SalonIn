@@ -1,7 +1,6 @@
 import React from 'react'
-import { View, Image, ViewStyle } from 'react-native'
+import { View, Text, Image, ViewStyle, ImageStyle } from 'react-native'
 import { Skeleton } from './Skeleton'
-import { getAvatarGradient } from '@salonin/utils'
 
 type AvatarSize = 'sm' | 'md' | 'lg' | 'xl'
 
@@ -10,32 +9,57 @@ export interface AvatarProps {
   name: string
   size?: AvatarSize
   className?: string
+  isVerified?: boolean
+  style?: ViewStyle
 }
 
 const DIMS: Record<AvatarSize, number> = { sm: 32, md: 40, lg: 56, xl: 80 }
 
-export function Avatar({ uri, name, size = 'md' }: AvatarProps) {
+export function Avatar({ uri, name: _name, size = 'md', isVerified, style }: AvatarProps) {
   const dim = DIMS[size]
-  const [bgColor] = getAvatarGradient(name)
+  const badgeSize = dim <= 40 ? 14 : 17
 
-  const baseStyle: ViewStyle = {
+  const emptyCircle: ViewStyle = {
     width: dim,
     height: dim,
     borderRadius: dim / 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.06)',
   }
 
-  if (uri) {
-    return (
-      <View style={[baseStyle, { backgroundColor: bgColor }]}>
-        <Image source={{ uri }} style={{ width: dim, height: dim }} resizeMode="cover" />
-      </View>
-    )
+  const imgStyle: ImageStyle = {
+    width: dim,
+    height: dim,
+    borderRadius: dim / 2,
   }
 
-  return <View style={[baseStyle, { backgroundColor: 'rgba(255,255,255,0.06)' }]} />
+  return (
+    <View style={[{ width: dim, height: dim, position: 'relative' }, style]}>
+      {uri ? (
+        <Image source={{ uri }} style={imgStyle} resizeMode="cover" />
+      ) : (
+        <View style={emptyCircle} />
+      )}
+      {isVerified === true && (
+        <View
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            right: 0,
+            width: badgeSize,
+            height: badgeSize,
+            borderRadius: badgeSize / 2,
+            backgroundColor: '#1D9E75',
+            borderWidth: 2,
+            borderColor: 'rgba(0,0,0,0.8)',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Text style={{ fontSize: badgeSize <= 14 ? 7 : 8, color: '#fff', fontWeight: '800' }}>✓</Text>
+        </View>
+      )}
+    </View>
+  )
 }
 
 export function AvatarSkeleton({ size = 'md' }: { size?: AvatarSize }) {

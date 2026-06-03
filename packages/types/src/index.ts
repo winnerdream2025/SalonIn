@@ -1,4 +1,4 @@
-import type { Availability, EmploymentType, Role, PortfolioItem, ReportType, AppStatus } from '@prisma/client'
+import type { Availability, EmploymentType, Role, PortfolioItem, ReportType, AppStatus, ChatRequestStatus } from '@prisma/client'
 
 // ─── Prisma model re-exports ──────────────────────────────────────────────────
 
@@ -13,11 +13,12 @@ export type {
   ConversationParticipant,
   Message,
   Report,
+  ChatRequest,
 } from '@prisma/client'
 
 // ─── Enum re-exports (runtime values) ────────────────────────────────────────
 
-export { Role, Availability, EmploymentType, MediaType, AppStatus, ReportType, ReportStatus, Platform } from '@prisma/client'
+export { Role, Availability, EmploymentType, MediaType, AppStatus, ReportType, ReportStatus, Platform, ChatRequestStatus } from '@prisma/client'
 
 export type { UserDevice } from '@prisma/client'
 
@@ -76,6 +77,8 @@ export interface WorkerCardData {
   experienceYears: number
   isVerified: boolean
   cityId: string
+  rating?: number
+  jobsDone?: number
 }
 
 export interface SalonCardData {
@@ -100,6 +103,7 @@ export interface JobPostCardData {
   expiresAt: string
   salonName: string
   salonPhotoUrl: string | null
+  applicantCount?: number
 }
 
 export interface ConversationPreview {
@@ -239,6 +243,24 @@ export interface JobApplicationWithJob {
     expiresAt: Date
     isActive: boolean
     salon: { name: string; photoUrls: string[] }
+  }
+}
+
+// ─── Chat request types ──────────────────────────────────────────────────────
+
+export interface ChatRequestPreview {
+  id: string
+  senderId: string
+  receiverId: string
+  status: ChatRequestStatus
+  messageCount: number
+  conversationId: string | null
+  createdAt: string
+  sender: {
+    id: string
+    name: string
+    photoUrl: string | null
+    role: Role
   }
 }
 

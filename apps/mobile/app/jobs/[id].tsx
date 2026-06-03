@@ -4,12 +4,14 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
+  Pressable,
   Alert,
   ActivityIndicator,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
-import { Avatar, Text, Button, useTheme } from '@salonin/ui'
+import * as Haptics from 'expo-haptics'
+import { Avatar, Text, Button, Skeleton, useTheme } from '@salonin/ui'
 import { jobsApi, messagesApi } from '@salonin/api-client'
 import type { JobApplicationDetail } from '@salonin/types'
 import { useAuthStore } from '../../src/store/authStore'
@@ -27,22 +29,27 @@ const STATUS_COLORS: Record<string, string> = {
   PENDING: '#EF9F27',
   VIEWED: '#378ADD',
   ACCEPTED: '#1D9E75',
-  DECLINED: '#E74C3C',
+  DECLINED: '#E24B4A',
 }
 
-function formatExpiry(date: Date) {
-  const d = new Date(date)
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
-
-function daysDiff(date: Date) {
+function daysDiff(date: Date | string): string {
   const diff = Math.ceil((new Date(date).getTime() - Date.now()) / 86_400_000)
-  return diff > 0 ? `${diff}d left` : 'Expired'
+  if (diff <= 0) return 'Expired'
+  if (diff === 1) return '1 day left'
+  return `${diff} days left`
+}
+
+function postedAgo(date: Date | string): string {
+  const diff = Math.floor((Date.now() - new Date(date).getTime()) / 86_400_000)
+  if (diff === 0) return 'Today'
+  if (diff === 1) return 'Yesterday'
+  return `${diff} days ago`
 }
 
 export default function JobDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const { theme } = useTheme()
+  const { top, bottom } = useSafeAreaInsets()
   const user = useAuthStore((s) => s.user)
 
   const { job, isLoading, error } = useJobDetail(id ?? '')
@@ -51,6 +58,7 @@ export default function JobDetailScreen() {
   const [isApplying, setIsApplying] = useState(false)
   const [applied, setApplied] = useState(false)
   const [isMessaging, setIsMessaging] = useState(false)
+  const [descExpanded, setDescExpanded] = useState(false)
   const [applicants, setApplicants] = useState<JobApplicationDetail[]>([])
   const [loadingApplicants, setLoadingApplicants] = useState(false)
 
@@ -76,10 +84,11 @@ export default function JobDetailScreen() {
   }, [isOwnJob, id])
 
   const handleApply = useCallback(async () => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     if (isGuest) {
       Alert.alert('Sign in required', 'Sign in to apply for this job.', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Sign in', onPress: () => router.push('/(auth)/login') },
+        { text: 'Not now', style: 'cancel' },
+        { text: 'Sign in', onPress: () => router.push({ pathname: '/(auth)/login', params: { redirect: `/jobs/${id}` } } as never) },
       ])
       return
     }
@@ -97,9 +106,13 @@ export default function JobDetailScreen() {
   }, [id, isGuest])
 
   const handleMessage = useCallback(async () => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     if (!job) return
     if (isGuest) {
-      Alert.alert('Sign in required', 'Sign in to message this salon.')
+      Alert.alert('Sign in required', 'Sign in to message this salon.', [
+        { text: 'Not now', style: 'cancel' },
+        { text: 'Sign in', onPress: () => router.push({ pathname: '/(auth)/login', params: { redirect: `/jobs/${id}` } } as never) },
+      ])
       return
     }
     setIsMessaging(true)
@@ -115,178 +128,158 @@ export default function JobDetailScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]}>
-        <View style={styles.centered}>
-          <ActivityIndicator color={theme.brand.primary} size="large" />
-        </View>
-      </SafeAreaView>
+      <View style={[styles.screen, { backgroundColor: theme.bg.base, paddingTop: top }]}>
+        <JobDetailSkeleton theme={theme} />
+      </View>
     )
   }
 
   if (error || !job) {
     return (
-      <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]}>
+      <View style={[styles.screen, { backgroundColor: theme.bg.base, paddingTop: top }]}>
         <View style={styles.centered}>
           <Text variant="body" color="secondary" style={styles.center}>
             {error?.message ?? 'Job not found'}
           </Text>
           <Button variant="ghost" onPress={() => router.back()}>Go back</Button>
         </View>
-      </SafeAreaView>
+      </View>
     )
   }
 
+  const expired = new Date(job.expiresAt).getTime() < Date.now()
+  const daysStr = daysDiff(job.expiresAt)
+  const expiryUrgent = !expired && Math.ceil((new Date(job.expiresAt).getTime() - Date.now()) / 86_400_000) <= 2
+
   return (
-    <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]} edges={['top']}>
+    <View style={[styles.screen, { backgroundColor: theme.bg.base, paddingTop: top }]}>
+      {/* ── Back button ── */}
       <TouchableOpacity
         style={[styles.backBtn, { backgroundColor: theme.bg.elevated }]}
         onPress={() => router.back()}
         activeOpacity={0.8}
       >
-        <Text variant="body">‹ Back</Text>
+        <Text style={[styles.backText, { color: theme.text.primary }]}>‹ Back</Text>
       </TouchableOpacity>
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: !isOwnJob ? 96 + bottom : 32 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Salon header */}
+        {/* ── Salon header ── */}
         <TouchableOpacity
-          style={styles.salonRow}
+          style={[styles.salonCard, { backgroundColor: theme.bg.card, borderColor: theme.border.default }]}
           onPress={() => router.push(`/salon/${job.salonId}` as never)}
-          activeOpacity={0.75}
+          activeOpacity={0.8}
         >
-          <View style={[styles.avatarCircle, { backgroundColor: theme.bg.elevated }]}>
-            <Avatar
-              uri={job.salon.photoUrls[0] ?? null}
-              name={job.salon.name}
-              size="lg"
-            />
-          </View>
+          <Avatar uri={job.salon.photoUrls[0] ?? null} name={job.salon.name} size="md" />
           <View style={styles.salonInfo}>
-            <Text variant="body" style={{ fontWeight: '600', color: theme.text.primary }}>
+            <Text style={[styles.salonName, { color: theme.text.primary }]} numberOfLines={1}>
               {job.salon.name}
             </Text>
-            <Text variant="caption" color="secondary">{job.salon.cityId.toUpperCase()}</Text>
+            <Text style={[styles.salonLoc, { color: theme.text.tertiary }]} numberOfLines={1}>
+              📍 {job.salon.cityId.toUpperCase()}
+            </Text>
           </View>
-          <Text style={{ color: theme.text.secondary, fontSize: 18 }}>›</Text>
+          <Text style={[styles.chevron, { color: theme.text.secondary }]}>›</Text>
         </TouchableOpacity>
 
-        {/* Title + urgent badge */}
-        <View style={styles.titleRow}>
-          <Text
-            variant="heading"
-            style={[styles.title, { color: theme.text.primary }]}
-          >
+        {/* ── Title + urgent ── */}
+        <View style={styles.titleBlock}>
+          <Text style={[styles.title, { color: theme.text.primary }]}>
             {job.title}
           </Text>
-          {job.isUrgent && (
-            <View style={[styles.urgentBadge, { backgroundColor: 'rgba(239,159,39,0.15)', borderColor: 'rgba(239,159,39,0.35)' }]}>
-              <Text variant="caption" style={{ color: '#EF9F27', fontWeight: '700' }}>URGENT</Text>
+          {job.isUrgent && !expired && (
+            <View style={styles.urgentPill}>
+              <View style={styles.urgentDot} />
+              <Text style={styles.urgentText}>Urgent</Text>
             </View>
           )}
         </View>
 
-        {/* Pills */}
-        <View style={styles.pillRow}>
-          <View style={[styles.pill, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}>
-            <Text variant="caption" color="secondary">{job.specialty}</Text>
+        {/* ── Specialty + type pills ── */}
+        <View style={styles.pillsRow}>
+          <View style={[styles.pill, { backgroundColor: theme.bg.elevated }]}>
+            <Text style={[styles.pillText, { color: theme.text.secondary }]}>{job.specialty}</Text>
           </View>
-          <View style={[styles.pill, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}>
-            <Text variant="caption" color="secondary">{EMP_LABELS[job.type] ?? job.type}</Text>
-          </View>
-        </View>
-
-        {/* Info grid 2×2 */}
-        <View style={[styles.infoGrid, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}>
-          <View style={[styles.infoCell, { borderColor: theme.border.default }]}>
-            <Text variant="caption" color="secondary">Pay</Text>
-            <Text variant="body" style={{ fontWeight: '600', color: theme.brand.primary }}>
-              {job.payStructure}
-            </Text>
-          </View>
-          <View style={[styles.infoCell, { borderColor: theme.border.default }]}>
-            <Text variant="caption" color="secondary">Duration</Text>
-            <Text variant="body" style={{ fontWeight: '600', color: theme.text.primary }}>
-              {daysDiff(job.expiresAt)}
-            </Text>
-          </View>
-          <View style={[styles.infoCell, { borderColor: theme.border.default }]}>
-            <Text variant="caption" color="secondary">Type</Text>
-            <Text variant="body" style={{ fontWeight: '600', color: theme.text.primary }}>
-              {EMP_LABELS[job.type] ?? job.type}
-            </Text>
-          </View>
-          <View style={[styles.infoCell, { borderColor: theme.border.default }]}>
-            <Text variant="caption" color="secondary">Applicants</Text>
-            <Text variant="body" style={{ fontWeight: '600', color: theme.text.primary }}>
-              {job._count.applications}
-            </Text>
+          <View style={[styles.pill, { backgroundColor: 'rgba(55,138,221,0.12)' }]}>
+            <Text style={[styles.pillText, { color: '#60B4FF' }]}>{EMP_LABELS[job.type] ?? job.type}</Text>
           </View>
         </View>
 
-        {/* Description */}
-        <View style={styles.section}>
-          <Text variant="label" color="secondary" style={styles.sectionLabel}>DESCRIPTION</Text>
-          <Text variant="body" style={{ color: theme.text.primary, lineHeight: 22 }}>
+        {/* ── Key facts 2×2 grid ── */}
+        <View style={[styles.factGrid, { borderColor: theme.border.default }]}>
+          <View style={[styles.factCell, { borderColor: theme.border.default }]}>
+            <Text style={[styles.factLabel, { color: theme.text.tertiary }]}>💰 Pay</Text>
+            <Text style={[styles.factValue, { color: '#D85A30' }]} numberOfLines={1}>{job.payStructure}</Text>
+          </View>
+          <View style={[styles.factCell, { borderColor: theme.border.default }]}>
+            <Text style={[styles.factLabel, { color: theme.text.tertiary }]}>📅 Posted</Text>
+            <Text style={[styles.factValue, { color: theme.text.primary }]} numberOfLines={1}>{postedAgo(job.createdAt)}</Text>
+          </View>
+          <View style={[styles.factCell, { borderColor: theme.border.default }]}>
+            <Text style={[styles.factLabel, { color: theme.text.tertiary }]}>⏱ Expires</Text>
+            <Text style={[styles.factValue, { color: expiryUrgent ? theme.semantic.error.text : theme.text.primary }]} numberOfLines={1}>{daysStr}</Text>
+          </View>
+          <View style={[styles.factCell, { borderColor: theme.border.default }]}>
+            <Text style={[styles.factLabel, { color: theme.text.tertiary }]}>👥 Applicants</Text>
+            <Text style={[styles.factValue, { color: job._count.applications > 10 ? '#EF9F27' : theme.text.primary }]} numberOfLines={1}>{job._count.applications}</Text>
+          </View>
+        </View>
+
+        {/* ── Description ── */}
+        <View style={[styles.section, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
+          <Text style={[styles.sectionLabel, { color: theme.text.tertiary }]}>Description</Text>
+          <Text
+            style={[styles.bodyText, { color: theme.text.secondary }]}
+            numberOfLines={descExpanded ? undefined : 5}
+          >
             {job.description}
           </Text>
+          {job.description.length > 200 && (
+            <TouchableOpacity onPress={() => setDescExpanded((v) => !v)}>
+              <Text style={[styles.showMore, { color: theme.brand.primary }]}>
+                {descExpanded ? 'Show less' : 'Show more'}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
-        {/* Salon description */}
+        {/* ── About salon ── */}
         {job.salon.description ? (
-          <View style={styles.section}>
-            <Text variant="label" color="secondary" style={styles.sectionLabel}>ABOUT THE SALON</Text>
-            <Text variant="body" style={{ color: theme.text.secondary, lineHeight: 22 }}>
-              {job.salon.description}
-            </Text>
+          <View style={[styles.section, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
+            <Text style={[styles.sectionLabel, { color: theme.text.tertiary }]}>About the salon</Text>
+            <Text style={[styles.bodyText, { color: theme.text.secondary }]}>{job.salon.description}</Text>
           </View>
         ) : null}
 
-        {/* Expiry */}
-        <Text variant="caption" color="secondary" style={styles.expiry}>
-          Expires {formatExpiry(job.expiresAt)}
-        </Text>
-
-        {/* SALON: applicants list */}
+        {/* ── Applicants (salon owner view) ── */}
         {isOwnJob && (
-          <View style={styles.section}>
-            <Text variant="label" color="secondary" style={styles.sectionLabel}>
-              APPLICANTS ({applicants.length})
+          <View style={[styles.section, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
+            <Text style={[styles.sectionLabel, { color: theme.text.tertiary }]}>
+              Applicants{applicants.length > 0 ? ` (${applicants.length})` : ''}
             </Text>
-            {loadingApplicants && (
-              <ActivityIndicator color={theme.brand.primary} style={{ marginTop: 12 }} />
-            )}
+            {loadingApplicants && <ActivityIndicator color={theme.brand.primary} />}
             {!loadingApplicants && applicants.length === 0 && (
-              <Text variant="body" color="secondary">No applications yet.</Text>
+              <Text style={[styles.bodyText, { color: theme.text.tertiary }]}>No applications yet.</Text>
             )}
             {applicants.map((app) => (
               <View
                 key={app.id}
                 style={[styles.applicantRow, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}
               >
-                <View style={styles.applicantCircle}>
-                  <Avatar uri={app.worker.photoUrl} name={app.worker.name} size="md" />
-                </View>
+                <Avatar uri={app.worker.photoUrl} name={app.worker.name} size="sm" isVerified={app.worker.isVerified} />
                 <View style={styles.applicantInfo}>
-                  <Text variant="body" style={{ fontWeight: '600', color: theme.text.primary }}>
+                  <Text style={[styles.applicantName, { color: theme.text.primary }]} numberOfLines={1}>
                     {app.worker.name}
                   </Text>
-                  <Text variant="caption" color="secondary">
+                  <Text style={[styles.applicantSub, { color: theme.text.secondary }]} numberOfLines={1}>
                     {app.worker.specialties.slice(0, 2).join(' · ')}
                   </Text>
                 </View>
-                <View
-                  style={[
-                    styles.statusBadge,
-                    { backgroundColor: (STATUS_COLORS[app.status] ?? theme.brand.primary) + '22' },
-                  ]}
-                >
-                  <Text
-                    variant="caption"
-                    style={{ color: STATUS_COLORS[app.status] ?? theme.brand.primary, fontWeight: '600' }}
-                  >
+                <View style={[styles.statusBadge, { backgroundColor: (STATUS_COLORS[app.status] ?? theme.brand.primary) + '22' }]}>
+                  <Text style={[styles.statusText, { color: STATUS_COLORS[app.status] ?? theme.brand.primary }]}>
                     {app.status}
                   </Text>
                 </View>
@@ -296,26 +289,76 @@ export default function JobDetailScreen() {
         )}
       </ScrollView>
 
-      {/* Bottom actions */}
+      {/* ── Sticky bottom CTA (non-owners) ── */}
       {!isOwnJob && (
-        <View style={[styles.actions, { backgroundColor: theme.bg.base, borderTopColor: theme.border.default }]}>
+        <View style={[styles.ctaBar, {
+          backgroundColor: theme.bg.surface,
+          borderTopColor: theme.border.subtle,
+          paddingBottom: Math.max(bottom, 16),
+        }]}>
           {(isWorker || isGuest) && (
-            <Button
-              variant="primary"
-              fullWidth
-              loading={isApplying}
-              disabled={applied}
-              onPress={handleApply}
+            <Pressable
+              onPress={() => void handleApply()}
+              disabled={isApplying || applied}
+              style={({ pressed }) => [
+                styles.applyBtn,
+                (isApplying || applied) && styles.applyBtnDim,
+                pressed && { opacity: 0.85 },
+              ]}
             >
-              {applied ? '✓ Applied' : 'Apply now'}
-            </Button>
+              {isApplying
+                ? <ActivityIndicator color="#FFFFFF" />
+                : <Text style={[styles.applyBtnText, { color: theme.text.inverse }]}>{applied ? '✓ Applied' : 'Apply now'}</Text>
+              }
+            </Pressable>
           )}
-          <Button variant="secondary" fullWidth loading={isMessaging} onPress={() => void handleMessage()}>
-            Message salon
-          </Button>
+          <Pressable
+            onPress={() => void handleMessage()}
+            disabled={isMessaging}
+            style={({ pressed }) => [
+              styles.messageBtn,
+              { borderColor: theme.border.default },
+              pressed && { opacity: 0.85 },
+            ]}
+          >
+            {isMessaging
+              ? <ActivityIndicator color={theme.brand.primary} />
+              : <Text style={[styles.messageBtnText, { color: theme.text.primary }]}>Message salon</Text>
+            }
+          </Pressable>
         </View>
       )}
-    </SafeAreaView>
+    </View>
+  )
+}
+
+function JobDetailSkeleton({ theme }: { theme: ReturnType<typeof useTheme>['theme'] }) {
+  return (
+    <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 32 }]}>
+      <View style={[styles.salonCard, { backgroundColor: theme.bg.card, borderColor: theme.border.default }]}>
+        <Skeleton width={40} height={40} radius={20} />
+        <View style={{ flex: 1, gap: 6 }}>
+          <Skeleton width={120} height={14} radius={5} />
+          <Skeleton width={80} height={11} radius={5} />
+        </View>
+      </View>
+      <View style={{ gap: 10, marginBottom: 16 }}>
+        <Skeleton width="80%" height={28} radius={5} />
+        <Skeleton width="60%" height={28} radius={5} />
+      </View>
+      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+        <Skeleton width={90} height={28} radius={14} />
+        <Skeleton width={80} height={28} radius={14} />
+      </View>
+      <View style={[styles.factGrid, { borderColor: theme.border.default, marginBottom: 16 }]}>
+        {[0, 1, 2, 3].map((i) => (
+          <View key={i} style={[styles.factCell, { borderColor: theme.border.default }]}>
+            <Skeleton width={60} height={11} radius={5} />
+            <Skeleton width={80} height={14} radius={5} />
+          </View>
+        ))}
+      </View>
+    </ScrollView>
   )
 }
 
@@ -326,69 +369,111 @@ const styles = StyleSheet.create({
   backBtn: {
     alignSelf: 'flex-start',
     marginHorizontal: 16,
-    marginTop: 8,
-    marginBottom: 4,
+    marginVertical: 8,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 10,
   },
+  backText: { fontSize: 15, fontWeight: '500' },
   scroll: { flex: 1 },
-  content: { paddingHorizontal: 20, paddingBottom: 24, gap: 0 },
-  salonRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20, marginTop: 8 },
-  avatarCircle: { borderRadius: 50, overflow: 'hidden' },
-  salonInfo: { flex: 1, gap: 2 },
-  titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 12 },
-  title: { flex: 1, fontSize: 26, fontWeight: '800', lineHeight: 32 },
-  urgentBadge: {
+  content: { paddingHorizontal: 16, gap: 16 },
+  salonCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 16,
+    borderWidth: 0.5,
+    padding: 14,
+  },
+  salonInfo: { flex: 1, minWidth: 0, gap: 2 },
+  salonName: { fontSize: 15, fontWeight: '600' },
+  salonLoc: { fontSize: 12 },
+  chevron: { fontSize: 20 },
+  titleBlock: { gap: 10 },
+  title: { fontSize: 24, fontWeight: '800', letterSpacing: -0.5, lineHeight: 30 },
+  urgentPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(239,159,39,0.15)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(239,159,39,0.3)',
+    borderRadius: 20,
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 8,
-    borderWidth: 1,
     alignSelf: 'flex-start',
-    marginTop: 4,
   },
-  pillRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
-  pill: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  infoGrid: {
+  urgentDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#EF9F27' },
+  urgentText: { fontSize: 11, fontWeight: '700', color: '#EF9F27' },
+  pillsRow: { flexDirection: 'row', gap: 8 },
+  pill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
+  pillText: { fontSize: 12, fontWeight: '500' },
+  factGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     borderRadius: 16,
-    borderWidth: 1,
+    borderWidth: 0.5,
     overflow: 'hidden',
-    marginBottom: 24,
   },
-  infoCell: {
+  factCell: {
     width: '50%',
-    padding: 16,
+    padding: 14,
     gap: 4,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderRightWidth: StyleSheet.hairlineWidth,
   },
-  section: { marginBottom: 24 },
-  sectionLabel: { letterSpacing: 0.8, marginBottom: 10 },
-  expiry: { marginBottom: 20, textAlign: 'center' },
+  factLabel: { fontSize: 11, fontWeight: '600', letterSpacing: 0.2 },
+  factValue: { fontSize: 14, fontWeight: '700' },
+  section: {
+    borderRadius: 16,
+    borderWidth: 0.5,
+    padding: 16,
+    gap: 10,
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+  },
+  bodyText: { fontSize: 14, lineHeight: 22 },
+  showMore: { fontSize: 13, fontWeight: '600' },
   applicantRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginBottom: 10,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 0.5,
   },
-  applicantCircle: { borderRadius: 50, overflow: 'hidden' },
-  applicantInfo: { flex: 1, gap: 2 },
+  applicantInfo: { flex: 1, minWidth: 0, gap: 2 },
+  applicantName: { fontSize: 14, fontWeight: '600' },
+  applicantSub: { fontSize: 12 },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-  actions: {
-    paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 32,
+  statusText: { fontSize: 11, fontWeight: '600' },
+  ctaBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    borderTopWidth: 0.5,
     gap: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
   },
+  applyBtn: {
+    backgroundColor: '#D85A30',
+    borderRadius: 14,
+    paddingVertical: 15,
+    alignItems: 'center',
+  },
+  applyBtnDim: { opacity: 0.6 },
+  applyBtnText: { fontSize: 16, fontWeight: '700' },
+  messageBtn: {
+    borderRadius: 14,
+    paddingVertical: 13,
+    alignItems: 'center',
+    borderWidth: 0.5,
+  },
+  messageBtnText: { fontSize: 15, fontWeight: '600' },
 })

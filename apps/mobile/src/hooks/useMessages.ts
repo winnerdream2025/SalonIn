@@ -9,6 +9,7 @@ const WS_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000'
 
 export function useMessages(conversationId: string) {
   const userId = useAuthStore((s) => s.user?.id)
+  const accessToken = useAuthStore((s) => s.accessToken)
   const [messages, setMessages] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
@@ -20,7 +21,12 @@ export function useMessages(conversationId: string) {
   const socketRef = useRef<Socket | null>(null)
 
   useEffect(() => {
-    const socket = io(WS_URL, { transports: ['websocket', 'polling'] })
+    if (!accessToken) return
+
+    const socket = io(WS_URL, {
+      transports: ['websocket', 'polling'],
+      auth: { token: accessToken },
+    })
 
     socket.on('connect', () => {
       setIsConnected(true)
@@ -30,7 +36,10 @@ export function useMessages(conversationId: string) {
     socket.on('disconnect', () => setIsConnected(false))
 
     socket.on('message:received', (msg: Message) => {
-      setMessages((prev) => [msg, ...prev])
+      setMessages((prev) => {
+        if (prev.find((m) => m.id === msg.id)) return prev
+        return [msg, ...prev]
+      })
     })
 
     socket.on('typing', ({ userId: uid, isTyping }: { userId: string; isTyping: boolean }) => {
@@ -46,7 +55,7 @@ export function useMessages(conversationId: string) {
       socket.disconnect()
       socketRef.current = null
     }
-  }, [conversationId])
+  }, [conversationId, accessToken])
 
   useEffect(() => {
     setIsLoading(true)

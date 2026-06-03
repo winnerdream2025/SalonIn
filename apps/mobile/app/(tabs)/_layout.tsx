@@ -1,18 +1,23 @@
 import React from 'react'
-import { Platform } from 'react-native'
 import { Tabs } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuthStore } from '../../src/store/authStore'
 import { useConversations } from '../../src/hooks/useConversations'
+import { useChatRequests } from '../../src/hooks/useChatRequests'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTheme } from '@salonin/ui'
 import { Role } from '@salonin/types'
 
 export default function TabsLayout() {
+  const { bottom } = useSafeAreaInsets()
   const role = useAuthStore((s) => s.user?.role)
+  const isLoggedIn = useAuthStore((s) => s.user != null)
   const isSalon = role === Role.SALON
   const { theme } = useTheme()
   const { conversations } = useConversations()
+  const { pendingCount } = useChatRequests()
   const unreadCount = conversations.reduce((sum, c) => sum + c.unreadCount, 0)
+  const messagesBadge = isLoggedIn ? unreadCount + pendingCount : 0
 
   return (
     <Tabs
@@ -21,10 +26,12 @@ export default function TabsLayout() {
         tabBarStyle: {
           backgroundColor: theme.bg.surface,
           borderTopColor: theme.border.default,
-          borderTopWidth: 1,
-          height: Platform.OS === 'ios' ? 80 : 60,
-          paddingBottom: Platform.OS === 'ios' ? 20 : 8,
+          borderTopWidth: 0.5,
+          height: 56 + bottom,
+          paddingBottom: Math.max(bottom, 8),
           paddingTop: 8,
+          elevation: 0,
+          shadowOpacity: 0,
         },
         tabBarActiveTintColor: '#D85A30',
         tabBarInactiveTintColor: theme.text.secondary,
@@ -56,7 +63,7 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="chatbubble-outline" size={size} color={color} />
           ),
-          tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
+          tabBarBadge: messagesBadge > 0 ? messagesBadge : undefined,
           tabBarBadgeStyle: { backgroundColor: theme.brand.primary, fontSize: 10 },
         }}
       />

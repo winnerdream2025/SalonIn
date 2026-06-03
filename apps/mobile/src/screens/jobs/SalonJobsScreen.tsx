@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { View, FlatList, Pressable, StyleSheet, RefreshControl } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Text, JobPostCard, Skeleton, Button, useTheme } from '@salonin/ui'
 import type { JobPostCardData } from '@salonin/types'
@@ -9,6 +9,7 @@ import * as Haptics from 'expo-haptics'
 
 export default function SalonJobsScreen() {
   const { theme } = useTheme()
+  const { bottom } = useSafeAreaInsets()
   const [jobs, setJobs] = useState<JobPostCardData[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -48,7 +49,7 @@ export default function SalonJobsScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]}>
+      <SafeAreaView edges={['top']} style={[styles.screen, { backgroundColor: theme.bg.base }]}>
         <View style={[styles.header, { borderBottomColor: theme.border.default }]}>
           <Text variant="title">My Jobs</Text>
         </View>
@@ -65,7 +66,7 @@ export default function SalonJobsScreen() {
 
   if (error) {
     return (
-      <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]}>
+      <SafeAreaView edges={['top']} style={[styles.screen, { backgroundColor: theme.bg.base }]}>
         <View style={[styles.header, { borderBottomColor: theme.border.default }]}>
           <Text variant="title">My Jobs</Text>
         </View>
@@ -78,7 +79,7 @@ export default function SalonJobsScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]}>
+    <SafeAreaView edges={['top']} style={[styles.screen, { backgroundColor: theme.bg.base }]}>
       <View style={[styles.header, { borderBottomColor: theme.border.default }]}>
         <Text variant="title" style={styles.headerTitle}>My Jobs</Text>
         <Text variant="caption" color="secondary">{jobs.length} active</Text>
@@ -106,7 +107,7 @@ export default function SalonJobsScreen() {
               <JobPostCard job={item} onPress={() => handlePressJob(item)} />
             </View>
           )}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: 56 + bottom + 16 }]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -125,7 +126,7 @@ export default function SalonJobsScreen() {
           { backgroundColor: '#D85A30', transform: [{ scale: pressed ? 0.92 : 1 }] },
         ]}
       >
-        <Text style={styles.fabText}>+</Text>
+        <Text style={[styles.fabText, { color: theme.text.inverse }]}>+</Text>
       </Pressable>
     </SafeAreaView>
   )
@@ -142,7 +143,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   headerTitle: { flex: 1 },
-  listContent: { padding: 16, paddingBottom: 100 },
+  listContent: { padding: 16 },
   cardWrap: { marginBottom: 12 },
   skeletonList: { padding: 16, gap: 12 },
   skeletonCard: { marginBottom: 12 },
@@ -185,5 +186,5 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
   },
-  fabText: { color: '#FFFFFF', fontSize: 28, fontWeight: '300', marginTop: -2 },
+  fabText: { fontSize: 28, fontWeight: '300', marginTop: -2 },
 })

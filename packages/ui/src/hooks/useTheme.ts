@@ -1,9 +1,9 @@
 import { useColorScheme } from 'react-native'
 
 export interface Theme {
-  bg: { base: string; surface: string; elevated: string; input: string }
+  bg: { base: string; surface: string; elevated: string; input: string; card: string }
   border: { default: string; subtle: string }
-  text: { primary: string; secondary: string }
+  text: { primary: string; secondary: string; tertiary: string; inverse: string }
   brand: { primary: string; light: string; dark: string }
   avail: { now: string; today: string; weekend: string; none: string }
   skeleton: { base: string; highlight: string }
@@ -16,9 +16,10 @@ const dark: Theme = {
     surface: '#111111',
     elevated: '#1A1A1A',
     input: '#141414',
+    card: '#161616',
   },
   border: { default: '#1E1E1E', subtle: '#2A2A2A' },
-  text: { primary: '#FFFFFF', secondary: '#999999' },
+  text: { primary: '#FFFFFF', secondary: '#999999', tertiary: '#555555', inverse: '#000000' },
   brand: { primary: '#D85A30', light: '#FF8C5A', dark: '#993C1D' },
   avail: { now: '#1D9E75', today: '#378ADD', weekend: '#EF9F27', none: '#555555' },
   skeleton: { base: '#1E1E1E', highlight: '#2A2A2A' },
@@ -31,9 +32,10 @@ const light: Theme = {
     surface: '#FFFFFF',
     elevated: '#FFFFFF',
     input: '#FFFFFF',
+    card: '#FFFFFF',
   },
   border: { default: '#F0F0F0', subtle: '#E5E5E5' },
-  text: { primary: '#0A0A0A', secondary: '#6A6A6A' },
+  text: { primary: '#0A0A0A', secondary: '#6A6A6A', tertiary: '#AAAAAA', inverse: '#FFFFFF' },
   brand: { primary: '#D85A30', light: '#FF8C5A', dark: '#993C1D' },
   avail: { now: '#1D9E75', today: '#378ADD', weekend: '#EF9F27', none: '#555555' },
   skeleton: { base: '#EEEEEE', highlight: '#F5F5F5' },

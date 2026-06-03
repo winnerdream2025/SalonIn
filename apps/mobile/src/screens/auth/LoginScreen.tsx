@@ -1,12 +1,13 @@
 import React, { useState, useCallback } from 'react'
 import { View, StyleSheet, KeyboardAvoidingView, Platform, Linking, Text as RNText } from 'react-native'
-import { router } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import { Input, Button, Text, useTheme } from '@salonin/ui'
 import { useAuth } from '../../hooks/useAuth'
 
 export default function LoginScreen() {
   const { login, isLoading } = useAuth()
   const { theme } = useTheme()
+  const { redirect } = useLocalSearchParams<{ redirect?: string }>()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | undefined>()
@@ -15,11 +16,11 @@ export default function LoginScreen() {
     setError(undefined)
     try {
       await login({ email, password })
-      router.replace('/(tabs)')
+      router.replace((redirect ?? '/(tabs)') as Parameters<typeof router.replace>[0])
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Login failed')
     }
-  }, [login, email, password])
+  }, [login, email, password, redirect])
 
   return (
     <KeyboardAvoidingView

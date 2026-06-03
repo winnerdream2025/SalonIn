@@ -14,3 +14,5 @@ exports.AppStatus = Object.freeze({ PENDING: 'PENDING', VIEWED: 'VIEWED', ACCEPT
 exports.ReportType = Object.freeze({ FAKE_PROFILE: 'FAKE_PROFILE', NO_SHOW: 'NO_SHOW', INAPPROPRIATE: 'INAPPROPRIATE' })
 
 exports.ReportStatus = Object.freeze({ PENDING: 'PENDING', REVIEWED: 'REVIEWED', DISMISSED: 'DISMISSED' })
+
+exports.ChatRequestStatus = Object.freeze({ PENDING: 'PENDING', ACCEPTED: 'ACCEPTED', DECLINED: 'DECLINED' })

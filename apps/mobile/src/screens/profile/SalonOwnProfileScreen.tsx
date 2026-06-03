@@ -114,7 +114,7 @@ export default function SalonOwnProfileScreen() {
               <Image source={{ uri: firstPhoto }} style={styles.heroImage} resizeMode="cover" />
               {photoCount > 1 && (
                 <View style={[styles.photoCount, { backgroundColor: 'rgba(0,0,0,0.55)' }]}>
-                  <Text variant="caption" style={{ color: '#FFFFFF' }}>
+                  <Text variant="caption" style={{ color: theme.text.inverse }}>
                     +{photoCount - 1} photos
                   </Text>
                 </View>
