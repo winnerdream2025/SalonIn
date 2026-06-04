@@ -5,6 +5,15 @@ import { messagesApi, chatRequestsApi } from '@salonin/api-client'
 import type { Message, ChatRequestPreview } from '@salonin/types'
 import { useAuthStore } from '../store/authStore'
 
+function dedupeById(msgs: Message[]): Message[] {
+  const seen = new Set<string>()
+  return msgs.filter((m) => {
+    if (seen.has(m.id)) return false
+    seen.add(m.id)
+    return true
+  })
+}
+
 const WS_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000'
 
 export function useMessages(conversationId: string) {
@@ -38,8 +47,8 @@ export function useMessages(conversationId: string) {
 
     socket.on('message:received', (msg: Message) => {
       setMessages((prev) => {
-        if (prev.find((m) => m.id === msg.id)) return prev
-        return [msg, ...prev]
+        if (prev.some((m) => m.id === msg.id)) return prev
+        return dedupeById([msg, ...prev])
       })
     })
 
@@ -68,7 +77,7 @@ export function useMessages(conversationId: string) {
     messagesApi
       .getMessages(conversationId)
       .then((res) => {
-        setMessages(res.data as Message[])
+        setMessages(dedupeById(res.data as Message[]))
         setCursor(res.nextCursor ?? undefined)
         setHasMore(res.hasMore)
         void messagesApi.markAsRead(conversationId)
@@ -86,7 +95,10 @@ export function useMessages(conversationId: string) {
   const sendMessage = useCallback(
     async (content: string, mediaUrl?: string) => {
       const msg = await messagesApi.sendMessage(conversationId, content, mediaUrl)
-      setMessages((prev) => [msg as Message, ...prev])
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === (msg as Message).id)) return prev
+        return dedupeById([msg as Message, ...prev])
+      })
       setChatRequest((prev) =>
         prev?.status === 'PENDING'
           ? { ...prev, messageCount: (prev.messageCount ?? 0) + 1 }
@@ -101,7 +113,7 @@ export function useMessages(conversationId: string) {
     setIsLoadingMore(true)
     try {
       const res = await messagesApi.getMessages(conversationId, cursor)
-      setMessages((prev) => [...prev, ...(res.data as Message[])])
+      setMessages((prev) => dedupeById([...prev, ...(res.data as Message[])]))
       setCursor(res.nextCursor ?? undefined)
       setHasMore(res.hasMore)
     } catch (e: unknown) {
