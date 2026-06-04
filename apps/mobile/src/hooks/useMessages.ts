@@ -81,7 +81,9 @@ export function useMessages(conversationId: string) {
         setMessages(dedupeById(res.data as Message[]))
         setCursor(res.nextCursor ?? undefined)
         setHasMore(res.hasMore)
-        void messagesApi.markAsRead(conversationId)
+        void messagesApi.markAsRead(conversationId).then(() => {
+          socketRef.current?.emit('conversation:read', { conversationId })
+        })
         void chatRequestsApi
           .getForConversation(conversationId)
           .then((cr) => setChatRequest(cr))

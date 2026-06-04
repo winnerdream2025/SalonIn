@@ -5,6 +5,7 @@ import {
   MessageBody,
   ConnectedSocket,
   OnGatewayInit,
+  OnGatewayConnection,
 } from '@nestjs/websockets'
 import { Injectable, UnauthorizedException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
@@ -19,7 +20,7 @@ import { PrismaService } from '../../prisma/prisma.service'
   },
 })
 @Injectable()
-export class MessagingGateway implements OnGatewayInit {
+export class MessagingGateway implements OnGatewayInit, OnGatewayConnection {
   @WebSocketServer()
   server!: Server
 
@@ -28,6 +29,13 @@ export class MessagingGateway implements OnGatewayInit {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
   ) {}
+
+  handleConnection(client: Socket): void {
+    const userId = client.data.userId as string | undefined
+    if (userId) {
+      void client.join(`user:${userId}`)
+    }
+  }
 
   afterInit(server: Server): void {
     server.use(async (socket, next) => {
@@ -102,5 +110,41 @@ export class MessagingGateway implements OnGatewayInit {
 
   broadcastMessage(conversationId: string, message: unknown): void {
     this.server.to(`conv:${conversationId}`).emit('message:received', message)
+  }
+
+  async broadcastNewMessage(
+    conversationId: string,
+    senderId: string,
+    message: unknown,
+  ): Promise<void> {
+    this.server.to(`conv:${conversationId}`).emit('message:received', message)
+
+    const participants = await this.prisma.conversationParticipant.findMany({
+      where: { conversationId },
+      select: { userId: true },
+    })
+
+    for (const p of participants) {
+      if (p.userId !== senderId) {
+        this.server.to(`user:${p.userId}`).emit('message:new', {
+          conversationId,
+          senderId,
+          content: (message as { content?: string }).content,
+          createdAt: (message as { createdAt?: string }).createdAt,
+        })
+      }
+    }
+  }
+
+  @SubscribeMessage('conversation:read')
+  handleRead(
+    @MessageBody() data: { conversationId: string },
+    @ConnectedSocket() client: Socket,
+  ): void {
+    const userId = client.data.userId as string | undefined
+    if (!userId) return
+    this.server
+      .to(`user:${userId}`)
+      .emit('conversation:read', { conversationId: data.conversationId, userId })
   }
 }

@@ -58,7 +58,7 @@ export class MessagingController {
     @Body() dto: SendMessageDto,
   ) {
     const message = await this.messagingService.sendMessage(id, user.id, dto.content, dto.mediaUrl)
-    this.messagingGateway.broadcastMessage(id, message)
+    await this.messagingGateway.broadcastNewMessage(id, user.id, message)
     return message
   }
 
