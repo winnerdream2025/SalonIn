@@ -131,7 +131,7 @@ export default function ChatScreen() {
         )
       }
       const isSelf = item.senderId === currentUserId
-      const showAvatar = !isSelf && (index === messages.length - 1 || messages[index + 1]?.senderId !== item.senderId)
+      const showAvatar = !isSelf && (index === 0 || messages[index - 1]?.senderId !== item.senderId)
       return (
         <MessageBubble
           message={item}

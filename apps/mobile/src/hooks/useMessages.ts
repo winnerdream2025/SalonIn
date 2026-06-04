@@ -46,9 +46,10 @@ export function useMessages(conversationId: string) {
     socket.on('disconnect', () => setIsConnected(false))
 
     socket.on('message:received', (msg: Message) => {
+      if (msg.senderId === userId) return
       setMessages((prev) => {
         if (prev.some((m) => m.id === msg.id)) return prev
-        return dedupeById([msg, ...prev])
+        return [msg, ...prev]
       })
     })
 
@@ -69,7 +70,7 @@ export function useMessages(conversationId: string) {
       socket.disconnect()
       socketRef.current = null
     }
-  }, [conversationId, accessToken])
+  }, [conversationId, accessToken, userId])
 
   useEffect(() => {
     setIsLoading(true)
