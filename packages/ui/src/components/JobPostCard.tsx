@@ -62,7 +62,7 @@ export function JobPostCard({ job, onPress, isLoading = false, onApply, onSave, 
         <View style={styles.salonRow}>
           <Avatar uri={job.salonPhotoUrl} name={job.salonName} size="md" />
           <View style={styles.salonInfo}>
-            <Text style={[styles.salonName, { color: theme.text.secondary }]} numberOfLines={1}>
+            <Text style={[styles.salonName, { color: theme.text.primary }]} numberOfLines={1}>
               {job.salonName}
             </Text>
             <Text style={[styles.salonLoc, { color: theme.text.tertiary }]} numberOfLines={1}>
@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   salonLoc: {
-    fontSize: 11,
+    fontSize: 12,
   },
   urgentPill: {
     flexDirection: 'row',

@@ -33,6 +33,7 @@ export function WorkerCard({ worker, onPress, isLoading = false, onLongPress, on
   const expLabel = formatExperience(worker.experienceYears)
   const specialtyLine = [specialty, expLabel].filter(Boolean).join(' · ')
   const extraSpecialties = worker.specialties.slice(1, 3)
+  const moreCount = worker.specialties.length - 3
 
   return (
     <Animated.View style={{ transform: [{ scale }] }}>
@@ -74,6 +75,11 @@ export function WorkerCard({ worker, onPress, isLoading = false, onLongPress, on
               <Text style={[styles.specPillText, { color: theme.text.secondary }]} numberOfLines={1}>{s}</Text>
             </View>
           ))}
+          {moreCount > 0 && (
+            <View style={[styles.specPill, { backgroundColor: theme.bg.elevated }]}>
+              <Text style={[styles.specPillText, { color: theme.text.tertiary }]}>+{moreCount} more</Text>
+            </View>
+          )}
         </View>
 
         {/* ── Separator ── */}
