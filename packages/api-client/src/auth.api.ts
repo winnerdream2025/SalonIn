@@ -24,6 +24,7 @@ export interface AuthResult {
 export interface TokenResult {
   accessToken: string
   refreshToken: string
+  user: User
 }
 
 export const authApi = {

@@ -15,7 +15,7 @@ import type { LoginDto } from './dto/login.dto'
 import type { ForgotPasswordDto } from './dto/forgot-password.dto'
 import type { ResetPasswordDto } from './dto/reset-password.dto'
 
-const REFRESH_TTL = 60 * 60 * 24 * 7
+const REFRESH_TTL = 60 * 60 * 24 * 30
 const SALT_ROUNDS = 12
 
 export interface AuthTokens {
@@ -70,7 +70,7 @@ export class AuthService {
     return { ...tokens, user }
   }
 
-  async refresh(refreshToken: string): Promise<AuthTokens> {
+  async refresh(refreshToken: string) {
     const userId = await this.redis.get(`refresh:${refreshToken}`)
     if (!userId) throw new InvalidCredentialsException()
 
@@ -78,7 +78,8 @@ export class AuthService {
     if (!user) throw new InvalidCredentialsException()
 
     await this.redis.del(`refresh:${refreshToken}`)
-    return this.issueTokens(user.id, user.email, user.role)
+    const tokens = await this.issueTokens(user.id, user.email, user.role)
+    return { ...tokens, user }
   }
 
   async logout(refreshToken: string): Promise<void> {
