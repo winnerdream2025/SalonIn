@@ -6,7 +6,11 @@ import {
   ScrollView,
   ActivityIndicator,
   StyleSheet,
+  Modal,
+  Platform,
+  Alert,
 } from 'react-native'
+import * as Haptics from 'expo-haptics'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { JobPostCard, JobPostCardSkeleton, Text, Button, useTheme } from '@salonin/ui'
@@ -20,8 +24,10 @@ const SPECIALTIES = [
 ]
 
 const CITY_PRESETS = [
-  { cityId: 'dmv', label: 'Washington DC / DMV', lat: 38.9072, lng: -77.0369 },
-  { cityId: 'atlanta', label: 'Atlanta, GA', lat: 33.749, lng: -84.388 },
+  { cityId: 'dmv',     label: 'Washington DC / DMV', lat: 38.9072, lng: -77.0369 },
+  { cityId: 'atlanta', label: 'Atlanta, GA',          lat: 33.749,  lng: -84.388  },
+  { cityId: 'houston', label: 'Houston, TX',          lat: 29.7604, lng: -95.3698 },
+  { cityId: 'miami',   label: 'Miami, FL',            lat: 25.7617, lng: -80.1918 },
 ]
 
 const SKELETON_COUNT = 5
@@ -34,6 +40,9 @@ export default function JobFeedScreen() {
   const userRole = useAuthStore((s) => s.user?.role)
 
   const [selectedSpecialty, setSelectedSpecialty] = useState<string | undefined>()
+  const [showLocationModal, setShowLocationModal] = useState(false)
+
+  const cityLabel = CITY_PRESETS.find((c) => c.cityId === cityId)?.label ?? cityId?.toUpperCase() ?? ''
 
   const { jobs, isLoading, isRefreshing, isLoadingMore, hasMore, error, refresh, loadMore } =
     useJobFeed({ specialty: selectedSpecialty })
@@ -111,7 +120,17 @@ export default function JobFeedScreen() {
       <View style={[styles.header, { borderBottomColor: theme.border.default }]}>
         <Text variant="title">Hiring Posts</Text>
         <View style={styles.headerRight}>
-          <Text variant="caption" color="secondary">{cityId.toUpperCase()}</Text>
+          <TouchableOpacity
+            onPress={() => {
+              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+              setShowLocationModal(true)
+            }}
+            style={[styles.locationPill, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}
+            activeOpacity={0.7}
+          >
+            <Text variant="caption" style={{ color: theme.text.secondary }}>{cityId.toUpperCase()}</Text>
+            <Text style={{ fontSize: 10, color: theme.text.tertiary }}>▾</Text>
+          </TouchableOpacity>
           {userRole === 'SALON' && (
             <TouchableOpacity
               onPress={() => router.push('/jobs/create')}
@@ -122,6 +141,45 @@ export default function JobFeedScreen() {
           )}
         </View>
       </View>
+
+      <Modal
+        visible={showLocationModal}
+        transparent
+        animationType="slide"
+        presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'overFullScreen'}
+        onRequestClose={() => setShowLocationModal(false)}
+      >
+        <View style={[styles.modalOverlay, Platform.OS === 'android' && { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+          <View style={[styles.modalSheet, { backgroundColor: theme.bg.surface }]}>
+            <View style={[styles.modalHandle, { backgroundColor: theme.border.default }]} />
+            <View style={styles.modalHeader}>
+              <Text style={{ fontSize: 18, fontWeight: '800', color: theme.text.primary, letterSpacing: -0.3 }}>
+                Change City
+              </Text>
+              <TouchableOpacity onPress={() => setShowLocationModal(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Text style={{ fontSize: 15, color: '#D85A30', fontWeight: '600' }}>Done</Text>
+              </TouchableOpacity>
+            </View>
+            {CITY_PRESETS.map((city) => (
+              <TouchableOpacity
+                key={city.cityId}
+                onPress={() => {
+                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+                  setLocation(city.cityId, city.lat, city.lng)
+                  setShowLocationModal(false)
+                }}
+                style={[styles.cityRow, { borderBottomColor: theme.border.subtle }]}
+                activeOpacity={0.7}
+              >
+                <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text.primary, flex: 1 }}>{city.label}</Text>
+                {cityId === city.cityId && (
+                  <Text style={{ color: '#D85A30', fontSize: 16, fontWeight: '700' }}>✓</Text>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      </Modal>
 
       <FlatList
         data={jobs}
@@ -151,12 +209,21 @@ export default function JobFeedScreen() {
             </View>
           ) : (
             <View style={styles.centerPane}>
-              <Text variant="body" color="secondary" style={styles.stateText}>
-                No hiring posts found nearby.
+              <Text variant="heading" style={[styles.stateText, { fontSize: 18, fontWeight: '700' }]}>
+                No open positions in {cityLabel} right now
               </Text>
-              <Text variant="caption" color="secondary">
-                Try clearing the specialty filter.
+              <Text variant="caption" color="secondary" style={styles.stateText}>
+                New jobs are posted daily — check back soon
               </Text>
+              <TouchableOpacity
+                style={[styles.emptyCtaBtn, { backgroundColor: theme.brand.primary }]}
+                onPress={() =>
+                  Alert.alert('Job Alerts', 'We’ll notify you when new jobs are posted in your area.')
+                }
+                activeOpacity={0.8}
+              >
+                <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>Set up job alerts</Text>
+              </TouchableOpacity>
             </View>
           )
         }
@@ -219,4 +286,48 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   stateText: { textAlign: 'center' },
+  emptyCtaBtn: {
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center' as const,
+    width: '100%',
+  },
+  locationPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 99,
+    borderWidth: 1,
+  },
+  modalOverlay: { flex: 1, justifyContent: 'flex-end' },
+  modalSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 8,
+    paddingBottom: 32,
+  },
+  modalHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 8,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+  },
+  cityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
 })

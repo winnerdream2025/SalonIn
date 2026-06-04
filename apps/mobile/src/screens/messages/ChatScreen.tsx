@@ -12,12 +12,11 @@ import {
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
-import { useTheme, MessageBubble, MessageBubbleSkeleton, ReportModal } from '@salonin/ui'
+import { useTheme, MessageBubble, MessageBubbleSkeleton, ReportModal, Avatar } from '@salonin/ui'
 import type { Message } from '@salonin/types'
 import { reportsApi, chatRequestsApi } from '@salonin/api-client'
 import { useMessages } from '../../hooks/useMessages'
 import { useAuthStore } from '../../store/authStore'
-import type { ChatRequestPreview } from '@salonin/types'
 
 const SKELETON_COUNT = 8
 const TYPING_TIMEOUT_MS = 3000
@@ -25,11 +24,11 @@ const TYPING_TIMEOUT_MS = 3000
 export default function ChatScreen() {
   const { bottom } = useSafeAreaInsets()
   const { theme } = useTheme()
-  const { id, name, otherUserId, chatRequestId } = useLocalSearchParams<{
+  const { id, name, otherUserId, otherPhotoUrl } = useLocalSearchParams<{
     id: string
     name: string
     otherUserId?: string
-    chatRequestId?: string
+    otherPhotoUrl?: string
   }>()
   const currentUserId = useAuthStore((s) => s.user?.id)
 
@@ -41,11 +40,13 @@ export default function ChatScreen() {
     loadMore,
     typingUsers,
     setTyping,
+    chatRequest,
+    setChatRequest,
   } = useMessages(id)
 
   const [draft, setDraft] = useState('')
+  const [isSending, setIsSending] = useState(false)
   const [showReport, setShowReport] = useState(false)
-  const [chatRequest, setChatRequest] = useState<ChatRequestPreview | null>(null)
   const [isRespondingRequest, setIsRespondingRequest] = useState(false)
   const [typingVisible, setTypingVisible] = useState(false)
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -54,17 +55,11 @@ export default function ChatScreen() {
   const isCurrentUserSender = chatRequest?.senderId === currentUserId
   const isCurrentUserReceiver = chatRequest?.receiverId === currentUserId
   const isPending = chatRequest?.status === 'PENDING'
-  const isBlocked =
-    isPending && isCurrentUserSender && (chatRequest?.messageCount ?? 0) >= 3
-  const inputDisabled = isBlocked
-
-  useEffect(() => {
-    if (!chatRequestId) return
-    chatRequestsApi.getReceived().then((list) => {
-      const found = list.find((r) => r.id === chatRequestId)
-      if (found) setChatRequest(found)
-    }).catch(() => undefined)
-  }, [chatRequestId])
+  const usedMessages = chatRequest?.messageCount ?? 0
+  const remaining = 3 - usedMessages
+  const isBlocked = isPending && isCurrentUserSender && remaining <= 0
+  const isReceiverPending = isPending && isCurrentUserReceiver
+  const inputDisabled = isBlocked || isReceiverPending
 
   const othersTyping = typingUsers.filter((uid) => uid !== currentUserId)
 
@@ -83,16 +78,16 @@ export default function ChatScreen() {
 
   const handleSend = useCallback(async () => {
     const text = draft.trim()
-    if (!text || inputDisabled) return
+    if (!text || inputDisabled || isSending) return
+    setIsSending(true)
     setDraft('')
     setTyping(false)
-    await sendMessage(text)
-    if (chatRequest?.status === 'PENDING' && isCurrentUserSender) {
-      setChatRequest((prev) =>
-        prev ? { ...prev, messageCount: (prev.messageCount ?? 0) + 1 } : prev,
-      )
+    try {
+      await sendMessage(text)
+    } finally {
+      setIsSending(false)
     }
-  }, [draft, sendMessage, setTyping, inputDisabled, chatRequest, isCurrentUserSender])
+  }, [draft, sendMessage, setTyping, inputDisabled, isSending])
 
   const handleChangeText = useCallback(
     (text: string) => {
@@ -126,6 +121,15 @@ export default function ChatScreen() {
 
   const renderItem = useCallback(
     ({ item, index }: { item: Message; index: number }) => {
+      if ((item as Message & { isSystem?: boolean }).isSystem) {
+        return (
+          <View style={styles.systemMsgRow}>
+            <View style={[styles.systemBubble, { backgroundColor: theme.bg.elevated }]}>
+              <Text style={[styles.systemText, { color: theme.text.secondary }]}>{item.content}</Text>
+            </View>
+          </View>
+        )
+      }
       const isSelf = item.senderId === currentUserId
       const showAvatar = !isSelf && (index === messages.length - 1 || messages[index + 1]?.senderId !== item.senderId)
       return (
@@ -133,10 +137,12 @@ export default function ChatScreen() {
           message={item}
           isSelf={isSelf}
           showAvatar={showAvatar}
+          senderPhotoUrl={isSelf ? null : (otherPhotoUrl ?? null)}
+          senderName={isSelf ? undefined : (name ?? undefined)}
         />
       )
     },
-    [currentUserId, messages],
+    [currentUserId, messages, otherPhotoUrl, name, theme],
   )
 
   return (
@@ -145,9 +151,12 @@ export default function ChatScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
           <Text style={[styles.backArrow, { color: theme.brand.primary }]}>{'‹'}</Text>
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text.primary }]} numberOfLines={1}>
-          {name ?? 'Chat'}
-        </Text>
+        <View style={styles.headerCenter}>
+          <Avatar uri={otherPhotoUrl ?? null} name={name ?? '?'} size="sm" />
+          <Text style={[styles.headerTitle, { color: theme.text.primary }]} numberOfLines={1}>
+            {name ?? 'Chat'}
+          </Text>
+        </View>
         {otherUserId != null ? (
           <TouchableOpacity onPress={() => setShowReport(true)} style={styles.backBtn} activeOpacity={0.7}>
             <Text style={[styles.reportIcon, { color: theme.text.secondary }]}>{'⋯'}</Text>
@@ -159,35 +168,29 @@ export default function ChatScreen() {
 
       {isPending && isCurrentUserSender && (
         <View style={[styles.requestBanner, { backgroundColor: theme.bg.elevated, borderBottomColor: theme.border.default }]}>
-          {isBlocked ? (
-            <Text style={[styles.bannerText, { color: theme.text.secondary }]}>
-              Waiting for {name} to accept your request
-            </Text>
-          ) : (
-            <>
-              <Text style={[styles.bannerText, { color: theme.text.secondary }]}>
-                Chat request pending — {chatRequest?.messageCount ?? 0}/3 messages used
-              </Text>
-              <View style={[styles.progressTrack, { backgroundColor: theme.border.default }]}>
-                <View
-                  style={[
-                    styles.progressFill,
-                    {
-                      backgroundColor: '#D85A30',
-                      width: `${((chatRequest?.messageCount ?? 0) / 3) * 100}%`,
-                    },
-                  ]}
-                />
-              </View>
-            </>
-          )}
+          <Text style={[styles.bannerText, { color: theme.text.secondary }]}>
+            {remaining > 0
+              ? `${remaining} of 3 messages remaining`
+              : `Waiting for ${name ?? 'them'} to accept your request`}
+          </Text>
+          <View style={styles.dotsRow}>
+            {[1, 2, 3].map((i) => (
+              <View
+                key={i}
+                style={[styles.dot, { backgroundColor: i <= usedMessages ? theme.brand.primary : theme.border.default }]}
+              />
+            ))}
+          </View>
         </View>
       )}
 
-      {isPending && isCurrentUserReceiver && chatRequest?.status === 'PENDING' && (
+      {isPending && isCurrentUserReceiver && (
         <View style={[styles.requestBanner, { backgroundColor: theme.bg.elevated, borderBottomColor: theme.border.default }]}>
-          <Text style={[styles.bannerText, { color: theme.text.primary, fontWeight: '600', marginBottom: 10 }]}>
-            {chatRequest.sender.name} wants to chat
+          <Text style={[styles.bannerText, { color: theme.text.primary, fontWeight: '600' }]}>
+            {chatRequest?.sender.name} wants to connect
+          </Text>
+          <Text style={[styles.bannerText, { color: theme.text.secondary, marginBottom: 10 }]}>
+            Applied to a job posting
           </Text>
           <View style={styles.requestActions}>
             <TouchableOpacity
@@ -260,7 +263,13 @@ export default function ChatScreen() {
             value={draft}
             onChangeText={handleChangeText}
             onBlur={() => setTyping(false)}
-            placeholder={inputDisabled ? `Waiting for ${name} to accept…` : 'Type a message…'}
+            placeholder={
+              isReceiverPending
+                ? 'Accept the request to reply'
+                : isBlocked
+                  ? `Waiting for ${name ?? 'them'} to accept…`
+                  : 'Type a message…'
+            }
             placeholderTextColor={theme.text.secondary}
             multiline
             maxLength={2000}
@@ -271,7 +280,7 @@ export default function ChatScreen() {
             style={[styles.sendBtn, { backgroundColor: draft.trim() && !inputDisabled ? theme.brand.primary : theme.bg.elevated }]}
             onPress={() => void handleSend()}
             activeOpacity={0.8}
-            disabled={!draft.trim() || inputDisabled}
+            disabled={!draft.trim() || inputDisabled || isSending}
           >
             <Text style={[styles.sendIcon, { color: theme.text.inverse }]}>↑</Text>
           </TouchableOpacity>
@@ -304,7 +313,8 @@ const styles = StyleSheet.create({
   },
   backBtn: { width: 44, alignItems: 'center', justifyContent: 'center' },
   backArrow: { fontSize: 32, lineHeight: 40 },
-  headerTitle: { flex: 1, fontSize: 16, fontWeight: '600', textAlign: 'center' },
+  headerCenter: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  headerTitle: { fontSize: 16, fontWeight: '600', flexShrink: 1 },
 
   requestBanner: {
     paddingHorizontal: 16,
@@ -312,13 +322,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   bannerText: { fontSize: 13, lineHeight: 18 },
-  progressTrack: {
-    height: 3,
-    borderRadius: 2,
-    marginTop: 8,
-    overflow: 'hidden',
-  },
-  progressFill: { height: 3, borderRadius: 2 },
+  dotsRow: { flexDirection: 'row', gap: 6, marginTop: 8 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
   requestActions: { flexDirection: 'row', gap: 8, marginTop: 4 },
   acceptBtn: {
     flex: 1,
@@ -372,4 +377,7 @@ const styles = StyleSheet.create({
   },
   sendIcon: { fontSize: 18, fontWeight: '700' },
   reportIcon: { fontSize: 20, fontWeight: '700' },
+  systemMsgRow: { alignItems: 'center', paddingVertical: 8, paddingHorizontal: 24 },
+  systemBubble: { borderRadius: 12, paddingHorizontal: 14, paddingVertical: 6 },
+  systemText: { fontSize: 12, textAlign: 'center' },
 })

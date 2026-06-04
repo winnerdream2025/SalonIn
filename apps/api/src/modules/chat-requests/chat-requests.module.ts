@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common'
+import { MessagingModule } from '../messaging/messaging.module'
 import { ChatRequestsController } from './chat-requests.controller'
 import { ChatRequestsService } from './chat-requests.service'
 
 @Module({
+  imports: [MessagingModule],
   controllers: [ChatRequestsController],
   providers: [ChatRequestsService],
   exports: [ChatRequestsService],

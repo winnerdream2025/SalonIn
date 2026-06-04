@@ -7,11 +7,15 @@ import {
 } from '@nestjs/common'
 import { ChatRequestStatus } from '@prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
+import { MessagingGateway } from '../messaging/messaging.gateway'
 import type { ChatRequestPreview } from '@salonin/types'
 
 @Injectable()
 export class ChatRequestsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly messagingGateway: MessagingGateway,
+  ) {}
 
   async create(senderId: string, receiverId: string): Promise<ChatRequestPreview> {
     if (senderId === receiverId) {
@@ -90,6 +94,22 @@ export class ChatRequestsService {
           },
         },
       })
+
+      if (req.conversationId) {
+        const sysMsg = await this.prisma.message.create({
+          data: {
+            conversationId: req.conversationId,
+            senderId: userId,
+            content: 'Request declined',
+            isSystem: true,
+          },
+        })
+        this.messagingGateway.broadcastMessage(req.conversationId, sysMsg)
+        this.messagingGateway.server
+          .to(`conv:${req.conversationId}`)
+          .emit('chat-request:updated', this.toPreview(updated))
+      }
+
       return this.toPreview(updated)
     }
 
@@ -132,7 +152,45 @@ export class ChatRequestsService {
       },
     })
 
+    const sysMsg = await this.prisma.message.create({
+      data: {
+        conversationId: conv.id,
+        senderId: userId,
+        content: '✓ Request accepted — you can now chat freely',
+        isSystem: true,
+      },
+    })
+    this.messagingGateway.broadcastMessage(conv.id, sysMsg)
+    this.messagingGateway.server
+      .to(`conv:${conv.id}`)
+      .emit('chat-request:updated', this.toPreview(updated))
+
     return this.toPreview(updated)
+  }
+
+  async getForConversation(
+    conversationId: string,
+    userId: string,
+  ): Promise<ChatRequestPreview | null> {
+    const req = await this.prisma.chatRequest.findFirst({
+      where: {
+        conversationId,
+        OR: [{ senderId: userId }, { receiverId: userId }],
+      },
+      include: {
+        sender: {
+          select: {
+            id: true,
+            role: true,
+            workerProfile: { select: { name: true, photoUrl: true } },
+            salonProfile: { select: { name: true, photoUrls: true } },
+          },
+        },
+      },
+    })
+
+    if (!req) return null
+    return this.toPreview(req)
   }
 
   private toPreview(req: {

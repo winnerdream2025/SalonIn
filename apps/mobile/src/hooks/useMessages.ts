@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { io } from 'socket.io-client'
 import type { Socket } from 'socket.io-client'
-import { messagesApi } from '@salonin/api-client'
-import type { Message } from '@salonin/types'
+import { messagesApi, chatRequestsApi } from '@salonin/api-client'
+import type { Message, ChatRequestPreview } from '@salonin/types'
 import { useAuthStore } from '../store/authStore'
 
 const WS_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000'
@@ -18,6 +18,7 @@ export function useMessages(conversationId: string) {
   const [error, setError] = useState<Error | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   const [typingUsers, setTypingUsers] = useState<string[]>([])
+  const [chatRequest, setChatRequest] = useState<ChatRequestPreview | null>(null)
   const socketRef = useRef<Socket | null>(null)
 
   useEffect(() => {
@@ -48,6 +49,10 @@ export function useMessages(conversationId: string) {
       )
     })
 
+    socket.on('chat-request:updated', (updated: ChatRequestPreview) => {
+      setChatRequest(updated)
+    })
+
     socketRef.current = socket
 
     return () => {
@@ -67,6 +72,10 @@ export function useMessages(conversationId: string) {
         setCursor(res.nextCursor ?? undefined)
         setHasMore(res.hasMore)
         void messagesApi.markAsRead(conversationId)
+        void chatRequestsApi
+          .getForConversation(conversationId)
+          .then((cr) => setChatRequest(cr))
+          .catch(() => undefined)
       })
       .catch((e: unknown) => {
         setError(e instanceof Error ? e : new Error('Failed to load messages'))
@@ -78,6 +87,11 @@ export function useMessages(conversationId: string) {
     async (content: string, mediaUrl?: string) => {
       const msg = await messagesApi.sendMessage(conversationId, content, mediaUrl)
       setMessages((prev) => [msg as Message, ...prev])
+      setChatRequest((prev) =>
+        prev?.status === 'PENDING'
+          ? { ...prev, messageCount: (prev.messageCount ?? 0) + 1 }
+          : prev,
+      )
     },
     [conversationId],
   )
@@ -116,6 +130,8 @@ export function useMessages(conversationId: string) {
     error,
     isConnected,
     typingUsers,
+    chatRequest,
+    setChatRequest,
     sendMessage,
     loadMore,
     setTyping,

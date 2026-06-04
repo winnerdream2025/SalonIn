@@ -10,6 +10,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Share,
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
@@ -163,7 +164,7 @@ export default function DiscoveryFeedScreen() {
   const [reportTarget, setReportTarget] = useState<WorkerCardData | null>(null)
   const [locationModalVisible, setLocationModalVisible] = useState(false)
 
-  const { workers, isLoading, isRefreshing, isLoadingMore, hasMore, error, refresh, loadMore } =
+  const { workers, isLoading, isRefreshing, isLoadingMore, hasMore, error, isExpanded, usedRadius, refresh, loadMore } =
     useNearbyWorkers({ specialty: selectedSpecialty })
 
   const handlePressWorker = useCallback((worker: WorkerCardData) => {
@@ -305,7 +306,18 @@ export default function DiscoveryFeedScreen() {
         )}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         contentContainerStyle={[styles.listContent, { paddingBottom: 56 + bottom + 16 }]}
-        ListHeaderComponent={SpecialtyFilters}
+        ListHeaderComponent={
+          <>
+            {SpecialtyFilters}
+            {isExpanded && (
+              <View style={[styles.expandedBanner, { backgroundColor: 'rgba(216,90,48,0.08)', borderColor: 'rgba(216,90,48,0.25)' }]}>
+                <Text style={{ fontSize: 13, color: '#D85A30', textAlign: 'center' }}>
+                  No workers found nearby. Showing results within {usedRadius} miles.
+                </Text>
+              </View>
+            )}
+          </>
+        }
         ListEmptyComponent={
           isLoading ? (
             <View style={styles.skeletonList}>
@@ -324,12 +336,31 @@ export default function DiscoveryFeedScreen() {
             </View>
           ) : (
             <View style={styles.centerPane}>
-              <Text variant="body" color="secondary" style={styles.stateText}>
-                No workers found nearby.
+              <Text variant="heading" style={[styles.stateText, { fontSize: 18, fontWeight: '700' }]}>
+                No workers available right now
               </Text>
-              <Text variant="caption" color="secondary">
-                Try expanding your search radius or clearing filters.
+              <Text variant="caption" color="secondary" style={styles.stateText}>
+                Be the first to join Salonin in your area
               </Text>
+              <TouchableOpacity
+                style={[styles.emptyCtaBtn, { backgroundColor: theme.brand.primary }]}
+                onPress={() => {
+                  void Share.share({
+                    message: 'Join me on Salonin — the app connecting beauty pros with top salons! https://salonin.app',
+                  })
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>Invite a friend</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setLocationModalVisible(true)}
+                activeOpacity={0.8}
+              >
+                <Text style={{ fontSize: 14, color: theme.text.tertiary, textDecorationLine: 'underline' }}>
+                  Change location
+                </Text>
+              </TouchableOpacity>
             </View>
           )
         }
@@ -403,6 +434,21 @@ const styles = StyleSheet.create({
   listContent: { paddingHorizontal: 16 },
   separator: { height: 8 },
   skeletonList: { gap: 8, paddingTop: 8 },
+  expandedBanner: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  emptyCtaBtn: {
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center' as const,
+    width: '100%',
+  },
   footer: { paddingVertical: 16, alignItems: 'center' },
   centerPane: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 64, gap: 12 },
   locTitle: { textAlign: 'center' },

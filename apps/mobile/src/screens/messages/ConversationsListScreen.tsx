@@ -18,7 +18,12 @@ export default function ConversationsListScreen() {
   const handlePress = useCallback((conv: ConversationPreview) => {
     router.push({
       pathname: '/chat/[id]',
-      params: { id: conv.id, name: conv.otherParticipant.name, otherUserId: conv.otherParticipant.userId },
+      params: {
+        id: conv.id,
+        name: conv.otherParticipant.name,
+        otherUserId: conv.otherParticipant.userId,
+        otherPhotoUrl: conv.otherParticipant.photoUrl ?? '',
+      },
     })
   }, [])
 

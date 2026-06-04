@@ -92,18 +92,25 @@ export default function JobDetailScreen() {
       ])
       return
     }
-    if (!id) return
+    if (!id || !job) return
     setIsApplying(true)
     try {
       await jobsApi.apply(id)
       setApplied(true)
-      Alert.alert('Applied!', 'Your application has been sent to the salon.')
+      const conv = await messagesApi.createConversation(job.salon.userId)
+      await messagesApi.sendMessage(
+        conv.id,
+        `Hi! I applied to your "${job.title}" position. I'd love to discuss the opportunity.`,
+      )
+      router.push(
+        `/chat/${conv.id}?name=${encodeURIComponent(job.salon.name)}` as never,
+      )
     } catch {
       Alert.alert('Error', 'Could not submit application. Please try again.')
     } finally {
       setIsApplying(false)
     }
-  }, [id, isGuest])
+  }, [id, isGuest, job])
 
   const handleMessage = useCallback(async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)

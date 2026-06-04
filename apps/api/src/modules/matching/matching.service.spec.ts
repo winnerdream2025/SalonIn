@@ -6,6 +6,9 @@ import { MetricsService } from '../../common/metrics/metrics.service'
 
 const mockPrisma = {
   $queryRaw: jest.fn(),
+  workerProfile: {
+    findMany: jest.fn(),
+  },
 }
 
 const mockRedis = {
@@ -85,14 +88,18 @@ describe('MatchingService', () => {
         mockRedis.get.mockResolvedValue(null)
         mockRedis.set.mockResolvedValue('OK')
         mockPrisma.$queryRaw.mockResolvedValue([])
+        mockPrisma.workerProfile.findMany.mockResolvedValue([])
 
         await service.findNearbyWorkers(BASE_PARAMS)
 
-        expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1)
+        // radiusMiles=10 → all 4 RADIUS_STEPS (15,30,50,100) are tried since each > 10
+        expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(4)
         expect(mockRedis.set).toHaveBeenCalledTimes(1)
         const [, serialized, , ttl] = mockRedis.set.mock.calls[0] as [string, string, string, number]
         expect(ttl).toBe(60)
-        expect(() => JSON.parse(serialized)).not.toThrow()
+        const parsed = JSON.parse(serialized) as { usedRadius: number; isExpanded: boolean }
+        expect(parsed.usedRadius).toBe(100)
+        expect(parsed.isExpanded).toBe(true)
       })
     })
 

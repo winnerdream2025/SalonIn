@@ -270,6 +270,8 @@ export interface CursorResponse<T> {
   data: T[]
   nextCursor: string | null
   hasMore: boolean
+  usedRadius?: number
+  isExpanded?: boolean
 }
 
 export interface PaginatedResponse<T> {

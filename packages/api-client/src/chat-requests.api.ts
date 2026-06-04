@@ -8,6 +8,11 @@ export const chatRequestsApi = {
   getReceived: (): Promise<ChatRequestPreview[]> =>
     api.get<ChatRequestPreview[]>('/chat-requests/received').then((r) => r.data),
 
+  getForConversation: (conversationId: string): Promise<ChatRequestPreview | null> =>
+    api
+      .get<ChatRequestPreview | null>(`/chat-requests/conversation/${conversationId}`)
+      .then((r) => r.data),
+
   respond: (id: string, action: 'ACCEPT' | 'DECLINE'): Promise<ChatRequestPreview> =>
     api.patch<ChatRequestPreview>(`/chat-requests/${id}`, { action }).then((r) => r.data),
 }

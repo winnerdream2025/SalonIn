@@ -17,6 +17,8 @@ export interface UseNearbyWorkersResult {
   isLoadingMore: boolean
   hasMore: boolean
   error: Error | null
+  isExpanded: boolean
+  usedRadius: number
   refresh: () => void
   loadMore: () => void
 }
@@ -34,6 +36,8 @@ export function useNearbyWorkers(options: UseNearbyWorkersOptions = {}): UseNear
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [error, setError] = useState<Error | null>(null)
+  const [isExpanded, setIsExpanded] = useState(false)
+  const [usedRadius, setUsedRadius] = useState(radiusMiles)
   const [tick, setTick] = useState(0)
 
   const isRefreshRef = useRef(false)
@@ -68,6 +72,8 @@ export function useNearbyWorkers(options: UseNearbyWorkersOptions = {}): UseNear
           setWorkers(res.data)
           setNextCursor(res.nextCursor ?? undefined)
           setHasMore(res.hasMore)
+          setIsExpanded(res.isExpanded ?? false)
+          setUsedRadius(res.usedRadius ?? radiusMiles)
         }
       })
       .catch((e: unknown) => {
@@ -100,5 +106,5 @@ export function useNearbyWorkers(options: UseNearbyWorkersOptions = {}): UseNear
     }
   }, [hasMore, nextCursor, cityId, lat, lng, radiusMiles, specialty, availability, isLoadingMore])
 
-  return { workers, isLoading, isRefreshing, isLoadingMore, hasMore, error, refresh, loadMore }
+  return { workers, isLoading, isRefreshing, isLoadingMore, hasMore, error, isExpanded, usedRadius, refresh, loadMore }
 }

@@ -57,7 +57,7 @@ export function WorkerCard({ worker, onPress, isLoading = false, onLongPress, on
               {specialtyLine}
             </Text>
             <Text style={[styles.location, { color: theme.text.tertiary }]} numberOfLines={1}>
-              📍 {worker.cityId.toUpperCase()}
+              {worker.cityId.toUpperCase()}
               {worker.distanceMiles !== null ? `  ·  ${formatDistance(worker.distanceMiles)}` : ''}
             </Text>
           </View>

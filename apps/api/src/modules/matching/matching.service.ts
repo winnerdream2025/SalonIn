@@ -7,6 +7,9 @@ import { RedisService } from '../../redis/redis.service'
 import { MetricsService } from '../../common/metrics/metrics.service'
 import type { FindNearbyWorkersDto } from './dto/find-nearby-workers.dto'
 
+const RADIUS_STEPS = [15, 30, 50, 100] as const
+const MIN_RESULTS = 5
+
 interface RawWorker {
   id: string
   name: string
@@ -43,7 +46,7 @@ export class MatchingService {
   ) {}
 
   async findNearbyWorkers(params: FindNearbyWorkersDto): Promise<CursorResponse<WorkerCardData>> {
-    const cacheKey = this.buildCacheKey(params)
+    const cacheKey = this.buildCacheKey(params, params.radiusMiles)
     const cached = await this.redis.get(cacheKey)
     if (cached) {
       this.metrics.increment('cache.hit', [`city:${params.cityId}`])
@@ -51,6 +54,54 @@ export class MatchingService {
     }
     this.metrics.increment('cache.miss', [`city:${params.cityId}`])
 
+    let rows: RawWorker[] = []
+    let usedRadius = params.radiusMiles
+
+    if (params.cursor) {
+      rows = await this.queryNearbyWorkers(params)
+    } else {
+      for (const radius of RADIUS_STEPS) {
+        if (radius < params.radiusMiles) continue
+        rows = await this.queryNearbyWorkers({ ...params, radiusMiles: radius })
+        usedRadius = radius
+        if (rows.length >= MIN_RESULTS) break
+      }
+    }
+
+    const isExpanded = usedRadius > params.radiusMiles
+
+    let result: CursorResponse<WorkerCardData>
+
+    if (rows.length === 0 && !params.cursor) {
+      const fallback = await this.getFallbackWorkers(params.cityId, params.specialty)
+      result = {
+        data: fallback.map((w) => this.toWorkerCardDataFromProfile(w)),
+        nextCursor: null,
+        hasMore: false,
+        usedRadius,
+        isExpanded,
+      }
+    } else {
+      const hasMore = rows.length > 50
+      const slice = rows.slice(0, 50)
+      const nextCursor = hasMore ? this.encodeCursor(slice[49]!) : null
+      result = {
+        data: slice.map((r) => this.toWorkerCardData(r)),
+        nextCursor,
+        hasMore,
+        usedRadius,
+        isExpanded,
+      }
+    }
+
+    const finalCacheKey = this.buildCacheKey(params, usedRadius)
+    await this.redis.set(finalCacheKey, JSON.stringify(result), 'EX', 60)
+    this.metrics.gauge('active_workers_by_city', result.data.length, [`city:${params.cityId}`])
+
+    return result
+  }
+
+  private async queryNearbyWorkers(params: FindNearbyWorkersDto): Promise<RawWorker[]> {
     const radiusMeters = params.radiusMiles * 1609.344
     const cursor = params.cursor ? this.decodeCursor(params.cursor) : null
 
@@ -107,22 +158,21 @@ export class MatchingService {
     `)
 
     this.metrics.timing('geo_query_duration', Date.now() - queryStart, [`city:${params.cityId}`])
+    return rows
+  }
 
-    const hasMore = rows.length > 50
-    const slice = rows.slice(0, 50)
-    const nextCursor = hasMore ? this.encodeCursor(slice[49]!) : null
-
-    const result: CursorResponse<WorkerCardData> = {
-      data: slice.map((r) => this.toWorkerCardData(r)),
-      nextCursor,
-      hasMore,
-    }
-
-    await this.redis.set(cacheKey, JSON.stringify(result), 'EX', 60)
-
-    this.metrics.gauge('active_workers_by_city', result.data.length, [`city:${params.cityId}`])
-
-    return result
+  private async getFallbackWorkers(cityId: string, specialty?: string) {
+    return this.prisma.workerProfile.findMany({
+      where: {
+        cityId,
+        user: { isActive: true },
+        availability: { not: 'NOT_AVAILABLE' as Availability },
+        ...(specialty ? { specialties: { has: specialty } } : {}),
+      },
+      orderBy: { id: 'desc' },
+      take: 10,
+      include: { user: { select: { id: true, email: true } } },
+    })
   }
 
   private toWorkerCardData(raw: RawWorker): WorkerCardData {
@@ -139,9 +189,32 @@ export class MatchingService {
     }
   }
 
-  private buildCacheKey(params: FindNearbyWorkersDto): string {
-    const { cityId, lat, lng, radiusMiles, specialty, availability, cursor } = params
-    return `nearby:${cityId}:${lat}:${lng}:${radiusMiles}:${specialty ?? ''}:${availability ?? ''}:${cursor ?? ''}`
+  private toWorkerCardDataFromProfile(worker: {
+    id: string
+    name: string
+    photoUrl: string | null
+    specialties: string[]
+    availability: Availability
+    experienceYears: number
+    isVerified: boolean
+    cityId: string
+  }): WorkerCardData {
+    return {
+      id: worker.id,
+      name: worker.name,
+      photoUrl: worker.photoUrl,
+      specialties: worker.specialties,
+      availability: worker.availability,
+      distanceMiles: null,
+      experienceYears: Number(worker.experienceYears),
+      isVerified: Boolean(worker.isVerified),
+      cityId: worker.cityId,
+    }
+  }
+
+  private buildCacheKey(params: FindNearbyWorkersDto, radius: number): string {
+    const { cityId, lat, lng, specialty, availability, cursor } = params
+    return `nearby:${cityId}:${lat}:${lng}:${radius}:${specialty ?? 'all'}:${availability ?? ''}:${cursor ?? ''}`
   }
 
   private encodeCursor(worker: RawWorker): string {

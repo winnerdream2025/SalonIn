@@ -8,5 +8,6 @@ import { MessagingService } from './messaging.service'
   imports: [AuthModule],
   controllers: [MessagingController],
   providers: [MessagingService, MessagingGateway],
+  exports: [MessagingGateway],
 })
 export class MessagingModule {}

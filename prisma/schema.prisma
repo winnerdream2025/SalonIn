@@ -201,6 +201,7 @@ model Message {
   mediaUrl       String?
   createdAt      DateTime     @default(now())
   isRead         Boolean      @default(false)
+  isSystem       Boolean      @default(false)
 
   @@index([conversationId, createdAt])
   @@index([senderId, isRead])

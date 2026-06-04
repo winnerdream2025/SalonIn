@@ -66,7 +66,7 @@ export function JobPostCard({ job, onPress, isLoading = false, onApply, onSave, 
               {job.salonName}
             </Text>
             <Text style={[styles.salonLoc, { color: theme.text.tertiary }]} numberOfLines={1}>
-              📍 {job.cityId.toUpperCase()}
+              {job.cityId.toUpperCase()}
             </Text>
           </View>
           {job.isUrgent && !expired && (
@@ -101,14 +101,14 @@ export function JobPostCard({ job, onPress, isLoading = false, onApply, onSave, 
         {/* ── Info rows ── */}
         <View style={styles.infoRows}>
           <Text style={[styles.infoRow, { color: theme.text.secondary }]} numberOfLines={1}>
-            {'💰  '}<Text style={{ color: '#D85A30', fontWeight: '700' }}>{job.payStructure}</Text>
+            {'Pay  '}<Text style={{ color: '#D85A30', fontWeight: '700' }}>{job.payStructure}</Text>
           </Text>
           <Text style={[styles.infoRow, { color: expiryColor }]} numberOfLines={1}>
-            {'⏱  '}{expiryStr}
+            {expiryStr}
           </Text>
           {job.applicantCount !== undefined && (
             <Text style={[styles.infoRow, { color: job.applicantCount > 10 ? '#EF9F27' : theme.text.secondary }]} numberOfLines={1}>
-              {'👥  '}{job.applicantCount} applicant{job.applicantCount !== 1 ? 's' : ''}
+              {job.applicantCount} applicant{job.applicantCount !== 1 ? 's' : ''}
             </Text>
           )}
         </View>
@@ -121,7 +121,7 @@ export function JobPostCard({ job, onPress, isLoading = false, onApply, onSave, 
               {onSave && (
                 <Pressable onPress={onSave} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                   <Text style={[styles.saveBtn, { color: isSaved ? '#D85A30' : theme.text.tertiary }]}>
-                    {isSaved ? '🔖 Saved' : '🔖 Save'}
+                    {isSaved ? 'Saved' : 'Save'}
                   </Text>
                 </Pressable>
               )}
