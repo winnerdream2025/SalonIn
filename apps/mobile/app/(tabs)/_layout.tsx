@@ -13,11 +13,11 @@ export default function TabsLayout() {
   const role = useAuthStore((s) => s.user?.role)
   const isLoggedIn = useAuthStore((s) => s.user != null)
   const isSalon = role === Role.SALON
-  const { theme } = useTheme()
+  const { theme, isDark } = useTheme()
   const { conversations } = useConversations()
-  const { pendingCount } = useChatRequests()
+  const { pendingCount, isLoaded: chatRequestsLoaded } = useChatRequests()
   const unreadCount = conversations.reduce((sum, c) => sum + c.unreadCount, 0)
-  const messagesBadge = isLoggedIn ? unreadCount + pendingCount : 0
+  const messagesBadge = isLoggedIn && chatRequestsLoaded ? unreadCount + pendingCount : 0
 
   return (
     <Tabs
@@ -25,13 +25,15 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarStyle: {
           backgroundColor: theme.bg.surface,
-          borderTopColor: theme.border.default,
-          borderTopWidth: 0.5,
+          borderTopWidth: 0,
           height: 56 + bottom,
           paddingBottom: Math.max(bottom, 8),
           paddingTop: 8,
-          elevation: 0,
-          shadowOpacity: 0,
+          elevation: 8,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: isDark ? 0.3 : 0.08,
+          shadowRadius: 8,
         },
         tabBarActiveTintColor: '#D85A30',
         tabBarInactiveTintColor: theme.text.secondary,
@@ -42,8 +44,8 @@ export default function TabsLayout() {
         name="index"
         options={{
           tabBarLabel: isSalon ? 'Workers' : 'Discover',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="compass-outline" size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? 'compass' : 'compass-outline'} size={size} color={color} />
           ),
         }}
       />
@@ -51,8 +53,8 @@ export default function TabsLayout() {
         name="jobs"
         options={{
           tabBarLabel: isSalon ? 'My Jobs' : 'Jobs',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="briefcase-outline" size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? 'briefcase' : 'briefcase-outline'} size={size} color={color} />
           ),
         }}
       />
@@ -60,8 +62,8 @@ export default function TabsLayout() {
         name="messages"
         options={{
           tabBarLabel: 'Messages',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="chatbubble-outline" size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? 'chatbubble' : 'chatbubble-outline'} size={size} color={color} />
           ),
           tabBarBadge: messagesBadge > 0 ? messagesBadge : undefined,
           tabBarBadgeStyle: { backgroundColor: theme.brand.primary, fontSize: 10 },
@@ -71,8 +73,8 @@ export default function TabsLayout() {
         name="profile"
         options={{
           tabBarLabel: isSalon ? 'My Salon' : 'Profile',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name={isSalon ? 'business-outline' : 'person-outline'} size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={isSalon ? (focused ? 'business' : 'business-outline') : (focused ? 'person' : 'person-outline')} size={size} color={color} />
           ),
         }}
       />

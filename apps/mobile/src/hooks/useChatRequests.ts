@@ -6,6 +6,7 @@ export function useChatRequests() {
   const [requests, setRequests] = useState<ChatRequestPreview[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isLoaded, setIsLoaded] = useState(false)
   const [error, setError] = useState<Error | null>(null)
 
   const load = useCallback(async (refreshing = false) => {
@@ -20,6 +21,7 @@ export function useChatRequests() {
     } finally {
       setIsLoading(false)
       setIsRefreshing(false)
+      setIsLoaded(true)
     }
   }, [])
 
@@ -42,5 +44,5 @@ export function useChatRequests() {
 
   const pendingCount = requests.filter((r) => r.status === 'PENDING').length
 
-  return { requests, isLoading, isRefreshing, error, refresh, respond, pendingCount }
+  return { requests, isLoading, isRefreshing, isLoaded, error, refresh, respond, pendingCount }
 }

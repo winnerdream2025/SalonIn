@@ -55,12 +55,12 @@ export function JobPostCard({ job, onPress, isLoading = false, onApply, onSave, 
         onPressOut={animOut}
         style={[styles.card, {
           backgroundColor: theme.bg.card,
-          borderColor: theme.border.default,
+          borderColor: theme.border.subtle,
         }]}
       >
         {/* ── Salon header ── */}
         <View style={styles.salonRow}>
-          <Avatar uri={job.salonPhotoUrl} name={job.salonName} size="sm" />
+          <Avatar uri={job.salonPhotoUrl} name={job.salonName} size="md" />
           <View style={styles.salonInfo}>
             <Text style={[styles.salonName, { color: theme.text.secondary }]} numberOfLines={1}>
               {job.salonName}
@@ -100,15 +100,17 @@ export function JobPostCard({ job, onPress, isLoading = false, onApply, onSave, 
 
         {/* ── Info rows ── */}
         <View style={styles.infoRows}>
-          <Text style={[styles.infoRow, { color: theme.text.secondary }]} numberOfLines={1}>
-            {'Pay  '}<Text style={{ color: '#D85A30', fontWeight: '700' }}>{job.payStructure}</Text>
-          </Text>
-          <Text style={[styles.infoRow, { color: expiryColor }]} numberOfLines={1}>
-            {expiryStr}
-          </Text>
+          <View style={styles.infoTopRow}>
+            <Text style={[styles.infoRow, { color: theme.text.secondary }]} numberOfLines={1}>
+              {'Pay  '}<Text style={{ color: '#D85A30', fontWeight: '600' }}>{job.payStructure}</Text>
+            </Text>
+            <Text style={[styles.infoRow, { color: expiryColor }]} numberOfLines={1}>
+              {expiryStr}
+            </Text>
+          </View>
           {job.applicantCount !== undefined && (
-            <Text style={[styles.infoRow, { color: job.applicantCount > 10 ? '#EF9F27' : theme.text.secondary }]} numberOfLines={1}>
-              {job.applicantCount} applicant{job.applicantCount !== 1 ? 's' : ''}
+            <Text style={[styles.infoRow, { color: theme.text.tertiary }]} numberOfLines={1}>
+              {job.applicantCount} applied
             </Text>
           )}
         </View>
@@ -128,9 +130,9 @@ export function JobPostCard({ job, onPress, isLoading = false, onApply, onSave, 
               {onApply && !expired && (
                 <Pressable
                   onPress={onApply}
-                  style={styles.applyBtn}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Text style={styles.applyBtnText}>Apply now →</Text>
+                  <Text style={styles.applyBtnText}>Apply →</Text>
                 </Pressable>
               )}
             </View>
@@ -144,9 +146,9 @@ export function JobPostCard({ job, onPress, isLoading = false, onApply, onSave, 
 export function JobPostCardSkeleton() {
   const { theme } = useTheme()
   return (
-    <View style={[styles.card, { backgroundColor: theme.bg.card, borderColor: theme.border.default }]}>
+    <View style={[styles.card, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
       <View style={styles.salonRow}>
-        <Skeleton width={32} height={32} radius={16} />
+        <Skeleton width={40} height={40} radius={20} />
         <View style={[styles.salonInfo, { gap: 6 }]}>
           <Skeleton width={100} height={11} radius={5} />
           <Skeleton width={70} height={10} radius={5} />
@@ -169,9 +171,9 @@ export function JobPostCardSkeleton() {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 0.5,
-    padding: 16,
+    padding: 14,
     marginBottom: 10,
     gap: 12,
   },
@@ -187,7 +189,7 @@ const styles = StyleSheet.create({
   },
   salonName: {
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   salonLoc: {
     fontSize: 11,
@@ -196,9 +198,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(239,159,39,0.15)',
+    backgroundColor: 'rgba(216,90,48,0.15)',
     borderWidth: 0.5,
-    borderColor: 'rgba(239,159,39,0.3)',
+    borderColor: 'rgba(216,90,48,0.3)',
     borderRadius: 20,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -207,21 +209,21 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 3,
-    backgroundColor: '#EF9F27',
+    backgroundColor: '#D85A30',
   },
   urgentText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#EF9F27',
+    color: '#D85A30',
   },
   sep: {
     height: 0.5,
   },
   title: {
-    fontSize: 18,
-    fontWeight: '800',
+    fontSize: 17,
+    fontWeight: '700',
     letterSpacing: -0.3,
-    lineHeight: 24,
+    lineHeight: 22,
   },
   pillsRow: {
     flexDirection: 'row',
@@ -240,6 +242,11 @@ const styles = StyleSheet.create({
   infoRows: {
     gap: 6,
   },
+  infoTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   infoRow: {
     fontSize: 13,
   },
@@ -252,15 +259,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
-  applyBtn: {
-    backgroundColor: '#D85A30',
-    borderRadius: 10,
-    paddingHorizontal: 18,
-    paddingVertical: 8,
-  },
   applyBtnText: {
-    color: '#FFFFFF',
+    color: '#D85A30',
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: '700',
   },
 })

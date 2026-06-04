@@ -43,7 +43,7 @@ export function WorkerCard({ worker, onPress, isLoading = false, onLongPress, on
         onPressOut={animOut}
         style={[styles.card, {
           backgroundColor: theme.bg.card,
-          borderColor: theme.border.default,
+          borderColor: theme.border.subtle,
         }]}
       >
         {/* ── Top row: avatar + name/specialty/location ── */}
@@ -82,19 +82,19 @@ export function WorkerCard({ worker, onPress, isLoading = false, onLongPress, on
         {/* ── Stats + Message button ── */}
         <View style={styles.statsRow}>
           <View style={styles.statsLeft}>
+            {worker.isVerified && (
+              <Text style={[styles.statText, { color: theme.text.tertiary }]}>
+                <Text style={{ color: '#1D9E75' }}>✓ Verified</Text>
+              </Text>
+            )}
             {worker.rating !== undefined && (
-              <Text style={[styles.statText, { color: theme.text.secondary }]}>
-                {'★ '}<Text style={{ color: '#EF9F27', fontWeight: '700' }}>{worker.rating.toFixed(1)}</Text>
+              <Text style={[styles.statText, { color: theme.text.tertiary }]}>
+                {'  ·  '}<Text style={{ fontWeight: '700' }}>{worker.rating.toFixed(1)}</Text>
               </Text>
             )}
             {worker.jobsDone !== undefined && (
-              <Text style={[styles.statText, { color: theme.text.secondary }]}>
+              <Text style={[styles.statText, { color: theme.text.tertiary }]}>
                 {'  ·  '}{worker.jobsDone} jobs
-              </Text>
-            )}
-            {worker.isVerified && (
-              <Text style={[styles.statText, { color: theme.text.secondary }]}>
-                {'  ·  '}<Text style={{ color: '#1D9E75' }}>✓ Verified</Text>
               </Text>
             )}
           </View>
@@ -115,7 +115,7 @@ export function WorkerCard({ worker, onPress, isLoading = false, onLongPress, on
 export function WorkerCardSkeleton() {
   const { theme } = useTheme()
   return (
-    <View style={[styles.card, { backgroundColor: theme.bg.card, borderColor: theme.border.default }]}>
+    <View style={[styles.card, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
       <View style={styles.topRow}>
         <Skeleton width={56} height={56} radius={28} />
         <View style={[styles.topInfo, { gap: 8 }]}>
@@ -140,9 +140,9 @@ export function WorkerCardSkeleton() {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 0.5,
-    padding: 16,
+    padding: 14,
     marginBottom: 10,
     gap: 12,
   },
