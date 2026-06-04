@@ -164,11 +164,11 @@ export class MessagingService {
     conversationId: string,
   ): Promise<void> {
     let req = await this.prisma.chatRequest.findUnique({
-      where: { senderId_receiverId: { senderId, receiverId } },
+      where: { conversationId },
     })
 
     if (!req) {
-      req = await this.prisma.chatRequest.create({
+      await this.prisma.chatRequest.create({
         data: {
           senderId,
           receiverId,
@@ -184,6 +184,10 @@ export class MessagingService {
 
     if (req.status === ChatRequestStatus.DECLINED) {
       throw new ForbiddenException('Chat request was declined')
+    }
+
+    if (req.senderId !== senderId) {
+      throw new ForbiddenException('Accept the request before replying')
     }
 
     if (req.messageCount >= MAX_PENDING_MESSAGES) {

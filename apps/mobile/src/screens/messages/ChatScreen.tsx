@@ -87,17 +87,24 @@ export default function ChatScreen() {
       await sendMessage(text)
     } catch (e: unknown) {
       setDraft(text)
-      const status =
-        typeof e === 'object' && e !== null && 'response' in e
-          ? (e as { response?: { status?: number } }).response?.status
-          : undefined
+      const axErr = (typeof e === 'object' && e !== null && 'response' in e)
+        ? (e as { response?: { status?: number; data?: { message?: string } } })
+        : null
+      const status = axErr?.response?.status
+      const serverMsg = axErr?.response?.data?.message
       if (status === 403) {
+        const isAcceptFirst = serverMsg?.includes('Accept the request')
         Alert.alert(
-          'Request pending',
-          `You've reached the 3-message limit. ${name ?? 'They'} needs to accept your request before you can send more.`,
+          isAcceptFirst ? 'Accept first' : 'Request pending',
+          isAcceptFirst
+            ? 'Accept the chat request before you can reply.'
+            : `You've reached the 3-message limit. ${name ?? 'They'} needs to accept your request before you can send more.`,
         )
       } else {
-        Alert.alert('Failed to send', 'Check your connection and try again.')
+        Alert.alert(
+          `Send failed${status != null ? ` (${status})` : ''}`,
+          serverMsg ?? 'Check your connection and try again.',
+        )
       }
     } finally {
       setIsSending(false)
