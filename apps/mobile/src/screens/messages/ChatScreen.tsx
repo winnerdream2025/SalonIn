@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -84,10 +85,24 @@ export default function ChatScreen() {
     setTyping(false)
     try {
       await sendMessage(text)
+    } catch (e: unknown) {
+      setDraft(text)
+      const status =
+        typeof e === 'object' && e !== null && 'response' in e
+          ? (e as { response?: { status?: number } }).response?.status
+          : undefined
+      if (status === 403) {
+        Alert.alert(
+          'Request pending',
+          `You've reached the 3-message limit. ${name ?? 'They'} needs to accept your request before you can send more.`,
+        )
+      } else {
+        Alert.alert('Failed to send', 'Check your connection and try again.')
+      }
     } finally {
       setIsSending(false)
     }
-  }, [draft, sendMessage, setTyping, inputDisabled, isSending])
+  }, [draft, sendMessage, setTyping, inputDisabled, isSending, name])
 
   const handleChangeText = useCallback(
     (text: string) => {

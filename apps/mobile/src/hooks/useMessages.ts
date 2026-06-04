@@ -105,6 +105,10 @@ export function useMessages(conversationId: string) {
           ? { ...prev, messageCount: (prev.messageCount ?? 0) + 1 }
           : prev,
       )
+      void chatRequestsApi
+        .getForConversation(conversationId)
+        .then((cr) => { if (cr) setChatRequest(cr) })
+        .catch(() => undefined)
     },
     [conversationId],
   )
