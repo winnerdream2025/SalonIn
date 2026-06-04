@@ -96,7 +96,7 @@ describe('MatchingService', () => {
         expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(4)
         expect(mockRedis.set).toHaveBeenCalledTimes(1)
         const [, serialized, , ttl] = mockRedis.set.mock.calls[0] as [string, string, string, number]
-        expect(ttl).toBe(60)
+        expect(ttl).toBe(300)
         const parsed = JSON.parse(serialized) as { usedRadius: number; isExpanded: boolean }
         expect(parsed.usedRadius).toBe(100)
         expect(parsed.isExpanded).toBe(true)

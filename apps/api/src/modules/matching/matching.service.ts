@@ -9,6 +9,8 @@ import type { FindNearbyWorkersDto } from './dto/find-nearby-workers.dto'
 
 const RADIUS_STEPS = [15, 30, 50, 100] as const
 const MIN_RESULTS = 5
+const CACHE_TTL = 300
+const GEO_QUERY_TIMEOUT_MS = 5000
 
 interface RawWorker {
   id: string
@@ -95,7 +97,7 @@ export class MatchingService {
     }
 
     const finalCacheKey = this.buildCacheKey(params, usedRadius)
-    await this.redis.set(finalCacheKey, JSON.stringify(result), 'EX', 60)
+    await this.redis.set(finalCacheKey, JSON.stringify(result), 'EX', CACHE_TTL)
     this.metrics.gauge('active_workers_by_city', result.data.length, [`city:${params.cityId}`])
 
     return result
@@ -119,7 +121,14 @@ export class MatchingService {
       : Prisma.sql``
 
     const queryStart = Date.now()
-    const rows = await this.prisma.$queryRaw<RawWorker[]>(Prisma.sql`
+    const timeout = new Promise<never>((_, reject) => {
+      const t = setTimeout(() => reject(new Error('GEO_QUERY_TIMEOUT')), GEO_QUERY_TIMEOUT_MS)
+      t.unref()
+    })
+    let rows: RawWorker[]
+    try {
+      rows = await Promise.race([
+        this.prisma.$queryRaw<RawWorker[]>(Prisma.sql`
       WITH distances AS (
         SELECT
           wp.id,
@@ -155,7 +164,16 @@ export class MatchingService {
       ${cursorFilter}
       ORDER BY "distanceMeters" ASC, id ASC
       LIMIT 51
-    `)
+    `),
+        timeout,
+      ])
+    } catch (err) {
+      if (err instanceof Error && err.message === 'GEO_QUERY_TIMEOUT') {
+        this.metrics.increment('geo_query_timeout', [`city:${params.cityId}`])
+        return []
+      }
+      throw err
+    }
 
     this.metrics.timing('geo_query_duration', Date.now() - queryStart, [`city:${params.cityId}`])
     return rows
