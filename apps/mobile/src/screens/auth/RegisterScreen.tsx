@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react'
 import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Linking, Text as RNText } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
-import { Input, Button, Text, useTheme } from '@salonin/ui'
+import { Input, Button, Text, useTheme, Logo } from '@salonin/ui'
 import { useAuth } from '../../hooks/useAuth'
 import { useLocationStore } from '../../store/locationStore'
 import type { Role } from '@salonin/types'
@@ -43,6 +43,9 @@ export default function RegisterScreen() {
         contentContainerStyle={[styles.scroll, { paddingTop: insets.top, paddingBottom: insets.bottom + 24 }]}
         keyboardShouldPersistTaps="handled"
       >
+        <View style={styles.logoWrap}>
+          <Logo size={64} />
+        </View>
         <Text variant="heading" style={styles.title}>Create account</Text>
         <Text variant="body" color="secondary" style={styles.subtitle}>
           {role === 'WORKER' ? 'Join as a beauty professional' : 'Register your salon'}
@@ -106,6 +109,7 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scroll: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 48 },
+  logoWrap: { alignItems: 'center', marginBottom: 24 },
   title: { marginBottom: 8 },
   subtitle: { marginBottom: 32 },
   field: { marginBottom: 16 },

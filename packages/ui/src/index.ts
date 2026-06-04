@@ -40,3 +40,6 @@ export type { ConversationItemProps } from './components/ConversationItem'
 
 export { ReportModal } from './components/ReportModal'
 export type { ReportModalProps } from './components/ReportModal'
+
+export { Logo } from './components/Logo'
+export type { LogoProps } from './components/Logo'

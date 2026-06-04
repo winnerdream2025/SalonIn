@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react'
 import { View, StyleSheet, KeyboardAvoidingView, Platform, Linking, Text as RNText } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
-import { Input, Button, Text, useTheme } from '@salonin/ui'
+import { Input, Button, Text, useTheme, Logo } from '@salonin/ui'
 import { useAuth } from '../../hooks/useAuth'
 
 export default function LoginScreen() {
@@ -28,6 +28,9 @@ export default function LoginScreen() {
       style={[styles.container, { backgroundColor: theme.bg.base }]}
     >
       <View style={styles.inner}>
+        <View style={styles.logoWrap}>
+          <Logo size={64} />
+        </View>
         <Text variant="heading" style={styles.title}>Welcome back</Text>
         <Text variant="body" color="secondary" style={styles.subtitle}>
           Sign in to your account
@@ -94,6 +97,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   inner: { flex: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 48 },
+  logoWrap: { alignItems: 'center', marginBottom: 24 },
   title: { marginBottom: 8 },
   subtitle: { marginBottom: 32 },
   field: { marginBottom: 16 },

@@ -7,6 +7,7 @@ import { configureClient } from '@salonin/api-client'
 import { useNotifications } from '../src/hooks/useNotifications'
 import { useLocationStore } from '../src/store/locationStore'
 import { useAuthStore } from '../src/store/authStore'
+import { Logo } from '@salonin/ui'
 
 // Sentry temporarily disabled due to iOS 26.5 SDK compatibility issues
 // import * as Sentry from '@sentry/react-native'
@@ -68,9 +69,7 @@ function RootLayout() {
   if (isLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#0A0A0A', justifyContent: 'center', alignItems: 'center', gap: 16 }}>
-        <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: '#D85A30', justifyContent: 'center', alignItems: 'center' }}>
-          <Text style={{ color: '#FFFFFF', fontSize: 42, fontWeight: '800', letterSpacing: -1, marginTop: -2 }}>S</Text>
-        </View>
+        <Logo size={100} />
         <Text style={{ color: '#FFFFFF', fontSize: 22, fontWeight: '700', letterSpacing: -0.5 }}>Salonin</Text>
         <Text style={{ color: '#555555', fontSize: 13, letterSpacing: 0.2 }}>Beauty workforce marketplace</Text>
       </View>
