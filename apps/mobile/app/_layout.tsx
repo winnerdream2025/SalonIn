@@ -67,8 +67,12 @@ function RootLayout() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#0A0A0A', justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ color: '#D85A30', fontSize: 32, fontWeight: '800' }}>S</Text>
+      <View style={{ flex: 1, backgroundColor: '#0A0A0A', justifyContent: 'center', alignItems: 'center', gap: 16 }}>
+        <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: '#D85A30', justifyContent: 'center', alignItems: 'center' }}>
+          <Text style={{ color: '#FFFFFF', fontSize: 42, fontWeight: '800', letterSpacing: -1, marginTop: -2 }}>S</Text>
+        </View>
+        <Text style={{ color: '#FFFFFF', fontSize: 22, fontWeight: '700', letterSpacing: -0.5 }}>Salonin</Text>
+        <Text style={{ color: '#555555', fontSize: 13, letterSpacing: 0.2 }}>Beauty workforce marketplace</Text>
       </View>
     )
   }
