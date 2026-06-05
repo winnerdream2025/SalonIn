@@ -5,13 +5,14 @@ import { useAuthStore } from '../../src/store/authStore'
 import { useConversations } from '../../src/hooks/useConversations'
 import { useChatRequests } from '../../src/hooks/useChatRequests'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useTheme } from '@salonin/ui'
+import { useTheme, Avatar } from '@salonin/ui'
 import { Role } from '@salonin/types'
 
 export default function TabsLayout() {
   const { bottom } = useSafeAreaInsets()
-  const role = useAuthStore((s) => s.user?.role)
-  const isLoggedIn = useAuthStore((s) => s.user != null)
+  const user = useAuthStore((s) => s.user)
+  const role = user?.role
+  const isLoggedIn = user != null
   const isSalon = role === Role.SALON
   const { theme, isDark } = useTheme()
   const { conversations } = useConversations()
@@ -25,20 +26,18 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarStyle: {
           position: 'absolute',
-          backgroundColor: isDark
-            ? 'rgba(17,17,17,0.95)'
-            : 'rgba(255,255,255,0.95)',
+          backgroundColor: theme.bg.surface,
           borderTopWidth: 0,
           height: 56 + bottom,
           paddingBottom: Math.max(bottom, 8),
           paddingTop: 8,
           shadowColor: '#000000',
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: isDark ? 0.4 : 0.1,
-          shadowRadius: 12,
-          elevation: 20,
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.08,
+          shadowRadius: 8,
+          elevation: 8,
         },
-        tabBarActiveTintColor: '#D85A30',
+        tabBarActiveTintColor: theme.brand.primary,
         tabBarInactiveTintColor: isDark ? '#555555' : '#AAAAAA',
         tabBarLabelStyle: { fontSize: 10, fontWeight: '600', marginTop: -2 },
       }}
@@ -64,7 +63,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="messages"
         options={{
-          tabBarLabel: 'Messages',
+          tabBarLabel: 'Inbox',
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons name={focused ? 'chatbubble' : 'chatbubble-outline'} size={size} color={color} />
           ),
@@ -76,9 +75,29 @@ export default function TabsLayout() {
         name="profile"
         options={{
           tabBarLabel: isSalon ? 'My Salon' : 'Profile',
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={isSalon ? (focused ? 'business' : 'business-outline') : (focused ? 'person' : 'person-outline')} size={size} color={color} />
-          ),
+          tabBarIcon: ({ color, size, focused }) => {
+            const photoUrl = (user as any)?.photoUrl
+            if (!isSalon && photoUrl) {
+              return (
+                <Avatar
+                  uri={photoUrl}
+                  name="Me"
+                  size="sm"
+                  style={{
+                    borderWidth: focused ? 2 : 0,
+                    borderColor: focused ? theme.brand.primary : 'transparent',
+                  }}
+                />
+              )
+            }
+            return (
+              <Ionicons
+                name={isSalon ? (focused ? 'business' : 'business-outline') : (focused ? 'person-circle' : 'person-circle-outline')}
+                size={size}
+                color={color}
+              />
+            )
+          },
         }}
       />
     </Tabs>

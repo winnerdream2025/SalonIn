@@ -79,6 +79,7 @@ export interface WorkerCardData {
   cityId: string
   rating?: number
   jobsDone?: number
+  portfolioUrls?: string[]
 }
 
 export interface SalonCardData {
@@ -104,6 +105,12 @@ export interface JobPostCardData {
   salonName: string
   salonPhotoUrl: string | null
   applicantCount?: number
+  salonRating?: number
+  salonReviewCount?: number
+  salonHiringCount?: number
+  appliedToday?: number
+  replyTime?: string
+  portfolioPhotoUrls?: string[]
 }
 
 export interface ConversationPreview {

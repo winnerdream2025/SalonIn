@@ -28,15 +28,15 @@ const dark: Theme = {
 
 const light: Theme = {
   bg: {
-    base: '#F5F5F7',
+    base: '#F8F6F3',
     surface: '#FFFFFF',
     elevated: '#FFFFFF',
-    input: '#FFFFFF',
+    input: '#F0EDE8',
     card: '#FFFFFF',
   },
-  border: { default: '#F0F0F0', subtle: '#E5E5E5' },
-  text: { primary: '#0A0A0A', secondary: '#6A6A6A', tertiary: '#AAAAAA', inverse: '#FFFFFF' },
-  brand: { primary: '#D85A30', light: '#FF8C5A', dark: '#993C1D' },
+  border: { default: '#E8E4DF', subtle: '#F0EDE8' },
+  text: { primary: '#1A1A1A', secondary: '#6B6B6B', tertiary: '#AAAAAA', inverse: '#FFFFFF' },
+  brand: { primary: '#D85A30', light: '#F4A88A', dark: '#993C1D' },
   avail: { now: '#1D9E75', today: '#378ADD', weekend: '#EF9F27', none: '#555555' },
   skeleton: { base: '#EEEEEE', highlight: '#F5F5F5' },
   semantic: { error: { text: '#E24B4A' } },
@@ -44,6 +44,6 @@ const light: Theme = {
 
 export function useTheme() {
   const scheme = useColorScheme()
-  const isDark = scheme !== 'light'
+  const isDark = scheme === 'dark'
   return { theme: isDark ? dark : light, isDark }
 }

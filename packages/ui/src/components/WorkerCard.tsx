@@ -1,5 +1,5 @@
 import React, { useRef, useCallback } from 'react'
-import { View, Text, Pressable, Animated, StyleSheet } from 'react-native'
+import { View, Text, Pressable, Animated, StyleSheet, Image } from 'react-native'
 import type { WorkerCardData } from '@salonin/types'
 import { formatDistance, formatExperience } from '@salonin/utils'
 import { Skeleton } from '../primitives/Skeleton'
@@ -31,9 +31,9 @@ export function WorkerCard({ worker, onPress, isLoading = false, onLongPress, on
 
   const specialty = worker.specialties[0] ?? ''
   const expLabel = formatExperience(worker.experienceYears)
-  const specialtyLine = [specialty, expLabel].filter(Boolean).join(' · ')
   const extraSpecialties = worker.specialties.slice(1, 3)
   const moreCount = worker.specialties.length - 3
+  const hasPortfolio = (worker.portfolioUrls?.length ?? 0) > 0
 
   return (
     <Animated.View style={{ transform: [{ scale }] }}>
@@ -44,75 +44,76 @@ export function WorkerCard({ worker, onPress, isLoading = false, onLongPress, on
         onPressOut={animOut}
         style={[styles.card, {
           backgroundColor: theme.bg.card,
-          borderColor: theme.border.subtle,
+          shadowColor: '#000000',
         }]}
       >
-        {/* ── Top row: avatar + name/specialty/location ── */}
+        {/* ── Top row: avatar + info + message ── */}
         <View style={styles.topRow}>
           <Avatar uri={worker.photoUrl} name={worker.name} size="lg" isVerified={worker.isVerified} />
           <View style={styles.topInfo}>
-            <Text style={[styles.name, { color: theme.text.primary }]} numberOfLines={1}>
-              {worker.name}
+            <View style={styles.nameRow}>
+              <Text style={[styles.name, { color: theme.text.primary }]} numberOfLines={1}>
+                {worker.name}
+              </Text>
+            </View>
+            <Text style={[styles.metaText, { color: theme.text.secondary }]} numberOfLines={1}>
+              {specialty}{expLabel ? ` · ${expLabel}` : ''}
             </Text>
-            <Text style={[styles.specialty, { color: theme.text.secondary }]} numberOfLines={1}>
-              {specialtyLine}
-            </Text>
-            <Text style={[styles.location, { color: theme.text.tertiary }]} numberOfLines={1}>
+            <Text style={[styles.metaText, { color: theme.text.tertiary }]} numberOfLines={1}>
               {worker.cityId.toUpperCase()}
-              {worker.distanceMiles !== null ? `  ·  ${formatDistance(worker.distanceMiles)}` : ''}
+              {worker.distanceMiles != null ? `  ·  ${formatDistance(worker.distanceMiles)}` : ''}
             </Text>
           </View>
+          {onMessage && (
+            <Pressable
+              onPress={onMessage}
+              style={[styles.msgBtn, { backgroundColor: theme.brand.primary }]}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={styles.msgBtnText}>Message</Text>
+            </Pressable>
+          )}
         </View>
-
-        {/* ── Separator ── */}
-        <View style={[styles.sep, { backgroundColor: theme.border.subtle }]} />
 
         {/* ── Tags row: availability + specialty pills ── */}
         <View style={styles.tagsRow}>
           <AvailabilityBadge status={worker.availability} />
           {extraSpecialties.map((s) => (
-            <View key={s} style={[styles.specPill, { backgroundColor: theme.bg.elevated }]}>
+            <View key={s} style={[styles.specPill, { backgroundColor: theme.bg.input }]}>
               <Text style={[styles.specPillText, { color: theme.text.secondary }]} numberOfLines={1}>{s}</Text>
             </View>
           ))}
           {moreCount > 0 && (
-            <View style={[styles.specPill, { backgroundColor: theme.bg.elevated }]}>
-              <Text style={[styles.specPillText, { color: theme.text.tertiary }]}>+{moreCount} more</Text>
+            <View style={[styles.specPill, { backgroundColor: theme.bg.input }]}>
+              <Text style={[styles.specPillText, { color: theme.text.tertiary }]}>+{moreCount}</Text>
             </View>
           )}
         </View>
 
-        {/* ── Separator ── */}
-        <View style={[styles.sep, { backgroundColor: theme.border.subtle }]} />
-
-        {/* ── Stats + Message button ── */}
-        <View style={styles.statsRow}>
-          <View style={styles.statsLeft}>
-            {worker.isVerified && (
-              <Text style={[styles.statText, { color: theme.text.tertiary }]}>
-                <Text style={{ color: '#1D9E75' }}>✓ Verified</Text>
-              </Text>
+        {/* ── Portfolio + stats ── */}
+        {(hasPortfolio || worker.rating != null || worker.jobsDone != null) && (
+          <View style={styles.bottomRow}>
+            {hasPortfolio && (
+              <View style={styles.portfolioRow}>
+                {worker.portfolioUrls?.slice(0, 3).map((url, i) => (
+                  <Image key={i} source={{ uri: url }} style={styles.portfolioThumb} />
+                ))}
+              </View>
             )}
-            {worker.rating !== undefined && (
-              <Text style={[styles.statText, { color: theme.text.tertiary }]}>
-                {'  ·  '}<Text style={{ fontWeight: '700' }}>{worker.rating.toFixed(1)}</Text>
-              </Text>
-            )}
-            {worker.jobsDone !== undefined && (
-              <Text style={[styles.statText, { color: theme.text.tertiary }]}>
-                {'  ·  '}{worker.jobsDone} jobs
-              </Text>
-            )}
+            <View style={styles.statsRow}>
+              {worker.rating != null && (
+                <Text style={[styles.statText, { color: theme.text.secondary }]}>
+                  ★ <Text style={{ fontWeight: '700' }}>{worker.rating.toFixed(1)}</Text>
+                </Text>
+              )}
+              {worker.jobsDone != null && (
+                <Text style={[styles.statText, { color: theme.text.tertiary }]}>
+                  {' · '}{worker.jobsDone} jobs
+                </Text>
+              )}
+            </View>
           </View>
-          {onMessage && (
-            <Pressable
-              onPress={onMessage}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Text style={styles.messageBtn}>Message →</Text>
-            </Pressable>
-          )}
-        </View>
+        )}
       </Pressable>
     </Animated.View>
   )
@@ -121,24 +122,27 @@ export function WorkerCard({ worker, onPress, isLoading = false, onLongPress, on
 export function WorkerCardSkeleton() {
   const { theme } = useTheme()
   return (
-    <View style={[styles.card, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
+    <View style={[styles.card, { backgroundColor: theme.bg.card }]}>
       <View style={styles.topRow}>
         <Skeleton width={56} height={56} radius={28} />
         <View style={[styles.topInfo, { gap: 8 }]}>
-          <Skeleton width={130} height={14} radius={7} />
-          <Skeleton width={100} height={11} radius={5} />
-          <Skeleton width={80} height={10} radius={5} />
+          <Skeleton width={130} height={16} radius={8} />
+          <Skeleton width={100} height={12} radius={6} />
+          <Skeleton width={80} height={12} radius={6} />
         </View>
+        <Skeleton width={70} height={28} radius={8} />
       </View>
-      <View style={[styles.sep, { backgroundColor: theme.border.subtle }]} />
-      <View style={[styles.tagsRow, { gap: 6 }]}>
-        <Skeleton width={100} height={22} radius={11} />
-        <Skeleton width={70} height={22} radius={11} />
+      <View style={styles.tagsRow}>
+        <Skeleton width={100} height={24} radius={12} />
+        <Skeleton width={70} height={24} radius={12} />
       </View>
-      <View style={[styles.sep, { backgroundColor: theme.border.subtle }]} />
-      <View style={styles.statsRow}>
-        <Skeleton width={160} height={11} radius={5} />
-        <Skeleton width={70} height={11} radius={5} />
+      <View style={styles.bottomRow}>
+        <View style={styles.portfolioRow}>
+          <Skeleton width={48} height={48} radius={24} />
+          <Skeleton width={48} height={48} radius={24} />
+          <Skeleton width={48} height={48} radius={24} />
+        </View>
+        <Skeleton width={100} height={12} radius={6} />
       </View>
     </View>
   )
@@ -146,11 +150,15 @@ export function WorkerCardSkeleton() {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 14,
-    borderWidth: 0.5,
-    padding: 14,
-    marginBottom: 10,
+    borderRadius: 16,
+    padding: 16,
+    marginHorizontal: 16,
+    marginBottom: 12,
     gap: 12,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
   topRow: {
     flexDirection: 'row',
@@ -160,22 +168,32 @@ const styles = StyleSheet.create({
   topInfo: {
     flex: 1,
     minWidth: 0,
-    gap: 3,
+    gap: 2,
     paddingTop: 2,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   name: {
     fontSize: 16,
     fontWeight: '700',
-    letterSpacing: -0.3,
+    letterSpacing: -0.2,
   },
-  specialty: {
+  metaText: {
     fontSize: 13,
   },
-  location: {
-    fontSize: 12,
+  msgBtn: {
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    alignSelf: 'flex-start',
+    marginTop: 4,
   },
-  sep: {
-    height: 0.5,
+  msgBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   tagsRow: {
     flexDirection: 'row',
@@ -184,31 +202,34 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   specPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 20,
   },
   specPillText: {
     fontSize: 11,
     fontWeight: '500',
   },
-  statsRow: {
+  bottomRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  statsLeft: {
+  portfolioRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  portfolioThumb: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#F0EDE8',
+  },
+  statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
-    minWidth: 0,
   },
   statText: {
     fontSize: 12,
-  },
-  messageBtn: {
-    color: '#D85A30',
-    fontSize: 13,
-    fontWeight: '700',
   },
 })

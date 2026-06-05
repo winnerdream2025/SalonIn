@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { View, FlatList, Pressable, StyleSheet, RefreshControl } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Text, JobPostCard, Skeleton, Button, useTheme } from '@salonin/ui'
@@ -123,10 +124,11 @@ export default function SalonJobsScreen() {
         onPress={handleCreateJob}
         style={({ pressed }) => [
           styles.fab,
-          { backgroundColor: '#D85A30', transform: [{ scale: pressed ? 0.92 : 1 }] },
+          { backgroundColor: theme.brand.primary, bottom: bottom + 72, transform: [{ scale: pressed ? 0.92 : 1 }] },
         ]}
       >
-        <Text style={[styles.fabText, { color: theme.text.inverse }]}>+</Text>
+        <Ionicons name="add" size={28} color="#FFFFFF" />
+        <Text style={styles.fabLabel}>Post Job</Text>
       </Pressable>
     </SafeAreaView>
   )
@@ -173,7 +175,6 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    bottom: 24,
     right: 20,
     width: 56,
     height: 56,
@@ -182,9 +183,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 8,
   },
-  fabText: { fontSize: 28, fontWeight: '300', marginTop: -2 },
+  fabLabel: {
+    position: 'absolute',
+    bottom: -18,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
 })

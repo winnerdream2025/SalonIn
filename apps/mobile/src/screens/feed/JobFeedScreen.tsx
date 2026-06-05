@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useMemo } from 'react'
 import {
   View,
   FlatList,
@@ -9,7 +9,10 @@ import {
   Modal,
   Platform,
   Alert,
+  TextInput,
+  KeyboardAvoidingView,
 } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
@@ -18,10 +21,9 @@ import type { JobPostCardData } from '@salonin/types'
 import { useJobFeed } from '../../hooks/useJobFeed'
 import { useLocationStore } from '../../store/locationStore'
 import { useAuthStore } from '../../store/authStore'
+import { NotificationBell } from '../../components/NotificationBell'
 
-const SPECIALTIES = [
-  'Haircut', 'Color', 'Balayage', 'Locs', 'Braids', 'Natural', 'Extensions', 'Weave',
-]
+const SPECIALTIES = ['All', 'Knotless', 'Braids', 'Color', 'Locs', 'Wigs', 'Nails', 'Lashes']
 
 const CITY_PRESETS = [
   { cityId: 'dmv',     label: 'Washington DC / DMV', lat: 38.9072, lng: -77.0369 },
@@ -33,70 +35,108 @@ const CITY_PRESETS = [
 const SKELETON_COUNT = 5
 
 export default function JobFeedScreen() {
-  const { bottom } = useSafeAreaInsets()
+  const { bottom, top } = useSafeAreaInsets()
   const { theme } = useTheme()
   const cityId = useLocationStore((s) => s.cityId)
   const setLocation = useLocationStore((s) => s.setLocation)
   const userRole = useAuthStore((s) => s.user?.role)
+  const isSalon = userRole === 'SALON'
 
-  const [selectedSpecialty, setSelectedSpecialty] = useState<string | undefined>()
+  const [selectedSpecialty, setSelectedSpecialty] = useState<string>('All')
   const [showLocationModal, setShowLocationModal] = useState(false)
+  const [search, setSearch] = useState('')
 
   const cityLabel = CITY_PRESETS.find((c) => c.cityId === cityId)?.label ?? cityId?.toUpperCase() ?? ''
+  const specialtyFilter = selectedSpecialty === 'All' ? undefined : selectedSpecialty
 
   const { jobs, isLoading, isRefreshing, isLoadingMore, hasMore, error, refresh, loadMore } =
-    useJobFeed({ specialty: selectedSpecialty })
+    useJobFeed({ specialty: specialtyFilter })
+
+  const filteredJobs = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return jobs
+    return jobs.filter((j) =>
+      j.title.toLowerCase().includes(q) ||
+      j.specialty.toLowerCase().includes(q) ||
+      j.salonName.toLowerCase().includes(q)
+    )
+  }, [jobs, search])
 
   const handlePressJob = useCallback((job: JobPostCardData) => {
     router.push(`/jobs/${job.id}`)
   }, [])
 
   const handleToggleSpecialty = useCallback((specialty: string) => {
-    setSelectedSpecialty((prev) => (prev === specialty ? undefined : specialty))
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    setSelectedSpecialty((prev) => (prev === specialty ? 'All' : specialty))
   }, [])
 
-  const SpecialtyFilters = (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.filterRow}
-      style={styles.filterScroll}
-    >
-      {SPECIALTIES.map((s) => {
-        const active = selectedSpecialty === s
-        return (
-          <TouchableOpacity
-            key={s}
-            onPress={() => handleToggleSpecialty(s)}
-            style={[
-              styles.filterPill,
-              {
-                backgroundColor: active ? theme.brand.primary : theme.bg.elevated,
-                borderColor: active ? theme.brand.primary : theme.border.default,
-              },
-            ]}
-          >
-            <Text
-              variant="caption"
-              style={{ color: active ? '#FFFFFF' : theme.text.secondary }}
+  const handlePostJob = useCallback(() => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    router.push('/jobs/create')
+  }, [])
+
+  const SearchAndFilters = (
+    <View style={{ gap: 12 }}>
+      {/* Search bar */}
+      <View style={[styles.searchWrap, { backgroundColor: theme.bg.input }]}>
+        <Ionicons name="search" size={20} color={theme.text.tertiary} />
+        <TextInput
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Search jobs, salons, skills..."
+          placeholderTextColor={theme.text.tertiary}
+          style={[styles.searchInput, { color: theme.text.primary }]}
+          returnKeyType="search"
+        />
+        <Ionicons name="options-outline" size={20} color={theme.text.tertiary} />
+      </View>
+
+      {/* Filter pills */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.filterRow}
+      >
+        {SPECIALTIES.map((s) => {
+          const active = selectedSpecialty === s
+          return (
+            <TouchableOpacity
+              key={s}
+              onPress={() => handleToggleSpecialty(s)}
+              style={[
+                styles.filterPill,
+                {
+                  backgroundColor: active ? theme.brand.primary : theme.bg.card,
+                  borderColor: active ? theme.brand.primary : theme.border.default,
+                },
+              ]}
             >
-              {s}
-            </Text>
-          </TouchableOpacity>
-        )
-      })}
-    </ScrollView>
+              <Text
+                style={{
+                  fontSize: 13,
+                  fontWeight: '600',
+                  color: active ? '#FFFFFF' : theme.text.secondary,
+                }}
+              >
+                {s}
+              </Text>
+            </TouchableOpacity>
+          )
+        })}
+      </ScrollView>
+    </View>
   )
 
   if (!cityId) {
     return (
       <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]}>
-        <View style={styles.header}>
-          <Text variant="title">Hiring Posts</Text>
+        <View style={styles.headerSection}>
+          <Text style={[styles.serifTitle, { color: theme.text.primary }]}>Jobs</Text>
         </View>
         <View style={styles.centerPane}>
-          <Text variant="heading" style={styles.locTitle}>Where are you?</Text>
-          <Text variant="body" color="secondary" style={styles.locSubtitle}>
+          <Text style={[styles.locTitle, { color: theme.text.primary }]}>Where are you?</Text>
+          <Text style={[styles.locSubtitle, { color: theme.text.secondary }]}>
             Choose your city to find nearby job posts
           </Text>
           <View style={styles.cityList}>
@@ -106,7 +146,7 @@ export default function JobFeedScreen() {
                 style={[styles.cityPill, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}
                 onPress={() => setLocation(city.cityId, city.lat, city.lng)}
               >
-                <Text variant="body">{city.label}</Text>
+                <Text style={{ fontSize: 15, color: theme.text.primary }}>{city.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -116,182 +156,192 @@ export default function JobFeedScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]}>
-      <View style={[styles.header, { borderBottomColor: theme.border.default }]}>
-        <Text variant="title">Hiring Posts</Text>
-        <View style={styles.headerRight}>
-          <TouchableOpacity
-            onPress={() => {
-              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-              setShowLocationModal(true)
-            }}
-            style={[styles.locationPill, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}
-            activeOpacity={0.7}
-          >
-            <Text variant="caption" style={{ color: theme.text.secondary }}>{cityId.toUpperCase()}</Text>
-            <Text style={{ fontSize: 10, color: theme.text.tertiary }}>▾</Text>
-          </TouchableOpacity>
-          {userRole === 'SALON' && (
-            <TouchableOpacity
-              onPress={() => router.push('/jobs/create')}
-              style={[styles.postBtn, { backgroundColor: theme.brand.primary }]}
-            >
-              <Text variant="caption" style={{ color: theme.text.inverse, fontWeight: '700' }}>+ Post</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-
-      <Modal
-        visible={showLocationModal}
-        transparent
-        animationType="slide"
-        presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'overFullScreen'}
-        onRequestClose={() => setShowLocationModal(false)}
+    <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]} edges={['top']}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View style={[styles.modalOverlay, Platform.OS === 'android' && { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
-          <View style={[styles.modalSheet, { backgroundColor: theme.bg.surface }]}>
-            <View style={[styles.modalHandle, { backgroundColor: theme.border.default }]} />
-            <View style={styles.modalHeader}>
-              <Text style={{ fontSize: 18, fontWeight: '800', color: theme.text.primary, letterSpacing: -0.3 }}>
-                Change City
+        {/* Header */}
+        <View style={[styles.headerSection, { paddingTop: top > 0 ? 8 : 16 }]}>
+          <View style={styles.headerTopRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.serifTitle, { color: theme.text.primary }]}>Jobs</Text>
+              <Text style={[styles.subtitle, { color: theme.text.secondary }]}>
+                Find your next opportunity ✨
               </Text>
-              <TouchableOpacity onPress={() => setShowLocationModal(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Text style={{ fontSize: 15, color: '#D85A30', fontWeight: '600' }}>Done</Text>
-              </TouchableOpacity>
             </View>
-            {CITY_PRESETS.map((city) => (
+            <View style={styles.headerRight}>
               <TouchableOpacity
-                key={city.cityId}
                 onPress={() => {
-                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-                  setLocation(city.cityId, city.lat, city.lng)
-                  setShowLocationModal(false)
+                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                  setShowLocationModal(true)
                 }}
-                style={[styles.cityRow, { borderBottomColor: theme.border.subtle }]}
+                style={[styles.locationPill, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}
                 activeOpacity={0.7}
               >
-                <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text.primary, flex: 1 }}>{city.label}</Text>
-                {cityId === city.cityId && (
-                  <Text style={{ color: '#D85A30', fontSize: 16, fontWeight: '700' }}>✓</Text>
-                )}
+                <Ionicons name="location-outline" size={14} color={theme.text.secondary} />
+                <Text style={{ fontSize: 13, fontWeight: '600', color: theme.text.secondary }}>
+                  {cityId.toUpperCase()}
+                </Text>
+                <Ionicons name="chevron-down" size={14} color={theme.text.tertiary} />
               </TouchableOpacity>
-            ))}
+              <NotificationBell />
+            </View>
           </View>
-        </View>
-      </Modal>
 
-      <FlatList
-        data={jobs}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <JobPostCard
-            job={item}
-            onPress={() => handlePressJob(item)}
-          />
-        )}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-        contentContainerStyle={[styles.listContent, { paddingBottom: 56 + bottom + 16 }]}
-        ListHeaderComponent={SpecialtyFilters}
-        ListEmptyComponent={
-          isLoading ? (
-            <View style={styles.skeletonList}>
-              {Array.from({ length: SKELETON_COUNT }).map((_, i) => (
-                <JobPostCardSkeleton key={i} />
+          {SearchAndFilters}
+        </View>
+
+        {/* Location Modal */}
+        <Modal
+          visible={showLocationModal}
+          transparent
+          animationType="slide"
+          presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'overFullScreen'}
+          onRequestClose={() => setShowLocationModal(false)}
+        >
+          <View style={[styles.modalOverlay, Platform.OS === 'android' && { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+            <View style={[styles.modalSheet, { backgroundColor: theme.bg.surface }]}>
+              <View style={[styles.modalHandle, { backgroundColor: theme.border.default }]} />
+              <View style={styles.modalHeader}>
+                <Text style={{ fontSize: 18, fontWeight: '800', color: theme.text.primary, letterSpacing: -0.3 }}>
+                  Change City
+                </Text>
+                <TouchableOpacity onPress={() => setShowLocationModal(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Text style={{ fontSize: 15, color: theme.brand.primary, fontWeight: '600' }}>Done</Text>
+                </TouchableOpacity>
+              </View>
+              {CITY_PRESETS.map((city) => (
+                <TouchableOpacity
+                  key={city.cityId}
+                  onPress={() => {
+                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+                    setLocation(city.cityId, city.lat, city.lng)
+                    setShowLocationModal(false)
+                  }}
+                  style={[styles.cityRow, { borderBottomColor: theme.border.subtle }]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text.primary, flex: 1 }}>{city.label}</Text>
+                  {cityId === city.cityId && (
+                    <Text style={{ color: theme.brand.primary, fontSize: 16, fontWeight: '700' }}>✓</Text>
+                  )}
+                </TouchableOpacity>
               ))}
             </View>
-          ) : error != null ? (
-            <View style={styles.centerPane}>
-              <Text variant="body" color="secondary" style={styles.stateText}>
-                {error.message}
-              </Text>
-              <Button variant="secondary" onPress={refresh}>Retry</Button>
-            </View>
-          ) : (
-            <View style={styles.centerPane}>
-              <Text variant="heading" style={[styles.stateText, { fontSize: 18, fontWeight: '700' }]}>
-                No open positions in {cityLabel} right now
-              </Text>
-              <Text variant="caption" color="secondary" style={styles.stateText}>
-                New jobs are posted daily — check back soon
-              </Text>
-              <TouchableOpacity
-                style={[styles.emptyCtaBtn, { backgroundColor: theme.brand.primary }]}
-                onPress={() =>
-                  Alert.alert('Job Alerts', 'We’ll notify you when new jobs are posted in your area.')
-                }
-                activeOpacity={0.8}
-              >
-                <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>Set up job alerts</Text>
-              </TouchableOpacity>
-            </View>
-          )
-        }
-        ListFooterComponent={
-          hasMore && isLoadingMore ? (
-            <View style={styles.footer}>
-              <ActivityIndicator color={theme.brand.primary} />
-            </View>
-          ) : null
-        }
-        refreshing={isRefreshing}
-        onRefresh={refresh}
-        onEndReached={loadMore}
-        onEndReachedThreshold={0.5}
-        showsVerticalScrollIndicator={false}
-      />
+          </View>
+        </Modal>
+
+        {/* Job list */}
+        <FlatList
+          data={filteredJobs}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <JobPostCard
+              job={item}
+              onPress={() => handlePressJob(item)}
+            />
+          )}
+          contentContainerStyle={[styles.listContent, { paddingBottom: 56 + bottom + 16 }]}
+          ListEmptyComponent={
+            isLoading ? (
+              <View style={styles.skeletonList}>
+                {Array.from({ length: SKELETON_COUNT }).map((_, i) => (
+                  <JobPostCardSkeleton key={i} />
+                ))}
+              </View>
+            ) : error != null ? (
+              <View style={styles.centerPane}>
+                <Text style={[styles.stateText, { color: theme.text.secondary }]}>
+                  {error.message}
+                </Text>
+                <Button variant="secondary" onPress={refresh}>Retry</Button>
+              </View>
+            ) : (
+              <View style={styles.centerPane}>
+                <Text style={[styles.stateText, { fontSize: 18, fontWeight: '700', color: theme.text.primary }]}>
+                  {search.trim().length > 0
+                    ? 'No matching jobs'
+                    : `No open positions in ${cityLabel} right now`}
+                </Text>
+                <Text style={[styles.stateText, { color: theme.text.secondary }]}>
+                  {search.trim().length > 0
+                    ? 'Try a different search term'
+                    : 'New jobs are posted daily — check back soon'}
+                </Text>
+                {search.trim().length === 0 && (
+                  <TouchableOpacity
+                    style={[styles.emptyCtaBtn, { backgroundColor: theme.brand.primary }]}
+                    onPress={() =>
+                      Alert.alert('Job Alerts', 'We’ll notify you when new jobs are posted in your area.')
+                    }
+                    activeOpacity={0.8}
+                  >
+                    <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>Set up job alerts</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )
+          }
+          ListFooterComponent={
+            hasMore && isLoadingMore ? (
+              <View style={styles.footer}>
+                <ActivityIndicator color={theme.brand.primary} />
+              </View>
+            ) : null
+          }
+          refreshing={isRefreshing}
+          onRefresh={refresh}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
+          showsVerticalScrollIndicator={false}
+        />
+
+        {/* FAB */}
+        {isSalon && (
+          <TouchableOpacity
+            onPress={handlePostJob}
+            style={[styles.fab, { backgroundColor: theme.brand.primary, bottom: bottom + 72 }]}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="add" size={28} color="#FFFFFF" />
+            <Text style={styles.fabLabel}>Post Job</Text>
+          </TouchableOpacity>
+        )}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  header: {
-    height: 56,
+  headerSection: {
     paddingHorizontal: 16,
+    paddingBottom: 12,
+    gap: 12,
+  },
+  headerTopRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  postBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 },
-  filterScroll: { maxHeight: 52 },
-  filterRow: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 8,
+  serifTitle: {
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+    fontSize: 34,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+    lineHeight: 40,
+  },
+  subtitle: {
+    fontSize: 14,
+    fontStyle: 'italic',
+    marginTop: 2,
+  },
+  headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  filterPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  listContent: { paddingHorizontal: 16 },
-  separator: { height: 8 },
-  skeletonList: { gap: 8, paddingTop: 8 },
-  footer: { paddingVertical: 16, alignItems: 'center' },
-  centerPane: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 64, gap: 12 },
-  locTitle: { textAlign: 'center' },
-  locSubtitle: { textAlign: 'center', paddingHorizontal: 32 },
-  cityList: { gap: 12, width: '100%', paddingHorizontal: 32 },
-  cityPill: {
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    alignItems: 'center',
-  },
-  stateText: { textAlign: 'center' },
-  emptyCtaBtn: {
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    borderRadius: 14,
-    alignItems: 'center' as const,
-    width: '100%',
+    gap: 10,
+    marginTop: 4,
   },
   locationPill: {
     flexDirection: 'row',
@@ -301,6 +351,76 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 99,
     borderWidth: 1,
+  },
+  searchWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    height: 48,
+    borderRadius: 24,
+    paddingHorizontal: 16,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    paddingVertical: 0,
+  },
+  filterRow: {
+    gap: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingBottom: 4,
+  },
+  filterPill: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 18,
+    borderWidth: 1,
+    height: 36,
+    justifyContent: 'center',
+  },
+  listContent: { paddingTop: 4 },
+  skeletonList: { gap: 8, paddingTop: 8 },
+  footer: { paddingVertical: 16, alignItems: 'center' },
+  centerPane: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 64, gap: 12 },
+  locTitle: { fontSize: 22, fontWeight: '700', textAlign: 'center' },
+  locSubtitle: { textAlign: 'center', paddingHorizontal: 32, fontSize: 14 },
+  cityList: { gap: 12, width: '100%', paddingHorizontal: 32 },
+  cityPill: {
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  stateText: { textAlign: 'center', paddingHorizontal: 32 },
+  emptyCtaBtn: {
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center' as const,
+    width: '100%',
+  },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  fabLabel: {
+    position: 'absolute',
+    bottom: -18,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#1A1A1A',
   },
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
   modalSheet: {
