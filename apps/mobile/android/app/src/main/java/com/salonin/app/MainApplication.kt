@@ -1,4 +1,4 @@
-package com.winnerdream.salonin
+package com.salonin.app
 
 import android.app.Application
 import android.content.res.Configuration

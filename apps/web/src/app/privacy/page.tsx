@@ -139,6 +139,24 @@ export default function PrivacyPage() {
           <ul style={listStyle}>
             <li><span style={strong}>AWS S3</span> — media file storage</li>
             <li><span style={strong}>Sentry</span> — error monitoring (no personal data sold)</li>
+            <li>
+              <span style={strong}>Stripe</span> — identity verification of beauty professionals.
+              Stripe may collect identity documents and biometric data.
+              See{' '}
+              <a href="https://stripe.com/privacy" style={link} target="_blank" rel="noopener noreferrer">stripe.com/privacy</a>
+            </li>
+            <li>
+              <span style={strong}>Cloudinary</span> — profile photos and portfolio images are
+              stored and served via Cloudinary, a cloud media service.
+              See{' '}
+              <a href="https://cloudinary.com/privacy" style={link} target="_blank" rel="noopener noreferrer">cloudinary.com/privacy</a>
+            </li>
+            <li>
+              <span style={strong}>Expo</span> — push notifications are delivered via Expo&apos;s
+              notification service. Device push tokens are shared with Expo.
+              See{' '}
+              <a href="https://expo.dev/privacy" style={link} target="_blank" rel="noopener noreferrer">expo.dev/privacy</a>
+            </li>
           </ul>
           <p style={{ ...bodyText, ...strong }}>
             We do NOT sell your data to advertisers. Ever.

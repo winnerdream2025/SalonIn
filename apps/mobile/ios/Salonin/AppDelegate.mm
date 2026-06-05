@@ -23,7 +23,9 @@
 
 - (NSURL *)bundleURL
 {
-  return [[NSBundle mainBundle] URLForResource:@"main" withExtension:@"jsbundle"];
+  NSURL *bundleURL = [[NSBundle mainBundle] URLForResource:@"main" withExtension:@"jsbundle"];
+  NSAssert(bundleURL != nil, @"main.jsbundle not found in app bundle. Make sure the 'Bundle React Native code and images' build phase ran successfully.");
+  return bundleURL;
 }
 
 // Linking API

@@ -8,7 +8,7 @@
         "projectId": "4b8c3233-ffb4-4c1d-b74b-bebdf9298f7b"
       }
     },
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "scheme": "salonin",
     "icon": "./assets/icon.png",
@@ -19,8 +19,8 @@
       "backgroundColor": "#0A0A0A"
     },
     "android": {
-      "package": "com.winnerdream.salonin",
-      "versionCode": 1,
+      "package": "com.salonin.app",
+      "versionCode": 6,
       "permissions": [
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION"
@@ -32,8 +32,8 @@
       }
     },
     "ios": {
-      "bundleIdentifier": "com.winnerdream.salonin",
-      "buildNumber": "1",
+      "bundleIdentifier": "com.salonin.app",
+      "buildNumber": "6",
       "supportsTablet": false,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Salonin uses your location to show nearby beauty professionals and salons in your area.",

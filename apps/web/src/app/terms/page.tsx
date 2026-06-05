@@ -158,7 +158,19 @@ export default function TermsPage() {
         </section>
 
         <section style={section}>
-          <h2 style={h2Style}>7. Governing Law</h2>
+          <h2 style={h2Style}>7. Dispute Resolution</h2>
+          <p style={bodyText}>
+            Any dispute arising from these Terms or your use of Salonin shall first
+            be attempted to be resolved through informal negotiation. If unresolved
+            within 30 days, disputes shall be resolved through binding arbitration in
+            accordance with the American Arbitration Association rules. The arbitration
+            shall take place in Virginia, United States. You waive any right to participate
+            in class action lawsuits.
+          </p>
+        </section>
+
+        <section style={section}>
+          <h2 style={h2Style}>8. Governing Law</h2>
           <p style={bodyText}>
             Commonwealth of Virginia, United States of America.
           </p>

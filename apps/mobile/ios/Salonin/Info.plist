@@ -19,7 +19,7 @@
     <key>CFBundlePackageType</key>
     <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0.0</string>
+    <string>1.0.1</string>
     <key>CFBundleSignature</key>
     <string>????</string>
     <key>CFBundleURLTypes</key>
@@ -28,12 +28,12 @@
         <key>CFBundleURLSchemes</key>
         <array>
           <string>salonin</string>
-          <string>com.winnerdream.salonin</string>
+          <string>com.salonin.app</string>
         </array>
       </dict>
     </array>
     <key>CFBundleVersion</key>
-    <string>1</string>
+    <string>6</string>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
     <key>LSRequiresIPhoneOS</key>
@@ -47,10 +47,6 @@
     </dict>
     <key>NSCameraUsageDescription</key>
     <string>Salonin needs camera access to upload your profile photo and portfolio images.</string>
-    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-    <string>Allow $(PRODUCT_NAME) to access your location</string>
-    <key>NSLocationAlwaysUsageDescription</key>
-    <string>Allow $(PRODUCT_NAME) to access your location</string>
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>Salonin uses your location to show nearby beauty professionals and salons in your area.</string>
     <key>NSMicrophoneUsageDescription</key>
