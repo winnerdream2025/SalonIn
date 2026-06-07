@@ -32,7 +32,7 @@
       }
     },
     "ios": {
-      "bundleIdentifier": "com.salonin.app",
+      "bundleIdentifier": "com.winnerdream.salonin",
       "buildNumber": "6",
       "supportsTablet": false,
       "infoPlist": {

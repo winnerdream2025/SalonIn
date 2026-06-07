@@ -80,6 +80,14 @@ export interface WorkerCardData {
   rating?: number
   jobsDone?: number
   portfolioUrls?: string[]
+  // Card enrichment (optional)
+  badge?: 'Top Rated' | 'Rising Star' | 'Expert' | 'New'
+  reviewCount?: number
+  jobsThisMonth?: number
+  replyTimeMinutes?: number
+  rateRange?: string
+  rateNote?: string
+  isSaved?: boolean
 }
 
 export interface SalonCardData {

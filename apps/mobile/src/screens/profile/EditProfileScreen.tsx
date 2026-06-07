@@ -175,6 +175,9 @@ export default function EditProfileScreen() {
   const [availability, setAvailability] = useState<Availability>(Availability.NOT_AVAILABLE)
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
   const [radiusMiles, setRadiusMiles] = useState(15)
+  const [rateMin, setRateMin] = useState('')
+  const [rateMax, setRateMax] = useState('')
+  const [rateNote, setRateNote] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [openSection, setOpenSection] = useState<string | null>('photo')
 
@@ -188,6 +191,10 @@ export default function EditProfileScreen() {
     setPhotoUrl(profile.photoUrl)
     setLicenseNumber((profile as { licenseNumber?: string }).licenseNumber ?? '')
     setRadiusMiles((profile as { radiusMiles?: number }).radiusMiles ?? 15)
+    const rr = (profile as { rateRange?: string }).rateRange ?? ''
+    const match = rr.match(/\$(\d+)\s*[–-]\s*\$(\d+)/)
+    if (match) { setRateMin(match[1]!); setRateMax(match[2]!) }
+    setRateNote((profile as { rateNote?: string }).rateNote ?? '')
     const firstIncomplete = !profile.photoUrl ? 'photo'
       : (profile.bio?.length ?? 0) < 20 ? 'bio'
       : profile.specialties.length === 0 ? 'specialties'
@@ -230,6 +237,7 @@ export default function EditProfileScreen() {
     }
     setIsSaving(true)
     try {
+      const rateRange = rateMin && rateMax ? `$${rateMin} – $${rateMax} /hr` : undefined
       await workersApi.updateProfile({
         name: name.trim(),
         bio: bio.trim() || undefined,
@@ -237,6 +245,8 @@ export default function EditProfileScreen() {
         experienceYears,
         licenseNumber: licenseNumber.trim() || undefined,
         radiusMiles,
+        rateRange,
+        rateNote: rateNote.trim() || undefined,
       } as Parameters<typeof workersApi.updateProfile>[0])
       await workersApi.updateAvailability({ availability })
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
@@ -246,7 +256,7 @@ export default function EditProfileScreen() {
     } finally {
       setIsSaving(false)
     }
-  }, [name, bio, specialties, experienceYears, licenseNumber, radiusMiles, availability])
+  }, [name, bio, specialties, experienceYears, licenseNumber, radiusMiles, rateMin, rateMax, rateNote, availability])
 
   return (
     <View style={[styles.screen, { backgroundColor: theme.bg.base, paddingTop: top }]}>
@@ -537,6 +547,62 @@ export default function EditProfileScreen() {
             )}
           </View>
 
+          {/* ─── RATE ─── */}
+          <View style={[styles.sectionCard, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
+            <SectionHeader
+              title="Rate"
+              subtitle={rateMin && rateMax ? `$${rateMin} – $${rateMax} /hr` : 'Set your hourly rate range'}
+              isComplete={!!(rateMin && rateMax)}
+              isOpen={openSection === 'rate'}
+              onPress={() => toggleSection('rate')}
+            />
+            {openSection === 'rate' && (
+              <View style={styles.sectionBody}>
+                <Text style={{ fontSize: 13, color: theme.text.secondary, marginBottom: 12 }}>Hourly rate range</Text>
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 11, color: theme.text.tertiary, marginBottom: 4, letterSpacing: 0.5 }}>MIN</Text>
+                    <View style={[styles.rateInputWrap, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}>
+                      <Text style={{ fontSize: 16, color: theme.text.tertiary }}>$</Text>
+                      <TextInput
+                        value={rateMin}
+                        onChangeText={(t) => setRateMin(t.replace(/[^0-9]/g, ''))}
+                        placeholder="60"
+                        placeholderTextColor={theme.text.tertiary}
+                        keyboardType="number-pad"
+                        style={{ flex: 1, fontSize: 16, color: theme.text.primary, paddingVertical: 0 }}
+                      />
+                    </View>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 11, color: theme.text.tertiary, marginBottom: 4, letterSpacing: 0.5 }}>MAX</Text>
+                    <View style={[styles.rateInputWrap, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}>
+                      <Text style={{ fontSize: 16, color: theme.text.tertiary }}>$</Text>
+                      <TextInput
+                        value={rateMax}
+                        onChangeText={(t) => setRateMax(t.replace(/[^0-9]/g, ''))}
+                        placeholder="120"
+                        placeholderTextColor={theme.text.tertiary}
+                        keyboardType="number-pad"
+                        style={{ flex: 1, fontSize: 16, color: theme.text.primary, paddingVertical: 0 }}
+                      />
+                    </View>
+                  </View>
+                </View>
+                <View style={{ marginTop: 16 }}>
+                  <Text style={{ fontSize: 11, color: theme.text.tertiary, marginBottom: 4, letterSpacing: 0.5 }}>NOTE (optional)</Text>
+                  <TextInput
+                    value={rateNote}
+                    onChangeText={setRateNote}
+                    placeholder="Rate varies by style"
+                    placeholderTextColor={theme.text.tertiary}
+                    style={[styles.textInput, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default, color: theme.text.primary }]}
+                  />
+                </View>
+              </View>
+            )}
+          </View>
+
           {/* ─── RADIUS ─── */}
           <View style={[styles.sectionCard, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
             <SectionHeader
@@ -792,5 +858,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
     borderWidth: 1.5,
     borderStyle: 'dashed',
+  },
+  rateInputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 0.5,
+    paddingHorizontal: 14,
+    gap: 4,
   },
 })

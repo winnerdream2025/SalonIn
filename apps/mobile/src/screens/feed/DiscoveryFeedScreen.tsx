@@ -18,7 +18,8 @@ import { router } from 'expo-router'
 import * as Haptics from 'expo-haptics'
 import { WorkerCard, WorkerCardSkeleton, Text, Button, useTheme, ReportModal } from '@salonin/ui'
 import type { WorkerCardData } from '@salonin/types'
-import { reportsApi } from '@salonin/api-client'
+import { reportsApi, messagesApi } from '@salonin/api-client'
+import { useAuthStore } from '../../store/authStore'
 import { useNearbyWorkers } from '../../hooks/useNearbyWorkers'
 import { useLocationStore } from '../../store/locationStore'
 import { useDeviceLocation } from '../../hooks/useDeviceLocation'
@@ -162,6 +163,19 @@ export default function DiscoveryFeedScreen() {
   const [reportTarget, setReportTarget] = useState<WorkerCardData | null>(null)
   const [locationModalVisible, setLocationModalVisible] = useState(false)
   const [search, setSearch] = useState('')
+  const currentUser = useAuthStore((s) => s.user)
+
+  const handleMessage = useCallback(async (worker: WorkerCardData) => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    if (!currentUser) {
+      router.push('/(auth)/login')
+      return
+    }
+    try {
+      const conv = await messagesApi.createConversation(worker.id)
+      router.push(`/chat/${conv.id}?name=${encodeURIComponent(worker.name)}` as never)
+    } catch { /* silently fail */ }
+  }, [currentUser])
 
   const specialtyFilter = selectedSpecialty === 'All' ? undefined : selectedSpecialty
 
@@ -244,9 +258,9 @@ export default function DiscoveryFeedScreen() {
     return (
       <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]}>
         <View style={styles.headerSection}>
-          <Text style={[styles.serifTitle, { color: theme.text.primary }]}>Discover</Text>
+          <Text style={[styles.serifTitle, { color: theme.text.primary }]}>Workers</Text>
           <Text style={[styles.subtitle, { color: theme.text.secondary }]}>
-            Beauty professionals near you
+            Find talented professionals ✨
           </Text>
         </View>
         <View style={styles.centerPane}>
@@ -304,9 +318,9 @@ export default function DiscoveryFeedScreen() {
         <View style={[styles.headerSection, { paddingTop: top > 0 ? 8 : 16 }]}>
           <View style={styles.headerTopRow}>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.serifTitle, { color: theme.text.primary }]}>Discover</Text>
+              <Text style={[styles.serifTitle, { color: theme.text.primary }]}>Workers</Text>
               <Text style={[styles.subtitle, { color: theme.text.secondary }]}>
-                Beauty professionals near you
+                Find talented professionals ✨
               </Text>
             </View>
             <View style={styles.headerRight}>
@@ -347,6 +361,7 @@ export default function DiscoveryFeedScreen() {
               worker={item}
               onPress={() => handlePressWorker(item)}
               onLongPress={() => setReportTarget(item)}
+              onMessage={() => void handleMessage(item)}
             />
           )}
           contentContainerStyle={[styles.listContent, { paddingBottom: 56 + bottom + 16 }]}

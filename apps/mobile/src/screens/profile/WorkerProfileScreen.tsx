@@ -219,20 +219,32 @@ export default function WorkerProfileScreen() {
           borderTopColor: theme.border.subtle,
           paddingBottom: Math.max(bottom, 16),
         }]}>
-          <Pressable
-            onPress={() => void handleMessage()}
-            disabled={isMessaging}
-            style={({ pressed }) => [
-              styles.ctaBtn,
-              isMessaging && styles.ctaBtnDisabled,
-              pressed && { opacity: 0.85 },
-            ]}
-          >
-            {isMessaging
-              ? <ActivityIndicator color="#FFFFFF" />
-              : <Text style={[styles.ctaBtnText, { color: theme.text.inverse }]}>Send message</Text>
-            }
-          </Pressable>
+          <View style={styles.ctaRow}>
+            <Pressable
+              onPress={() => void handleMessage()}
+              disabled={isMessaging}
+              style={({ pressed }) => [
+                styles.ctaBtn,
+                isMessaging && styles.ctaBtnDisabled,
+                pressed && { opacity: 0.85 },
+                { flex: 1 },
+              ]}
+            >
+              {isMessaging
+                ? <ActivityIndicator color="#FFFFFF" />
+                : <Text style={[styles.ctaBtnText, { color: theme.text.inverse }]}>💬 Message</Text>
+              }
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [
+                styles.ctaBtnSecondary,
+                { borderColor: theme.border.default },
+                pressed && { opacity: 0.85 },
+              ]}
+            >
+              <Text style={[styles.ctaBtnSecondaryText, { color: theme.text.secondary }]}>🔖 Save</Text>
+            </Pressable>
+          </View>
         </View>
       )}
     </View>
@@ -408,6 +420,10 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     borderTopWidth: 0.5,
   },
+  ctaRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
   ctaBtn: {
     backgroundColor: '#D85A30',
     borderRadius: 14,
@@ -418,5 +434,17 @@ const styles = StyleSheet.create({
   ctaBtnText: {
     fontSize: 16,
     fontWeight: '700',
+  },
+  ctaBtnSecondary: {
+    borderRadius: 14,
+    borderWidth: 1.5,
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ctaBtnSecondaryText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 })
