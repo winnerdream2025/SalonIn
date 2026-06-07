@@ -115,7 +115,9 @@ export function JobPostCard({
                 {job.salonName}
               </Text>
               {job.salonVerified && (
-                <Text style={[styles.verifiedTick, { color: theme.brand.primary }]}>✓</Text>
+                <View style={styles.verifiedCircle}>
+                  <Text style={styles.verifiedCheckmark}>✓</Text>
+                </View>
               )}
             </View>
             <Text style={[styles.metaText, { color: theme.text.tertiary }]} numberOfLines={1}>
@@ -168,25 +170,25 @@ export function JobPostCard({
             </Text>
 
             <View style={styles.pillsRow}>
-              <View style={[styles.pill, { backgroundColor: theme.bg.input }]}>
-                <Text style={[styles.pillText, { color: theme.text.secondary }]}>{job.specialty}</Text>
-              </View>
-              <View style={[styles.pill, styles.pillType]}>
-                <Text style={[styles.pillText, styles.pillTypeText]}>{typeLabel}</Text>
+              {job.specialty.split(/[,/]/).map((tag, i) => (
+                <View key={`s-${i}`} style={[styles.pill, styles.pillCoral]}>
+                  <Text style={[styles.pillText, styles.pillCoralText]}>{tag.trim()}</Text>
+                </View>
+              ))}
+              <View style={[styles.pill, styles.pillCoral]}>
+                <Text style={[styles.pillText, styles.pillCoralText]}>{typeLabel}</Text>
               </View>
             </View>
 
             {hasPortfolio && (
               <View style={styles.portfolioRow}>
-                {job.portfolioPhotoUrls!.slice(0, 3).map((url, i) => (
+                {job.portfolioPhotoUrls!.slice(0, 4).map((url, i) => (
                   <Image key={i} source={{ uri: url }} style={styles.portfolioThumb} />
                 ))}
-                {portfolioCount > 3 && (
-                  <View style={[styles.portfolioThumb, styles.moreThumb, { backgroundColor: theme.bg.input }]}>
-                    <Text style={[styles.moreThumbText, { color: theme.text.secondary }]}>
-                      +{portfolioCount - 3}
-                    </Text>
-                  </View>
+                {portfolioCount > 4 && (
+                  <Text style={[styles.moreCountText, { color: theme.text.secondary }]}>
+                    +{portfolioCount - 4}
+                  </Text>
                 )}
               </View>
             )}
@@ -196,7 +198,7 @@ export function JobPostCard({
         {/* ── DIVIDER ── */}
         <View style={[styles.divider, { backgroundColor: theme.border.subtle }]} />
 
-        {/* ── FOOTER: pay + actions ── */}
+        {/* ── FOOTER: 3-column — pay | engagement | actions ── */}
         <View style={styles.footerRow}>
           <View style={styles.payCol}>
             <Text style={[styles.payText, { color: '#1D9E75' }]} numberOfLines={1}>
@@ -208,6 +210,21 @@ export function JobPostCard({
               </Text>
             )}
           </View>
+
+          {(job.appliedToday != null || job.replyTime) && (
+            <View style={styles.engagementCol}>
+              {job.appliedToday != null && (
+                <Text style={[styles.engagementText, { color: theme.text.tertiary }]} numberOfLines={1}>
+                  🔥 {job.appliedToday} applied{' '}today
+                </Text>
+              )}
+              {job.replyTime && (
+                <Text style={[styles.engagementText, { color: theme.text.tertiary }]} numberOfLines={1}>
+                  ⚡ Replies in{' '}{job.replyTime}
+                </Text>
+              )}
+            </View>
+          )}
 
           <View style={styles.actionsCol}>
             {onApply && !expired && (
@@ -230,22 +247,6 @@ export function JobPostCard({
             )}
           </View>
         </View>
-
-        {/* ── ENGAGEMENT row ── */}
-        {(job.appliedToday != null || job.replyTime) && (
-          <View style={styles.engagementRow}>
-            {job.appliedToday != null && (
-              <Text style={[styles.engagementText, { color: theme.text.tertiary }]}>
-                🔥 {job.appliedToday} applied today
-              </Text>
-            )}
-            {job.replyTime && (
-              <Text style={[styles.engagementText, { color: theme.text.tertiary }]}>
-                ⚡ Replies in {job.replyTime}
-              </Text>
-            )}
-          </View>
-        )}
       </Pressable>
     </Animated.View>
   )
@@ -265,7 +266,7 @@ export function JobPostCardSkeleton() {
         <Skeleton width={60} height={22} radius={11} />
       </View>
       <View style={styles.bodyRow}>
-        <Skeleton width={140} height={120} radius={10} />
+        <Skeleton width={120} height={110} radius={10} />
         <View style={[styles.bodyRight, { gap: 8 }]}>
           <Skeleton width="100%" height={22} radius={6} />
           <View style={styles.pillsRow}>
@@ -273,9 +274,10 @@ export function JobPostCardSkeleton() {
             <Skeleton width={70} height={22} radius={12} />
           </View>
           <View style={styles.portfolioRow}>
-            <Skeleton width={48} height={48} radius={8} />
-            <Skeleton width={48} height={48} radius={8} />
-            <Skeleton width={48} height={48} radius={8} />
+            <Skeleton width={36} height={36} radius={6} />
+            <Skeleton width={36} height={36} radius={6} />
+            <Skeleton width={36} height={36} radius={6} />
+            <Skeleton width={36} height={36} radius={6} />
           </View>
         </View>
       </View>
@@ -329,9 +331,19 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: -0.2,
   },
-  verifiedTick: {
-    fontSize: 14,
-    fontWeight: '700',
+  verifiedCircle: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#D85A30',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  verifiedCheckmark: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginTop: -1,
   },
   metaText: {
     fontSize: 12,
@@ -365,8 +377,8 @@ const styles = StyleSheet.create({
   },
   coverWrap: {},
   coverImg: {
-    width: 140,
-    height: 120,
+    width: 120,
+    height: 110,
     borderRadius: 10,
     overflow: 'hidden',
     backgroundColor: '#F0EDE8',
@@ -400,14 +412,14 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 12,
   },
-  pillType: {
+  pillCoral: {
     backgroundColor: 'rgba(216,90,48,0.10)',
   },
   pillText: {
     fontSize: 11,
     fontWeight: '600',
   },
-  pillTypeText: {
+  pillCoralText: {
     color: '#D85A30',
   },
   portfolioRow: {
@@ -416,18 +428,16 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   portfolioThumb: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     backgroundColor: '#F0EDE8',
   },
-  moreThumb: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  moreThumbText: {
+  moreCountText: {
     fontSize: 12,
     fontWeight: '700',
+    alignSelf: 'center' as const,
+    marginLeft: 2,
   },
   // ── Divider ──
   divider: {
@@ -481,15 +491,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
-  // ── Engagement ──
-  engagementRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 14,
-    marginTop: -4,
+  // ── Engagement (middle column) ──
+  engagementCol: {
+    flex: 1,
+    gap: 2,
+    alignItems: 'center',
   },
   engagementText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '500',
   },
 })
