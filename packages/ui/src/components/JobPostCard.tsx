@@ -2,6 +2,7 @@ import React, { useRef, useCallback, useState } from 'react'
 import { View, Text, Pressable, Animated, StyleSheet, Image } from 'react-native'
 import type { JobPostCardData } from '@salonin/types'
 import { isJobExpired } from '@salonin/utils'
+import Svg, { Path } from 'react-native-svg'
 import { Skeleton } from '../primitives/Skeleton'
 import { Avatar } from '../primitives/Avatar'
 import { useTheme } from '../hooks/useTheme'
@@ -22,6 +23,29 @@ const TYPE_LABEL: Record<string, string> = {
   TEMPORARY: 'Temporary',
   WEEKEND: 'Weekend',
   EMERGENCY: 'Emergency',
+}
+
+const TYPE_PILL_COLOR: Record<string, { bg: string; text: string }> = {
+  FULL_TIME:  { bg: 'rgba(29,158,117,0.1)',  text: '#1D9E75' },
+  PART_TIME:  { bg: 'rgba(147,92,255,0.1)',  text: '#935CFF' },
+  TEMPORARY:  { bg: 'rgba(55,138,221,0.1)',  text: '#378ADD' },
+  WEEKEND:    { bg: 'rgba(239,159,39,0.1)',   text: '#EF9F27' },
+  EMERGENCY:  { bg: 'rgba(226,75,74,0.1)',    text: '#E24B4A' },
+}
+
+function BookmarkIcon({ filled, color, size }: { filled: boolean; color: string; size: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill={filled ? color : 'none'}
+      />
+    </Svg>
+  )
 }
 
 type BadgeKind = 'urgent' | 'hot' | 'new'
@@ -121,14 +145,14 @@ export function JobPostCard({
               )}
             </View>
             <Text style={[styles.metaText, { color: theme.text.tertiary }]} numberOfLines={1}>
-              📍 {job.cityId.toUpperCase()}
+              {job.cityId.toUpperCase()}
               {job.salonRating != null && (
                 <Text>{`  •  ★ ${job.salonRating.toFixed(1)}${job.salonReviewCount != null ? ` (${job.salonReviewCount})` : ''}`}</Text>
               )}
             </Text>
             {job.salonHiringCount != null && job.salonHiringCount > 0 && (
               <Text style={[styles.metaText, { color: theme.text.tertiary }]} numberOfLines={1}>
-                👥 {job.salonHiringCount} hiring this month
+                {job.salonHiringCount} hiring this month
               </Text>
             )}
           </View>
@@ -143,9 +167,11 @@ export function JobPostCard({
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               style={styles.bookmarkBtn}
             >
-              <Text style={{ fontSize: 18, color: savedLocal ? theme.brand.primary : theme.text.tertiary }}>
-                {savedLocal ? '🔖' : '🏷'}
-              </Text>
+              <BookmarkIcon
+                filled={savedLocal}
+                color={savedLocal ? theme.brand.primary : theme.text.tertiary}
+                size={22}
+              />
             </Pressable>
           </View>
         </View>
@@ -175,8 +201,8 @@ export function JobPostCard({
                   <Text style={[styles.pillText, styles.pillCoralText]}>{tag.trim()}</Text>
                 </View>
               ))}
-              <View style={[styles.pill, styles.pillCoral]}>
-                <Text style={[styles.pillText, styles.pillCoralText]}>{typeLabel}</Text>
+              <View style={[styles.pill, { backgroundColor: (TYPE_PILL_COLOR[job.type] ?? TYPE_PILL_COLOR.FULL_TIME).bg }]}>
+                <Text style={[styles.pillText, { color: (TYPE_PILL_COLOR[job.type] ?? TYPE_PILL_COLOR.FULL_TIME).text }]}>{typeLabel}</Text>
               </View>
             </View>
 
@@ -202,7 +228,7 @@ export function JobPostCard({
         <View style={styles.footerRow}>
           <View style={styles.payCol}>
             <Text style={[styles.payText, { color: '#1D9E75' }]} numberOfLines={1}>
-              💲 {job.payStructure}
+              {job.payStructure}
             </Text>
             {job.estimatedWeekly && (
               <Text style={[styles.payEstimate, { color: theme.text.tertiary }]} numberOfLines={1}>
@@ -241,7 +267,7 @@ export function JobPostCard({
                 style={[styles.messageBtn, { borderColor: theme.brand.primary }]}
               >
                 <Text style={[styles.messageBtnText, { color: theme.brand.primary }]}>
-                  💬 Message
+                  Message
                 </Text>
               </Pressable>
             )}
@@ -265,7 +291,7 @@ export function JobPostCardSkeleton() {
         <Skeleton width={50} height={18} radius={9} />
       </View>
       <View style={styles.bodyRow}>
-        <Skeleton width={90} height={84} radius={8} />
+        <Skeleton width={110} height={100} radius={10} />
         <View style={[styles.bodyRight, { gap: 6 }]}>
           <Skeleton width="100%" height={18} radius={5} />
           <View style={styles.pillsRow}>
@@ -273,9 +299,9 @@ export function JobPostCardSkeleton() {
             <Skeleton width={56} height={18} radius={10} />
           </View>
           <View style={styles.portfolioRow}>
-            <Skeleton width={28} height={28} radius={8} />
-            <Skeleton width={28} height={28} radius={8} />
-            <Skeleton width={28} height={28} radius={8} />
+            <Skeleton width={36} height={36} radius={6} />
+            <Skeleton width={36} height={36} radius={6} />
+            <Skeleton width={36} height={36} radius={6} />
           </View>
         </View>
       </View>
@@ -286,8 +312,8 @@ export function JobPostCardSkeleton() {
           <Skeleton width={80} height={10} radius={5} />
         </View>
         <View style={[styles.actionsCol, { gap: 4 }]}>
-          <Skeleton width={90} height={30} radius={15} />
-          <Skeleton width={90} height={28} radius={14} />
+          <Skeleton width={88} height={30} radius={15} />
+          <Skeleton width={88} height={26} radius={13} />
         </View>
       </View>
     </View>
@@ -296,12 +322,12 @@ export function JobPostCardSkeleton() {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 14,
+    borderRadius: 16,
     padding: 10,
     marginHorizontal: 16,
-    marginBottom: 10,
+    marginBottom: 8,
     borderWidth: 1,
-    gap: 8,
+    gap: 6,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
@@ -355,15 +381,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: 20,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
   },
   badgeUrgent: { backgroundColor: 'rgba(216,90,48,0.12)' },
-  badgeHot: { backgroundColor: 'rgba(239,159,39,0.15)' },
+  badgeHot: { backgroundColor: 'rgba(239,159,39,0.12)' },
   badgeNew: { backgroundColor: 'rgba(29,158,117,0.12)' },
   badgeText: {
-    fontSize: 10,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '600',
   },
   bookmarkBtn: {
     padding: 2,
@@ -375,9 +401,9 @@ const styles = StyleSheet.create({
   },
   coverWrap: {},
   coverImg: {
-    width: 90,
-    height: 84,
-    borderRadius: 8,
+    width: 110,
+    height: 100,
+    borderRadius: 10,
     overflow: 'hidden',
     backgroundColor: '#F0EDE8',
   },
@@ -386,7 +412,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   coverInitial: {
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: '800',
   },
   bodyRight: {
@@ -426,9 +452,9 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   portfolioThumb: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 6,
     backgroundColor: '#F0EDE8',
   },
   moreCountText: {
@@ -440,7 +466,7 @@ const styles = StyleSheet.create({
   // ── Divider ──
   divider: {
     height: StyleSheet.hairlineWidth,
-    marginVertical: 2,
+    marginVertical: 1,
   },
   // ── Footer ──
   footerRow: {
@@ -461,7 +487,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   actionsCol: {
-    gap: 6,
+    gap: 4,
     alignItems: 'flex-end',
   },
   applyBtn: {
@@ -470,20 +496,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 90,
+    minWidth: 88,
   },
   applyBtnText: {
     fontSize: 12,
     fontWeight: '700',
   },
   messageBtn: {
-    height: 28,
-    borderRadius: 14,
+    height: 26,
+    borderRadius: 13,
     paddingHorizontal: 12,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    minWidth: 90,
+    minWidth: 88,
   },
   messageBtnText: {
     fontSize: 11,

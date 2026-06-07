@@ -24,6 +24,8 @@ import { useNearbyWorkers } from '../../hooks/useNearbyWorkers'
 import { useLocationStore } from '../../store/locationStore'
 import { useDeviceLocation } from '../../hooks/useDeviceLocation'
 import { NotificationBell } from '../../components/NotificationBell'
+import { WorkerFilterModal, activeWorkerFilterCount, EMPTY_WORKER_FILTERS } from '../../components/WorkerFilterModal'
+import type { WorkerFilters } from '../../components/WorkerFilterModal'
 
 const SPECIALTIES = ['All', 'Available Now', 'Braiders', 'Nail Techs', 'Lash', 'Makeup', 'Barbers']
 
@@ -163,6 +165,9 @@ export default function DiscoveryFeedScreen() {
   const [reportTarget, setReportTarget] = useState<WorkerCardData | null>(null)
   const [locationModalVisible, setLocationModalVisible] = useState(false)
   const [search, setSearch] = useState('')
+  const [showFilterModal, setShowFilterModal] = useState(false)
+  const [workerFilters, setWorkerFilters] = useState<WorkerFilters>(EMPTY_WORKER_FILTERS)
+  const filterCount = activeWorkerFilterCount(workerFilters)
   const currentUser = useAuthStore((s) => s.user)
 
   const handleMessage = useCallback(async (worker: WorkerCardData) => {
@@ -183,13 +188,24 @@ export default function DiscoveryFeedScreen() {
     useNearbyWorkers({ specialty: specialtyFilter })
 
   const filteredWorkers = useMemo(() => {
+    let result = workers
     const q = search.trim().toLowerCase()
-    if (!q) return workers
-    return workers.filter((w) =>
-      w.name.toLowerCase().includes(q) ||
-      w.specialties.some((s) => s.toLowerCase().includes(q))
-    )
-  }, [workers, search])
+    if (q) {
+      result = result.filter((w) =>
+        w.name.toLowerCase().includes(q) ||
+        w.specialties.some((s) => s.toLowerCase().includes(q))
+      )
+    }
+    if (workerFilters.availability) {
+      result = result.filter((w) => w.availability === workerFilters.availability)
+    }
+    if (workerFilters.category) {
+      result = result.filter((w) =>
+        w.specialties.some((s) => s.toLowerCase().includes(workerFilters.category!.toLowerCase()))
+      )
+    }
+    return result
+  }, [workers, search, workerFilters])
 
   const handlePressWorker = useCallback((worker: WorkerCardData) => {
     router.push(`/worker/${worker.id}`)
@@ -216,7 +232,24 @@ export default function DiscoveryFeedScreen() {
           style={[styles.searchInput, { color: theme.text.primary }]}
           returnKeyType="search"
         />
-        <Ionicons name="options-outline" size={20} color={theme.text.tertiary} />
+        <TouchableOpacity
+          onPress={() => setShowFilterModal(true)}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          style={{ position: 'relative' }}
+        >
+          <Ionicons name="options-outline" size={20} color={filterCount > 0 ? theme.brand.primary : theme.text.tertiary} />
+          {filterCount > 0 && (
+            <View style={{
+              position: 'absolute',
+              top: -4,
+              right: -4,
+              width: 8,
+              height: 8,
+              borderRadius: 4,
+              backgroundColor: theme.brand.primary,
+            }} />
+          )}
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -224,12 +257,12 @@ export default function DiscoveryFeedScreen() {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.filterRow}
       >
-        {SPECIALTIES.map((s) => {
-          const active = selectedSpecialty === s
+        {SPECIALTIES.map((sp) => {
+          const active = selectedSpecialty === sp
           return (
             <TouchableOpacity
-              key={s}
-              onPress={() => handleToggleSpecialty(s)}
+              key={sp}
+              onPress={() => handleToggleSpecialty(sp)}
               style={[
                 styles.filterPill,
                 {
@@ -245,7 +278,7 @@ export default function DiscoveryFeedScreen() {
                   color: active ? '#FFFFFF' : theme.text.secondary,
                 }}
               >
-                {s}
+                {sp}
               </Text>
             </TouchableOpacity>
           )
@@ -447,6 +480,13 @@ export default function DiscoveryFeedScreen() {
             await reportsApi.createReport(reportTarget.id, type, reason)
             setReportTarget(null)
           }}
+        />
+
+        <WorkerFilterModal
+          visible={showFilterModal}
+          onClose={() => setShowFilterModal(false)}
+          filters={workerFilters}
+          onApply={setWorkerFilters}
         />
 
         <LocationModal

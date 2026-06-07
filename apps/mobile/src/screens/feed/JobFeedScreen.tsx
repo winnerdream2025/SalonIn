@@ -23,6 +23,8 @@ import { useLocationStore } from '../../store/locationStore'
 import { useAuthStore } from '../../store/authStore'
 import { NotificationBell } from '../../components/NotificationBell'
 import { jobsApi } from '@salonin/api-client'
+import { JobFilterModal, activeFilterCount, EMPTY_JOB_FILTERS } from '../../components/JobFilterModal'
+import type { JobFilters } from '../../components/JobFilterModal'
 
 const SPECIALTIES = ['All', 'Knotless', 'Braids', 'Color', 'Locs', 'Wigs', 'Nails', 'Lashes']
 
@@ -46,6 +48,9 @@ export default function JobFeedScreen() {
   const [selectedSpecialty, setSelectedSpecialty] = useState<string>('All')
   const [showLocationModal, setShowLocationModal] = useState(false)
   const [search, setSearch] = useState('')
+  const [showFilterModal, setShowFilterModal] = useState(false)
+  const [jobFilters, setJobFilters] = useState<JobFilters>(EMPTY_JOB_FILTERS)
+  const filterCount = activeFilterCount(jobFilters)
 
   const cityLabel = CITY_PRESETS.find((c) => c.cityId === cityId)?.label ?? cityId?.toUpperCase() ?? ''
   const specialtyFilter = selectedSpecialty === 'All' ? undefined : selectedSpecialty
@@ -54,14 +59,26 @@ export default function JobFeedScreen() {
     useJobFeed({ specialty: specialtyFilter })
 
   const filteredJobs = useMemo(() => {
+    let result = jobs
     const q = search.trim().toLowerCase()
-    if (!q) return jobs
-    return jobs.filter((j) =>
-      j.title.toLowerCase().includes(q) ||
-      j.specialty.toLowerCase().includes(q) ||
-      j.salonName.toLowerCase().includes(q)
-    )
-  }, [jobs, search])
+    if (q) {
+      result = result.filter((j) =>
+        j.title.toLowerCase().includes(q) ||
+        j.specialty.toLowerCase().includes(q) ||
+        j.salonName.toLowerCase().includes(q) ||
+        j.payStructure?.toLowerCase().includes(q)
+      )
+    }
+    if (jobFilters.employmentType) {
+      result = result.filter((j) => j.type === jobFilters.employmentType)
+    }
+    if (jobFilters.payType) {
+      result = result.filter((j) =>
+        j.payStructure?.toLowerCase().includes(jobFilters.payType!.toLowerCase())
+      )
+    }
+    return result
+  }, [jobs, search, jobFilters])
 
   const handlePressJob = useCallback((job: JobPostCardData) => {
     router.push(`/jobs/${job.id}`)
@@ -116,7 +133,24 @@ export default function JobFeedScreen() {
           style={[styles.searchInput, { color: theme.text.primary }]}
           returnKeyType="search"
         />
-        <Ionicons name="options-outline" size={20} color={theme.text.tertiary} />
+        <TouchableOpacity
+          onPress={() => setShowFilterModal(true)}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          style={{ position: 'relative' }}
+        >
+          <Ionicons name="options-outline" size={20} color={filterCount > 0 ? theme.brand.primary : theme.text.tertiary} />
+          {filterCount > 0 && (
+            <View style={{
+              position: 'absolute',
+              top: -4,
+              right: -4,
+              width: 8,
+              height: 8,
+              borderRadius: 4,
+              backgroundColor: theme.brand.primary,
+            }} />
+          )}
+        </TouchableOpacity>
       </View>
 
       {/* Filter pills */}
@@ -258,6 +292,13 @@ export default function JobFeedScreen() {
             </View>
           </View>
         </Modal>
+
+        <JobFilterModal
+          visible={showFilterModal}
+          onClose={() => setShowFilterModal(false)}
+          filters={jobFilters}
+          onApply={setJobFilters}
+        />
 
         {/* Job list */}
         <FlatList

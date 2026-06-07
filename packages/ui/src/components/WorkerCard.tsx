@@ -1,6 +1,7 @@
 import React, { useRef, useCallback, useState } from 'react'
 import { View, Text, Pressable, Animated, StyleSheet, Image, TouchableOpacity } from 'react-native'
 import type { WorkerCardData } from '@salonin/types'
+import Svg, { Path } from 'react-native-svg'
 import { Skeleton } from '../primitives/Skeleton'
 import { useTheme } from '../hooks/useTheme'
 
@@ -18,6 +19,21 @@ const BADGE_CONFIG: Record<string, { bg: string; color: string }> = {
   'Rising Star': { bg: '#EEF3FF', color: '#378ADD' },
   'Expert':      { bg: '#F0FFF4', color: '#1D9E75' },
   'New':         { bg: '#F5F5F5', color: '#888888' },
+}
+
+function BookmarkIcon({ filled, color, size }: { filled: boolean; color: string; size: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill={filled ? color : 'none'}
+      />
+    </Svg>
+  )
 }
 
 export interface WorkerCardProps {
@@ -107,9 +123,11 @@ export function WorkerCard({ worker, onPress, isLoading = false, onLongPress, on
                   <Text style={[styles.availPillText, { color: avail.color }]}>{avail.label}</Text>
                 </View>
                 <TouchableOpacity onPress={handleSave} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Text style={[styles.bookmark, { color: saved ? '#D85A30' : theme.text.tertiary }]}>
-                    {saved ? '🔖' : '🏷'}
-                  </Text>
+                  <BookmarkIcon
+                    filled={saved}
+                    color={saved ? '#D85A30' : theme.text.tertiary}
+                    size={20}
+                  />
                 </TouchableOpacity>
               </View>
             </View>
@@ -136,7 +154,7 @@ export function WorkerCard({ worker, onPress, isLoading = false, onLongPress, on
               )}
               {worker.distanceMiles != null && (
                 <Text style={[styles.distanceText, { color: theme.text.tertiary }]}>
-                  📍 {worker.distanceMiles.toFixed(1)} km away
+                  {worker.distanceMiles.toFixed(1)} km away
                 </Text>
               )}
             </View>
@@ -181,10 +199,7 @@ export function WorkerCard({ worker, onPress, isLoading = false, onLongPress, on
           {/* Rate info */}
           <View style={styles.rateCol}>
             {worker.rateRange && (
-              <View style={styles.rateWrap}>
-                <Text style={styles.rateIcon}>💲</Text>
-                <Text style={[styles.rateText, { color: '#1D9E75' }]}>{worker.rateRange}</Text>
-              </View>
+              <Text style={[styles.rateText, { color: '#1D9E75' }]}>{worker.rateRange}</Text>
             )}
             {worker.rateNote && (
               <Text style={[styles.rateNote, { color: theme.text.tertiary }]}>{worker.rateNote}</Text>
@@ -223,7 +238,7 @@ export function WorkerCard({ worker, onPress, isLoading = false, onLongPress, on
             </Pressable>
             {onMessage && (
               <Pressable style={[styles.messageBtn, { borderColor: '#D85A30' }]} onPress={onMessage}>
-                <Text style={[styles.messageBtnText, { color: '#D85A30' }]}>💬 Message</Text>
+                <Text style={[styles.messageBtnText, { color: '#D85A30' }]}>Message</Text>
               </Pressable>
             )}
           </View>
@@ -238,7 +253,7 @@ export function WorkerCardSkeleton() {
   return (
     <View style={[styles.card, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
       <View style={styles.topRow}>
-        <Skeleton width={80} height={100} radius={10} />
+        <Skeleton width={74} height={92} radius={10} />
         <View style={[styles.infoCol, { gap: 6 }]}>
           <Skeleton width={120} height={15} radius={6} />
           <Skeleton width={100} height={12} radius={5} />
@@ -250,10 +265,10 @@ export function WorkerCardSkeleton() {
         </View>
       </View>
       <View style={styles.portfolioSection}>
-        <Skeleton width={52} height={52} radius={8} />
-        <Skeleton width={52} height={52} radius={8} />
-        <Skeleton width={52} height={52} radius={8} />
-        <Skeleton width={52} height={52} radius={8} />
+        <Skeleton width={52} height={46} radius={8} />
+        <Skeleton width={52} height={46} radius={8} />
+        <Skeleton width={52} height={46} radius={8} />
+        <Skeleton width={52} height={46} radius={8} />
       </View>
       <View style={[styles.divider, { backgroundColor: theme.border.subtle }]} />
       <View style={styles.footerRow}>
@@ -262,8 +277,8 @@ export function WorkerCardSkeleton() {
           <Skeleton width={70} height={10} radius={5} />
         </View>
         <View style={[styles.actionsCol, { gap: 4 }]}>
-          <Skeleton width={90} height={30} radius={18} />
-          <Skeleton width={90} height={26} radius={18} />
+          <Skeleton width={86} height={28} radius={16} />
+          <Skeleton width={86} height={24} radius={16} />
         </View>
       </View>
     </View>
@@ -272,12 +287,12 @@ export function WorkerCardSkeleton() {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 14,
+    borderRadius: 16,
     padding: 10,
     marginHorizontal: 16,
-    marginBottom: 10,
+    marginBottom: 8,
     borderWidth: 1,
-    gap: 8,
+    gap: 6,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
@@ -290,12 +305,12 @@ const styles = StyleSheet.create({
   },
   photoWrap: {
     position: 'relative',
-    width: 80,
-    height: 100,
+    width: 74,
+    height: 92,
   },
   photo: {
-    width: 80,
-    height: 100,
+    width: 74,
+    height: 92,
     borderRadius: 10,
   },
   photoPlaceholder: {
@@ -303,14 +318,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   photoInitial: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '800',
     color: '#D85A30',
   },
   availDot: {
     position: 'absolute',
-    top: 6,
-    left: 6,
+    top: 5,
+    left: 5,
     width: 12,
     height: 12,
     borderRadius: 6,
@@ -443,13 +458,13 @@ const styles = StyleSheet.create({
   },
   portfolioThumb: {
     flex: 1,
-    height: 52,
+    height: 46,
     borderRadius: 8,
     backgroundColor: '#F0EDE8',
   },
   portfolioMore: {
-    width: 40,
-    height: 52,
+    width: 36,
+    height: 46,
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
@@ -505,16 +520,16 @@ const styles = StyleSheet.create({
     lineHeight: 15,
   },
   actionsCol: {
-    gap: 6,
+    gap: 4,
     alignItems: 'flex-end',
   },
   viewBtn: {
     backgroundColor: '#D85A30',
-    borderRadius: 18,
+    borderRadius: 16,
     paddingHorizontal: 14,
-    paddingVertical: 7,
+    paddingVertical: 6,
     alignItems: 'center',
-    minWidth: 90,
+    minWidth: 86,
   },
   viewBtnText: {
     color: '#FFFFFF',
@@ -522,12 +537,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   messageBtn: {
-    borderRadius: 18,
+    borderRadius: 16,
     borderWidth: 1.5,
     paddingHorizontal: 12,
-    paddingVertical: 5,
+    paddingVertical: 4,
     alignItems: 'center',
-    minWidth: 90,
+    minWidth: 86,
   },
   messageBtnText: {
     fontSize: 12,
