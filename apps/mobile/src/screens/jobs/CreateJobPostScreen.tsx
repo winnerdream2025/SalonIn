@@ -14,10 +14,11 @@ import * as Haptics from 'expo-haptics'
 import { JobPostCard, Text, useTheme } from '@salonin/ui'
 import type { CreateJobPostDto, JobPostCardData } from '@salonin/types'
 import { jobsApi } from '@salonin/api-client'
+import { ALL_SPECIALTIES } from '@salonin/config'
 import { useLocationStore } from '../../store/locationStore'
 import { useAuthStore } from '../../store/authStore'
 
-const SPECIALTIES = ['Haircut', 'Color', 'Balayage', 'Locs', 'Braids', 'Natural Hair', 'Extensions', 'Nails', 'Makeup', 'Waxing']
+const SPECIALTIES = ALL_SPECIALTIES
 
 const EMPLOYMENT_TYPES: { value: string; label: string; icon: string; sub: string }[] = [
   { value: 'FULL_TIME',  label: 'Full-time',  icon: '🏢', sub: 'Regular schedule, benefits' },

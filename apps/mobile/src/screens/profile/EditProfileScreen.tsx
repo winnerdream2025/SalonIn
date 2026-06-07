@@ -18,17 +18,16 @@ import * as Haptics from 'expo-haptics'
 import { Text, Button, useTheme } from '@salonin/ui'
 import { Availability } from '@salonin/types'
 import { workersApi } from '@salonin/api-client'
+import { BEAUTY_SPECIALTIES } from '@salonin/config'
 import { useMyWorkerProfile } from '../../hooks/useWorkerProfile'
 import { useMediaUpload } from '../../hooks/useMediaUpload'
 
-const SPECIALTY_CATEGORIES: Record<string, { icon: string; subs: string[] }> = {
-  'Hair':     { icon: '💇', subs: ['Haircut', 'Color', 'Balayage', 'Natural Hair', 'Extensions', 'Locs', 'Braids', 'Highlights'] },
-  'Nails':    { icon: '💅', subs: ['Acrylic', 'Gel', 'Nail Art', 'Dip Powder', 'Pedicure'] },
-  'Lashes':   { icon: '👁', subs: ['Classic Set', 'Volume', 'Hybrid', 'Lash Lift'] },
-  'Makeup':   { icon: '💄', subs: ['Bridal', 'Glam', 'Editorial', 'Airbrush'] },
-  'Barber':   { icon: '✂️', subs: ['Fade', 'Taper', 'Lineup', 'Beard Trim'] },
-  'Skincare': { icon: '✨', subs: ['Facial', 'Threading', 'Waxing', 'Dermaplaning'] },
+const CATEGORY_ICONS: Record<string, string> = {
+  Hair: '💇', Nails: '💅', Lashes: '�', Makeup: '💄', Barber: '✂️', Skincare: '✨', Other: '�',
 }
+const SPECIALTY_CATEGORIES = Object.fromEntries(
+  Object.entries(BEAUTY_SPECIALTIES).map(([cat, subs]) => [cat, { icon: CATEGORY_ICONS[cat] ?? '🔧', subs }]),
+) as Record<string, { icon: string; subs: string[] }>
 
 const AVAIL_OPTIONS: { value: Availability; icon: string; label: string; sub: string; color: string }[] = [
   { value: Availability.NOW,           icon: '🟢', label: 'Available now',    sub: 'Ready to work immediately',   color: '#1D9E75' },
@@ -247,8 +246,8 @@ export default function EditProfileScreen() {
         radiusMiles,
         rateRange,
         rateNote: rateNote.trim() || undefined,
-      } as Parameters<typeof workersApi.updateProfile>[0])
-      await workersApi.updateAvailability({ availability })
+        availability,
+      })
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
       router.back()
     } catch (e) {

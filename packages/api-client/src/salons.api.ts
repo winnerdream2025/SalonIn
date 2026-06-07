@@ -4,8 +4,9 @@ import type { SalonCardData, SalonProfile, SalonProfileFull } from '@salonin/typ
 export interface UpdateSalonPayload {
   name?: string | undefined
   description?: string | undefined
+  photoUrls?: string[] | undefined
   specialties?: string[] | undefined
-  address?: string | undefined
+  isHiring?: boolean | undefined
 }
 
 export const salonsApi = {

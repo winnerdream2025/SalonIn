@@ -26,3 +26,5 @@ export { reportsApi } from './reports.api'
 export { devicesApi } from './devices.api'
 
 export { chatRequestsApi } from './chat-requests.api'
+
+export { specialtiesApi } from './specialties.api'

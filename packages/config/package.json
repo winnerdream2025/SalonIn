@@ -2,11 +2,12 @@
   "name": "@salonin/config",
   "version": "0.0.0",
   "private": true,
-  "main": "./src/cities.ts",
+  "main": "./src/index.ts",
   "exports": {
-    ".": "./src/cities.ts",
+    ".": "./src/index.ts",
     "./tailwind": "./tailwind.config.js",
-    "./cities": "./src/cities.ts"
+    "./cities": "./src/cities.ts",
+    "./specialties": "./src/specialties.ts"
   },
   "scripts": {
     "type-check": "tsc --noEmit"

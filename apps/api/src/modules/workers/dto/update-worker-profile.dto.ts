@@ -9,7 +9,7 @@ import {
   MaxLength,
   Min,
 } from 'class-validator'
-import type { EmploymentType } from '@prisma/client'
+import type { Availability, EmploymentType } from '@prisma/client'
 
 export class UpdateWorkerProfileDto {
   @IsOptional()
@@ -42,6 +42,10 @@ export class UpdateWorkerProfileDto {
   radiusMiles?: number
 
   @IsOptional()
+  @IsIn(['NOW', 'TODAY', 'WEEKEND', 'NOT_AVAILABLE'])
+  availability?: Availability
+
+  @IsOptional()
   @IsArray()
   @IsString({ each: true })
   languages?: string[]
@@ -49,6 +53,16 @@ export class UpdateWorkerProfileDto {
   @IsOptional()
   @IsString()
   expectedPay?: string
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  rateRange?: string
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  rateNote?: string
 
   @IsOptional()
   @IsArray()

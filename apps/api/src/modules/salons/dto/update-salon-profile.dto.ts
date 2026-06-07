@@ -1,4 +1,4 @@
-import { IsArray, IsOptional, IsString, MaxLength } from 'class-validator'
+import { IsArray, IsBoolean, IsOptional, IsString, MaxLength } from 'class-validator'
 
 export class UpdateSalonProfileDto {
   @IsOptional()
@@ -19,4 +19,8 @@ export class UpdateSalonProfileDto {
   @IsArray()
   @IsString({ each: true })
   specialties?: string[]
+
+  @IsOptional()
+  @IsBoolean()
+  isHiring?: boolean
 }

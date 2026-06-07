@@ -27,10 +27,14 @@ export class WorkersService {
 
   async updateProfile(userId: string, dto: UpdateWorkerProfileDto) {
     await this.assertExists(userId)
-    return this.prisma.workerProfile.update({
+    const updated = await this.prisma.workerProfile.update({
       where: { userId },
       data: { ...dto },
     })
+    if (dto.availability != null) {
+      await this.redis.delByPattern(`nearby:${updated.cityId}:*`)
+    }
+    return updated
   }
 
   async updateAvailability(userId: string, dto: UpdateAvailabilityDto) {

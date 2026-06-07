@@ -102,6 +102,8 @@ model WorkerProfile {
   location        Unsupported("geography(Point, 4326)")?
   languages       String[]
   expectedPay     String?
+  rateRange       String?
+  rateNote        String?
   employmentTypes EmploymentType[]
   isVerified      Boolean          @default(false)
   stripeSessionId String?

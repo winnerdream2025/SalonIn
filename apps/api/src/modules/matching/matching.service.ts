@@ -22,6 +22,8 @@ interface RawWorker {
   isVerified: boolean
   cityId: string
   distanceMeters: number
+  rateRange: string | null
+  rateNote: string | null
 }
 
 interface WorkerCursor {
@@ -87,8 +89,28 @@ export class MatchingService {
       const hasMore = rows.length > 50
       const slice = rows.slice(0, 50)
       const nextCursor = hasMore ? this.encodeCursor(slice[49]!) : null
+
+      // Fetch portfolio thumbnails for returned workers
+      const workerIds = slice.map((r) => r.id)
+      const portfolioRows = workerIds.length > 0
+        ? await this.prisma.portfolioItem.findMany({
+            where: { workerId: { in: workerIds }, type: 'IMAGE' },
+            select: { workerId: true, mediaUrl: true },
+            orderBy: { createdAt: 'desc' },
+          })
+        : []
+      const portfolioMap = new Map<string, string[]>()
+      for (const p of portfolioRows) {
+        const list = portfolioMap.get(p.workerId) ?? []
+        if (list.length < 6) list.push(p.mediaUrl)
+        portfolioMap.set(p.workerId, list)
+      }
+
       result = {
-        data: slice.map((r) => this.toWorkerCardData(r)),
+        data: slice.map((r) => ({
+          ...this.toWorkerCardData(r),
+          portfolioUrls: portfolioMap.get(r.id) ?? [],
+        })),
         nextCursor,
         hasMore,
         usedRadius,
@@ -139,6 +161,8 @@ export class MatchingService {
           wp."experienceYears",
           wp."isVerified",
           wp."cityId",
+          wp."rateRange",
+          wp."rateNote",
           ROUND(ST_Distance(
             wp.location::geography,
             ST_SetSRID(ST_MakePoint(${params.lng}, ${params.lat}), 4326)::geography
@@ -204,6 +228,8 @@ export class MatchingService {
       experienceYears: Number(raw.experienceYears),
       isVerified: Boolean(raw.isVerified),
       cityId: raw.cityId,
+      rateRange: raw.rateRange ?? undefined,
+      rateNote: raw.rateNote ?? undefined,
     }
   }
 

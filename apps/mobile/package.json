@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@salonin/api-client": "workspace:*",
+    "@salonin/config": "workspace:*",
     "@salonin/types": "workspace:*",
     "@salonin/ui": "workspace:*",
     "@salonin/utils": "workspace:*",

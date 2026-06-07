@@ -164,6 +164,8 @@ export interface WorkerProfileFull {
   cityId: string
   languages: string[]
   expectedPay: string | null
+  rateRange: string | null
+  rateNote: string | null
   employmentTypes: EmploymentType[]
   licenseNumber: string | null
   portfolioItems: PortfolioItem[]

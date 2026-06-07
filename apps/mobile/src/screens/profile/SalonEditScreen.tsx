@@ -16,17 +16,16 @@ import { router } from 'expo-router'
 import * as Haptics from 'expo-haptics'
 import { Text, Button, useTheme } from '@salonin/ui'
 import { salonsApi } from '@salonin/api-client'
+import { BEAUTY_SPECIALTIES } from '@salonin/config'
 import { useMySalonProfile } from '../../hooks/useMySalonProfile'
 import { useMediaUpload } from '../../hooks/useMediaUpload'
 
-const SPECIALTY_CATEGORIES: Record<string, { icon: string; subs: string[] }> = {
-  'Hair':     { icon: '💇', subs: ['Haircut', 'Color', 'Balayage', 'Natural Hair', 'Extensions', 'Locs', 'Braids', 'Highlights'] },
-  'Nails':    { icon: '💅', subs: ['Acrylic', 'Gel', 'Nail Art', 'Dip Powder', 'Pedicure'] },
-  'Lashes':   { icon: '👁', subs: ['Classic Set', 'Volume', 'Hybrid', 'Lash Lift'] },
-  'Makeup':   { icon: '💄', subs: ['Bridal', 'Glam', 'Editorial', 'Airbrush'] },
-  'Barber':   { icon: '✂️', subs: ['Fade', 'Taper', 'Lineup', 'Beard Trim'] },
-  'Skincare': { icon: '✨', subs: ['Facial', 'Threading', 'Waxing', 'Dermaplaning'] },
+const CATEGORY_ICONS: Record<string, string> = {
+  Hair: '💇', Nails: '💅', Lashes: '�', Makeup: '💄', Barber: '✂️', Skincare: '✨', Other: '�',
 }
+const SPECIALTY_CATEGORIES = Object.fromEntries(
+  Object.entries(BEAUTY_SPECIALTIES).map(([cat, subs]) => [cat, { icon: CATEGORY_ICONS[cat] ?? '🔧', subs }]),
+) as Record<string, { icon: string; subs: string[] }>
 
 function SectionHeader({
   title,
@@ -132,8 +131,8 @@ export default function SalonEditScreen() {
         description: description.trim() || undefined,
         specialties,
         photoUrls: photoUrls.length ? photoUrls : undefined,
-      } as Parameters<typeof salonsApi.updateProfile>[0])
-      await salonsApi.setHiringStatus(isHiring)
+        isHiring,
+      })
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
       router.back()
     } catch (e) {

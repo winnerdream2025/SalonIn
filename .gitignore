@@ -24,3 +24,4 @@ npm-debug.log*
 pnpm-debug.log*
 .cache/
 apps/mobile/android/keystore.properties
+*.apk

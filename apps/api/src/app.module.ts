@@ -20,6 +20,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { MetricsModule } from './common/metrics/metrics.module'
 import { HealthModule } from './health/health.module'
 import { ChatRequestsModule } from './modules/chat-requests/chat-requests.module'
+import { SpecialtiesModule } from './modules/specialties/specialties.module'
 
 @Module({
   imports: [
@@ -71,6 +72,7 @@ import { ChatRequestsModule } from './modules/chat-requests/chat-requests.module
     MetricsModule,
     HealthModule,
     ChatRequestsModule,
+    SpecialtiesModule,
   ],
   providers: [
     {

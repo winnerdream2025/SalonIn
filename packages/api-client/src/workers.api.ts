@@ -12,10 +12,18 @@ import type {
 
 export interface UpdateWorkerPayload {
   name?: string | undefined
-  specialties?: string[] | undefined
-  experienceYears?: number | undefined
   bio?: string | undefined
   photoUrl?: string | undefined
+  specialties?: string[] | undefined
+  experienceYears?: number | undefined
+  radiusMiles?: number | undefined
+  availability?: string | undefined
+  languages?: string[] | undefined
+  expectedPay?: string | undefined
+  rateRange?: string | undefined
+  rateNote?: string | undefined
+  employmentTypes?: string[] | undefined
+  licenseNumber?: string | undefined
 }
 
 export interface AddPortfolioItemInput {
