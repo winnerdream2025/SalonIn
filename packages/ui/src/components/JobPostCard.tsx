@@ -544,7 +544,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 8,
+    gap: 6,
   },
   payCol: {
     flex: 1,
@@ -556,11 +556,12 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   payText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
   },
   payEstimate: {
-    fontSize: 10,
+    fontSize: 11,
+    fontWeight: '400',
   },
   actionsCol: {
     gap: 4,
@@ -596,12 +597,13 @@ const styles = StyleSheet.create({
   // ── Engagement (middle column) ──
   engagementCol: {
     flex: 1,
-    gap: 5,
+    gap: 3,
     alignItems: 'center',
   },
   engagementText: {
     fontSize: 11,
-    fontWeight: '500',
+    fontWeight: '400',
     textAlign: 'center' as const,
+    lineHeight: 14,
   },
 })
