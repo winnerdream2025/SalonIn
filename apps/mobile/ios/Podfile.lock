@@ -1552,7 +1552,7 @@ SPEC CHECKSUMS:
   ExpoHead: 1a1b30c6c1d125e9b8a199ca305c16a1dc041624
   ExpoImagePicker: 517a47896adf5d55d0a1c159e5d1e312af12e57c
   ExpoKeepAwake: dd02e65d49f1cfd9194640028ae2857e536eb1c9
-  ExpoModulesCore: 988c1e102375e446b86f57b0f08d7c388bcfbb17
+  ExpoModulesCore: 9ac73e2f60e0ea1d30137ca96cfc8c2aa34ef2b2
   ExpoSecureStore: 6506992a9f53c94ea716c54d4a63144965945c2c
   ExpoSharing: 5e6b6cbc0c232084b79ffa7243459f7dcdc5b1cb
   EXSplashScreen: a4ce3dd5d28d48e8b9132bcd9b58ee8e340db78c

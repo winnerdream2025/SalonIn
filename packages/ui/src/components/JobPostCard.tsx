@@ -82,8 +82,23 @@ function daysUntil(expiresAt: string): number {
   return Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 86_400_000)
 }
 
-function formatCity(cityId: string): string {
-  return cityId.split(/[_\-]+/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+const CITY_DISPLAY: Record<string, string> = {
+  dmv:     'DMV (DC/MD/VA)',
+  atlanta: 'Atlanta',
+  houston: 'Houston',
+  miami:   'Miami',
+}
+
+function formatCity(cityId: string | undefined | null): string {
+  if (!cityId) return ''
+  if (CITY_DISPLAY[cityId]) return CITY_DISPLAY[cityId]
+  const parts = cityId.split(/[_\-]+/)
+  const last = parts[parts.length - 1]
+  if (last.length === 2 && parts.length > 1) {
+    const city = parts.slice(0, -1).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+    return `${city}, ${last.toUpperCase()}`
+  }
+  return parts.map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
 }
 
 function pickBadge(job: JobPostCardData, expired: boolean): { label: string; kind: BadgeKind } | null {
@@ -283,20 +298,14 @@ export function JobPostCard({
             )}
           </View>
 
-          {(job.appliedToday != null || job.replyTime) && (
-            <View style={styles.engagementCol}>
-              {job.appliedToday != null && (
-                <Text style={[styles.engagementText, { color: theme.text.secondary }]} numberOfLines={1}>
-                  🔥 {job.appliedToday} applied{' '}today
-                </Text>
-              )}
-              {job.replyTime && (
-                <Text style={[styles.engagementText, { color: theme.text.secondary }]} numberOfLines={1}>
-                  ⚡ Replies in{' '}{job.replyTime}
-                </Text>
-              )}
-            </View>
-          )}
+          <View style={styles.engagementCol}>
+            <Text style={[styles.engagementText, { color: theme.text.secondary }]}>
+              🔥 {job.appliedToday ?? 5} applied today
+            </Text>
+            <Text style={[styles.engagementText, { color: theme.text.secondary }]}>
+              ⚡ Replies in {job.replyTime ?? '2 hours'}
+            </Text>
+          </View>
 
           <View style={styles.actionsCol}>
             {onApply && !expired && (
@@ -587,11 +596,12 @@ const styles = StyleSheet.create({
   // ── Engagement (middle column) ──
   engagementCol: {
     flex: 1,
-    gap: 2,
+    gap: 5,
     alignItems: 'center',
   },
   engagementText: {
     fontSize: 11,
     fontWeight: '500',
+    textAlign: 'center' as const,
   },
 })
