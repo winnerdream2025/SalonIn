@@ -209,10 +209,20 @@ export function JobPostCard({
             {hasPortfolio && (
               <View style={styles.portfolioRow}>
                 {job.portfolioPhotoUrls!.slice(0, 3).map((url, i) => (
-                  <Image key={i} source={{ uri: url }} style={styles.portfolioThumb} />
+                  <Image
+                    key={i}
+                    source={{ uri: url }}
+                    style={[
+                      styles.portfolioThumb,
+                      { marginLeft: i === 0 ? 0 : -10, borderWidth: 2, borderColor: theme.bg.card },
+                    ]}
+                  />
                 ))}
                 {portfolioCount > 3 && (
-                  <View style={[styles.moreCountBubble, { backgroundColor: theme.bg.elevated }]}>
+                  <View style={[
+                    styles.moreCountBubble,
+                    { marginLeft: -10, backgroundColor: theme.bg.elevated, borderWidth: 2, borderColor: theme.bg.card },
+                  ]}>
                     <Text style={[styles.moreCountText, { color: theme.text.secondary }]}>
                       +{portfolioCount - 3}
                     </Text>
@@ -301,9 +311,9 @@ export function JobPostCardSkeleton() {
             <Skeleton width={56} height={18} radius={10} />
           </View>
           <View style={styles.portfolioRow}>
-            <Skeleton width={40} height={40} radius={20} />
-            <Skeleton width={40} height={40} radius={20} />
-            <Skeleton width={40} height={40} radius={20} />
+            <Skeleton width={44} height={44} radius={22} />
+            <View style={{ marginLeft: -10 }}><Skeleton width={44} height={44} radius={22} /></View>
+            <View style={{ marginLeft: -10 }}><Skeleton width={44} height={44} radius={22} /></View>
           </View>
         </View>
       </View>
@@ -314,8 +324,8 @@ export function JobPostCardSkeleton() {
           <Skeleton width={80} height={10} radius={5} />
         </View>
         <View style={[styles.actionsCol, { gap: 4 }]}>
-          <Skeleton width={88} height={30} radius={15} />
-          <Skeleton width={88} height={26} radius={13} />
+          <Skeleton width={86} height={28} radius={16} />
+          <Skeleton width={86} height={24} radius={16} />
         </View>
       </View>
     </View>
@@ -353,26 +363,26 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   salonName: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
     letterSpacing: -0.2,
   },
   verifiedCircle: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     backgroundColor: '#D85A30',
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
   },
   verifiedCheckmark: {
-    fontSize: 8,
+    fontSize: 9,
     fontWeight: '800',
     color: '#FFFFFF',
     marginTop: -1,
   },
   metaText: {
-    fontSize: 11,
+    fontSize: 12,
     marginTop: 1,
   },
   headerRight: {
@@ -403,9 +413,9 @@ const styles = StyleSheet.create({
   },
   coverWrap: {},
   coverImg: {
-    width: 110,
-    height: 100,
-    borderRadius: 10,
+    width: 120,
+    height: 108,
+    borderRadius: 12,
     overflow: 'hidden',
     backgroundColor: '#F0EDE8',
   },
@@ -414,35 +424,35 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   coverInitial: {
-    fontSize: 30,
+    fontSize: 34,
     fontWeight: '800',
   },
   bodyRight: {
     flex: 1,
     minWidth: 0,
-    gap: 4,
+    gap: 6,
   },
   title: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '800',
     letterSpacing: -0.2,
-    lineHeight: 18,
+    lineHeight: 20,
   },
   pillsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 4,
+    gap: 6,
   },
   pill: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   pillCoral: {
     backgroundColor: 'rgba(216,90,48,0.10)',
   },
   pillText: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '600',
   },
   pillCoralText: {
@@ -450,32 +460,31 @@ const styles = StyleSheet.create({
   },
   portfolioRow: {
     flexDirection: 'row',
-    gap: 4,
-    marginTop: 3,
+    marginTop: 4,
     alignItems: 'center',
   },
   portfolioThumb: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#F0EDE8',
     overflow: 'hidden' as const,
   },
   moreCountBubble: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
   },
   moreCountText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
   },
   // ── Divider ──
   divider: {
     height: StyleSheet.hairlineWidth,
-    marginVertical: 1,
+    marginVertical: 6,
   },
   // ── Footer ──
   footerRow: {
@@ -489,7 +498,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   payText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
   },
   payEstimate: {
@@ -500,28 +509,28 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   applyBtn: {
-    height: 30,
-    borderRadius: 15,
+    borderRadius: 16,
     paddingHorizontal: 14,
+    paddingVertical: 6,
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 88,
+    minWidth: 86,
   },
   applyBtnText: {
     fontSize: 12,
     fontWeight: '700',
   },
   messageBtn: {
-    height: 26,
-    borderRadius: 13,
+    borderRadius: 16,
     paddingHorizontal: 12,
+    paddingVertical: 4,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    minWidth: 88,
+    minWidth: 86,
   },
   messageBtnText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
   },
   // ── Engagement (middle column) ──
@@ -531,7 +540,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   engagementText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '500',
   },
 })
