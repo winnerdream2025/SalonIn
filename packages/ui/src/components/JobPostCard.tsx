@@ -54,6 +54,10 @@ function daysUntil(expiresAt: string): number {
   return Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 86_400_000)
 }
 
+function formatCity(cityId: string): string {
+  return cityId.split(/[_\-]+/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+}
+
 function pickBadge(job: JobPostCardData, expired: boolean): { label: string; kind: BadgeKind } | null {
   if (expired) return null
   if (job.isUrgent) return { label: '⚡ Urgent', kind: 'urgent' }
@@ -144,16 +148,25 @@ export function JobPostCard({
                 </View>
               )}
             </View>
-            <Text style={[styles.metaText, { color: theme.text.tertiary }]} numberOfLines={1}>
-              {job.cityId.toUpperCase()}
-              {job.salonRating != null && (
-                <Text>{`  •  ★ ${job.salonRating.toFixed(1)}${job.salonReviewCount != null ? ` (${job.salonReviewCount})` : ''}`}</Text>
-              )}
-            </Text>
-            {job.salonHiringCount != null && job.salonHiringCount > 0 && (
-              <Text style={[styles.metaText, { color: theme.text.tertiary }]} numberOfLines={1}>
-                {job.salonHiringCount} hiring this month
+            <View style={styles.metaRow}>
+              <Text style={styles.metaIcon}>📍</Text>
+              <Text style={[styles.metaText, { color: theme.text.secondary }]} numberOfLines={1}>
+                {formatCity(job.cityId)}
+                {job.salonRating != null && (
+                  <Text style={{ color: theme.text.secondary }}>{`  •  ${job.salonRating.toFixed(1)} ⭐`}</Text>
+                )}
+                {job.salonReviewCount != null && (
+                  <Text style={{ color: theme.text.tertiary }}>{` (${job.salonReviewCount})`}</Text>
+                )}
               </Text>
+            </View>
+            {job.salonHiringCount != null && job.salonHiringCount > 0 && (
+              <View style={styles.metaRow}>
+                <Text style={styles.metaIcon}>👥</Text>
+                <Text style={[styles.metaText, { color: theme.text.secondary }]} numberOfLines={1}>
+                  {job.salonHiringCount} hiring this month
+                </Text>
+              </View>
             )}
           </View>
           <View style={styles.headerRight}>
@@ -209,20 +222,10 @@ export function JobPostCard({
             {hasPortfolio && (
               <View style={styles.portfolioRow}>
                 {job.portfolioPhotoUrls!.slice(0, 3).map((url, i) => (
-                  <Image
-                    key={i}
-                    source={{ uri: url }}
-                    style={[
-                      styles.portfolioThumb,
-                      { marginLeft: i === 0 ? 0 : -10, borderWidth: 2, borderColor: theme.bg.card },
-                    ]}
-                  />
+                  <Image key={i} source={{ uri: url }} style={styles.portfolioThumb} resizeMode="cover" />
                 ))}
                 {portfolioCount > 3 && (
-                  <View style={[
-                    styles.moreCountBubble,
-                    { marginLeft: -10, backgroundColor: theme.bg.elevated, borderWidth: 2, borderColor: theme.bg.card },
-                  ]}>
+                  <View style={[styles.moreCountBubble, { backgroundColor: theme.bg.elevated }]}>
                     <Text style={[styles.moreCountText, { color: theme.text.secondary }]}>
                       +{portfolioCount - 3}
                     </Text>
@@ -311,9 +314,9 @@ export function JobPostCardSkeleton() {
             <Skeleton width={56} height={18} radius={10} />
           </View>
           <View style={styles.portfolioRow}>
-            <Skeleton width={44} height={44} radius={22} />
-            <View style={{ marginLeft: -10 }}><Skeleton width={44} height={44} radius={22} /></View>
-            <View style={{ marginLeft: -10 }}><Skeleton width={44} height={44} radius={22} /></View>
+            <Skeleton width={44} height={44} radius={8} />
+            <Skeleton width={44} height={44} radius={8} />
+            <Skeleton width={44} height={44} radius={8} />
           </View>
         </View>
       </View>
@@ -381,9 +384,18 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     marginTop: -1,
   },
+  metaRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 3,
+    marginTop: 1,
+  },
+  metaIcon: {
+    fontSize: 11,
+  },
   metaText: {
     fontSize: 12,
-    marginTop: 1,
+    flex: 1,
   },
   headerRight: {
     alignItems: 'flex-end',
@@ -459,21 +471,22 @@ const styles = StyleSheet.create({
     color: '#D85A30',
   },
   portfolioRow: {
-    flexDirection: 'row',
+    flexDirection: 'row' as const,
+    gap: 4,
     marginTop: 4,
-    alignItems: 'center',
+    alignItems: 'center' as const,
   },
   portfolioThumb: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 8,
     backgroundColor: '#F0EDE8',
     overflow: 'hidden' as const,
   },
   moreCountBubble: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 8,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
   },
