@@ -208,13 +208,15 @@ export function JobPostCard({
 
             {hasPortfolio && (
               <View style={styles.portfolioRow}>
-                {job.portfolioPhotoUrls!.slice(0, 4).map((url, i) => (
+                {job.portfolioPhotoUrls!.slice(0, 3).map((url, i) => (
                   <Image key={i} source={{ uri: url }} style={styles.portfolioThumb} />
                 ))}
-                {portfolioCount > 4 && (
-                  <Text style={[styles.moreCountText, { color: theme.text.secondary }]}>
-                    +{portfolioCount - 4}
-                  </Text>
+                {portfolioCount > 3 && (
+                  <View style={[styles.moreCountBubble, { backgroundColor: theme.bg.elevated }]}>
+                    <Text style={[styles.moreCountText, { color: theme.text.secondary }]}>
+                      +{portfolioCount - 3}
+                    </Text>
+                  </View>
                 )}
               </View>
             )}
@@ -299,9 +301,9 @@ export function JobPostCardSkeleton() {
             <Skeleton width={56} height={18} radius={10} />
           </View>
           <View style={styles.portfolioRow}>
-            <Skeleton width={36} height={36} radius={6} />
-            <Skeleton width={36} height={36} radius={6} />
-            <Skeleton width={36} height={36} radius={6} />
+            <Skeleton width={40} height={40} radius={20} />
+            <Skeleton width={40} height={40} radius={20} />
+            <Skeleton width={40} height={40} radius={20} />
           </View>
         </View>
       </View>
@@ -448,20 +450,27 @@ const styles = StyleSheet.create({
   },
   portfolioRow: {
     flexDirection: 'row',
-    gap: 3,
-    marginTop: 1,
+    gap: 4,
+    marginTop: 3,
+    alignItems: 'center',
   },
   portfolioThumb: {
-    width: 36,
-    height: 36,
-    borderRadius: 6,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#F0EDE8',
+    overflow: 'hidden' as const,
+  },
+  moreCountBubble: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
   moreCountText: {
     fontSize: 12,
     fontWeight: '700',
-    alignSelf: 'center' as const,
-    marginLeft: 2,
   },
   // ── Divider ──
   divider: {

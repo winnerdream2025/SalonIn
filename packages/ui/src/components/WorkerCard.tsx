@@ -178,13 +178,13 @@ export function WorkerCard({ worker, onPress, isLoading = false, onLongPress, on
         {/* ── PORTFOLIO THUMBNAILS ── */}
         {hasPortfolio && (
           <View style={styles.portfolioSection}>
-            {worker.portfolioUrls!.slice(0, 4).map((url, i) => (
+            {worker.portfolioUrls!.slice(0, 3).map((url, i) => (
               <Image key={i} source={{ uri: url }} style={styles.portfolioThumb} resizeMode="cover" />
             ))}
-            {portfolioCount > 4 && (
+            {portfolioCount > 3 && (
               <View style={[styles.portfolioMore, { backgroundColor: theme.bg.elevated }]}>
                 <Text style={[styles.portfolioMoreText, { color: theme.text.secondary }]}>
-                  +{portfolioCount - 4}
+                  +{portfolioCount - 3}
                 </Text>
               </View>
             )}
@@ -265,10 +265,9 @@ export function WorkerCardSkeleton() {
         </View>
       </View>
       <View style={styles.portfolioSection}>
-        <Skeleton width={52} height={46} radius={8} />
-        <Skeleton width={52} height={46} radius={8} />
-        <Skeleton width={52} height={46} radius={8} />
-        <Skeleton width={52} height={46} radius={8} />
+        <Skeleton width={40} height={40} radius={20} />
+        <Skeleton width={40} height={40} radius={20} />
+        <Skeleton width={40} height={40} radius={20} />
       </View>
       <View style={[styles.divider, { backgroundColor: theme.border.subtle }]} />
       <View style={styles.footerRow}>
@@ -455,22 +454,24 @@ const styles = StyleSheet.create({
   portfolioSection: {
     flexDirection: 'row',
     gap: 4,
-  },
-  portfolioThumb: {
-    flex: 1,
-    height: 46,
-    borderRadius: 8,
-    backgroundColor: '#F0EDE8',
-  },
-  portfolioMore: {
-    width: 36,
-    height: 46,
-    borderRadius: 8,
-    justifyContent: 'center',
     alignItems: 'center',
   },
+  portfolioThumb: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F0EDE8',
+    overflow: 'hidden' as const,
+  },
+  portfolioMore: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+  },
   portfolioMoreText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
   },
   // ── Divider ──
