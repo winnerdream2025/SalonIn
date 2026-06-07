@@ -238,32 +238,32 @@ export function WorkerCardSkeleton() {
   return (
     <View style={[styles.card, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
       <View style={styles.topRow}>
-        <Skeleton width={120} height={160} radius={12} />
-        <View style={[styles.infoCol, { gap: 8 }]}>
-          <Skeleton width={140} height={18} radius={8} />
-          <Skeleton width={120} height={14} radius={6} />
-          <Skeleton width={100} height={14} radius={6} />
-          <View style={{ flexDirection: 'row', gap: 4 }}>
-            <Skeleton width={70} height={24} radius={12} />
-            <Skeleton width={70} height={24} radius={12} />
+        <Skeleton width={80} height={100} radius={10} />
+        <View style={[styles.infoCol, { gap: 6 }]}>
+          <Skeleton width={120} height={15} radius={6} />
+          <Skeleton width={100} height={12} radius={5} />
+          <Skeleton width={80} height={11} radius={5} />
+          <View style={{ flexDirection: 'row', gap: 3 }}>
+            <Skeleton width={56} height={20} radius={10} />
+            <Skeleton width={56} height={20} radius={10} />
           </View>
         </View>
       </View>
       <View style={styles.portfolioSection}>
-        <Skeleton width={68} height={68} radius={10} />
-        <Skeleton width={68} height={68} radius={10} />
-        <Skeleton width={68} height={68} radius={10} />
-        <Skeleton width={68} height={68} radius={10} />
+        <Skeleton width={52} height={52} radius={8} />
+        <Skeleton width={52} height={52} radius={8} />
+        <Skeleton width={52} height={52} radius={8} />
+        <Skeleton width={52} height={52} radius={8} />
       </View>
       <View style={[styles.divider, { backgroundColor: theme.border.subtle }]} />
       <View style={styles.footerRow}>
-        <View style={[styles.rateCol, { gap: 6 }]}>
-          <Skeleton width={120} height={16} radius={6} />
-          <Skeleton width={80} height={12} radius={6} />
+        <View style={[styles.rateCol, { gap: 4 }]}>
+          <Skeleton width={100} height={13} radius={5} />
+          <Skeleton width={70} height={10} radius={5} />
         </View>
-        <View style={[styles.actionsCol, { gap: 6 }]}>
-          <Skeleton width={110} height={36} radius={22} />
-          <Skeleton width={110} height={32} radius={22} />
+        <View style={[styles.actionsCol, { gap: 4 }]}>
+          <Skeleton width={90} height={30} radius={18} />
+          <Skeleton width={90} height={26} radius={18} />
         </View>
       </View>
     </View>
@@ -272,12 +272,12 @@ export function WorkerCardSkeleton() {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 16,
-    padding: 14,
+    borderRadius: 14,
+    padding: 10,
     marginHorizontal: 16,
-    marginBottom: 12,
+    marginBottom: 10,
     borderWidth: 1,
-    gap: 12,
+    gap: 8,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
@@ -286,59 +286,59 @@ const styles = StyleSheet.create({
   // ── Top section ──
   topRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
   },
   photoWrap: {
     position: 'relative',
-    width: 120,
-    height: 160,
+    width: 80,
+    height: 100,
   },
   photo: {
-    width: 120,
-    height: 160,
-    borderRadius: 12,
+    width: 80,
+    height: 100,
+    borderRadius: 10,
   },
   photoPlaceholder: {
     justifyContent: 'center',
     alignItems: 'center',
   },
   photoInitial: {
-    fontSize: 48,
+    fontSize: 32,
     fontWeight: '800',
     color: '#D85A30',
   },
   availDot: {
     position: 'absolute',
-    top: 8,
-    left: 8,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    borderWidth: 2.5,
+    top: 6,
+    left: 6,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 2,
     borderColor: '#FFFFFF',
   },
   verifiedCorner: {
     position: 'absolute',
-    bottom: -6,
-    right: -6,
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    bottom: -4,
+    right: -4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     backgroundColor: '#D85A30',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2.5,
+    borderWidth: 2,
     borderColor: '#FFFFFF',
   },
   verifiedCornerText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '800',
   },
   infoCol: {
     flex: 1,
     minWidth: 0,
-    gap: 4,
+    gap: 2,
   },
   nameRow: {
     flexDirection: 'row',
@@ -354,20 +354,20 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   name: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '800',
     letterSpacing: -0.3,
   },
   verifiedInline: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     backgroundColor: '#D85A30',
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
   },
   verifiedInlineText: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: '800',
     color: '#FFFFFF',
     marginTop: -1,
@@ -379,16 +379,16 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   availPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: 20,
   },
   availPillText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
   bookmark: {
-    fontSize: 20,
+    fontSize: 16,
   },
   specialtyRow: {
     flexDirection: 'row',
@@ -396,16 +396,16 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   specialty: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '500',
   },
   badgePill: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
     borderRadius: 10,
   },
   badgePillText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
   },
   ratingRow: {
@@ -414,48 +414,48 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   ratingText: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '500',
   },
   distanceText: {
-    fontSize: 12,
+    fontSize: 11,
   },
   pillsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 4,
-    marginTop: 2,
+    gap: 3,
+    marginTop: 1,
   },
   pill: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: 20,
     borderWidth: 0.5,
   },
   pillText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '500',
   },
   // ── Portfolio ──
   portfolioSection: {
     flexDirection: 'row',
-    gap: 6,
+    gap: 4,
   },
   portfolioThumb: {
     flex: 1,
-    height: 68,
-    borderRadius: 10,
+    height: 52,
+    borderRadius: 8,
     backgroundColor: '#F0EDE8',
   },
   portfolioMore: {
-    width: 52,
-    height: 68,
-    borderRadius: 10,
+    width: 40,
+    height: 52,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
   },
   portfolioMoreText: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '700',
   },
   // ── Divider ──
@@ -466,7 +466,7 @@ const styles = StyleSheet.create({
   footerRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 8,
+    gap: 6,
   },
   rateCol: {
     flex: 1,
@@ -478,14 +478,14 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   rateIcon: {
-    fontSize: 14,
+    fontSize: 12,
   },
   rateText: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '700',
   },
   rateNote: {
-    fontSize: 11,
+    fontSize: 10,
   },
   statsCol: {
     flexDirection: 'row',
@@ -510,27 +510,27 @@ const styles = StyleSheet.create({
   },
   viewBtn: {
     backgroundColor: '#D85A30',
-    borderRadius: 22,
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    alignItems: 'center',
-    minWidth: 110,
-  },
-  viewBtnText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  messageBtn: {
-    borderRadius: 22,
-    borderWidth: 1.5,
+    borderRadius: 18,
     paddingHorizontal: 14,
     paddingVertical: 7,
     alignItems: 'center',
-    minWidth: 110,
+    minWidth: 90,
+  },
+  viewBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  messageBtn: {
+    borderRadius: 18,
+    borderWidth: 1.5,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    alignItems: 'center',
+    minWidth: 90,
   },
   messageBtnText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
   },
 })

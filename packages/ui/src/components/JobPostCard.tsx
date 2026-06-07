@@ -107,7 +107,7 @@ export function JobPostCard({
           <Avatar
             uri={job.salonPhotoUrl}
             name={job.salonName}
-            size="lg"
+            size="md"
           />
           <View style={styles.headerInfo}>
             <View style={styles.nameRow}>
@@ -257,39 +257,37 @@ export function JobPostCardSkeleton() {
   return (
     <View style={[styles.card, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
       <View style={styles.headerRow}>
-        <Skeleton width={56} height={56} radius={28} />
-        <View style={[styles.headerInfo, { gap: 6 }]}>
-          <Skeleton width={140} height={16} radius={8} />
-          <Skeleton width={120} height={12} radius={6} />
-          <Skeleton width={100} height={12} radius={6} />
+        <Skeleton width={40} height={40} radius={20} />
+        <View style={[styles.headerInfo, { gap: 4 }]}>
+          <Skeleton width={120} height={14} radius={6} />
+          <Skeleton width={100} height={11} radius={5} />
         </View>
-        <Skeleton width={60} height={22} radius={11} />
+        <Skeleton width={50} height={18} radius={9} />
       </View>
       <View style={styles.bodyRow}>
-        <Skeleton width={120} height={110} radius={10} />
-        <View style={[styles.bodyRight, { gap: 8 }]}>
-          <Skeleton width="100%" height={22} radius={6} />
+        <Skeleton width={90} height={84} radius={8} />
+        <View style={[styles.bodyRight, { gap: 6 }]}>
+          <Skeleton width="100%" height={18} radius={5} />
           <View style={styles.pillsRow}>
-            <Skeleton width={80} height={22} radius={12} />
-            <Skeleton width={70} height={22} radius={12} />
+            <Skeleton width={60} height={18} radius={10} />
+            <Skeleton width={56} height={18} radius={10} />
           </View>
           <View style={styles.portfolioRow}>
-            <Skeleton width={36} height={36} radius={6} />
-            <Skeleton width={36} height={36} radius={6} />
-            <Skeleton width={36} height={36} radius={6} />
-            <Skeleton width={36} height={36} radius={6} />
+            <Skeleton width={28} height={28} radius={8} />
+            <Skeleton width={28} height={28} radius={8} />
+            <Skeleton width={28} height={28} radius={8} />
           </View>
         </View>
       </View>
       <View style={[styles.divider, { backgroundColor: theme.border.subtle }]} />
       <View style={styles.footerRow}>
-        <View style={[styles.payCol, { gap: 6 }]}>
-          <Skeleton width={120} height={16} radius={6} />
-          <Skeleton width={160} height={12} radius={6} />
+        <View style={[styles.payCol, { gap: 4 }]}>
+          <Skeleton width={100} height={13} radius={5} />
+          <Skeleton width={80} height={10} radius={5} />
         </View>
-        <View style={[styles.actionsCol, { gap: 6 }]}>
-          <Skeleton width={110} height={36} radius={18} />
-          <Skeleton width={110} height={32} radius={16} />
+        <View style={[styles.actionsCol, { gap: 4 }]}>
+          <Skeleton width={90} height={30} radius={15} />
+          <Skeleton width={90} height={28} radius={14} />
         </View>
       </View>
     </View>
@@ -298,12 +296,12 @@ export function JobPostCardSkeleton() {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 14,
+    padding: 10,
     marginHorizontal: 16,
-    marginBottom: 12,
+    marginBottom: 10,
     borderWidth: 1,
-    gap: 12,
+    gap: 8,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
@@ -313,7 +311,7 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 10,
+    gap: 8,
   },
   headerInfo: {
     flex: 1,
@@ -327,27 +325,27 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   salonName: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
     letterSpacing: -0.2,
   },
   verifiedCircle: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     backgroundColor: '#D85A30',
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
   },
   verifiedCheckmark: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: '800',
     color: '#FFFFFF',
     marginTop: -1,
   },
   metaText: {
-    fontSize: 12,
-    marginTop: 2,
+    fontSize: 11,
+    marginTop: 1,
   },
   headerRight: {
     alignItems: 'flex-end',
@@ -357,14 +355,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
   },
   badgeUrgent: { backgroundColor: 'rgba(216,90,48,0.12)' },
   badgeHot: { backgroundColor: 'rgba(239,159,39,0.15)' },
   badgeNew: { backgroundColor: 'rgba(29,158,117,0.12)' },
   badgeText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
   },
   bookmarkBtn: {
@@ -373,13 +371,13 @@ const styles = StyleSheet.create({
   // ── Body ──
   bodyRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
   },
   coverWrap: {},
   coverImg: {
-    width: 120,
-    height: 110,
-    borderRadius: 10,
+    width: 90,
+    height: 84,
+    borderRadius: 8,
     overflow: 'hidden',
     backgroundColor: '#F0EDE8',
   },
@@ -388,19 +386,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   coverInitial: {
-    fontSize: 36,
+    fontSize: 28,
     fontWeight: '800',
   },
   bodyRight: {
     flex: 1,
     minWidth: 0,
-    gap: 6,
+    gap: 4,
   },
   title: {
-    fontSize: 17,
+    fontSize: 14,
     fontWeight: '800',
-    letterSpacing: -0.3,
-    lineHeight: 22,
+    letterSpacing: -0.2,
+    lineHeight: 18,
   },
   pillsRow: {
     flexDirection: 'row',
@@ -408,15 +406,15 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   pill: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
   },
   pillCoral: {
     backgroundColor: 'rgba(216,90,48,0.10)',
   },
   pillText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
   },
   pillCoralText: {
@@ -424,13 +422,13 @@ const styles = StyleSheet.create({
   },
   portfolioRow: {
     flexDirection: 'row',
-    gap: 4,
-    marginTop: 2,
+    gap: 3,
+    marginTop: 1,
   },
   portfolioThumb: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 8,
     backgroundColor: '#F0EDE8',
   },
   moreCountText: {
@@ -449,46 +447,46 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: 8,
   },
   payCol: {
     flex: 1,
     gap: 2,
   },
   payText: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '700',
   },
   payEstimate: {
-    fontSize: 11,
+    fontSize: 10,
   },
   actionsCol: {
     gap: 6,
     alignItems: 'flex-end',
   },
   applyBtn: {
-    height: 36,
-    borderRadius: 18,
-    paddingHorizontal: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 110,
-  },
-  applyBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  messageBtn: {
-    height: 32,
-    borderRadius: 16,
+    height: 30,
+    borderRadius: 15,
     paddingHorizontal: 14,
     alignItems: 'center',
     justifyContent: 'center',
+    minWidth: 90,
+  },
+  applyBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  messageBtn: {
+    height: 28,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1.5,
-    minWidth: 110,
+    minWidth: 90,
   },
   messageBtnText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
   },
   // ── Engagement (middle column) ──
@@ -498,7 +496,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   engagementText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '500',
   },
 })
