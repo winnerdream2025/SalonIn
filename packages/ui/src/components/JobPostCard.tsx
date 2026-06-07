@@ -2,7 +2,7 @@ import React, { useRef, useCallback, useState } from 'react'
 import { View, Text, Pressable, Animated, StyleSheet, Image } from 'react-native'
 import type { JobPostCardData } from '@salonin/types'
 import { isJobExpired } from '@salonin/utils'
-import Svg, { Path } from 'react-native-svg'
+import Svg, { Path, Rect } from 'react-native-svg'
 import { Skeleton } from '../primitives/Skeleton'
 import { Avatar } from '../primitives/Avatar'
 import { useTheme } from '../hooks/useTheme'
@@ -31,6 +31,34 @@ const TYPE_PILL_COLOR: Record<string, { bg: string; text: string }> = {
   TEMPORARY:  { bg: 'rgba(55,138,221,0.1)',  text: '#378ADD' },
   WEEKEND:    { bg: 'rgba(239,159,39,0.1)',   text: '#EF9F27' },
   EMERGENCY:  { bg: 'rgba(226,75,74,0.1)',    text: '#E24B4A' },
+}
+
+function MoneyIcon({ color, size }: { color: string; size: number }) {
+  return (
+    <Svg width={size + 4} height={size} viewBox="0 0 22 16" fill="none">
+      <Rect x="1" y="1" width="20" height="14" rx="3" stroke={color} strokeWidth="1.6" />
+      <Path
+        d="M11 4v8M9.5 6.5A1.5 1.5 0 0111 5a1.5 1.5 0 011.5 1.5A1.5 1.5 0 0111 8a1.5 1.5 0 00-1.5 1.5A1.5 1.5 0 0011 11a1.5 1.5 0 001.5-1.5"
+        stroke={color}
+        strokeWidth="1.3"
+        strokeLinecap="round"
+      />
+    </Svg>
+  )
+}
+
+function ChatIcon({ color, size }: { color: string; size: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+        stroke={color}
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  )
 }
 
 function BookmarkIcon({ filled, color, size }: { filled: boolean; color: string; size: number }) {
@@ -135,7 +163,7 @@ export function JobPostCard({
           <Avatar
             uri={job.salonPhotoUrl}
             name={job.salonName}
-            size="md"
+            size="lg"
           />
           <View style={styles.headerInfo}>
             <View style={styles.nameRow}>
@@ -163,7 +191,7 @@ export function JobPostCard({
             {job.salonHiringCount != null && job.salonHiringCount > 0 && (
               <View style={styles.metaRow}>
                 <Text style={styles.metaIcon}>👥</Text>
-                <Text style={[styles.metaText, { color: theme.text.secondary }]} numberOfLines={1}>
+                <Text style={[styles.metaText, { color: '#D85A30' }]} numberOfLines={1}>
                   {job.salonHiringCount} hiring this month
                 </Text>
               </View>
@@ -242,9 +270,12 @@ export function JobPostCard({
         {/* ── FOOTER: 3-column — pay | engagement | actions ── */}
         <View style={styles.footerRow}>
           <View style={styles.payCol}>
-            <Text style={[styles.payText, { color: '#1D9E75' }]} numberOfLines={1}>
-              {job.payStructure}
-            </Text>
+            <View style={styles.payIconRow}>
+              <MoneyIcon color="#1D9E75" size={16} />
+              <Text style={[styles.payText, { color: '#1D9E75' }]} numberOfLines={1}>
+                {job.payStructure}
+              </Text>
+            </View>
             {job.estimatedWeekly && (
               <Text style={[styles.payEstimate, { color: theme.text.tertiary }]} numberOfLines={1}>
                 Est. {job.estimatedWeekly}
@@ -255,12 +286,12 @@ export function JobPostCard({
           {(job.appliedToday != null || job.replyTime) && (
             <View style={styles.engagementCol}>
               {job.appliedToday != null && (
-                <Text style={[styles.engagementText, { color: theme.text.tertiary }]} numberOfLines={1}>
+                <Text style={[styles.engagementText, { color: theme.text.secondary }]} numberOfLines={1}>
                   🔥 {job.appliedToday} applied{' '}today
                 </Text>
               )}
               {job.replyTime && (
-                <Text style={[styles.engagementText, { color: theme.text.tertiary }]} numberOfLines={1}>
+                <Text style={[styles.engagementText, { color: theme.text.secondary }]} numberOfLines={1}>
                   ⚡ Replies in{' '}{job.replyTime}
                 </Text>
               )}
@@ -281,6 +312,7 @@ export function JobPostCard({
                 onPress={onMessage}
                 style={[styles.messageBtn, { borderColor: theme.brand.primary }]}
               >
+                <ChatIcon color={theme.brand.primary} size={13} />
                 <Text style={[styles.messageBtnText, { color: theme.brand.primary }]}>
                   Message
                 </Text>
@@ -374,7 +406,7 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: '#D85A30',
+    backgroundColor: '#378ADD',
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
   },
@@ -510,6 +542,11 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 2,
   },
+  payIconRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 5,
+  },
   payText: {
     fontSize: 14,
     fontWeight: '700',
@@ -534,11 +571,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   messageBtn: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: 5,
     borderRadius: 16,
     paddingHorizontal: 12,
     paddingVertical: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
     borderWidth: 1.5,
     minWidth: 86,
   },
