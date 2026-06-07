@@ -22,6 +22,7 @@ import { useJobFeed } from '../../hooks/useJobFeed'
 import { useLocationStore } from '../../store/locationStore'
 import { useAuthStore } from '../../store/authStore'
 import { NotificationBell } from '../../components/NotificationBell'
+import { jobsApi } from '@salonin/api-client'
 
 const SPECIALTIES = ['All', 'Knotless', 'Braids', 'Color', 'Locs', 'Wigs', 'Nails', 'Lashes']
 
@@ -64,6 +65,32 @@ export default function JobFeedScreen() {
 
   const handlePressJob = useCallback((job: JobPostCardData) => {
     router.push(`/jobs/${job.id}`)
+  }, [])
+
+  const handleApplyJob = useCallback(async (job: JobPostCardData) => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    try {
+      await jobsApi.apply(job.id)
+      Alert.alert('Applied!', 'Your application has been sent to the salon.')
+    } catch (e) {
+      Alert.alert('Apply failed', e instanceof Error ? e.message : 'Please try again.')
+    }
+  }, [])
+
+  const handleMessageSalon = useCallback((_job: JobPostCardData) => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    Alert.alert('Coming soon', 'Direct messaging from job cards will be available soon.')
+  }, [])
+
+  const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set())
+  const handleToggleSave = useCallback((job: JobPostCardData) => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    setSavedJobIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(job.id)) next.delete(job.id)
+      else next.add(job.id)
+      return next
+    })
   }, [])
 
   const handleToggleSpecialty = useCallback((specialty: string) => {
@@ -240,6 +267,10 @@ export default function JobFeedScreen() {
             <JobPostCard
               job={item}
               onPress={() => handlePressJob(item)}
+              onApply={!isSalon ? () => void handleApplyJob(item) : undefined}
+              onMessage={() => handleMessageSalon(item)}
+              onSave={() => handleToggleSave(item)}
+              isSaved={savedJobIds.has(item.id)}
             />
           )}
           contentContainerStyle={[styles.listContent, { paddingBottom: 56 + bottom + 16 }]}

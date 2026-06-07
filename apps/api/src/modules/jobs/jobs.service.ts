@@ -69,7 +69,19 @@ export class JobsService {
     const [rows, total] = await this.prisma.$transaction([
       this.prisma.jobPost.findMany({
         where,
-        include: { salon: { select: { name: true, photoUrls: true } } },
+        include: {
+          salon: {
+            select: {
+              id: true,
+              name: true,
+              photoUrls: true,
+              cityId: true,
+              isVerified: true,
+              _count: { select: { jobPosts: { where: { isActive: true } } } },
+            },
+          },
+          _count: { select: { applications: true } },
+        },
         orderBy: [{ isUrgent: 'desc' }, { createdAt: 'desc' }],
         skip: (page - 1) * limit,
         take: limit,
@@ -87,8 +99,13 @@ export class JobsService {
         isUrgent: r.isUrgent,
         cityId: r.cityId,
         expiresAt: r.expiresAt.toISOString(),
+        salonId: r.salon.id,
         salonName: r.salon.name,
         salonPhotoUrl: r.salon.photoUrls[0] ?? null,
+        salonCoverUrl: r.salon.photoUrls[1] ?? r.salon.photoUrls[0] ?? null,
+        salonVerified: r.salon.isVerified,
+        salonHiringCount: r.salon._count.jobPosts,
+        applicantCount: r._count.applications,
       })),
       total,
       page,

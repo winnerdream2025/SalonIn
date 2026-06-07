@@ -104,12 +104,20 @@ export interface JobPostCardData {
   expiresAt: string
   salonName: string
   salonPhotoUrl: string | null
-  applicantCount?: number
+  // Salon enrichment (optional)
+  salonId?: string
+  salonCoverUrl?: string | null
+  salonVerified?: boolean
   salonRating?: number
   salonReviewCount?: number
   salonHiringCount?: number
+  // Engagement (optional)
+  applicantCount?: number
   appliedToday?: number
   replyTime?: string
+  // Pay enrichment (optional)
+  estimatedWeekly?: string
+  // Portfolio (optional)
   portfolioPhotoUrls?: string[]
 }
 
