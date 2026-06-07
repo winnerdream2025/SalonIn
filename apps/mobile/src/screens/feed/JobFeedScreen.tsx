@@ -336,7 +336,7 @@ export default function JobFeedScreen() {
             activeOpacity={0.85}
           >
             <Ionicons name="add" size={28} color="#FFFFFF" />
-            <Text style={styles.fabLabel}>Post Job</Text>
+            <Text style={[styles.fabLabel, { color: theme.text.primary }]}>Post Job</Text>
           </TouchableOpacity>
         )}
       </KeyboardAvoidingView>
@@ -451,7 +451,6 @@ const styles = StyleSheet.create({
     bottom: -18,
     fontSize: 11,
     fontWeight: '700',
-    color: '#1A1A1A',
   },
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
   modalSheet: {

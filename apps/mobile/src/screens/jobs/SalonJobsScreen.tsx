@@ -72,7 +72,9 @@ export default function SalonJobsScreen() {
           <Text variant="title">My Jobs</Text>
         </View>
         <View style={styles.errorState}>
-          <Text variant="body" color="secondary">{error.message}</Text>
+          <Text style={{ fontSize: 48 }}>⚠️</Text>
+          <Text variant="title" style={{ textAlign: 'center' }}>Something went wrong</Text>
+          <Text variant="body" color="secondary" style={{ textAlign: 'center' }}>{error.message}</Text>
           <Button variant="secondary" onPress={() => fetchJobs()}>Try again</Button>
         </View>
       </SafeAreaView>
@@ -128,7 +130,7 @@ export default function SalonJobsScreen() {
         ]}
       >
         <Ionicons name="add" size={28} color="#FFFFFF" />
-        <Text style={styles.fabLabel}>Post Job</Text>
+        <Text style={[styles.fabLabel, { color: theme.text.primary }]}>Post Job</Text>
       </Pressable>
     </SafeAreaView>
   )
@@ -192,6 +194,5 @@ const styles = StyleSheet.create({
     bottom: -18,
     fontSize: 11,
     fontWeight: '700',
-    color: '#1A1A1A',
   },
 })

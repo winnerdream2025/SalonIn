@@ -34,7 +34,7 @@ const AVAIL_OPTIONS: { value: Availability; icon: string; label: string; sub: st
   { value: Availability.NOW,           icon: '🟢', label: 'Available now',    sub: 'Ready to work immediately',   color: '#1D9E75' },
   { value: Availability.TODAY,         icon: '🔵', label: 'Available today',  sub: 'Free later today',             color: '#378ADD' },
   { value: Availability.WEEKEND,       icon: '🟡', label: 'This weekend',     sub: 'Available Sat or Sun',         color: '#EF9F27' },
-  { value: Availability.NOT_AVAILABLE, icon: '⚫', label: 'Not available',    sub: 'Pause visibility',             color: '#555555' },
+  { value: Availability.NOT_AVAILABLE, icon: '⚫', label: 'Not available',    sub: 'Pause visibility',             color: '#6B6B6B' },
 ]
 
 const RADIUS_PRESETS = [5, 10, 15, 25, 50]
@@ -684,7 +684,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 12,
     borderRadius: 16,
-    borderWidth: 0.5,
+    borderWidth: 1,
     overflow: 'hidden',
   },
   sectionHeader: {
@@ -717,9 +717,9 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   inlineInput: {
-    fontSize: 16,
+    fontSize: 15,
     paddingVertical: 6,
-    borderBottomWidth: 0.5,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   photoCircleWrap: {
     alignSelf: 'center',
@@ -759,9 +759,9 @@ const styles = StyleSheet.create({
   },
   bioInput: {
     borderRadius: 12,
-    borderWidth: 0.5,
+    borderWidth: 1,
     padding: 12,
-    fontSize: 14,
+    fontSize: 15,
     minHeight: 96,
     textAlignVertical: 'top',
   },
@@ -778,7 +778,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
-    borderWidth: 0.5,
+    borderWidth: 1,
   },
   subPillWrap: {
     marginTop: 12,
@@ -794,7 +794,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 20,
-    borderWidth: 0.5,
+    borderWidth: 1,
   },
   selectedWrap: {
     marginTop: 12,
@@ -809,9 +809,9 @@ const styles = StyleSheet.create({
   textInput: {
     height: 48,
     borderRadius: 12,
-    borderWidth: 0.5,
+    borderWidth: 1,
     paddingHorizontal: 14,
-    fontSize: 14,
+    fontSize: 15,
   },
   availCard: {
     flexDirection: 'row',
@@ -844,13 +844,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderRadius: 12,
-    borderWidth: 0.5,
+    borderWidth: 1,
     gap: 2,
   },
   radiusVisual: {
     height: 160,
     borderRadius: 14,
-    borderWidth: 0.5,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -864,7 +864,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     height: 48,
     borderRadius: 12,
-    borderWidth: 0.5,
+    borderWidth: 1,
     paddingHorizontal: 14,
     gap: 4,
   },

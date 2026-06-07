@@ -313,11 +313,11 @@ const styles = StyleSheet.create({
     top: 16,
     right: 16,
     paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 10,
+    paddingVertical: 8,
+    borderRadius: 22,
     backgroundColor: 'rgba(255,255,255,0.18)',
   },
-  heroEditText: { fontSize: 14, fontWeight: '600' },
+  heroEditText: { fontSize: 15, fontWeight: '600' },
 
   avatarWrap: { alignItems: 'center', justifyContent: 'center' },
   avatarCircle: {
@@ -344,11 +344,11 @@ const styles = StyleSheet.create({
 
   identity: { alignItems: 'center', paddingTop: 16, paddingBottom: 20, paddingHorizontal: 24 },
   heroName: { fontSize: 22, fontWeight: '800', letterSpacing: -0.4 },
-  heroSub: { fontSize: 14, marginTop: 4 },
+  heroSub: { fontSize: 15, marginTop: 4 },
 
   section: { marginHorizontal: 16, marginBottom: 10, borderRadius: 16, padding: 16, gap: 8 },
   sectionLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.8 },
-  bodyText: { fontSize: 14, lineHeight: 22 },
+  bodyText: { fontSize: 15, lineHeight: 22 },
 
   statsRow: {
     flexDirection: 'row',

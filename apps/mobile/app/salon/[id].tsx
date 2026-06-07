@@ -52,6 +52,8 @@ export default function SalonProfileScreen() {
           <View style={styles.headerSide} />
         </View>
         <View style={styles.errorState}>
+          <Text style={{ fontSize: 48 }}>⚠️</Text>
+          <Text variant="title" style={{ textAlign: 'center' }}>Something went wrong</Text>
           <Text variant="body" color="secondary" style={styles.errorText}>
             {error?.message ?? 'Salon not found'}
           </Text>

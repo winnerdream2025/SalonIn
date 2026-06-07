@@ -12,8 +12,8 @@ import { workersApi } from '@salonin/api-client'
 import type { JobApplicationWithJob, AppStatus } from '@salonin/types'
 
 const STATUS_CONFIG: Record<AppStatus, { label: string; color: string; bg: string }> = {
-  PENDING: { label: 'Pending', color: '#9A9A9A', bg: 'rgba(154,154,154,0.15)' },
-  VIEWED: { label: 'Viewed', color: '#60B4FF', bg: 'rgba(55,138,221,0.15)' },
+  PENDING: { label: 'Pending', color: '#6B6B6B', bg: 'rgba(107,107,107,0.12)' },
+  VIEWED: { label: 'Viewed', color: '#378ADD', bg: 'rgba(55,138,221,0.15)' },
   ACCEPTED: { label: 'Accepted', color: '#1D9E75', bg: 'rgba(29,158,117,0.15)' },
   DECLINED: { label: 'Declined', color: '#E24B4A', bg: 'rgba(226,75,74,0.15)' },
 }

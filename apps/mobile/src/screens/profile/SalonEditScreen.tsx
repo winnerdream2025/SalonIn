@@ -455,16 +455,16 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
   },
   inlineInput: {
-    fontSize: 16,
+    fontSize: 15,
     paddingVertical: 6,
-    borderBottomWidth: 0.5,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     marginTop: 6,
   },
   sectionCard: {
     marginHorizontal: 16,
     marginTop: 12,
     borderRadius: 16,
-    borderWidth: 0.5,
+    borderWidth: 1,
     overflow: 'hidden',
   },
   sectionHeader: {
@@ -480,7 +480,7 @@ const styles = StyleSheet.create({
   coverPhoto: {
     height: 160,
     borderRadius: 12,
-    borderWidth: 0.5,
+    borderWidth: 1,
     overflow: 'hidden',
   },
   coverPhotoImg: {
@@ -505,7 +505,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    borderWidth: 0.5,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -517,9 +517,9 @@ const styles = StyleSheet.create({
   },
   bioInput: {
     borderRadius: 12,
-    borderWidth: 0.5,
+    borderWidth: 1,
     padding: 12,
-    fontSize: 14,
+    fontSize: 15,
     minHeight: 96,
     textAlignVertical: 'top',
   },
@@ -536,7 +536,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
-    borderWidth: 0.5,
+    borderWidth: 1,
   },
   subPillWrap: {
     marginTop: 12,
@@ -552,7 +552,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 20,
-    borderWidth: 0.5,
+    borderWidth: 1,
   },
   selectedWrap: {
     marginTop: 12,
@@ -562,9 +562,9 @@ const styles = StyleSheet.create({
   textInput: {
     height: 48,
     borderRadius: 12,
-    borderWidth: 0.5,
+    borderWidth: 1,
     paddingHorizontal: 14,
-    fontSize: 14,
+    fontSize: 15,
   },
   hiringCard: {
     margin: 16,

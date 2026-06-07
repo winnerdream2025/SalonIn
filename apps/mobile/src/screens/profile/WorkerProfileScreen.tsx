@@ -77,7 +77,7 @@ export default function WorkerProfileScreen() {
     )
   }
 
-  const heroBg = isDark ? '#1A1A1A' : '#E8E8E8'
+  const heroBg = theme.bg.elevated
 
   return (
     <View style={[styles.screen, { backgroundColor: theme.bg.base }]}>
@@ -297,9 +297,9 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -382,7 +382,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   bioText: {
-    fontSize: 14,
+    fontSize: 15,
     lineHeight: 22,
   },
   showMore: {
@@ -426,9 +426,10 @@ const styles = StyleSheet.create({
   },
   ctaBtn: {
     backgroundColor: '#D85A30',
-    borderRadius: 14,
-    paddingVertical: 16,
+    borderRadius: 22,
+    height: 44,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   ctaBtnDisabled: { opacity: 0.6 },
   ctaBtnText: {
@@ -436,15 +437,15 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   ctaBtnSecondary: {
-    borderRadius: 14,
-    borderWidth: 1.5,
-    paddingVertical: 15,
+    borderRadius: 22,
+    borderWidth: 1,
+    height: 44,
     paddingHorizontal: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
   ctaBtnSecondaryText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
   },
 })

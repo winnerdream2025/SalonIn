@@ -31,9 +31,20 @@ export default function ConversationsListScreen() {
     return (
       <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]}>
         <View style={styles.center}>
-          <Text style={[styles.errorText, { color: theme.text.secondary }]}>
+          <Text style={{ fontSize: 48 }}>⚠️</Text>
+          <Text style={{ fontSize: 17, fontWeight: '700', color: theme.text.primary, marginTop: 12 }}>
+            Something went wrong
+          </Text>
+          <Text style={{ fontSize: 15, color: theme.text.secondary, textAlign: 'center', lineHeight: 22, marginTop: 4 }}>
             Failed to load conversations
           </Text>
+          <TouchableOpacity
+            onPress={() => void refresh()}
+            style={{ marginTop: 16, backgroundColor: theme.brand.primary, borderRadius: 22, paddingHorizontal: 20, height: 44, alignItems: 'center', justifyContent: 'center' }}
+            activeOpacity={0.8}
+          >
+            <Text style={{ fontSize: 15, fontWeight: '700', color: theme.text.inverse }}>Try again</Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     )
@@ -104,15 +115,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  headerTitle: { fontSize: 20, fontWeight: '700' },
+  headerTitle: { fontSize: 24, fontWeight: '800', letterSpacing: -0.5 },
   requestsBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 10,
+    borderRadius: 22,
     gap: 4,
   },
   requestsBtnText: { fontSize: 13, fontWeight: '600' },
@@ -128,7 +139,7 @@ const styles = StyleSheet.create({
   list: { flexGrow: 1 },
   separator: { height: 1, marginLeft: 72 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  errorText: { fontSize: 14 },
+  errorText: { fontSize: 15 },
   empty: {
     flex: 1,
     alignItems: 'center',
@@ -144,6 +155,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   emptyEmoji: { fontSize: 28 },
-  emptyTitle: { fontSize: 16, fontWeight: '700' },
-  emptySubtitle: { fontSize: 13, textAlign: 'center', lineHeight: 20 },
+  emptyTitle: { fontSize: 17, fontWeight: '700' },
+  emptySubtitle: { fontSize: 15, textAlign: 'center', lineHeight: 22 },
 })

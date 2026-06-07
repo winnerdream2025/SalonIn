@@ -145,10 +145,11 @@ export default function JobDetailScreen() {
     return (
       <View style={[styles.screen, { backgroundColor: theme.bg.base, paddingTop: top }]}>
         <View style={styles.centered}>
-          <Text variant="body" color="secondary" style={styles.center}>
+          <Text style={{ fontSize: 48 }}>⚠️</Text>
+          <Text style={{ fontSize: 17, fontWeight: '700', color: theme.text.primary, textAlign: 'center' }}>
             {error?.message ?? 'Job not found'}
           </Text>
-          <Button variant="ghost" onPress={() => router.back()}>Go back</Button>
+          <Button variant="secondary" onPress={() => router.back()}>Go back</Button>
         </View>
       </View>
     )
@@ -211,7 +212,7 @@ export default function JobDetailScreen() {
             <Text style={[styles.pillText, { color: theme.text.secondary }]}>{job.specialty}</Text>
           </View>
           <View style={[styles.pill, { backgroundColor: 'rgba(55,138,221,0.12)' }]}>
-            <Text style={[styles.pillText, { color: '#60B4FF' }]}>{EMP_LABELS[job.type] ?? job.type}</Text>
+            <Text style={[styles.pillText, { color: '#378ADD' }]}>{EMP_LABELS[job.type] ?? job.type}</Text>
           </View>
         </View>
 
@@ -393,7 +394,7 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   salonInfo: { flex: 1, minWidth: 0, gap: 2 },
-  salonName: { fontSize: 15, fontWeight: '600' },
+  salonName: { fontSize: 17, fontWeight: '700' },
   salonLoc: { fontSize: 12 },
   chevron: { fontSize: 20 },
   titleBlock: { gap: 10 },
@@ -430,7 +431,7 @@ const styles = StyleSheet.create({
     borderRightWidth: StyleSheet.hairlineWidth,
   },
   factLabel: { fontSize: 11, fontWeight: '600', letterSpacing: 0.2 },
-  factValue: { fontSize: 14, fontWeight: '700' },
+  factValue: { fontSize: 17, fontWeight: '700' },
   section: {
     borderRadius: 16,
     borderWidth: 0.5,
@@ -443,7 +444,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
     textTransform: 'uppercase',
   },
-  bodyText: { fontSize: 14, lineHeight: 22 },
+  bodyText: { fontSize: 15, lineHeight: 22 },
   showMore: { fontSize: 13, fontWeight: '600' },
   applicantRow: {
     flexDirection: 'row',
@@ -454,7 +455,7 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
   },
   applicantInfo: { flex: 1, minWidth: 0, gap: 2 },
-  applicantName: { fontSize: 14, fontWeight: '600' },
+  applicantName: { fontSize: 15, fontWeight: '600' },
   applicantSub: { fontSize: 12 },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   statusText: { fontSize: 11, fontWeight: '600' },
@@ -470,17 +471,20 @@ const styles = StyleSheet.create({
   },
   applyBtn: {
     backgroundColor: '#D85A30',
-    borderRadius: 14,
-    paddingVertical: 15,
+    borderRadius: 22,
+    height: 44,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   applyBtnDim: { opacity: 0.6 },
   applyBtnText: { fontSize: 16, fontWeight: '700' },
   messageBtn: {
-    borderRadius: 14,
-    paddingVertical: 13,
+    borderRadius: 22,
+    height: 44,
     alignItems: 'center',
-    borderWidth: 0.5,
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#D85A30',
   },
-  messageBtnText: { fontSize: 15, fontWeight: '600' },
+  messageBtnText: { fontSize: 15, fontWeight: '600', color: '#D85A30' },
 })

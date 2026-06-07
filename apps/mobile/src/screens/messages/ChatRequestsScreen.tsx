@@ -83,11 +83,20 @@ export default function ChatRequestsScreen() {
 
   if (error != null) {
     return (
-      <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]}>
+      <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]} edges={['top', 'left', 'right']}>
         <View style={styles.center}>
-          <Text style={[styles.errorText, { color: theme.text.secondary }]}>
+          <Text style={{ fontSize: 48 }}>⚠️</Text>
+          <Text style={[styles.emptyTitle, { color: theme.text.primary }]}>Something went wrong</Text>
+          <Text style={[styles.emptySubtitle, { color: theme.text.secondary }]}>
             Failed to load requests
           </Text>
+          <TouchableOpacity
+            onPress={() => void refresh()}
+            style={{ marginTop: 16, backgroundColor: '#D85A30', borderRadius: 22, paddingHorizontal: 20, height: 44, alignItems: 'center', justifyContent: 'center' }}
+            activeOpacity={0.8}
+          >
+            <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>Try again</Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     )
@@ -114,11 +123,14 @@ export default function ChatRequestsScreen() {
         ListEmptyComponent={
           isLoading ? null : (
             <View style={styles.empty}>
+              <View style={[styles.emptyIcon, { backgroundColor: theme.bg.elevated }]}>
+                <Text style={{ fontSize: 28 }}>✉️</Text>
+              </View>
               <Text style={[styles.emptyTitle, { color: theme.text.primary }]}>
                 No pending requests
               </Text>
               <Text style={[styles.emptySubtitle, { color: theme.text.secondary }]}>
-                When someone wants to chat, you'll see them here.
+                When someone wants to chat, you’ll see them here.
               </Text>
             </View>
           )
@@ -135,16 +147,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  backBtn: { width: 44, alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   backArrow: { fontSize: 32, lineHeight: 40 },
-  headerTitle: { flex: 1, fontSize: 18, fontWeight: '700', textAlign: 'center' },
+  headerTitle: { flex: 1, fontSize: 17, fontWeight: '700', textAlign: 'center' },
   list: { flexGrow: 1 },
   item: {
     flexDirection: 'row',
     padding: 16,
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   avatarWrap: { marginRight: 12, marginTop: 2 },
   itemContent: { flex: 1, minWidth: 0 },
@@ -156,28 +168,28 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   roleText: { fontSize: 11, fontWeight: '600' },
-  preview: { fontSize: 13, marginBottom: 2 },
+  preview: { fontSize: 13, lineHeight: 18, marginBottom: 2 },
   time: { fontSize: 11, marginBottom: 10 },
   actions: { flexDirection: 'row', gap: 8 },
   acceptBtn: {
     flex: 1,
-    height: 36,
-    borderRadius: 10,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  acceptText: { fontSize: 14, fontWeight: '700' },
+  acceptText: { fontSize: 15, fontWeight: '700' },
   declineBtn: {
     flex: 1,
-    height: 36,
-    borderRadius: 10,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
   },
-  declineText: { fontSize: 14, fontWeight: '600' },
+  declineText: { fontSize: 15, fontWeight: '600' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  errorText: { fontSize: 14 },
+  errorText: { fontSize: 15 },
   empty: {
     flex: 1,
     alignItems: 'center',
@@ -185,6 +197,14 @@ const styles = StyleSheet.create({
     padding: 40,
     gap: 10,
   },
-  emptyTitle: { fontSize: 16, fontWeight: '700' },
-  emptySubtitle: { fontSize: 13, textAlign: 'center', lineHeight: 20 },
+  emptyIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  emptyTitle: { fontSize: 17, fontWeight: '700' },
+  emptySubtitle: { fontSize: 15, textAlign: 'center', lineHeight: 22 },
 })
