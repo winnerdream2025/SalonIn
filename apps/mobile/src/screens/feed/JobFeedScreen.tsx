@@ -22,7 +22,7 @@ import { useJobFeed } from '../../hooks/useJobFeed'
 import { useLocationStore } from '../../store/locationStore'
 import { useAuthStore } from '../../store/authStore'
 import { NotificationBell } from '../../components/NotificationBell'
-import { jobsApi } from '@salonin/api-client'
+import { jobsApi, messagesApi } from '@salonin/api-client'
 import { JobFilterModal, activeFilterCount, EMPTY_JOB_FILTERS } from '../../components/JobFilterModal'
 import type { JobFilters } from '../../components/JobFilterModal'
 
@@ -42,8 +42,8 @@ export default function JobFeedScreen() {
   const { theme } = useTheme()
   const cityId = useLocationStore((s) => s.cityId)
   const setLocation = useLocationStore((s) => s.setLocation)
-  const userRole = useAuthStore((s) => s.user?.role)
-  const isSalon = userRole === 'SALON'
+  const user = useAuthStore((s) => s.user)
+  const isSalon = user?.role === 'SALON'
 
   const [selectedSpecialty, setSelectedSpecialty] = useState<string>('All')
   const [showLocationModal, setShowLocationModal] = useState(false)
@@ -84,20 +84,55 @@ export default function JobFeedScreen() {
     router.push(`/jobs/${job.id}`)
   }, [])
 
+  const [applyingId, setApplyingId] = useState<string | null>(null)
+  const [messagingId, setMessagingId] = useState<string | null>(null)
+
   const handleApplyJob = useCallback(async (job: JobPostCardData) => {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    if (!user) {
+      Alert.alert('Sign in required', 'Sign in to apply for jobs.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Sign in', onPress: () => router.push('/(auth)/login' as never) },
+      ])
+      return
+    }
+    setApplyingId(job.id)
     try {
       await jobsApi.apply(job.id)
-      Alert.alert('Applied!', 'Your application has been sent to the salon.')
+      const detail = await jobsApi.getById(job.id)
+      const conv = await messagesApi.createConversation(detail.salon.userId)
+      await messagesApi.sendMessage(
+        conv.id,
+        `Hi! I applied to your "${job.title}" position. I'd love to discuss the opportunity.`,
+      )
+      router.push(`/chat/${conv.id}?name=${encodeURIComponent(job.salonName)}` as never)
     } catch (e) {
       Alert.alert('Apply failed', e instanceof Error ? e.message : 'Please try again.')
+    } finally {
+      setApplyingId(null)
     }
-  }, [])
+  }, [user])
 
-  const handleMessageSalon = useCallback((_job: JobPostCardData) => {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-    Alert.alert('Coming soon', 'Direct messaging from job cards will be available soon.')
-  }, [])
+  const handleMessageSalon = useCallback(async (job: JobPostCardData) => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    if (!user) {
+      Alert.alert('Sign in required', 'Sign in to message salons.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Sign in', onPress: () => router.push('/(auth)/login' as never) },
+      ])
+      return
+    }
+    setMessagingId(job.id)
+    try {
+      const detail = await jobsApi.getById(job.id)
+      const conv = await messagesApi.createConversation(detail.salon.userId)
+      router.push(`/chat/${conv.id}?name=${encodeURIComponent(job.salonName)}` as never)
+    } catch (e) {
+      Alert.alert('Error', 'Could not start conversation. Please try again.')
+    } finally {
+      setMessagingId(null)
+    }
+  }, [user])
 
   const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set())
   const handleToggleSave = useCallback((job: JobPostCardData) => {
@@ -308,8 +343,8 @@ export default function JobFeedScreen() {
             <JobPostCard
               job={item}
               onPress={() => handlePressJob(item)}
-              onApply={!isSalon ? () => void handleApplyJob(item) : undefined}
-              onMessage={() => handleMessageSalon(item)}
+              onApply={!isSalon && applyingId !== item.id ? () => void handleApplyJob(item) : undefined}
+              onMessage={messagingId !== item.id ? () => void handleMessageSalon(item) : undefined}
               onSave={() => handleToggleSave(item)}
               isSaved={savedJobIds.has(item.id)}
             />

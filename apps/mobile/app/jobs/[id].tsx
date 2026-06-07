@@ -61,6 +61,7 @@ export default function JobDetailScreen() {
   const [descExpanded, setDescExpanded] = useState(false)
   const [applicants, setApplicants] = useState<JobApplicationDetail[]>([])
   const [loadingApplicants, setLoadingApplicants] = useState(false)
+  const [updatingAppId, setUpdatingAppId] = useState<string | null>(null)
 
   const isWorker = user?.role === 'WORKER'
   const isSalon = user?.role === 'SALON'
@@ -82,6 +83,21 @@ export default function JobDetailScreen() {
       .catch(() => {})
       .finally(() => setLoadingApplicants(false))
   }, [isOwnJob, id])
+
+  const handleUpdateStatus = useCallback(async (appId: string, status: 'ACCEPTED' | 'DECLINED') => {
+    if (!id) return
+    setUpdatingAppId(appId)
+    try {
+      await jobsApi.updateApplicationStatus(id, appId, status)
+      setApplicants((prev) =>
+        prev.map((a) => (a.id === appId ? { ...a, status } : a))
+      )
+    } catch {
+      Alert.alert('Error', 'Could not update status. Please try again.')
+    } finally {
+      setUpdatingAppId(null)
+    }
+  }, [id])
 
   const handleApply = useCallback(async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
@@ -286,11 +302,33 @@ export default function JobDetailScreen() {
                     {app.worker.specialties.slice(0, 2).join(' · ')}
                   </Text>
                 </View>
-                <View style={[styles.statusBadge, { backgroundColor: (STATUS_COLORS[app.status] ?? theme.brand.primary) + '22' }]}>
-                  <Text style={[styles.statusText, { color: STATUS_COLORS[app.status] ?? theme.brand.primary }]}>
-                    {app.status}
-                  </Text>
-                </View>
+                {app.status === 'PENDING' ? (
+                  <View style={styles.appActions}>
+                    <Pressable
+                      onPress={() => void handleUpdateStatus(app.id, 'ACCEPTED')}
+                      disabled={updatingAppId === app.id}
+                      style={[styles.acceptBtn, updatingAppId === app.id && { opacity: 0.5 }]}
+                    >
+                      {updatingAppId === app.id
+                        ? <ActivityIndicator size="small" color="#FFFFFF" />
+                        : <Text style={styles.acceptBtnText}>Accept</Text>
+                      }
+                    </Pressable>
+                    <Pressable
+                      onPress={() => void handleUpdateStatus(app.id, 'DECLINED')}
+                      disabled={updatingAppId === app.id}
+                      style={[styles.declineBtn, { borderColor: theme.border.default }, updatingAppId === app.id && { opacity: 0.5 }]}
+                    >
+                      <Text style={[styles.declineBtnText, { color: theme.text.secondary }]}>Decline</Text>
+                    </Pressable>
+                  </View>
+                ) : (
+                  <View style={[styles.statusBadge, { backgroundColor: (STATUS_COLORS[app.status] ?? theme.brand.primary) + '22' }]}>
+                    <Text style={[styles.statusText, { color: STATUS_COLORS[app.status] ?? theme.brand.primary }]}>
+                      {app.status}
+                    </Text>
+                  </View>
+                )}
               </View>
             ))}
           </View>
@@ -459,6 +497,25 @@ const styles = StyleSheet.create({
   applicantSub: { fontSize: 12 },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   statusText: { fontSize: 11, fontWeight: '600' },
+  appActions: { flexDirection: 'row', gap: 6 },
+  acceptBtn: {
+    backgroundColor: '#1D9E75',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    minWidth: 60,
+    alignItems: 'center',
+  },
+  acceptBtnText: { fontSize: 12, fontWeight: '700', color: '#FFFFFF' },
+  declineBtn: {
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: 1,
+    minWidth: 60,
+    alignItems: 'center',
+  },
+  declineBtnText: { fontSize: 12, fontWeight: '600' },
   ctaBar: {
     position: 'absolute',
     bottom: 0,

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useCallback } from 'react'
 import {
   View,
   ScrollView,
@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   StyleSheet,
   FlatList,
+  Alert,
+  ActivityIndicator,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
@@ -14,6 +16,7 @@ import type { Theme } from '@salonin/ui'
 import type { JobPostCardData } from '@salonin/types'
 import { useSalonProfile } from '../../src/hooks/useSalonProfile'
 import { useAuthStore } from '../../src/store/authStore'
+import { messagesApi } from '@salonin/api-client'
 import { Role } from '@salonin/types'
 
 export default function SalonProfileScreen() {
@@ -28,6 +31,28 @@ export default function SalonProfileScreen() {
     currentUser.role === Role.SALON &&
     salon.user?.id === currentUser.id
   )
+
+  const [isMessaging, setIsMessaging] = useState(false)
+
+  const handleMessage = useCallback(async () => {
+    if (!currentUser) {
+      Alert.alert('Sign in required', 'Sign in to message this salon.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Sign in', onPress: () => router.push('/(auth)/login' as never) },
+      ])
+      return
+    }
+    if (!salon) return
+    setIsMessaging(true)
+    try {
+      const conv = await messagesApi.createConversation(salon.userId)
+      router.push(`/chat/${conv.id}?name=${encodeURIComponent(salon.name)}` as never)
+    } catch {
+      Alert.alert('Error', 'Could not start conversation. Please try again.')
+    } finally {
+      setIsMessaging(false)
+    }
+  }, [currentUser, salon])
 
   const handlePressJob = (job: JobPostCardData) => {
     router.push(`/jobs/${job.id}`)
@@ -78,7 +103,16 @@ export default function SalonProfileScreen() {
             <Text variant="caption" color="brand" style={{ textAlign: 'right' }}>Edit</Text>
           </TouchableOpacity>
         ) : (
-          <View style={styles.headerSide} />
+          <TouchableOpacity
+            onPress={() => void handleMessage()}
+            disabled={isMessaging}
+            style={styles.headerSide}
+          >
+            {isMessaging
+              ? <ActivityIndicator size="small" color={theme.brand.primary} />
+              : <Text variant="caption" color="brand" style={{ textAlign: 'right' }}>Message</Text>
+            }
+          </TouchableOpacity>
         )}
       </View>
 
