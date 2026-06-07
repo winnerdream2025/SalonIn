@@ -254,7 +254,10 @@ async function main() {
 
   console.log('── Cleaning old seed data ───────────────────────')
   await prisma.chatRequest.deleteMany({
-    where: { sender: { email: { endsWith: TEST_DOMAIN } } },
+    where: { OR: [
+      { sender: { email: { endsWith: TEST_DOMAIN } } },
+      { receiver: { email: { endsWith: TEST_DOMAIN } } },
+    ]},
   })
   await prisma.message.deleteMany({
     where: { sender: { email: { endsWith: TEST_DOMAIN } } },
@@ -268,11 +271,16 @@ async function main() {
   await prisma.portfolioItem.deleteMany({
     where: { worker: { user: { email: { endsWith: TEST_DOMAIN } } } },
   })
-  // Clean conversation participants before deleting profiles
+  // Gather test user IDs for cleaning related tables
   const testUserIds = (
     await prisma.user.findMany({ where: { email: { endsWith: TEST_DOMAIN } }, select: { id: true } })
   ).map((u) => u.id)
   if (testUserIds.length > 0) {
+    await prisma.report.deleteMany({
+      where: { OR: [{ reporterId: { in: testUserIds } }, { reportedId: { in: testUserIds } }] },
+    })
+    await prisma.userDevice.deleteMany({ where: { userId: { in: testUserIds } } })
+    await prisma.passwordReset.deleteMany({ where: { userId: { in: testUserIds } } })
     await prisma.conversationParticipant.deleteMany({ where: { userId: { in: testUserIds } } })
   }
   await prisma.workerProfile.deleteMany({
