@@ -250,10 +250,10 @@ export function JobPostCard({
             {hasPortfolio && (
               <View style={styles.portfolioRow}>
                 {job.portfolioPhotoUrls!.slice(0, 3).map((url, i) => (
-                  <Image key={i} source={{ uri: url }} style={styles.portfolioThumb} resizeMode="cover" />
+                  <Image key={i} source={{ uri: url }} style={[styles.portfolioThumb, { backgroundColor: theme.bg.input }]} resizeMode="cover" />
                 ))}
                 {portfolioCount > 3 && (
-                  <View style={[styles.moreCountBubble, { backgroundColor: theme.bg.elevated }]}>
+                  <View style={[styles.moreCountBubble, { backgroundColor: theme.bg.input }]}>
                     <Text style={[styles.moreCountText, { color: theme.text.secondary }]}>
                       +{portfolioCount - 3}
                     </Text>
@@ -427,6 +427,7 @@ const styles = StyleSheet.create({
   },
   metaText: {
     fontSize: 12,
+    fontWeight: '400',
     flex: 1,
   },
   headerRight: {
@@ -461,7 +462,6 @@ const styles = StyleSheet.create({
     height: 108,
     borderRadius: 12,
     overflow: 'hidden',
-    backgroundColor: '#F0EDE8',
   },
   coverPlaceholder: {
     alignItems: 'center',
@@ -478,7 +478,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: -0.2,
     lineHeight: 20,
   },
@@ -512,7 +512,6 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 8,
-    backgroundColor: '#F0EDE8',
     overflow: 'hidden' as const,
   },
   moreCountBubble: {
