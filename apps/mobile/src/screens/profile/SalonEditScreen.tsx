@@ -76,7 +76,6 @@ export default function SalonEditScreen() {
   const [description, setDescription] = useState('')
   const [specialties, setSpecialties] = useState<string[]>([])
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-  const [address, setAddress] = useState('')
   const [isHiring, setIsHiring] = useState(false)
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
   const [coverUrl, setCoverUrl] = useState<string | null>(null)
@@ -347,31 +346,6 @@ export default function SalonEditScreen() {
                     </View>
                   </View>
                 )}
-              </View>
-            )}
-          </View>
-
-          {/* ─── LOCATION ─── */}
-          <View style={[styles.sectionCard, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
-            <SectionHeader
-              title="Location"
-              subtitle={address.trim() || 'Add your salon address'}
-              isOpen={openSection === 'location'}
-              onPress={() => toggleSection('location')}
-            />
-            {openSection === 'location' && (
-              <View style={styles.sectionBody}>
-                <TextInput
-                  value={address}
-                  onChangeText={setAddress}
-                  placeholder="e.g. 123 Main St, Washington DC"
-                  placeholderTextColor={theme.text.tertiary}
-                  style={[styles.textInput, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default, color: theme.text.primary }]}
-                  autoCapitalize="words"
-                />
-                <Text style={{ fontSize: 12, color: theme.text.tertiary, marginTop: 8 }}>
-                  Your address is shown to workers you're connected with.
-                </Text>
               </View>
             )}
           </View>

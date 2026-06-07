@@ -171,7 +171,7 @@ export default function EditProfileScreen() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [experienceYears, setExperienceYears] = useState(0)
   const [licenseNumber, setLicenseNumber] = useState('')
-  const [availability, setAvailability] = useState<Availability>(Availability.NOT_AVAILABLE)
+  const [availability, setAvailability] = useState<Availability>(Availability.NOW)
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
   const [radiusMiles, setRadiusMiles] = useState(15)
   const [rateMin, setRateMin] = useState('')
@@ -234,6 +234,21 @@ export default function EditProfileScreen() {
       Alert.alert('Name required', 'Please enter your name.')
       return
     }
+    if (specialties.length === 0) {
+      Alert.alert(
+        'No specialties selected',
+        'Add at least one specialty so salons can find you.',
+        [
+          { text: 'Add now', style: 'cancel' },
+          { text: 'Save anyway', onPress: () => void doSave() },
+        ],
+      )
+      return
+    }
+    void doSave()
+  }, [name, specialties, bio, experienceYears, licenseNumber, radiusMiles, rateMin, rateMax, rateNote, availability])
+
+  const doSave = useCallback(async () => {
     setIsSaving(true)
     try {
       const rateRange = rateMin && rateMax ? `$${rateMin} – $${rateMax} /hr` : undefined

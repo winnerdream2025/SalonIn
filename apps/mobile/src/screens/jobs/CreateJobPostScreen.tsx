@@ -7,6 +7,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   TextInput,
+  Alert,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
@@ -23,6 +24,7 @@ const SPECIALTIES = ALL_SPECIALTIES
 const EMPLOYMENT_TYPES: { value: string; label: string; icon: string; sub: string }[] = [
   { value: 'FULL_TIME',  label: 'Full-time',  icon: '🏢', sub: 'Regular schedule, benefits' },
   { value: 'PART_TIME',  label: 'Part-time',  icon: '⏰', sub: 'Flexible hours'            },
+  { value: 'TEMPORARY',  label: 'Temporary',  icon: '📋', sub: 'Short-term or contract'     },
   { value: 'WEEKEND',    label: 'Weekend',    icon: '📅', sub: 'Sat & Sun only'             },
   { value: 'EMERGENCY',  label: 'Emergency',  icon: '🚨', sub: 'Need someone ASAP'          },
 ]
@@ -62,6 +64,7 @@ export default function CreateJobPostScreen() {
   const [commissionSplit, setCommissionSplit] = useState(60)
   const [selectedType, setSelectedType] = useState('FULL_TIME')
   const [isUrgent, setIsUrgent] = useState(false)
+  const [description, setDescription] = useState('')
   const [durationDays, setDurationDays] = useState(14)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | undefined>()
@@ -123,7 +126,7 @@ export default function CreateJobPostScreen() {
       const expiresAt = new Date(Date.now() + durationDays * 86_400_000).toISOString()
       const dto: CreateJobPostDto = {
         title: title.trim(),
-        description: '',
+        description: description.trim(),
         specialty,
         payStructure: resolvedPayStructure,
         type: selectedType as CreateJobPostDto['type'],
@@ -132,13 +135,18 @@ export default function CreateJobPostScreen() {
         expiresAt,
       }
       await jobsApi.create(dto)
-      router.back()
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+      Alert.alert(
+        'Job Posted! 🎉',
+        'Notifying nearby workers now.',
+        [{ text: 'Done', onPress: () => router.back() }],
+      )
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to create post')
     } finally {
       setIsSubmitting(false)
     }
-  }, [title, specialty, resolvedPayStructure, selectedType, isUrgent, durationDays, cityId])
+  }, [title, specialty, description, resolvedPayStructure, selectedType, isUrgent, durationDays, cityId])
 
   return (
     <View style={[styles.screen, { backgroundColor: theme.bg.base, paddingTop: top }]}>
@@ -395,6 +403,23 @@ export default function CreateJobPostScreen() {
                 </View>
               </View>
 
+              <View style={styles.fieldGroup}>
+                <Text style={[styles.fieldLabel, { color: theme.text.secondary }]}>Description (optional)</Text>
+                <TextInput
+                  value={description}
+                  onChangeText={setDescription}
+                  placeholder="Share more about the role, schedule, expectations..."
+                  placeholderTextColor={theme.text.tertiary}
+                  multiline
+                  maxLength={500}
+                  style={[styles.descriptionInput, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default, color: theme.text.primary }]}
+                  autoCapitalize="sentences"
+                />
+                <Text style={{ fontSize: 11, color: description.length > 460 ? '#D85A30' : theme.text.tertiary, textAlign: 'right' }}>
+                  {description.length}/500
+                </Text>
+              </View>
+
               <View style={styles.previewSection}>
                 <Text style={[styles.previewLabel, { color: theme.text.tertiary }]}>Preview</Text>
                 <JobPostCard job={previewJob} onPress={() => {}} />
@@ -566,6 +591,14 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     backgroundColor: '#FFFFFF',
+  },
+  descriptionInput: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
+    fontSize: 15,
+    minHeight: 88,
+    textAlignVertical: 'top',
   },
   errorText: {
     color: '#E24B4A',
