@@ -106,6 +106,7 @@ export class JobsService {
         salonVerified: r.salon.isVerified,
         salonHiringCount: r.salon._count.jobPosts,
         applicantCount: r._count.applications,
+        portfolioPhotoUrls: r.salon.photoUrls.slice(0, 6),
       })),
       total,
       page,

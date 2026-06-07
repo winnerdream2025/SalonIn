@@ -237,22 +237,27 @@ export class MatchingService {
     id: string
     name: string
     photoUrl: string | null
-    specialties: string[]
-    availability: Availability
+    specialties: string[] | string
+    availability: Availability | string
     experienceYears: number
     isVerified: boolean
     cityId: string
+    rateRange?: string | null
+    rateNote?: string | null
+    [key: string]: unknown
   }): WorkerCardData {
     return {
       id: worker.id,
       name: worker.name,
       photoUrl: worker.photoUrl,
-      specialties: worker.specialties,
-      availability: worker.availability,
+      specialties: parsePostgresArray(worker.specialties),
+      availability: worker.availability as Availability,
       distanceMiles: null,
       experienceYears: Number(worker.experienceYears),
       isVerified: Boolean(worker.isVerified),
       cityId: worker.cityId,
+      rateRange: (worker.rateRange as string | null | undefined) ?? undefined,
+      rateNote: (worker.rateNote as string | null | undefined) ?? undefined,
     }
   }
 
