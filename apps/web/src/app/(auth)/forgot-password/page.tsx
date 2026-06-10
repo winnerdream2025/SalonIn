@@ -58,7 +58,7 @@ export default function ForgotPasswordPage() {
             </p>
             <p style={{ color: '#9A9A9A', fontSize: 14, lineHeight: 1.5, marginBottom: 24 }}>
               If an account exists for that email, you&apos;ll receive a reset link shortly.
-              If not, contact <span style={{ color: '#D85A30' }}>support@mysalonin.com</span>.
+              If not, contact <span style={{ color: '#D85A30' }}>support@mysalon.com</span>.
             </p>
             <Link href="/login" style={{ color: '#D85A30', fontSize: 14, fontWeight: 500 }}>
               Back to sign in

@@ -9,7 +9,7 @@ async function main() {
   const existing = await prisma.user.findMany({
     where: {
       email: {
-        in: ['testworker@mysalonin.com', 'testsalon@mysalonin.com'],
+        in: ['testworker@mysalon.com', 'testsalon@mysalon.com'],
       },
     },
     include: { workerProfile: true, salonProfile: true },
@@ -22,11 +22,11 @@ async function main() {
 
   const hash = await bcrypt.hash('Test1234!', 10)
 
-  const workerExists = existing.find((u) => u.email === 'testworker@mysalonin.com')
+  const workerExists = existing.find((u) => u.email === 'testworker@mysalon.com')
   if (!workerExists) {
     const user = await prisma.user.create({
       data: {
-        email: 'testworker@mysalonin.com',
+        email: 'testworker@mysalon.com',
         passwordHash: hash,
         role: 'WORKER',
         isActive: true,
@@ -48,11 +48,11 @@ async function main() {
     console.log(`\n⚠️  WORKER already exists: ${workerExists.email}`)
   }
 
-  const salonExists = existing.find((u) => u.email === 'testsalon@mysalonin.com')
+  const salonExists = existing.find((u) => u.email === 'testsalon@mysalon.com')
   if (!salonExists) {
     const user = await prisma.user.create({
       data: {
-        email: 'testsalon@mysalonin.com',
+        email: 'testsalon@mysalon.com',
         passwordHash: hash,
         role: 'SALON',
         isActive: true,
@@ -75,7 +75,7 @@ async function main() {
   // Final verification
   const final = await prisma.user.findMany({
     where: {
-      email: { in: ['testworker@mysalonin.com', 'testsalon@mysalonin.com'] },
+      email: { in: ['testworker@mysalon.com', 'testsalon@mysalon.com'] },
     },
     select: { id: true, email: true, role: true, isActive: true },
   })
@@ -86,8 +86,8 @@ async function main() {
   }
 
   console.log('\nCredentials for Apple review:')
-  console.log('  Worker:  testworker@mysalonin.com / Test1234!')
-  console.log('  Salon:   testsalon@mysalonin.com  / Test1234!')
+  console.log('  Worker:  testworker@mysalon.com / Test1234!')
+  console.log('  Salon:   testsalon@mysalon.com  / Test1234!')
 }
 
 main()

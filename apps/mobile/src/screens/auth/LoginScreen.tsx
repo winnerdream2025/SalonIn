@@ -17,7 +17,9 @@ export default function LoginScreen() {
     setError(undefined)
     try {
       await login({ email, password })
-      router.replace((redirect ?? '/(tabs)') as Parameters<typeof router.replace>[0])
+      setTimeout(() => {
+        router.replace((redirect ?? '/(tabs)') as Parameters<typeof router.replace>[0])
+      }, 100)
     } catch (e) {
       setError(parseApiError(e))
     }

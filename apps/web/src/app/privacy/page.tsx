@@ -177,7 +177,7 @@ export default function PrivacyPage() {
           <ul style={listStyle}>
             <li>
               <span style={strong}>Access your data</span> — contact{' '}
-              <a href="mailto:support@mysalonin.com" style={link}>support@mysalonin.com</a>
+              <a href="mailto:support@mysalon.com" style={link}>support@mysalon.com</a>
             </li>
             <li>
               <span style={strong}>Delete your data</span> — Settings → Delete Account in the app
@@ -191,7 +191,7 @@ export default function PrivacyPage() {
         <section style={section}>
           <h2 style={h2Style}>6. Contact</h2>
           <p style={bodyText}>
-            <a href="mailto:support@mysalonin.com" style={link}>support@mysalonin.com</a>
+            <a href="mailto:support@mysalon.com" style={link}>support@mysalon.com</a>
           </p>
         </section>
 

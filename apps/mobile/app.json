@@ -33,8 +33,8 @@
     },
     "ios": {
       "bundleIdentifier": "com.winnerdream.salonin",
-      "buildNumber": "6",
-      "supportsTablet": false,
+      "buildNumber": "7",
+      "supportsTablet": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "My Salon In uses your location to show nearby beauty professionals and salons in your area.",
         "NSCameraUsageDescription": "My Salon In needs camera access to upload your profile photo and portfolio images.",

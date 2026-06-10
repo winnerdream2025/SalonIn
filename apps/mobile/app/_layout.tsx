@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react'
 import { AppState, View, Text } from 'react-native'
-import { Stack } from 'expo-router'
+import { Stack, useRouter, useSegments } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import * as Linking from 'expo-linking'
 import { configureClient } from '@salonin/api-client'
@@ -41,6 +41,9 @@ function RootLayout() {
   const isLoading = useAuthStore((s) => s.isLoading)
   const refreshAccessToken = useAuthStore((s) => s.refreshAccessToken)
   const accessToken = useAuthStore((s) => s.accessToken)
+  const user = useAuthStore((s) => s.user)
+  const segments = useSegments()
+  const router = useRouter()
 
   useNotifications()
 
@@ -66,20 +69,27 @@ function RootLayout() {
     return () => sub.remove()
   }, [])
 
-  if (isLoading) {
-    return (
-      <View style={{ flex: 1, backgroundColor: '#0A0A0A', justifyContent: 'center', alignItems: 'center', gap: 16 }}>
-        <Logo size={100} />
-        <Text style={{ color: '#FFFFFF', fontSize: 22, fontWeight: '700', letterSpacing: -0.5 }}>My Salon In</Text>
-        <Text style={{ color: '#555555', fontSize: 13, letterSpacing: 0.2 }}>Beauty workforce marketplace</Text>
-      </View>
-    )
-  }
+  useEffect(() => {
+    if (isLoading) return
+    const inAuthGroup = segments[0] === '(auth)'
+    if (!user && !inAuthGroup) {
+      router.replace('/(auth)/login')
+    } else if (user && inAuthGroup) {
+      router.replace('/(tabs)')
+    }
+  }, [user, isLoading, segments, router])
 
   return (
     <>
       <StatusBar style="auto" />
       <Stack screenOptions={{ headerShown: false }} />
+      {isLoading && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#0A0A0A', justifyContent: 'center', alignItems: 'center', gap: 16 }}>
+          <Logo size={100} />
+          <Text style={{ color: '#FFFFFF', fontSize: 22, fontWeight: '700', letterSpacing: -0.5 }}>My Salon In</Text>
+          <Text style={{ color: '#555555', fontSize: 13, letterSpacing: 0.2 }}>Beauty workforce marketplace</Text>
+        </View>
+      )}
     </>
   )
 }
