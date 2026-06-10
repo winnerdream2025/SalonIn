@@ -159,16 +159,16 @@ export function WorkerCard({ worker, onPress, isLoading = false, onLongPress, on
               )}
             </View>
 
-            {/* Specialty pills */}
+            {/* Specialty pills — single line, max 2 + overflow */}
             <View style={styles.pillsRow}>
-              {worker.specialties.slice(0, 3).map((s, i) => (
+              {worker.specialties.slice(0, 2).map((s, i) => (
                 <View key={i} style={[styles.pill, { backgroundColor: theme.bg.elevated, borderColor: theme.border.subtle }]}>
                   <Text style={[styles.pillText, { color: theme.text.secondary }]} numberOfLines={1}>{s}</Text>
                 </View>
               ))}
-              {worker.specialties.length > 3 && (
+              {worker.specialties.length > 2 && (
                 <View style={[styles.pill, { backgroundColor: theme.bg.elevated, borderColor: theme.border.subtle }]}>
-                  <Text style={[styles.pillText, { color: theme.text.tertiary }]}>+{worker.specialties.length - 3}</Text>
+                  <Text style={[styles.pillText, { color: theme.text.tertiary }]}>+{worker.specialties.length - 2}</Text>
                 </View>
               )}
             </View>
@@ -231,17 +231,14 @@ export function WorkerCard({ worker, onPress, isLoading = false, onLongPress, on
             </View>
           )}
 
-          {/* Action buttons */}
-          <View style={styles.actionsCol}>
-            <Pressable style={styles.viewBtn} onPress={onPress}>
-              <Text style={styles.viewBtnText}>View Profile</Text>
-            </Pressable>
-            {onMessage && (
-              <Pressable style={[styles.messageBtn, { borderColor: '#D85A30' }]} onPress={onMessage}>
-                <Text style={[styles.messageBtnText, { color: '#D85A30' }]}>Message</Text>
+          {/* Message button — primary action */}
+          {onMessage && (
+            <View style={styles.actionsCol}>
+              <Pressable style={styles.messageBtn} onPress={onMessage}>
+                <Text style={styles.messageBtnText}>Message</Text>
               </Pressable>
-            )}
-          </View>
+            </View>
+          )}
         </View>
       </Pressable>
     </Animated.View>
@@ -275,9 +272,8 @@ export function WorkerCardSkeleton() {
           <Skeleton width={100} height={13} radius={5} />
           <Skeleton width={70} height={10} radius={5} />
         </View>
-        <View style={[styles.actionsCol, { gap: 4 }]}>
+        <View style={styles.actionsCol}>
           <Skeleton width={86} height={28} radius={16} />
-          <Skeleton width={86} height={24} radius={16} />
         </View>
       </View>
     </View>
@@ -436,9 +432,10 @@ const styles = StyleSheet.create({
   },
   pillsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
     gap: 3,
     marginTop: 1,
+    overflow: 'hidden',
   },
   pill: {
     paddingHorizontal: 8,
@@ -521,10 +518,9 @@ const styles = StyleSheet.create({
     lineHeight: 15,
   },
   actionsCol: {
-    gap: 4,
     alignItems: 'flex-end',
   },
-  viewBtn: {
+  messageBtn: {
     backgroundColor: '#D85A30',
     borderRadius: 16,
     paddingHorizontal: 14,
@@ -532,21 +528,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     minWidth: 86,
   },
-  viewBtnText: {
+  messageBtnText: {
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '700',
-  },
-  messageBtn: {
-    borderRadius: 16,
-    borderWidth: 1.5,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    alignItems: 'center',
-    minWidth: 86,
-  },
-  messageBtnText: {
-    fontSize: 12,
-    fontWeight: '600',
   },
 })

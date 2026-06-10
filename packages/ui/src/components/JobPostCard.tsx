@@ -177,19 +177,31 @@ export function JobPostCard({
                 </View>
               )}
             </View>
+            {/* Rating row — right under name */}
+            <View style={styles.ratingRow}>
+              <Text style={{ color: '#EF9F27', fontSize: 12, fontWeight: '700' }}>★</Text>
+              <Text style={[styles.ratingText, { color: theme.text.secondary }]}>
+                {(job.salonRating ?? 0).toFixed(1)}
+              </Text>
+              <Text style={{ color: theme.text.tertiary, fontSize: 11 }}>
+                ({job.salonReviewCount ?? 0})
+              </Text>
+              {job.salonHiringCount != null && job.salonHiringCount > 0 && (
+                <>
+                  <Text style={{ color: theme.text.tertiary, fontSize: 11 }}> · </Text>
+                  <Text style={{ color: '#D85A30', fontSize: 11, fontWeight: '600' }}>
+                    {job.salonHiringCount} open
+                  </Text>
+                </>
+              )}
+            </View>
+            {/* City row */}
             <View style={styles.metaRow}>
               <MapPinIcon size={13} />
-              <Text style={[styles.metaText, { color: theme.text.secondary }]} numberOfLines={1}>
-                {`${formatCity(job.cityId)}  ·  ${(job.salonRating ?? 0).toFixed(1)} `}
-                <Text style={{ color: '#EF9F27' }}>★</Text>
-                <Text style={{ color: theme.text.tertiary }}>{` (${job.salonReviewCount ?? 0})`}</Text>
+              <Text style={[styles.metaText, { color: theme.text.tertiary }]} numberOfLines={1}>
+                {formatCity(job.cityId)}
               </Text>
             </View>
-            {job.salonHiringCount != null && job.salonHiringCount > 0 && (
-              <Text style={[styles.metaText, { color: '#D85A30', marginTop: 1 }]} numberOfLines={1}>
-                {job.salonHiringCount} open roles
-              </Text>
-            )}
           </View>
           {onSave && (
             <Pressable
@@ -218,21 +230,34 @@ export function JobPostCard({
             </View>
           )}
           <View style={styles.bodyRight}>
-            <View style={styles.pillsRow}>
-              {job.listingType && job.listingType !== 'JOB' && (
-                <View style={[styles.pill, { backgroundColor: (LISTING_PILL_COLOR[job.listingType] ?? LISTING_PILL_COLOR.JOB).bg }]}>
-                  <Text style={[styles.pillText, { color: (LISTING_PILL_COLOR[job.listingType] ?? LISTING_PILL_COLOR.JOB).text }]}>{LISTING_LABEL[job.listingType] ?? job.listingType}</Text>
+            {/* Pills — single line: listing type + first specialty + +N + employment type */}
+            {(() => {
+              const tags = job.specialty.split(/[,/]/).map((t) => t.trim()).filter(Boolean)
+              const firstTag = tags[0]
+              const overflow = tags.length - 1
+              return (
+                <View style={styles.pillsRow}>
+                  {job.listingType && job.listingType !== 'JOB' && (
+                    <View style={[styles.pill, { backgroundColor: (LISTING_PILL_COLOR[job.listingType] ?? LISTING_PILL_COLOR.JOB).bg }]}>
+                      <Text style={[styles.pillText, { color: (LISTING_PILL_COLOR[job.listingType] ?? LISTING_PILL_COLOR.JOB).text }]}>{LISTING_LABEL[job.listingType] ?? job.listingType}</Text>
+                    </View>
+                  )}
+                  {firstTag ? (
+                    <View style={[styles.pill, styles.pillCoral]}>
+                      <Text style={[styles.pillText, styles.pillCoralText]}>{firstTag}</Text>
+                    </View>
+                  ) : null}
+                  {overflow > 0 && (
+                    <View style={[styles.pill, styles.pillCoral]}>
+                      <Text style={[styles.pillText, styles.pillCoralText]}>+{overflow}</Text>
+                    </View>
+                  )}
+                  <View style={[styles.pill, { backgroundColor: (TYPE_PILL_COLOR[job.type] ?? TYPE_PILL_COLOR.FULL_TIME).bg }]}>
+                    <Text style={[styles.pillText, { color: (TYPE_PILL_COLOR[job.type] ?? TYPE_PILL_COLOR.FULL_TIME).text }]}>{typeLabel}</Text>
+                  </View>
                 </View>
-              )}
-              {job.specialty.split(/[,/]/).map((tag, i) => (
-                <View key={`s-${i}`} style={[styles.pill, styles.pillCoral]}>
-                  <Text style={[styles.pillText, styles.pillCoralText]}>{tag.trim()}</Text>
-                </View>
-              ))}
-              <View style={[styles.pill, { backgroundColor: (TYPE_PILL_COLOR[job.type] ?? TYPE_PILL_COLOR.FULL_TIME).bg }]}>
-                <Text style={[styles.pillText, { color: (TYPE_PILL_COLOR[job.type] ?? TYPE_PILL_COLOR.FULL_TIME).text }]}>{typeLabel}</Text>
-              </View>
-            </View>
+              )
+            })()}
             {job.description ? (
               <Text style={[styles.description, { color: theme.text.secondary }]} numberOfLines={2} ellipsizeMode="tail">
                 {job.description}
@@ -240,6 +265,24 @@ export function JobPostCard({
             ) : null}
           </View>
         </View>
+
+        {/* ── PHOTOS STRIP ── */}
+        {(() => {
+          const photos = (job.portfolioPhotoUrls?.length ? job.portfolioPhotoUrls : (job.spacePhotos ?? []))
+          if (photos.length === 0) return null
+          return (
+            <View style={styles.photosStrip}>
+              {photos.slice(0, 3).map((url, i) => (
+                <Image key={i} source={{ uri: url }} style={styles.photoThumb} resizeMode="cover" />
+              ))}
+              {photos.length > 3 && (
+                <View style={[styles.photoMore, { backgroundColor: theme.bg.elevated }]}>
+                  <Text style={[styles.photoMoreText, { color: theme.text.secondary }]}>+{photos.length - 3}</Text>
+                </View>
+              )}
+            </View>
+          )
+        })()}
 
         {/* ── DIVIDER ── */}
         <View style={[styles.divider, { backgroundColor: theme.border.subtle }]} />
@@ -367,6 +410,16 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     marginTop: -1,
   },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    marginTop: 1,
+  },
+  ratingText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
   metaRow: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
@@ -374,11 +427,10 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   metaText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '400',
-    fontStyle: 'italic',
     flex: 1,
-    marginLeft: 3,
+    marginLeft: 2,
   },
   // ── Body ──
   bodyRow: {
@@ -419,8 +471,9 @@ const styles = StyleSheet.create({
   },
   pillsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
     gap: 5,
+    overflow: 'hidden',
   },
   pill: {
     paddingHorizontal: 8,
@@ -436,6 +489,30 @@ const styles = StyleSheet.create({
   },
   pillCoralText: {
     color: '#D85A30',
+  },
+  // ── Photos strip ──
+  photosStrip: {
+    flexDirection: 'row',
+    gap: 4,
+    alignItems: 'center',
+  },
+  photoThumb: {
+    width: 52,
+    height: 52,
+    borderRadius: 8,
+    backgroundColor: '#F0EDE8',
+    overflow: 'hidden' as const,
+  },
+  photoMore: {
+    width: 52,
+    height: 52,
+    borderRadius: 8,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+  },
+  photoMoreText: {
+    fontSize: 13,
+    fontWeight: '700',
   },
   // ── Divider ──
   divider: {
