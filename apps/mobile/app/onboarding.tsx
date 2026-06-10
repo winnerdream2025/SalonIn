@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Avatar, Text, Button, Input, useTheme } from '@salonin/ui'
 import { Availability } from '@salonin/types'
-import { workersApi } from '@salonin/api-client'
+import { workersApi, parseApiError } from '@salonin/api-client'
 import { useMyWorkerProfile } from '../src/hooks/useWorkerProfile'
 import { useMediaUpload } from '../src/hooks/useMediaUpload'
 
@@ -102,7 +102,7 @@ export default function OnboardingScreen() {
       await workersApi.updateAvailability({ availability })
       router.replace('/(tabs)')
     } catch (e) {
-      Alert.alert('Could not save', e instanceof Error ? e.message : 'Please try again.')
+      Alert.alert('Could not save', parseApiError(e))
     } finally {
       setIsSaving(false)
     }

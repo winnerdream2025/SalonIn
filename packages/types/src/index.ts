@@ -1,4 +1,4 @@
-import type { Availability, EmploymentType, Role, PortfolioItem, ReportType, AppStatus, ChatRequestStatus } from '@prisma/client'
+import type { Availability, EmploymentType, ListingType, Role, PortfolioItem, ReportType, AppStatus, ChatRequestStatus } from '@prisma/client'
 
 // ─── Prisma model re-exports ──────────────────────────────────────────────────
 
@@ -18,7 +18,7 @@ export type {
 
 // ─── Enum re-exports (runtime values) ────────────────────────────────────────
 
-export { Role, Availability, EmploymentType, MediaType, AppStatus, ReportType, ReportStatus, Platform, ChatRequestStatus } from '@prisma/client'
+export { Role, Availability, EmploymentType, ListingType, MediaType, AppStatus, ReportType, ReportStatus, Platform, ChatRequestStatus } from '@prisma/client'
 
 export type { UserDevice } from '@prisma/client'
 
@@ -40,9 +40,15 @@ export interface CreateJobPostDto {
   specialty: string
   payStructure: string
   type: EmploymentType
+  listingType?: ListingType
   isUrgent?: boolean
   cityId: string
   expiresAt: string
+  spacePhotos?: string[]
+  spaceSize?: string
+  spaceAmenities?: string[]
+  rentalDeposit?: number
+  availableFrom?: string
 }
 
 export interface UpdateAvailabilityDto {
@@ -104,9 +110,11 @@ export interface SalonCardData {
 export interface JobPostCardData {
   id: string
   title: string
+  description?: string
   specialty: string
   payStructure: string
   type: EmploymentType
+  listingType?: ListingType
   isUrgent: boolean
   cityId: string
   expiresAt: string
@@ -127,6 +135,12 @@ export interface JobPostCardData {
   estimatedWeekly?: string
   // Portfolio (optional)
   portfolioPhotoUrls?: string[]
+  // Space / rental fields (optional — only present on RENTAL / SPACE listings)
+  spaceSize?: string
+  spaceAmenities?: string[]
+  spacePhotos?: string[]
+  rentalDeposit?: number
+  availableFrom?: string
 }
 
 export interface ConversationPreview {
@@ -166,6 +180,8 @@ export interface WorkerProfileFull {
   expectedPay: string | null
   rateRange: string | null
   rateNote: string | null
+  rating: number
+  reviewCount: number
   employmentTypes: EmploymentType[]
   licenseNumber: string | null
   portfolioItems: PortfolioItem[]
@@ -188,6 +204,8 @@ export interface SalonProfileFull {
   isHiring: boolean
   isVerified: boolean
   cityId: string
+  rating: number
+  reviewCount: number
   createdAt: string
   updatedAt: string
   jobPosts: Array<{
@@ -196,6 +214,7 @@ export interface SalonProfileFull {
     specialty: string
     payStructure: string
     type: EmploymentType
+    listingType: ListingType
     isUrgent: boolean
     cityId: string
     expiresAt: string
@@ -215,20 +234,28 @@ export interface JobPostDetail {
   specialty: string
   payStructure: string
   type: EmploymentType
+  listingType: ListingType
   isUrgent: boolean
   cityId: string
   expiresAt: Date
   isActive: boolean
   createdAt: Date
-  updatedAt: Date
   salon: {
     name: string
     photoUrls: string[]
     description: string | null
     cityId: string
     userId: string
+    isVerified: boolean
+    rating: number
+    reviewCount: number
   }
-  _count: { applications: number }
+  applicantCount: number
+  spaceSize?: string | null
+  spaceAmenities: string[]
+  spacePhotos: string[]
+  rentalDeposit?: number | null
+  availableFrom?: Date | null
 }
 
 // ─── Application types ────────────────────────────────────────────────────────
@@ -287,6 +314,33 @@ export interface ChatRequestPreview {
     photoUrl: string | null
     role: Role
   }
+}
+
+// ─── Reviews ──────────────────────────────────────────────────────────────────
+
+export interface ReviewCardData {
+  id: string
+  rating: number
+  comment: string | null
+  reply: string | null
+  repliedAt: string | null
+  authorId: string
+  subjectId: string
+  authorName: string
+  authorPhotoUrl: string | null
+  authorRole: Role
+  createdAt: string
+}
+
+export interface CreateReviewDto {
+  subjectId: string
+  rating: number
+  comment?: string
+}
+
+export interface CanReviewResponse {
+  canReview: boolean
+  existingReview: ReviewCardData | null
 }
 
 // ─── Generic response wrappers ────────────────────────────────────────────────

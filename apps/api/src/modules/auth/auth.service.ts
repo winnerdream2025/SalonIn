@@ -14,6 +14,7 @@ import type { RegisterDto } from './dto/register.dto'
 import type { LoginDto } from './dto/login.dto'
 import type { ForgotPasswordDto } from './dto/forgot-password.dto'
 import type { ResetPasswordDto } from './dto/reset-password.dto'
+import { EmailService } from '../email/email.service'
 
 const REFRESH_TTL = 60 * 60 * 24 * 30
 const SALT_ROUNDS = 12
@@ -30,6 +31,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
+    private readonly emailService: EmailService,
     config: ConfigService,
   ) {
     this.redis = new Redis(config.getOrThrow<string>('REDIS_URL'))
@@ -148,7 +150,12 @@ export class AuthService {
 
     const baseUrl = process.env.WEB_URL ?? 'https://salonin-production-77fc.up.railway.app'
     const resetUrl = `${baseUrl}/reset-password?token=${token}`
-    console.log(`[PasswordReset] userId=${user.id} url=${resetUrl}`)
+
+    const profile = await this.prisma.workerProfile.findUnique({ where: { userId: user.id }, select: { name: true } })
+      ?? await this.prisma.salonProfile.findUnique({ where: { userId: user.id }, select: { name: true } })
+    const userName = profile?.name ?? user.email.split('@')[0]
+
+    await this.emailService.sendPasswordReset(user.email, resetUrl, userName)
   }
 
   async resetPassword(dto: ResetPasswordDto): Promise<void> {

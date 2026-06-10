@@ -14,6 +14,7 @@ export interface ListJobsParams {
   salonId?: string | undefined
   specialty?: string | undefined
   type?: string | undefined
+  listingType?: string | undefined
   page?: number | undefined
   limit?: number | undefined
 }

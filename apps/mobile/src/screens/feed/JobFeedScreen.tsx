@@ -22,9 +22,16 @@ import { useJobFeed } from '../../hooks/useJobFeed'
 import { useLocationStore } from '../../store/locationStore'
 import { useAuthStore } from '../../store/authStore'
 import { NotificationBell } from '../../components/NotificationBell'
-import { jobsApi, messagesApi } from '@salonin/api-client'
+import { jobsApi, messagesApi, parseApiError } from '@salonin/api-client'
 import { JobFilterModal, activeFilterCount, EMPTY_JOB_FILTERS } from '../../components/JobFilterModal'
 import type { JobFilters } from '../../components/JobFilterModal'
+
+const LISTING_TYPES = [
+  { value: undefined, label: 'All' },
+  { value: 'JOB',    label: 'Jobs' },
+  { value: 'RENTAL', label: 'Rentals' },
+  { value: 'SPACE',  label: 'Spaces' },
+] as const
 
 const SPECIALTIES = ['All', 'Knotless', 'Braids', 'Color', 'Locs', 'Wigs', 'Nails', 'Lashes']
 
@@ -46,6 +53,7 @@ export default function JobFeedScreen() {
   const isSalon = user?.role === 'SALON'
 
   const [selectedSpecialty, setSelectedSpecialty] = useState<string>('All')
+  const [selectedListingType, setSelectedListingType] = useState<string | undefined>(undefined)
   const [showLocationModal, setShowLocationModal] = useState(false)
   const [search, setSearch] = useState('')
   const [showFilterModal, setShowFilterModal] = useState(false)
@@ -56,7 +64,7 @@ export default function JobFeedScreen() {
   const specialtyFilter = selectedSpecialty === 'All' ? undefined : selectedSpecialty
 
   const { jobs, isLoading, isRefreshing, isLoadingMore, hasMore, error, refresh, loadMore } =
-    useJobFeed({ specialty: specialtyFilter })
+    useJobFeed({ specialty: specialtyFilter, listingType: selectedListingType })
 
   const filteredJobs = useMemo(() => {
     let result = jobs
@@ -106,8 +114,13 @@ export default function JobFeedScreen() {
         `Hi! I applied to your "${job.title}" position. I'd love to discuss the opportunity.`,
       )
       router.push(`/chat/${conv.id}?name=${encodeURIComponent(job.salonName)}` as never)
-    } catch (e) {
-      Alert.alert('Apply failed', e instanceof Error ? e.message : 'Please try again.')
+    } catch (e: unknown) {
+      const msg = parseApiError(e)
+      if (msg.toLowerCase().includes('already')) {
+        Alert.alert('Already applied', msg)
+      } else {
+        Alert.alert('Application failed', msg)
+      }
     } finally {
       setApplyingId(null)
     }
@@ -127,8 +140,8 @@ export default function JobFeedScreen() {
       const detail = await jobsApi.getById(job.id)
       const conv = await messagesApi.createConversation(detail.salon.userId)
       router.push(`/chat/${conv.id}?name=${encodeURIComponent(job.salonName)}` as never)
-    } catch (e) {
-      Alert.alert('Error', 'Could not start conversation. Please try again.')
+    } catch (e: unknown) {
+      Alert.alert('Messaging failed', parseApiError(e))
     } finally {
       setMessagingId(null)
     }
@@ -153,6 +166,15 @@ export default function JobFeedScreen() {
   const handlePostJob = useCallback(() => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     router.push('/jobs/create')
+  }, [])
+
+  const handleToggleListingType = useCallback((value: string | undefined) => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    setSelectedListingType((prev) => {
+      const next = prev === value ? undefined : value
+      if (next === 'RENTAL' || next === 'SPACE') setSelectedSpecialty('All')
+      return next
+    })
   }, [])
 
   const SearchAndFilters = (
@@ -188,18 +210,18 @@ export default function JobFeedScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Filter pills */}
+      {/* Listing type pills */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.filterRow}
       >
-        {SPECIALTIES.map((s) => {
-          const active = selectedSpecialty === s
+        {LISTING_TYPES.map((lt) => {
+          const active = selectedListingType === lt.value
           return (
             <TouchableOpacity
-              key={s}
-              onPress={() => handleToggleSpecialty(s)}
+              key={lt.label}
+              onPress={() => handleToggleListingType(lt.value)}
               style={[
                 styles.filterPill,
                 {
@@ -215,12 +237,48 @@ export default function JobFeedScreen() {
                   color: active ? '#FFFFFF' : theme.text.secondary,
                 }}
               >
-                {s}
+                {lt.label}
               </Text>
             </TouchableOpacity>
           )
         })}
       </ScrollView>
+
+      {/* Specialty pills — only for JOB listings or unfiltered */}
+      {(selectedListingType === undefined || selectedListingType === 'JOB') && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterRow}
+        >
+          {SPECIALTIES.map((s) => {
+            const active = selectedSpecialty === s
+            return (
+              <TouchableOpacity
+                key={s}
+                onPress={() => handleToggleSpecialty(s)}
+                style={[
+                  styles.filterPill,
+                  {
+                    backgroundColor: active ? theme.brand.primary : theme.bg.card,
+                    borderColor: active ? theme.brand.primary : theme.border.default,
+                  },
+                ]}
+              >
+                <Text
+                  style={{
+                    fontSize: 13,
+                    fontWeight: '600',
+                    color: active ? '#FFFFFF' : theme.text.secondary,
+                  }}
+                >
+                  {s}
+                </Text>
+              </TouchableOpacity>
+            )
+          })}
+        </ScrollView>
+      )}
     </View>
   )
 
@@ -359,8 +417,13 @@ export default function JobFeedScreen() {
               </View>
             ) : error != null ? (
               <View style={styles.centerPane}>
+                <Text style={[styles.stateText, { fontSize: 16, fontWeight: '600', color: theme.text.primary }]}>
+                  Couldn't load listings
+                </Text>
                 <Text style={[styles.stateText, { color: theme.text.secondary }]}>
-                  {error.message}
+                  {error.message.includes('network') || error.message.includes('Network')
+                    ? 'Check your connection and try again.'
+                    : error.message}
                 </Text>
                 <Button variant="secondary" onPress={refresh}>Retry</Button>
               </View>
@@ -368,12 +431,18 @@ export default function JobFeedScreen() {
               <View style={styles.centerPane}>
                 <Text style={[styles.stateText, { fontSize: 18, fontWeight: '700', color: theme.text.primary }]}>
                   {search.trim().length > 0
-                    ? 'No matching jobs'
+                    ? 'No matching results'
+                    : selectedListingType === 'RENTAL'
+                    ? `No booth rentals in ${cityLabel}`
+                    : selectedListingType === 'SPACE'
+                    ? `No salon spaces in ${cityLabel}`
                     : `No open positions in ${cityLabel} right now`}
                 </Text>
                 <Text style={[styles.stateText, { color: theme.text.secondary }]}>
                   {search.trim().length > 0
                     ? 'Try a different search term'
+                    : selectedListingType === 'RENTAL' || selectedListingType === 'SPACE'
+                    ? 'New listings are added regularly — check back soon'
                     : 'New jobs are posted daily — check back soon'}
                 </Text>
                 {search.trim().length === 0 && (

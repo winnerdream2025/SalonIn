@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import * as Haptics from 'expo-haptics'
 import { Text, Button, useTheme } from '@salonin/ui'
-import { salonsApi } from '@salonin/api-client'
+import { salonsApi, parseApiError } from '@salonin/api-client'
 import { BEAUTY_SPECIALTIES } from '@salonin/config'
 import { useMySalonProfile } from '../../hooks/useMySalonProfile'
 import { useMediaUpload } from '../../hooks/useMediaUpload'
@@ -135,7 +135,7 @@ export default function SalonEditScreen() {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
       router.back()
     } catch (e) {
-      Alert.alert('Save failed', e instanceof Error ? e.message : 'Please try again.')
+      Alert.alert('Save failed', parseApiError(e))
     } finally {
       setIsSaving(false)
     }

@@ -211,7 +211,7 @@ export function WorkerCard({ worker, onPress, isLoading = false, onLongPress, on
             <View style={styles.statsCol}>
               {worker.jobsThisMonth != null && (
                 <View style={styles.statItem}>
-                  <Text style={styles.statIcon}>🔥</Text>
+                  <Text style={[styles.statIcon, { color: '#EA580C' }]}>●</Text>
                   <Text style={[styles.statText, { color: theme.text.secondary }]}>
                     {worker.jobsThisMonth} jobs{'\n'}this month
                   </Text>
@@ -219,7 +219,7 @@ export function WorkerCard({ worker, onPress, isLoading = false, onLongPress, on
               )}
               {worker.replyTimeMinutes != null && (
                 <View style={styles.statItem}>
-                  <Text style={styles.statIcon}>⚡</Text>
+                  <Text style={[styles.statIcon, { color: '#378ADD' }]}>●</Text>
                   <Text style={[styles.statText, { color: theme.text.secondary }]}>
                     Replies in{'\n'}
                     {worker.replyTimeMinutes >= 60

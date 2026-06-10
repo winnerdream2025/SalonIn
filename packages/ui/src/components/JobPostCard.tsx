@@ -2,7 +2,7 @@ import React, { useRef, useCallback, useState } from 'react'
 import { View, Text, Pressable, Animated, StyleSheet, Image } from 'react-native'
 import type { JobPostCardData } from '@salonin/types'
 import { isJobExpired } from '@salonin/utils'
-import Svg, { Path, Rect } from 'react-native-svg'
+import Svg, { Path } from 'react-native-svg'
 import { Skeleton } from '../primitives/Skeleton'
 import { Avatar } from '../primitives/Avatar'
 import { useTheme } from '../hooks/useTheme'
@@ -23,28 +23,34 @@ const TYPE_LABEL: Record<string, string> = {
   TEMPORARY: 'Temporary',
   WEEKEND: 'Weekend',
   EMERGENCY: 'Emergency',
+  CONTRACT: 'Contract',
+  SEASONAL: 'Seasonal',
+  APPRENTICESHIP: 'Apprenticeship',
+  FREELANCE: 'Freelance',
 }
 
 const TYPE_PILL_COLOR: Record<string, { bg: string; text: string }> = {
-  FULL_TIME:  { bg: 'rgba(29,158,117,0.1)',  text: '#1D9E75' },
-  PART_TIME:  { bg: 'rgba(147,92,255,0.1)',  text: '#935CFF' },
-  TEMPORARY:  { bg: 'rgba(55,138,221,0.1)',  text: '#378ADD' },
-  WEEKEND:    { bg: 'rgba(239,159,39,0.1)',   text: '#EF9F27' },
-  EMERGENCY:  { bg: 'rgba(226,75,74,0.1)',    text: '#E24B4A' },
+  FULL_TIME:       { bg: 'rgba(29,158,117,0.1)',  text: '#1D9E75' },
+  PART_TIME:       { bg: 'rgba(147,92,255,0.1)',  text: '#935CFF' },
+  TEMPORARY:       { bg: 'rgba(55,138,221,0.1)',  text: '#378ADD' },
+  WEEKEND:         { bg: 'rgba(239,159,39,0.1)',   text: '#EF9F27' },
+  EMERGENCY:       { bg: 'rgba(226,75,74,0.1)',    text: '#E24B4A' },
+  CONTRACT:        { bg: 'rgba(75,85,99,0.1)',     text: '#4B5563' },
+  SEASONAL:        { bg: 'rgba(234,88,12,0.1)',    text: '#EA580C' },
+  APPRENTICESHIP:  { bg: 'rgba(139,92,246,0.1)',   text: '#8B5CF6' },
+  FREELANCE:       { bg: 'rgba(6,182,212,0.1)',    text: '#06B6D4' },
 }
 
-function MoneyIcon({ color, size }: { color: string; size: number }) {
-  return (
-    <Svg width={size + 4} height={size} viewBox="0 0 22 16" fill="none">
-      <Rect x="1" y="1" width="20" height="14" rx="3" stroke={color} strokeWidth="1.6" />
-      <Path
-        d="M11 4v8M9.5 6.5A1.5 1.5 0 0111 5a1.5 1.5 0 011.5 1.5A1.5 1.5 0 0111 8a1.5 1.5 0 00-1.5 1.5A1.5 1.5 0 0011 11a1.5 1.5 0 001.5-1.5"
-        stroke={color}
-        strokeWidth="1.3"
-        strokeLinecap="round"
-      />
-    </Svg>
-  )
+const LISTING_LABEL: Record<string, string> = {
+  JOB: 'Job',
+  RENTAL: 'Rental',
+  SPACE: 'Space',
+}
+
+const LISTING_PILL_COLOR: Record<string, { bg: string; text: string }> = {
+  JOB:    { bg: 'rgba(29,158,117,0.1)',  text: '#1D9E75' },
+  RENTAL: { bg: 'rgba(234,88,12,0.1)',   text: '#EA580C' },
+  SPACE:  { bg: 'rgba(139,92,246,0.1)',  text: '#8B5CF6' },
 }
 
 function ChatIcon({ color, size }: { color: string; size: number }) {
@@ -56,6 +62,18 @@ function ChatIcon({ color, size }: { color: string; size: number }) {
         strokeWidth="1.8"
         strokeLinecap="round"
         strokeLinejoin="round"
+      />
+    </Svg>
+  )
+}
+
+function MapPinIcon({ size = 13 }: { size?: number }) {
+  const w = Math.round(size * 0.78)
+  return (
+    <Svg width={w} height={size} viewBox="0 0 14 18" fill="none">
+      <Path
+        d="M7 0C4.24 0 2 2.24 2 5c0 3.75 5 11 5 11s5-7.25 5-11c0-2.76-2.24-5-5-5zm0 7.5C5.62 7.5 4.5 6.38 4.5 5S5.62 2.5 7 2.5 9.5 3.62 9.5 5 8.38 7.5 7 7.5z"
+        fill="#E53935"
       />
     </Svg>
   )
@@ -76,11 +94,6 @@ function BookmarkIcon({ filled, color, size }: { filled: boolean; color: string;
   )
 }
 
-type BadgeKind = 'urgent' | 'hot' | 'new'
-
-function daysUntil(expiresAt: string): number {
-  return Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 86_400_000)
-}
 
 const CITY_DISPLAY: Record<string, string> = {
   dmv:     'DMV (DC/MD/VA)',
@@ -101,14 +114,6 @@ function formatCity(cityId: string | undefined | null): string {
   return parts.map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
 }
 
-function pickBadge(job: JobPostCardData, expired: boolean): { label: string; kind: BadgeKind } | null {
-  if (expired) return null
-  if (job.isUrgent) return { label: '⚡ Urgent', kind: 'urgent' }
-  if ((job.appliedToday ?? 0) > 5) return { label: '🔥 Hot', kind: 'hot' }
-  // "New" heuristic: expiresAt is far in the future (just posted, e.g. > 25 days remain on a 30-day post)
-  if (daysUntil(job.expiresAt) >= 25) return { label: '✨ New', kind: 'new' }
-  return null
-}
 
 export function JobPostCard({
   job,
@@ -140,26 +145,7 @@ export function JobPostCard({
 
   const expired = isJobExpired(job.expiresAt)
   const typeLabel = TYPE_LABEL[job.type] ?? job.type
-  const badge = pickBadge(job, expired)
   const coverUri = job.salonCoverUrl ?? job.salonPhotoUrl ?? null
-
-  const hasPortfolio = (job.portfolioPhotoUrls?.length ?? 0) > 0
-  const portfolioCount = job.portfolioPhotoUrls?.length ?? 0
-
-  const badgeStyle = badge
-    ? badge.kind === 'urgent'
-      ? styles.badgeUrgent
-      : badge.kind === 'hot'
-        ? styles.badgeHot
-        : styles.badgeNew
-    : null
-  const badgeTextColor = badge
-    ? badge.kind === 'urgent'
-      ? '#D85A30'
-      : badge.kind === 'hot'
-        ? '#EF9F27'
-        : '#1D9E75'
-    : '#000'
 
   return (
     <Animated.View style={{ transform: [{ scale }] }}>
@@ -173,7 +159,7 @@ export function JobPostCard({
           shadowColor: '#000000',
         }]}
       >
-        {/* ── HEADER: salon logo + name/verified + meta + badge + bookmark ── */}
+        {/* ── HEADER: salon logo + name/meta + bookmark (top-right) ── */}
         <View style={styles.headerRow}>
           <Avatar
             uri={job.salonPhotoUrl}
@@ -192,32 +178,20 @@ export function JobPostCard({
               )}
             </View>
             <View style={styles.metaRow}>
-              <Text style={styles.metaIcon}>📍</Text>
+              <MapPinIcon size={13} />
               <Text style={[styles.metaText, { color: theme.text.secondary }]} numberOfLines={1}>
-                {formatCity(job.cityId)}
-                {job.salonRating != null && (
-                  <Text style={{ color: theme.text.secondary }}>{`  •  ${job.salonRating.toFixed(1)} ⭐`}</Text>
-                )}
-                {job.salonReviewCount != null && (
-                  <Text style={{ color: theme.text.tertiary }}>{` (${job.salonReviewCount})`}</Text>
-                )}
+                {`${formatCity(job.cityId)}  ·  ${(job.salonRating ?? 0).toFixed(1)} `}
+                <Text style={{ color: '#EF9F27' }}>★</Text>
+                <Text style={{ color: theme.text.tertiary }}>{` (${job.salonReviewCount ?? 0})`}</Text>
               </Text>
             </View>
             {job.salonHiringCount != null && job.salonHiringCount > 0 && (
-              <View style={styles.metaRow}>
-                <Text style={styles.metaIcon}>👥</Text>
-                <Text style={[styles.metaText, { color: '#D85A30' }]} numberOfLines={1}>
-                  {job.salonHiringCount} hiring this month
-                </Text>
-              </View>
+              <Text style={[styles.metaText, { color: '#D85A30', marginTop: 1 }]} numberOfLines={1}>
+                {job.salonHiringCount} open roles
+              </Text>
             )}
           </View>
-          <View style={styles.headerRight}>
-            {badge && (
-              <View style={[styles.badge, badgeStyle]}>
-                <Text style={[styles.badgeText, { color: badgeTextColor }]}>{badge.label}</Text>
-              </View>
-            )}
+          {onSave && (
             <Pressable
               onPress={handleSave}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -226,32 +200,30 @@ export function JobPostCard({
               <BookmarkIcon
                 filled={savedLocal}
                 color={savedLocal ? theme.brand.primary : theme.text.tertiary}
-                size={22}
+                size={20}
               />
             </Pressable>
-          </View>
+          )}
         </View>
 
-        {/* ── BODY: cover photo (left) + title/pills/portfolio (right) ── */}
+        {/* ── BODY: left thumb (cover image or initials) + pills/description ── */}
         <View style={styles.bodyRow}>
-          <View style={styles.coverWrap}>
-            {coverUri ? (
-              <Image source={{ uri: coverUri }} style={styles.coverImg} resizeMode="cover" />
-            ) : (
-              <View style={[styles.coverImg, styles.coverPlaceholder, { backgroundColor: theme.bg.input }]}>
-                <Text style={[styles.coverInitial, { color: theme.brand.primary }]}>
-                  {job.salonName?.[0]?.toUpperCase() ?? 'S'}
-                </Text>
-              </View>
-            )}
-          </View>
-
+          {coverUri ? (
+            <Image source={{ uri: coverUri }} style={styles.coverImg} resizeMode="cover" />
+          ) : (
+            <View style={[styles.coverInitials, { backgroundColor: theme.brand.primary + '18' }]}>
+              <Text style={[styles.coverInitialsText, { color: theme.brand.primary }]}>
+                {(job.salonName[0] ?? 'S').toUpperCase()}
+              </Text>
+            </View>
+          )}
           <View style={styles.bodyRight}>
-            <Text style={[styles.title, { color: theme.text.primary }]} numberOfLines={2} ellipsizeMode="tail">
-              {job.title}
-            </Text>
-
             <View style={styles.pillsRow}>
+              {job.listingType && job.listingType !== 'JOB' && (
+                <View style={[styles.pill, { backgroundColor: (LISTING_PILL_COLOR[job.listingType] ?? LISTING_PILL_COLOR.JOB).bg }]}>
+                  <Text style={[styles.pillText, { color: (LISTING_PILL_COLOR[job.listingType] ?? LISTING_PILL_COLOR.JOB).text }]}>{LISTING_LABEL[job.listingType] ?? job.listingType}</Text>
+                </View>
+              )}
               {job.specialty.split(/[,/]/).map((tag, i) => (
                 <View key={`s-${i}`} style={[styles.pill, styles.pillCoral]}>
                   <Text style={[styles.pillText, styles.pillCoralText]}>{tag.trim()}</Text>
@@ -261,21 +233,11 @@ export function JobPostCard({
                 <Text style={[styles.pillText, { color: (TYPE_PILL_COLOR[job.type] ?? TYPE_PILL_COLOR.FULL_TIME).text }]}>{typeLabel}</Text>
               </View>
             </View>
-
-            {hasPortfolio && (
-              <View style={styles.portfolioRow}>
-                {job.portfolioPhotoUrls!.slice(0, 3).map((url, i) => (
-                  <Image key={i} source={{ uri: url }} style={[styles.portfolioThumb, { backgroundColor: theme.bg.input }]} resizeMode="cover" />
-                ))}
-                {portfolioCount > 3 && (
-                  <View style={[styles.moreCountBubble, { backgroundColor: theme.bg.input }]}>
-                    <Text style={[styles.moreCountText, { color: theme.text.secondary }]}>
-                      +{portfolioCount - 3}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            )}
+            {job.description ? (
+              <Text style={[styles.description, { color: theme.text.secondary }]} numberOfLines={2} ellipsizeMode="tail">
+                {job.description}
+              </Text>
+            ) : null}
           </View>
         </View>
 
@@ -285,46 +247,31 @@ export function JobPostCard({
         {/* ── FOOTER: 3-column — pay | engagement | actions ── */}
         <View style={styles.footerRow}>
           <View style={styles.payCol}>
-            <View style={styles.payIconRow}>
-              <MoneyIcon color="#1D9E75" size={16} />
-              <Text style={[styles.payText, { color: '#1D9E75' }]} numberOfLines={1}>
-                {job.payStructure}
-              </Text>
-            </View>
-            {job.estimatedWeekly && (
+            <Text style={[styles.payText, { color: theme.text.primary }]} numberOfLines={1}>
+              {job.payStructure}
+            </Text>
+            {(job.applicantCount ?? 0) > 0 && (
               <Text style={[styles.payEstimate, { color: theme.text.tertiary }]} numberOfLines={1}>
-                Est. {job.estimatedWeekly}
+                {job.applicantCount} applicants
               </Text>
             )}
           </View>
 
-          <View style={styles.engagementCol}>
-            <Text style={[styles.engagementText, { color: theme.text.secondary }]}>
-              🔥 {job.appliedToday ?? 5} applied today
-            </Text>
-            <Text style={[styles.engagementText, { color: theme.text.secondary }]}>
-              ⚡ Replies in {job.replyTime ?? '2 hours'}
-            </Text>
-          </View>
-
           <View style={styles.actionsCol}>
+            {onMessage && (
+              <Pressable
+                onPress={onMessage}
+                style={[styles.messageBtnIconOnly, { backgroundColor: theme.bg.input }]}
+              >
+                <ChatIcon color={theme.text.primary} size={16} />
+              </Pressable>
+            )}
             {onApply && !expired && (
               <Pressable
                 onPress={onApply}
                 style={[styles.applyBtn, { backgroundColor: theme.brand.primary }]}
               >
                 <Text style={[styles.applyBtnText, { color: '#FFFFFF' }]}>Apply Now</Text>
-              </Pressable>
-            )}
-            {onMessage && (
-              <Pressable
-                onPress={onMessage}
-                style={[styles.messageBtn, { borderColor: theme.brand.primary }]}
-              >
-                <ChatIcon color={theme.brand.primary} size={13} />
-                <Text style={[styles.messageBtnText, { color: theme.brand.primary }]}>
-                  Message
-                </Text>
               </Pressable>
             )}
           </View>
@@ -344,21 +291,16 @@ export function JobPostCardSkeleton() {
           <Skeleton width={120} height={14} radius={6} />
           <Skeleton width={100} height={11} radius={5} />
         </View>
-        <Skeleton width={50} height={18} radius={9} />
       </View>
       <View style={styles.bodyRow}>
-        <Skeleton width={110} height={100} radius={10} />
+        <Skeleton width={80} height={80} radius={10} />
         <View style={[styles.bodyRight, { gap: 6 }]}>
-          <Skeleton width="100%" height={18} radius={5} />
           <View style={styles.pillsRow}>
             <Skeleton width={60} height={18} radius={10} />
             <Skeleton width={56} height={18} radius={10} />
           </View>
-          <View style={styles.portfolioRow}>
-            <Skeleton width={44} height={44} radius={8} />
-            <Skeleton width={44} height={44} radius={8} />
-            <Skeleton width={44} height={44} radius={8} />
-          </View>
+          <Skeleton width="100%" height={14} radius={5} />
+          <Skeleton width="80%" height={14} radius={5} />
         </View>
       </View>
       <View style={[styles.divider, { backgroundColor: theme.border.subtle }]} />
@@ -367,9 +309,9 @@ export function JobPostCardSkeleton() {
           <Skeleton width={100} height={13} radius={5} />
           <Skeleton width={80} height={10} radius={5} />
         </View>
-        <View style={[styles.actionsCol, { gap: 4 }]}>
-          <Skeleton width={86} height={28} radius={16} />
-          <Skeleton width={86} height={24} radius={16} />
+        <View style={styles.actionsCol}>
+          <Skeleton width={36} height={36} radius={18} />
+          <Skeleton width={100} height={36} radius={18} />
         </View>
       </View>
     </View>
@@ -383,7 +325,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginBottom: 8,
     borderWidth: 1,
-    gap: 6,
+    gap: 4,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
@@ -431,70 +373,54 @@ const styles = StyleSheet.create({
     gap: 3,
     marginTop: 1,
   },
-  metaIcon: {
-    fontSize: 11,
-  },
   metaText: {
     fontSize: 12,
     fontWeight: '400',
+    fontStyle: 'italic',
     flex: 1,
-  },
-  headerRight: {
-    alignItems: 'flex-end',
-    gap: 6,
-  },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  badgeUrgent: { backgroundColor: 'rgba(216,90,48,0.12)' },
-  badgeHot: { backgroundColor: 'rgba(239,159,39,0.12)' },
-  badgeNew: { backgroundColor: 'rgba(29,158,117,0.12)' },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  bookmarkBtn: {
-    padding: 2,
+    marginLeft: 3,
   },
   // ── Body ──
   bodyRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
+    alignItems: 'flex-start',
   },
-  coverWrap: {},
   coverImg: {
-    width: 120,
-    height: 108,
-    borderRadius: 12,
+    width: 80,
+    height: 80,
+    borderRadius: 10,
     overflow: 'hidden',
   },
-  coverPlaceholder: {
+  coverInitials: {
+    width: 80,
+    height: 80,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
-  coverInitial: {
-    fontSize: 34,
+  coverInitialsText: {
+    fontSize: 30,
     fontWeight: '800',
+  },
+  bookmarkBtn: {
+    padding: 4,
   },
   bodyRight: {
     flex: 1,
     minWidth: 0,
-    gap: 6,
+    gap: 4,
   },
-  title: {
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: -0.2,
-    lineHeight: 20,
+  description: {
+    fontSize: 13,
+    fontWeight: '400',
+    lineHeight: 18,
   },
   pillsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: 5,
   },
   pill: {
     paddingHorizontal: 8,
@@ -511,33 +437,10 @@ const styles = StyleSheet.create({
   pillCoralText: {
     color: '#D85A30',
   },
-  portfolioRow: {
-    flexDirection: 'row' as const,
-    gap: 4,
-    marginTop: 4,
-    alignItems: 'center' as const,
-  },
-  portfolioThumb: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
-    overflow: 'hidden' as const,
-  },
-  moreCountBubble: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-  },
-  moreCountText: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
   // ── Divider ──
   divider: {
     height: StyleSheet.hairlineWidth,
-    marginVertical: 6,
+    marginVertical: 3,
   },
   // ── Footer ──
   footerRow: {
@@ -550,11 +453,6 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 2,
   },
-  payIconRow: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: 5,
-  },
   payText: {
     fontSize: 13,
     fontWeight: '700',
@@ -564,46 +462,26 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
   actionsCol: {
-    gap: 4,
-    alignItems: 'flex-end',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   applyBtn: {
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+    borderRadius: 18,
+    paddingHorizontal: 18,
+    paddingVertical: 9,
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 86,
   },
   applyBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '800',
   },
-  messageBtn: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
+  messageBtnIconOnly: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center' as const,
-    gap: 5,
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderWidth: 1.5,
-    minWidth: 86,
-  },
-  messageBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  // ── Engagement (middle column) ──
-  engagementCol: {
-    flex: 1,
-    gap: 3,
-    alignItems: 'center',
-  },
-  engagementText: {
-    fontSize: 11,
-    fontWeight: '400',
-    textAlign: 'center' as const,
-    lineHeight: 14,
+    alignItems: 'center' as const,
   },
 })

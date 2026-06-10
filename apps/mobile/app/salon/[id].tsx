@@ -18,6 +18,7 @@ import { useSalonProfile } from '../../src/hooks/useSalonProfile'
 import { useAuthStore } from '../../src/store/authStore'
 import { messagesApi } from '@salonin/api-client'
 import { Role } from '@salonin/types'
+import { useCanReview } from '../../src/hooks/useReviews'
 
 export default function SalonProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
@@ -33,6 +34,9 @@ export default function SalonProfileScreen() {
   )
 
   const [isMessaging, setIsMessaging] = useState(false)
+  const { canReview, existingReview } = useCanReview(
+    !isOwner && currentUser ? salon?.userId : undefined
+  )
 
   const handleMessage = useCallback(async () => {
     if (!currentUser) {
@@ -170,6 +174,38 @@ export default function SalonProfileScreen() {
           </View>
         )}
 
+        {/* Reviews summary */}
+        {(salon.rating > 0 || canReview) && (
+          <View style={[styles.card, { backgroundColor: theme.bg.elevated }]}>
+            <Text variant="label" color="secondary" style={styles.cardLabel}>REVIEWS</Text>
+            {salon.rating > 0 && (
+              <TouchableOpacity
+                onPress={() => router.push(`/review/list?userId=${salon.userId}&userName=${encodeURIComponent(salon.name)}&rating=${salon.rating}&reviewCount=${salon.reviewCount}` as never)}
+                activeOpacity={0.75}
+              >
+                <Text style={{ fontSize: 13, color: theme.text.secondary }}>
+                  {'⭐'.repeat(Math.round(salon.rating as number))}{'☆'.repeat(5 - Math.round(salon.rating as number))}{'  '}
+                  <Text style={{ fontWeight: '700', color: theme.text.primary }}>{(salon.rating as number).toFixed(1)}</Text>
+                  {'  '}
+                  <Text style={{ color: theme.brand.primary }}>{salon.reviewCount} reviews →</Text>
+                </Text>
+              </TouchableOpacity>
+            )}
+            {canReview && !existingReview && (
+              <TouchableOpacity
+                onPress={() => router.push(`/review/leave?subjectId=${salon.userId}&subjectName=${encodeURIComponent(salon.name)}&subjectPhoto=${encodeURIComponent(salon.photoUrls[0] ?? '')}` as never)}
+                style={[styles.reviewBtn, { borderColor: theme.brand.primary }]}
+                activeOpacity={0.8}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '700', color: theme.brand.primary }}>⭐  Leave a Review</Text>
+              </TouchableOpacity>
+            )}
+            {existingReview && (
+              <Text style={{ fontSize: 12, color: theme.text.tertiary }}>You reviewed this salon — {existingReview.rating}/5 ⭐</Text>
+            )}
+          </View>
+        )}
+
         {/* Active job posts */}
         <View style={styles.jobsSection}>
           <Text variant="title" style={styles.jobsTitle}>Open Positions</Text>
@@ -297,6 +333,14 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 24,
     alignItems: 'center',
+  },
+  reviewBtn: {
+    marginTop: 4,
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    alignSelf: 'flex-start',
   },
   errorState: {
     flex: 1,

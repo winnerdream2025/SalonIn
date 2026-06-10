@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Input, Button, Text, useTheme, Logo } from '@salonin/ui'
 import { useAuth } from '../../hooks/useAuth'
+import { parseApiError } from '@salonin/api-client'
 import { useLocationStore } from '../../store/locationStore'
 import type { Role } from '@salonin/types'
 
@@ -30,7 +31,7 @@ export default function RegisterScreen() {
         router.replace('/salon-onboarding' as never)
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Registration failed')
+      setError(parseApiError(e))
     }
   }, [register, name, email, password, role])
 

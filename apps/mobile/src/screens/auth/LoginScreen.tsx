@@ -3,6 +3,7 @@ import { View, StyleSheet, KeyboardAvoidingView, Platform, Linking, Text as RNTe
 import { router, useLocalSearchParams } from 'expo-router'
 import { Input, Button, Text, useTheme, Logo } from '@salonin/ui'
 import { useAuth } from '../../hooks/useAuth'
+import { parseApiError } from '@salonin/api-client'
 
 export default function LoginScreen() {
   const { login, isLoading } = useAuth()
@@ -18,7 +19,7 @@ export default function LoginScreen() {
       await login({ email, password })
       router.replace((redirect ?? '/(tabs)') as Parameters<typeof router.replace>[0])
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Login failed')
+      setError(parseApiError(e))
     }
   }, [login, email, password, redirect])
 

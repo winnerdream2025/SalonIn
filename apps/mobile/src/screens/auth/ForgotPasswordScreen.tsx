@@ -8,7 +8,6 @@ export default function ForgotPasswordScreen() {
   const { theme } = useTheme()
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [sent, setSent] = useState(false)
   const [error, setError] = useState<string | undefined>()
 
   const handleSubmit = useCallback(async () => {
@@ -17,7 +16,7 @@ export default function ForgotPasswordScreen() {
     setIsLoading(true)
     try {
       await authApi.forgotPassword(email.trim())
-      setSent(true)
+      router.push('/(auth)/check-email' as never)
     } catch {
       setError('Something went wrong. Please try again.')
     } finally {
@@ -33,31 +32,25 @@ export default function ForgotPasswordScreen() {
       <View style={styles.inner}>
         <Text variant="heading" style={styles.title}>Reset password</Text>
         <Text variant="body" color="secondary" style={styles.subtitle}>
-          {sent
-            ? 'Check your email for a reset link. If you don\'t see it, contact support@salonin.com'
-            : 'Enter your email and we\'ll send you a reset link.'}
+          Enter your email and we&apos;ll send you a reset link.
         </Text>
 
-        {!sent && (
-          <>
-            <View style={styles.field}>
-              <Input
-                label="Email"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                error={error}
-              />
-            </View>
-            <View style={styles.action}>
-              <Button variant="primary" fullWidth loading={isLoading} onPress={handleSubmit}>
-                Send reset link
-              </Button>
-            </View>
-          </>
-        )}
+        <View style={styles.field}>
+          <Input
+            label="Email"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            error={error}
+          />
+        </View>
+        <View style={styles.action}>
+          <Button variant="primary" fullWidth loading={isLoading} onPress={handleSubmit}>
+            Send reset link
+          </Button>
+        </View>
 
         <Button variant="ghost" fullWidth onPress={() => router.back()}>
           Back to sign in

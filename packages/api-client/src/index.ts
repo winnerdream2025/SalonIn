@@ -1,4 +1,5 @@
 export { api, configureClient, setAuthTokens, clearAuthTokens, getAccessToken } from './client'
+export { parseApiError } from './errors'
 export type { ClientConfig } from './client'
 
 export { authApi } from './auth.api'
@@ -28,3 +29,5 @@ export { devicesApi } from './devices.api'
 export { chatRequestsApi } from './chat-requests.api'
 
 export { specialtiesApi } from './specialties.api'
+
+export { reviewsApi } from './reviews.api'

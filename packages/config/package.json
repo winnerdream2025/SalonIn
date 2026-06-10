@@ -7,7 +7,9 @@
     ".": "./src/index.ts",
     "./tailwind": "./tailwind.config.js",
     "./cities": "./src/cities.ts",
-    "./specialties": "./src/specialties.ts"
+    "./specialties": "./src/specialties.ts",
+    "./professionals": "./src/professionals.ts",
+    "./compensation": "./src/compensation.ts"
   },
   "scripts": {
     "type-check": "tsc --noEmit"

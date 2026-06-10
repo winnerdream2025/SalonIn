@@ -33,9 +33,15 @@ export class JobsService {
         specialty: dto.specialty,
         payStructure: dto.payStructure,
         type: dto.type,
+        listingType: dto.listingType ?? 'JOB',
         isUrgent: dto.isUrgent ?? false,
         cityId: dto.cityId,
         expiresAt: new Date(dto.expiresAt),
+        spacePhotos: dto.spacePhotos ?? [],
+        spaceSize: dto.spaceSize,
+        spaceAmenities: dto.spaceAmenities ?? [],
+        rentalDeposit: dto.rentalDeposit,
+        availableFrom: dto.availableFrom ? new Date(dto.availableFrom) : undefined,
       },
     })
 
@@ -64,6 +70,7 @@ export class JobsService {
       ...(dto.salonId ? { salonId: dto.salonId } : {}),
       ...(dto.specialty ? { specialty: dto.specialty } : {}),
       ...(dto.type ? { type: dto.type } : {}),
+      ...(dto.listingType ? { listingType: dto.listingType } : {}),
     }
 
     const [rows, total] = await this.prisma.$transaction([
@@ -77,6 +84,8 @@ export class JobsService {
               photoUrls: true,
               cityId: true,
               isVerified: true,
+              rating: true,
+              reviewCount: true,
               _count: { select: { jobPosts: { where: { isActive: true } } } },
             },
           },
@@ -93,9 +102,11 @@ export class JobsService {
       data: rows.map((r) => ({
         id: r.id,
         title: r.title,
+        description: r.description,
         specialty: r.specialty,
         payStructure: r.payStructure,
         type: r.type,
+        listingType: r.listingType,
         isUrgent: r.isUrgent,
         cityId: r.cityId,
         expiresAt: r.expiresAt.toISOString(),
@@ -104,9 +115,16 @@ export class JobsService {
         salonPhotoUrl: r.salon.photoUrls[0] ?? null,
         salonCoverUrl: r.salon.photoUrls[1] ?? r.salon.photoUrls[0] ?? null,
         salonVerified: r.salon.isVerified,
+        salonRating: r.salon.rating > 0 ? r.salon.rating : undefined,
+        salonReviewCount: r.salon.reviewCount > 0 ? r.salon.reviewCount : undefined,
         salonHiringCount: r.salon._count.jobPosts,
         applicantCount: r._count.applications,
         portfolioPhotoUrls: r.salon.photoUrls.slice(0, 6),
+        spaceSize: r.spaceSize ?? undefined,
+        spaceAmenities: r.spaceAmenities.length > 0 ? r.spaceAmenities : undefined,
+        spacePhotos: r.spacePhotos.length > 0 ? r.spacePhotos : undefined,
+        rentalDeposit: r.rentalDeposit ?? undefined,
+        availableFrom: r.availableFrom?.toISOString() ?? undefined,
       })),
       total,
       page,
@@ -119,12 +137,37 @@ export class JobsService {
     const post = await this.prisma.jobPost.findFirst({
       where: { id, isActive: true },
       include: {
-        salon: { select: { name: true, photoUrls: true, description: true, cityId: true, userId: true } },
+        salon: {
+          select: {
+            name: true,
+            photoUrls: true,
+            description: true,
+            cityId: true,
+            userId: true,
+            rating: true,
+            reviewCount: true,
+            isVerified: true,
+          },
+        },
         _count: { select: { applications: true } },
       },
     })
     if (!post) throw new NotFoundException('Job post not found')
-    return post
+    const { salon, _count, ...rest } = post
+    return {
+      ...rest,
+      salon: {
+        name: salon.name,
+        photoUrls: salon.photoUrls,
+        description: salon.description,
+        cityId: salon.cityId,
+        userId: salon.userId,
+        isVerified: salon.isVerified,
+        rating: salon.rating,
+        reviewCount: salon.reviewCount,
+      },
+      applicantCount: _count.applications,
+    }
   }
 
   async applyToJob(jobId: string, userId: string): Promise<{ success: true }> {
@@ -205,8 +248,14 @@ export class JobsService {
         ...(dto.specialty !== undefined && { specialty: dto.specialty }),
         ...(dto.payStructure !== undefined && { payStructure: dto.payStructure }),
         ...(dto.type !== undefined && { type: dto.type }),
+        ...(dto.listingType !== undefined && { listingType: dto.listingType }),
         ...(dto.isUrgent !== undefined && { isUrgent: dto.isUrgent }),
         ...(dto.expiresAt !== undefined && { expiresAt: new Date(dto.expiresAt) }),
+        ...(dto.spacePhotos !== undefined && { spacePhotos: dto.spacePhotos }),
+        ...(dto.spaceSize !== undefined && { spaceSize: dto.spaceSize }),
+        ...(dto.spaceAmenities !== undefined && { spaceAmenities: dto.spaceAmenities }),
+        ...(dto.rentalDeposit !== undefined && { rentalDeposit: dto.rentalDeposit }),
+        ...(dto.availableFrom !== undefined && { availableFrom: new Date(dto.availableFrom) }),
       },
     })
   }

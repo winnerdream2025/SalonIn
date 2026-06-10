@@ -24,6 +24,8 @@ interface RawWorker {
   distanceMeters: number
   rateRange: string | null
   rateNote: string | null
+  rating: number
+  reviewCount: number
 }
 
 interface WorkerCursor {
@@ -163,6 +165,8 @@ export class MatchingService {
           wp."cityId",
           wp."rateRange",
           wp."rateNote",
+          wp.rating,
+          wp."reviewCount",
           ROUND(ST_Distance(
             wp.location::geography,
             ST_SetSRID(ST_MakePoint(${params.lng}, ${params.lat}), 4326)::geography
@@ -230,6 +234,8 @@ export class MatchingService {
       cityId: raw.cityId,
       rateRange: raw.rateRange ?? undefined,
       rateNote: raw.rateNote ?? undefined,
+      rating: Number(raw.rating) > 0 ? Number(raw.rating) : undefined,
+      reviewCount: Number(raw.reviewCount) > 0 ? Number(raw.reviewCount) : undefined,
     }
   }
 

@@ -30,6 +30,10 @@ const EMPLOYMENT_TYPES = [
   { value: 'PART_TIME', label: 'Part-time' },
   { value: 'WEEKEND', label: 'Weekend' },
   { value: 'EMERGENCY', label: 'Emergency' },
+  { value: 'CONTRACT', label: 'Contract' },
+  { value: 'SEASONAL', label: 'Seasonal' },
+  { value: 'APPRENTICESHIP', label: 'Apprenticeship' },
+  { value: 'FREELANCE', label: 'Freelance' },
 ] as const
 
 const PAY_TYPES = [

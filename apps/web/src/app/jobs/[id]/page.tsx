@@ -234,7 +234,7 @@ export default async function JobDetailPage({ params }: { params: { id: string }
           <div className="jd-info-cell">
             <p className="jd-label">Applicants</p>
             <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--color-text-primary)' }}>
-              {job._count.applications}
+              {job.applicantCount}
             </p>
           </div>
         </div>

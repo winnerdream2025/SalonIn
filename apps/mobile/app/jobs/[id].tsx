@@ -12,10 +12,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
 import * as Haptics from 'expo-haptics'
 import { Avatar, Text, Button, Skeleton, useTheme } from '@salonin/ui'
-import { jobsApi, messagesApi } from '@salonin/api-client'
-import type { JobApplicationDetail } from '@salonin/types'
+import { jobsApi, messagesApi, parseApiError } from '@salonin/api-client'
+import type { JobApplicationDetail, JobPostCardData } from '@salonin/types'
 import { useAuthStore } from '../../src/store/authStore'
 import { useJobDetail, useMyApplications } from '../../src/hooks/useJobDetail'
+import { useReviews } from '../../src/hooks/useReviews'
 
 const EMP_LABELS: Record<string, string> = {
   FULL_TIME: 'Full time',
@@ -62,6 +63,20 @@ export default function JobDetailScreen() {
   const [applicants, setApplicants] = useState<JobApplicationDetail[]>([])
   const [loadingApplicants, setLoadingApplicants] = useState(false)
   const [updatingAppId, setUpdatingAppId] = useState<string | null>(null)
+  const [otherJobs, setOtherJobs] = useState<JobPostCardData[]>([])
+  const [otherJobsLoading, setOtherJobsLoading] = useState(false)
+
+  const { reviews, isLoading: reviewsLoading } = useReviews(job?.salon.userId)
+
+  useEffect(() => {
+    if (!job) return
+    setOtherJobsLoading(true)
+    jobsApi
+      .list({ salonId: job.salonId, cityId: job.cityId, limit: 6 })
+      .then((res) => setOtherJobs(res.data.filter((j) => j.id !== id)))
+      .catch(() => {})
+      .finally(() => setOtherJobsLoading(false))
+  }, [job?.salonId, id])
 
   const isWorker = user?.role === 'WORKER'
   const isSalon = user?.role === 'SALON'
@@ -92,8 +107,8 @@ export default function JobDetailScreen() {
       setApplicants((prev) =>
         prev.map((a) => (a.id === appId ? { ...a, status } : a))
       )
-    } catch {
-      Alert.alert('Error', 'Could not update status. Please try again.')
+    } catch (e: unknown) {
+      Alert.alert('Update failed', parseApiError(e))
     } finally {
       setUpdatingAppId(null)
     }
@@ -121,8 +136,14 @@ export default function JobDetailScreen() {
       router.push(
         `/chat/${conv.id}?name=${encodeURIComponent(job.salon.name)}` as never,
       )
-    } catch {
-      Alert.alert('Error', 'Could not submit application. Please try again.')
+    } catch (e: unknown) {
+      const msg = parseApiError(e)
+      if (msg.toLowerCase().includes('already')) {
+        Alert.alert('Already applied', msg)
+        setApplied(true)
+      } else {
+        Alert.alert('Application failed', msg)
+      }
     } finally {
       setIsApplying(false)
     }
@@ -142,8 +163,8 @@ export default function JobDetailScreen() {
     try {
       const conv = await messagesApi.createConversation(job.salon.userId)
       router.push(`/chat/${conv.id}?name=${encodeURIComponent(job.salon.name)}` as never)
-    } catch {
-      Alert.alert('Error', 'Could not start conversation. Please try again.')
+    } catch (e: unknown) {
+      Alert.alert('Messaging failed', parseApiError(e))
     } finally {
       setIsMessaging(false)
     }
@@ -205,6 +226,12 @@ export default function JobDetailScreen() {
             <Text style={[styles.salonLoc, { color: theme.text.tertiary }]} numberOfLines={1}>
               📍 {job.salon.cityId.toUpperCase()}
             </Text>
+            {job.salon.rating > 0 && (
+              <Text style={[styles.salonRating, { color: theme.text.secondary }]} numberOfLines={1}>
+                ⭐ {job.salon.rating.toFixed(1)}
+                <Text style={{ color: theme.text.tertiary }}>  ({job.salon.reviewCount})</Text>
+              </Text>
+            )}
           </View>
           <Text style={[styles.chevron, { color: theme.text.secondary }]}>›</Text>
         </TouchableOpacity>
@@ -247,8 +274,8 @@ export default function JobDetailScreen() {
             <Text style={[styles.factValue, { color: expiryUrgent ? theme.semantic.error.text : theme.text.primary }]} numberOfLines={1}>{daysStr}</Text>
           </View>
           <View style={[styles.factCell, { borderColor: theme.border.default }]}>
-            <Text style={[styles.factLabel, { color: theme.text.tertiary }]}>👥 Applicants</Text>
-            <Text style={[styles.factValue, { color: job._count.applications > 10 ? '#EF9F27' : theme.text.primary }]} numberOfLines={1}>{job._count.applications}</Text>
+            <Text style={[styles.factLabel, { color: theme.text.tertiary }]}>Applicants</Text>
+            <Text style={[styles.factValue, { color: job.applicantCount > 10 ? '#EF9F27' : theme.text.primary }]} numberOfLines={1}>{job.applicantCount}</Text>
           </View>
         </View>
 
@@ -277,6 +304,97 @@ export default function JobDetailScreen() {
             <Text style={[styles.bodyText, { color: theme.text.secondary }]}>{job.salon.description}</Text>
           </View>
         ) : null}
+
+        {/* ── Reviews ── */}
+        {!isOwnJob && (
+          <View style={[styles.section, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={[styles.sectionLabel, { color: theme.text.tertiary }]}>Reviews</Text>
+              {job.salon.reviewCount > 0 && (
+                <TouchableOpacity
+                  onPress={() => router.push(
+                    `/review/list?userId=${job.salon.userId}&userName=${encodeURIComponent(job.salon.name)}&rating=${job.salon.rating}&reviewCount=${job.salon.reviewCount}` as never
+                  )}
+                >
+                  <Text style={[styles.showMore, { color: theme.brand.primary }]}>See all {job.salon.reviewCount} →</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {reviewsLoading && <ActivityIndicator color={theme.brand.primary} />}
+
+            {!reviewsLoading && reviews.length === 0 && (
+              <Text style={[styles.bodyText, { color: theme.text.tertiary }]}>
+                No reviews available for this salon yet.
+              </Text>
+            )}
+
+            {!reviewsLoading && reviews.slice(0, 3).map((r) => (
+              <View
+                key={r.id}
+                style={[styles.reviewCard, { backgroundColor: theme.bg.elevated, borderColor: theme.border.subtle }]}
+              >
+                <View style={styles.reviewHeader}>
+                  <Avatar uri={r.authorPhotoUrl} name={r.authorName} size="sm" />
+                  <View style={styles.reviewMeta}>
+                    <Text style={[styles.reviewAuthor, { color: theme.text.primary }]} numberOfLines={1}>
+                      {r.authorName}
+                    </Text>
+                    <View style={styles.starsRow}>
+                      {Array.from({ length: 5 }, (_, i) => (
+                        <Text key={i} style={{ fontSize: 13, color: i < r.rating ? '#EF9F27' : theme.border.default }}>★</Text>
+                      ))}
+                    </View>
+                  </View>
+                </View>
+                {r.comment ? (
+                  <Text style={[styles.reviewComment, { color: theme.text.secondary }]} numberOfLines={2}>
+                    {r.comment}
+                  </Text>
+                ) : null}
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* ── Other Open Positions ── */}
+        {!isOwnJob && (otherJobs.length > 0 || otherJobsLoading) && (
+          <View style={[styles.section, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
+            <Text style={[styles.sectionLabel, { color: theme.text.tertiary }]}>
+              Other positions at {job.salon.name}
+            </Text>
+            {otherJobsLoading && <ActivityIndicator color={theme.brand.primary} />}
+            {otherJobs.map((j, idx) => (
+              <TouchableOpacity
+                key={j.id}
+                onPress={() => router.push(`/jobs/${j.id}` as never)}
+                activeOpacity={0.72}
+                style={[
+                  styles.otherJobRow,
+                  { borderTopColor: theme.border.subtle },
+                  idx === 0 && styles.otherJobRowFirst,
+                ]}
+              >
+                <View style={styles.otherJobBody}>
+                  <Text style={[styles.otherJobTitle, { color: theme.text.primary }]} numberOfLines={1}>
+                    {j.title}
+                  </Text>
+                  <View style={styles.otherJobMeta}>
+                    <Text style={[styles.otherJobPay, { color: '#D85A30' }]} numberOfLines={1}>
+                      {j.payStructure}
+                    </Text>
+                    <View style={[styles.typePill, { backgroundColor: theme.bg.elevated }]}>
+                      <Text style={[styles.typePillText, { color: theme.text.secondary }]}>
+                        {EMP_LABELS[j.type] ?? j.type}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+                <Text style={[styles.otherChevron, { color: theme.text.tertiary }]}>›</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
         {/* ── Applicants (salon owner view) ── */}
         {isOwnJob && (
@@ -484,6 +602,34 @@ const styles = StyleSheet.create({
   },
   bodyText: { fontSize: 15, lineHeight: 22 },
   showMore: { fontSize: 13, fontWeight: '600' },
+  salonRating: { fontSize: 12, marginTop: 2 },
+  sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  reviewCard: {
+    borderRadius: 12,
+    borderWidth: 0.5,
+    padding: 12,
+    gap: 8,
+  },
+  reviewHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  reviewMeta: { flex: 1, gap: 3 },
+  reviewAuthor: { fontSize: 13, fontWeight: '600' },
+  starsRow: { flexDirection: 'row', gap: 1 },
+  reviewComment: { fontSize: 13, lineHeight: 18 },
+  otherJobRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  otherJobRowFirst: { borderTopWidth: 0 },
+  otherJobBody: { flex: 1, gap: 4 },
+  otherJobTitle: { fontSize: 14, fontWeight: '600' },
+  otherJobMeta: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  otherJobPay: { fontSize: 13, fontWeight: '700' },
+  typePill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
+  typePillText: { fontSize: 11, fontWeight: '500' },
+  otherChevron: { fontSize: 22 },
   applicantRow: {
     flexDirection: 'row',
     alignItems: 'center',

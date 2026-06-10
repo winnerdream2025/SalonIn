@@ -1,4 +1,4 @@
-import { PrismaClient, Availability, EmploymentType, MediaType, Role } from '@prisma/client'
+import { PrismaClient, Availability, EmploymentType, ListingType, MediaType, Role } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
@@ -34,7 +34,15 @@ interface SalonSeed {
   lat: number
   lng: number
   isHiring: boolean
+  isVerified?: boolean
   jobs: JobPostSeed[]
+}
+
+interface ReviewSeed {
+  authorEmail: string
+  subjectEmail: string
+  rating: number
+  comment: string
 }
 
 interface JobPostSeed {
@@ -43,8 +51,12 @@ interface JobPostSeed {
   specialty: string
   payStructure: string
   type: EmploymentType
+  listingType?: ListingType
   isUrgent: boolean
   daysUntilExpiry: number
+  spaceSize?: string
+  spaceAmenities?: string[]
+  rentalDeposit?: number
 }
 
 // ─── Workers ──────────────────────────────────────────────────────────────────
@@ -243,12 +255,13 @@ const SALONS: SalonSeed[] = [
       'https://images.unsplash.com/photo-1633681926022-84c23e8cb2d6?w=800&q=80',
     ],
     isHiring: true,
+    isVerified: true,
     cityId: 'dmv',
     lat: 38.9200,
     lng: -77.2211,
     jobs: [
       {
-        title: 'Experienced Braider Needed ASAP 🔥',
+        title: 'Experienced Braider Needed ASAP',
         description: 'Looking for a skilled braider to join our growing team. Flexible schedule, booth rental or 60/40 commission. Clientele provided. Must have 2+ years knotless experience.',
         specialty: 'Knotless braids',
         payStructure: '60/40 + tips',
@@ -274,6 +287,30 @@ const SALONS: SalonSeed[] = [
         isUrgent: false,
         daysUntilExpiry: 21,
       },
+      {
+        title: 'Booth Rental — Hair Stylist Station',
+        description: 'Private styling station in our premium Tysons location. Includes wash bowl, styling chair, mirror, storage cabinet. Parking included. Month-to-month lease.',
+        specialty: 'Knotless braids',
+        payStructure: '$350/month',
+        type: EmploymentType.FREELANCE,
+        listingType: ListingType.RENTAL,
+        isUrgent: false,
+        daysUntilExpiry: 60,
+        rentalDeposit: 350,
+      },
+      {
+        title: 'Private Suite — Full Salon Room',
+        description: 'Spacious 250 sqft private salon suite with separate entrance. Includes all utilities, Wi-Fi, waiting area access. Perfect for established stylists wanting independence.',
+        specialty: 'Natural hair',
+        payStructure: '$900/month',
+        type: EmploymentType.FREELANCE,
+        listingType: ListingType.SPACE,
+        isUrgent: false,
+        daysUntilExpiry: 90,
+        spaceSize: '250 sqft',
+        spaceAmenities: ['Private entrance', 'Wash bowl', 'Styling chair', 'Wi-Fi', 'Waiting area', 'Storage', 'Parking'],
+        rentalDeposit: 900,
+      },
     ],
   },
   {
@@ -286,6 +323,7 @@ const SALONS: SalonSeed[] = [
       'https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?w=800&q=80',
     ],
     isHiring: true,
+    isVerified: true,
     cityId: 'dmv',
     lat: 38.9907,
     lng: -77.0261,
@@ -329,6 +367,7 @@ const SALONS: SalonSeed[] = [
       'https://images.unsplash.com/photo-1621607512022-6aecc4fed814?w=800&q=80',
     ],
     isHiring: true,
+    isVerified: true,
     cityId: 'dmv',
     lat: 38.9072,
     lng: -77.0369,
@@ -363,6 +402,7 @@ const SALONS: SalonSeed[] = [
       'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800&q=80',
     ],
     isHiring: true,
+    isVerified: true,
     cityId: 'atlanta',
     lat: 33.7490,
     lng: -84.3880,
@@ -430,6 +470,85 @@ const SALONS: SalonSeed[] = [
       },
     ],
   },
+  // ── No-photo salons (test initials placeholder) ──
+  {
+    email: `novanails${TEST_DOMAIN}`,
+    name: 'Nova Nails Lounge',
+    description: 'Miami\'s newest boutique nail studio. Gel, dip, and nail art. Walk-ins welcome daily.',
+    specialties: ['Gel nails', 'Dip powder', 'Nail art', 'Pedicure'],
+    photoUrls: [],
+    isHiring: true,
+    cityId: 'miami',
+    lat: 25.7617,
+    lng: -80.1918,
+    jobs: [
+      {
+        title: 'Nail Tech — Immediate Opening',
+        description: 'We are a brand-new studio looking for our founding nail tech. Competitive commission split, flexible schedule, and a beautiful space designed for focus and creativity. Must be licensed with at least 1 year experience in gel or dip services.',
+        specialty: 'Gel nails',
+        payStructure: '60/40 + tips',
+        type: EmploymentType.FULL_TIME,
+        isUrgent: true,
+        daysUntilExpiry: 7,
+      },
+      {
+        title: 'Part-Time Pedicure Specialist',
+        description: 'Weekend shifts available.',
+        specialty: 'Pedicure',
+        payStructure: '$16/hr + tips',
+        type: EmploymentType.PART_TIME,
+        isUrgent: false,
+        daysUntilExpiry: 21,
+      },
+    ],
+  },
+  {
+    email: `freshfades${TEST_DOMAIN}`,
+    name: 'Fresh Fades Collective',
+    description: 'Community barbershop in Atlanta. Fades, tapers, and lineups done right.',
+    specialties: ['Skin fade', 'Taper fade', 'Lineups', 'Kids cuts'],
+    photoUrls: [],
+    isHiring: true,
+    cityId: 'atlanta',
+    lat: 33.7650,
+    lng: -84.4230,
+    jobs: [
+      {
+        title: 'Licensed Barber — Walk-In Overflow',
+        description: 'High foot traffic shop needs one more chair. Booth rental available Mon–Fri. We handle marketing, you handle your craft.',
+        specialty: 'Skin fade',
+        payStructure: '$200/week booth rental',
+        type: EmploymentType.TEMPORARY,
+        isUrgent: false,
+        daysUntilExpiry: 14,
+      },
+    ],
+  },
+]
+
+// ─── Review seed data ────────────────────────────────────────────────────────
+
+const SEED_REVIEWS: ReviewSeed[] = [
+  // Glam Studio DC
+  { authorEmail: `jasmine${TEST_DOMAIN}`, subjectEmail: `glamstudio${TEST_DOMAIN}`, rating: 5, comment: 'Professional studio with amazing energy. Great team culture and steady clientele. Highly recommend.' },
+  { authorEmail: `amara${TEST_DOMAIN}`,   subjectEmail: `glamstudio${TEST_DOMAIN}`, rating: 5, comment: 'Management is smooth and the salon is beautifully maintained. Worked here two weeks and loved it.' },
+  { authorEmail: `jordan${TEST_DOMAIN}`,  subjectEmail: `glamstudio${TEST_DOMAIN}`, rating: 4, comment: 'Solid booth rental experience. Good foot traffic and fair management.' },
+  // Luxe Beauty Bar
+  { authorEmail: `maya${TEST_DOMAIN}`,    subjectEmail: `luxebar${TEST_DOMAIN}`, rating: 5, comment: 'Best nail studio I have ever worked at. Premium products, high-end clients, and a wonderful team.' },
+  { authorEmail: `priya${TEST_DOMAIN}`,   subjectEmail: `luxebar${TEST_DOMAIN}`, rating: 5, comment: 'Beautiful space. Management is organized and genuinely cares about the stylists.' },
+  { authorEmail: `amara${TEST_DOMAIN}`,   subjectEmail: `luxebar${TEST_DOMAIN}`, rating: 5, comment: 'Perfect environment for a lash tech. Professional, welcoming, and great clientele.' },
+  // The Cut Shop
+  { authorEmail: `jordan${TEST_DOMAIN}`,  subjectEmail: `cutshop${TEST_DOMAIN}`, rating: 5, comment: 'Busiest barbershop in DC. Guaranteed pay, overflow clients ready on day one. Would return.' },
+  { authorEmail: `keisha${TEST_DOMAIN}`,  subjectEmail: `cutshop${TEST_DOMAIN}`, rating: 4, comment: 'Great shop but very fast-paced. High volume every day and a solid pay structure.' },
+  // Crown Collective Atlanta
+  { authorEmail: `keisha${TEST_DOMAIN}`,  subjectEmail: `crownatl${TEST_DOMAIN}`, rating: 5, comment: 'Crown is the real deal. Professional studio, supportive management, and consistent bookings.' },
+  { authorEmail: `nia${TEST_DOMAIN}`,     subjectEmail: `crownatl${TEST_DOMAIN}`, rating: 5, comment: 'Loved working here. The team is experienced and the clientele is loyal.' },
+  { authorEmail: `jasmine${TEST_DOMAIN}`, subjectEmail: `crownatl${TEST_DOMAIN}`, rating: 4, comment: 'Great energy. The booth rental is priced fairly for the foot traffic you get.' },
+  // Bliss Beauty Studio
+  { authorEmail: `sofia${TEST_DOMAIN}`,   subjectEmail: `blisshou${TEST_DOMAIN}`, rating: 5, comment: 'The most modern color salon in Houston. Amazing equipment, top products, great commission split.' },
+  { authorEmail: `priya${TEST_DOMAIN}`,   subjectEmail: `blisshou${TEST_DOMAIN}`, rating: 4, comment: 'Enjoyed working here. Scheduling could be tighter but the environment and clientele are excellent.' },
+  // Nova Nails Lounge
+  { authorEmail: `maya${TEST_DOMAIN}`,    subjectEmail: `novanails${TEST_DOMAIN}`, rating: 5, comment: 'Beautiful new studio. Everything is brand new, top-tier products, and the clients are amazing.' },
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -447,6 +566,12 @@ async function main() {
   // ── Clean old seed data ──────────────────────────────────────────────────
 
   console.log('── Cleaning old seed data ───────────────────────')
+  await prisma.review.deleteMany({
+    where: { OR: [
+      { author: { email: { endsWith: TEST_DOMAIN } } },
+      { subject: { email: { endsWith: TEST_DOMAIN } } },
+    ]},
+  })
   await prisma.chatRequest.deleteMany({
     where: { OR: [
       { sender: { email: { endsWith: TEST_DOMAIN } } },
@@ -491,6 +616,8 @@ async function main() {
   // Track IDs for cross-linking
   let portfolioCount = 0
   let jobPostCount = 0
+  const workerUserIdByEmail = new Map<string, string>()
+  const salonUserIdByEmail = new Map<string, string>()
 
   // ── Workers ────────────────────────────────────────────────────────────────
 
@@ -554,6 +681,7 @@ async function main() {
     })
     portfolioCount += w.portfolio.length
 
+    workerUserIdByEmail.set(w.email, user.id)
     console.log(`  ✓ ${w.name} (${w.availability}) — ${w.cityId.toUpperCase()} — ${w.rateRange}`)
   }
 
@@ -576,6 +704,9 @@ async function main() {
         photoUrls: s.photoUrls,
         cityId: s.cityId,
         isHiring: s.isHiring,
+        isVerified: s.isVerified ?? false,
+        rating: 0,
+        reviewCount: 0,
       },
       create: {
         userId: user.id,
@@ -585,6 +716,9 @@ async function main() {
         photoUrls: s.photoUrls,
         cityId: s.cityId,
         isHiring: s.isHiring,
+        isVerified: s.isVerified ?? false,
+        rating: 0,
+        reviewCount: 0,
       },
     })
 
@@ -609,17 +743,51 @@ async function main() {
           specialty: jp.specialty,
           payStructure: jp.payStructure,
           type: jp.type,
+          listingType: jp.listingType ?? 'JOB',
           isUrgent: jp.isUrgent,
           cityId: s.cityId,
           expiresAt: daysFromNow(jp.daysUntilExpiry),
           isActive: true,
+          spaceSize: jp.spaceSize,
+          spaceAmenities: jp.spaceAmenities ?? [],
+          rentalDeposit: jp.rentalDeposit,
         },
       })
       jobPostCount++
       console.log(`    ✓ "${jp.title}" ${jp.isUrgent ? '[URGENT]' : ''}`)
     }
 
+    salonUserIdByEmail.set(s.email, user.id)
     console.log(`  ✓ ${s.name} — ${s.cityId.toUpperCase()} — ${s.jobs.length} jobs — location: ${sLoc?.has_location ? '✅' : '❌ NULL'}`)
+  }
+
+  // ── Reviews ────────────────────────────────────────────────────────────────
+
+  console.log('\n── Reviews ──────────────────────────────────────')
+  let reviewCount = 0
+  for (const rv of SEED_REVIEWS) {
+    const authorId = workerUserIdByEmail.get(rv.authorEmail)
+    const subjectId = salonUserIdByEmail.get(rv.subjectEmail)
+    if (!authorId || !subjectId) continue
+    await prisma.review.create({ data: { authorId, subjectId, rating: rv.rating, comment: rv.comment } })
+    reviewCount++
+  }
+
+  // Recalculate salon ratings from actual review records
+  for (const [email, subjectId] of salonUserIdByEmail.entries()) {
+    const agg = await prisma.review.aggregate({
+      where: { subjectId },
+      _avg: { rating: true },
+      _count: { id: true },
+    })
+    if (agg._count.id > 0) {
+      const avg = parseFloat((agg._avg.rating ?? 0).toFixed(2))
+      await prisma.salonProfile.update({
+        where: { userId: subjectId },
+        data: { rating: avg, reviewCount: agg._count.id },
+      })
+      console.log(`  ✓ ${email.split('@')[0]}: ${avg} ★ (${agg._count.id} reviews)`)
+    }
   }
 
   // ── Summary ────────────────────────────────────────────────────────────────
@@ -639,6 +807,7 @@ async function main() {
   console.log(`  Salon profiles        : ${totalSalons}`)
   console.log(`  Portfolio items       : ${totalPortfolio} (+${portfolioCount} this run)`)
   console.log(`  Active job posts      : ${totalJobs} (+${jobPostCount} this run)`)
+  console.log(`  Reviews               : ${await prisma.review.count()} (+${reviewCount} this run)`)
   console.log('─────────────────────────────────────────────────')
   console.log('\n  Test password for all accounts: Password123!')
   console.log(`  Test domain: ${TEST_DOMAIN}`)

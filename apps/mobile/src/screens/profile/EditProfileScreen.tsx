@@ -17,7 +17,7 @@ import { router } from 'expo-router'
 import * as Haptics from 'expo-haptics'
 import { Text, Button, useTheme } from '@salonin/ui'
 import { Availability } from '@salonin/types'
-import { workersApi } from '@salonin/api-client'
+import { workersApi, parseApiError } from '@salonin/api-client'
 import { BEAUTY_SPECIALTIES } from '@salonin/config'
 import { useMyWorkerProfile } from '../../hooks/useWorkerProfile'
 import { useMediaUpload } from '../../hooks/useMediaUpload'
@@ -266,7 +266,7 @@ export default function EditProfileScreen() {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
       router.back()
     } catch (e) {
-      Alert.alert('Save failed', e instanceof Error ? e.message : 'Please try again.')
+      Alert.alert('Save failed', parseApiError(e))
     } finally {
       setIsSaving(false)
     }

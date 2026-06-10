@@ -1,5 +1,6 @@
 import React from 'react'
 import { View, Text, Image, ViewStyle, ImageStyle } from 'react-native'
+import { getAvatarGradient } from '@salonin/utils'
 import { Skeleton } from './Skeleton'
 
 type AvatarSize = 'sm' | 'md' | 'lg' | 'xl'
@@ -18,13 +19,8 @@ const DIMS: Record<AvatarSize, number> = { sm: 32, md: 40, lg: 56, xl: 80 }
 export function Avatar({ uri, name: _name, size = 'md', isVerified, style }: AvatarProps) {
   const dim = DIMS[size]
   const badgeSize = dim <= 40 ? 14 : 17
-
-  const emptyCircle: ViewStyle = {
-    width: dim,
-    height: dim,
-    borderRadius: dim / 2,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-  }
+  const [bgColor] = getAvatarGradient(_name)
+  const initial = (_name[0] ?? '?').toUpperCase()
 
   const imgStyle: ImageStyle = {
     width: dim,
@@ -32,12 +28,25 @@ export function Avatar({ uri, name: _name, size = 'md', isVerified, style }: Ava
     borderRadius: dim / 2,
   }
 
+  const initialsCircle: ViewStyle = {
+    width: dim,
+    height: dim,
+    borderRadius: dim / 2,
+    backgroundColor: bgColor,
+    alignItems: 'center',
+    justifyContent: 'center',
+  }
+
   return (
     <View style={[{ width: dim, height: dim, position: 'relative' }, style]}>
       {uri ? (
         <Image source={{ uri }} style={imgStyle} resizeMode="cover" />
       ) : (
-        <View style={emptyCircle} />
+        <View style={initialsCircle}>
+          <Text style={{ color: '#fff', fontSize: dim * 0.38, fontWeight: '700', lineHeight: dim * 0.44 }}>
+            {initial}
+          </Text>
+        </View>
       )}
       {isVerified === true && (
         <View

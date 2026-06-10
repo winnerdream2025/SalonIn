@@ -17,6 +17,7 @@ import { formatExperience } from '@salonin/utils'
 import { useWorkerProfile } from '../../hooks/useWorkerProfile'
 import { useAuthStore } from '../../store/authStore'
 import { messagesApi } from '@salonin/api-client'
+import { useCanReview } from '../../hooks/useReviews'
 
 export default function WorkerProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
@@ -27,6 +28,9 @@ export default function WorkerProfileScreen() {
 
   const isOwner = Boolean(currentUser && profile && currentUser.id === profile.userId)
   const [isMessaging, setIsMessaging] = useState(false)
+  const { canReview, existingReview } = useCanReview(
+    !isOwner && currentUser ? profile?.userId : undefined
+  )
   const [bioExpanded, setBioExpanded] = useState(false)
 
   const handleMessage = useCallback(async () => {
@@ -191,6 +195,32 @@ export default function WorkerProfileScreen() {
           </View>
         )}
 
+        {/* ── Reviews ── */}
+        {(profile.rating > 0 || canReview) && (
+          <View style={[styles.section, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionLabel, { color: theme.text.tertiary }]}>Reviews</Text>
+              {profile.rating > 0 && (
+                <TouchableOpacity
+                  onPress={() => router.push(`/review/list?userId=${profile.userId}&userName=${encodeURIComponent(profile.name)}&rating=${profile.rating}&reviewCount=${profile.reviewCount}` as never)}
+                >
+                  <Text style={[styles.showMore, { color: theme.brand.primary }]}>See all →</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            {profile.rating > 0 && (
+              <Text style={{ fontSize: 14, color: theme.text.secondary }}>
+                <Text style={{ fontWeight: '800', fontSize: 20, color: theme.text.primary }}>{profile.rating.toFixed(1)}</Text>
+                {'  ⭐  '}
+                <Text style={{ color: theme.text.tertiary }}>{profile.reviewCount} {profile.reviewCount === 1 ? 'review' : 'reviews'}</Text>
+              </Text>
+            )}
+            {existingReview && (
+              <Text style={{ fontSize: 12, color: theme.text.tertiary }}>You reviewed this worker — {existingReview.rating}/5 ⭐</Text>
+            )}
+          </View>
+        )}
+
         {/* ── Portfolio ── */}
         <View style={[styles.section, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
           <View style={styles.sectionHeader}>
@@ -235,6 +265,14 @@ export default function WorkerProfileScreen() {
                 : <Text style={[styles.ctaBtnText, { color: theme.text.inverse }]}>💬 Message</Text>
               }
             </Pressable>
+            {canReview && !existingReview && (
+              <Pressable
+                onPress={() => router.push(`/review/leave?subjectId=${profile.userId}&subjectName=${encodeURIComponent(profile.name)}&subjectPhoto=${encodeURIComponent(profile.photoUrl ?? '')}` as never)}
+                style={({ pressed }) => [styles.ctaBtnSecondary, { borderColor: theme.brand.primary }, pressed && { opacity: 0.85 }]}
+              >
+                <Text style={[styles.ctaBtnSecondaryText, { color: theme.brand.primary }]}>⭐ Review</Text>
+              </Pressable>
+            )}
             <Pressable
               style={({ pressed }) => [
                 styles.ctaBtnSecondary,

@@ -3,7 +3,7 @@ import { View, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-nat
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Text, Button, PortfolioGrid, useTheme } from '@salonin/ui'
-import { workersApi } from '@salonin/api-client'
+import { workersApi, parseApiError } from '@salonin/api-client'
 import { useMyWorkerProfile } from '../../hooks/useWorkerProfile'
 import { useMediaUpload } from '../../hooks/useMediaUpload'
 
@@ -29,7 +29,7 @@ export default function PortfolioUploadScreen() {
       await workersApi.addPortfolioItem({ mediaUrl: url, type: 'IMAGE' })
       refetch()
     } catch (e) {
-      Alert.alert('Upload failed', e instanceof Error ? e.message : 'Please try again.')
+      Alert.alert('Upload failed', parseApiError(e))
     }
   }, [pickImage, refetch])
 
@@ -40,7 +40,7 @@ export default function PortfolioUploadScreen() {
       await workersApi.addPortfolioItem({ mediaUrl: url, type: 'VIDEO' })
       refetch()
     } catch (e) {
-      Alert.alert('Upload failed', e instanceof Error ? e.message : 'Please try again.')
+      Alert.alert('Upload failed', parseApiError(e))
     }
   }, [pickVideo, refetch])
 

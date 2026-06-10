@@ -14,19 +14,30 @@ import { router } from 'expo-router'
 import * as Haptics from 'expo-haptics'
 import { JobPostCard, Text, useTheme } from '@salonin/ui'
 import type { CreateJobPostDto, JobPostCardData } from '@salonin/types'
-import { jobsApi } from '@salonin/api-client'
-import { ALL_SPECIALTIES } from '@salonin/config'
+import { jobsApi, parseApiError } from '@salonin/api-client'
+import { ALL_SPECIALTIES, ALL_PROFESSIONALS } from '@salonin/config'
 import { useLocationStore } from '../../store/locationStore'
 import { useAuthStore } from '../../store/authStore'
 
 const SPECIALTIES = ALL_SPECIALTIES
+const PROFESSIONALS = ALL_PROFESSIONALS
 
-const EMPLOYMENT_TYPES: { value: string; label: string; icon: string; sub: string }[] = [
-  { value: 'FULL_TIME',  label: 'Full-time',  icon: '🏢', sub: 'Regular schedule, benefits' },
-  { value: 'PART_TIME',  label: 'Part-time',  icon: '⏰', sub: 'Flexible hours'            },
-  { value: 'TEMPORARY',  label: 'Temporary',  icon: '📋', sub: 'Short-term or contract'     },
-  { value: 'WEEKEND',    label: 'Weekend',    icon: '📅', sub: 'Sat & Sun only'             },
-  { value: 'EMERGENCY',  label: 'Emergency',  icon: '🚨', sub: 'Need someone ASAP'          },
+const LISTING_TYPE_CARDS: { value: string; label: string; sub: string }[] = [
+  { value: 'JOB',    label: 'Job Position',       sub: 'Hire a beauty professional' },
+  { value: 'RENTAL', label: 'Booth/Chair Rental',  sub: 'Rent out booth or chair space' },
+  { value: 'SPACE',  label: 'Salon Space',         sub: 'List a full salon suite or room' },
+]
+
+const EMPLOYMENT_TYPES: { value: string; label: string; sub: string }[] = [
+  { value: 'FULL_TIME',       label: 'Full-time',       sub: 'Regular schedule, benefits' },
+  { value: 'PART_TIME',       label: 'Part-time',       sub: 'Flexible hours' },
+  { value: 'TEMPORARY',       label: 'Temporary',       sub: 'Short-term engagement' },
+  { value: 'WEEKEND',         label: 'Weekend',         sub: 'Sat & Sun only' },
+  { value: 'EMERGENCY',       label: 'Emergency',       sub: 'Need someone ASAP' },
+  { value: 'CONTRACT',        label: 'Contract',        sub: 'Fixed-term agreement' },
+  { value: 'SEASONAL',        label: 'Seasonal',        sub: 'Seasonal position' },
+  { value: 'APPRENTICESHIP',  label: 'Apprenticeship',  sub: 'Training opportunity' },
+  { value: 'FREELANCE',       label: 'Freelance',       sub: 'Independent contractor' },
 ]
 
 const PAY_TYPES: { value: string; label: string }[] = [
@@ -36,10 +47,26 @@ const PAY_TYPES: { value: string; label: string }[] = [
   { value: 'Custom',     label: 'Custom'      },
 ]
 
+const RENTAL_PAY_TYPES: { value: string; label: string }[] = [
+  { value: 'Booth Rental',  label: 'Booth Rental' },
+  { value: 'Chair Rental',  label: 'Chair Rental' },
+  { value: 'Suite Rental',  label: 'Suite Rental' },
+  { value: 'Custom',        label: 'Custom' },
+]
+
+const RENTAL_FREQ: { value: string; label: string }[] = [
+  { value: 'day',   label: 'Per day' },
+  { value: 'week',  label: 'Per week' },
+  { value: 'month', label: 'Per month' },
+]
+
 const COMMISSION_SPLITS = [
   { value: 50, label: '50/50', sub: 'Even split' },
+  { value: 55, label: '55/45', sub: 'You keep 55%' },
   { value: 60, label: '60/40', sub: 'You keep 60%' },
+  { value: 65, label: '65/35', sub: 'You keep 65%' },
   { value: 70, label: '70/30', sub: 'You keep 70%' },
+  { value: 75, label: '75/25', sub: 'You keep 75%' },
 ]
 
 const DURATIONS: { days: number; label: string }[] = [
@@ -55,62 +82,85 @@ export default function CreateJobPostScreen() {
   const cityId = useLocationStore((s) => s.cityId)
   const user = useAuthStore((s) => s.user)
 
-  const [step, setStep] = useState(1)
+  const [step, setStep] = useState(0)
+  const [listingType, setListingType] = useState<string>('')
   const [title, setTitle] = useState('')
   const [specialty, setSpecialty] = useState('')
   const [payStructure, setPayStructure] = useState('')
   const [payType, setPayType] = useState('Commission')
+  const [rentalPayType, setRentalPayType] = useState('Booth Rental')
+  const [rentalFreq, setRentalFreq] = useState('month')
   const [rateInput, setRateInput] = useState('')
   const [commissionSplit, setCommissionSplit] = useState(60)
   const [selectedType, setSelectedType] = useState('FULL_TIME')
   const [isUrgent, setIsUrgent] = useState(false)
   const [description, setDescription] = useState('')
   const [durationDays, setDurationDays] = useState(14)
+  const [spaceSize, setSpaceSize] = useState('')
+  const [spaceAmenities, setSpaceAmenities] = useState('')
+  const [rentalDeposit, setRentalDeposit] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | undefined>()
 
   const salonName = (user as { salonName?: string } | null)?.salonName ?? 'Your Salon'
 
-  const resolvedPayStructure = payType === 'Commission'
-    ? `${commissionSplit}/${100 - commissionSplit} Commission`
-    : payType === 'Custom'
-      ? payStructure.trim() || 'Pay TBD'
-      : rateInput.trim() ? `${rateInput}/${payType === 'Hourly' ? 'hr' : 'day'}` : 'Pay TBD'
+  const resolvedPayStructure = useMemo(() => {
+    if (listingType === 'RENTAL' || listingType === 'SPACE') {
+      if (rentalPayType === 'Custom') return payStructure.trim() || 'Pay TBD'
+      if (rateInput.trim()) return `$${rateInput}/${rentalFreq} – ${rentalPayType}`
+      return rentalPayType
+    }
+    if (payType === 'Commission') return `${commissionSplit}/${100 - commissionSplit} Commission`
+    if (payType === 'Custom') return payStructure.trim() || 'Pay TBD'
+    return rateInput.trim() ? `$${rateInput}/${payType === 'Hourly' ? 'hr' : 'day'}` : 'Pay TBD'
+  }, [listingType, payType, rentalPayType, rateInput, rentalFreq, commissionSplit, payStructure])
+
+  const totalSteps = 3
 
   const previewJob = useMemo<JobPostCardData>(() => ({
     id: '__preview__',
-    title: title.trim() || 'Job Title',
+    title: title.trim() || 'Listing Title',
+    description: description.trim() || undefined,
     specialty: specialty || 'Specialty',
     payStructure: resolvedPayStructure,
     type: selectedType as JobPostCardData['type'],
+    listingType: (listingType || 'JOB') as JobPostCardData['listingType'],
     isUrgent,
     cityId: cityId ?? 'dmv',
     expiresAt: new Date(Date.now() + durationDays * 86_400_000).toISOString(),
     salonName,
     salonPhotoUrl: null,
-  }), [title, specialty, resolvedPayStructure, selectedType, isUrgent, durationDays, cityId, salonName])
+  }), [title, description, specialty, resolvedPayStructure, selectedType, listingType, isUrgent, durationDays, cityId, salonName])
 
   const goNext = useCallback(async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    if (step === 0) {
+      if (!listingType) { setError('Choose a listing type'); return }
+    }
     if (step === 1) {
-      if (!title.trim()) { setError('Job title is required'); return }
+      if (!title.trim()) { setError('Title is required'); return }
       if (!specialty) { setError('Select a specialty'); return }
     }
     if (step === 2) {
-      if (payType === 'Custom' && !payStructure.trim()) { setError('Describe the pay arrangement'); return }
-      if ((payType === 'Hourly' || payType === 'Daily') && !rateInput.trim()) { setError('Enter a rate'); return }
+      if (listingType === 'JOB') {
+        if (payType === 'Custom' && !payStructure.trim()) { setError('Describe the pay arrangement'); return }
+        if ((payType === 'Hourly' || payType === 'Daily') && !rateInput.trim()) { setError('Enter a rate'); return }
+      }
+      if ((listingType === 'RENTAL' || listingType === 'SPACE') && rentalPayType !== 'Custom' && !rateInput.trim()) {
+        setError('Enter the rental rate'); return
+      }
     }
     setError(undefined)
-    if (step < 3) {
+    if (step < totalSteps) {
       setStep((s) => s + 1)
     } else {
       void handleSubmit()
     }
-  }, [step, title, specialty, payType, payStructure, rateInput])
+  }, [step, listingType, title, specialty, payType, payStructure, rateInput, rentalPayType, totalSteps])
 
   const goBack = useCallback(async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-    if (step > 1) {
+    if (step > 0) {
       setStep((s) => s - 1)
       setError(undefined)
     } else {
@@ -130,23 +180,33 @@ export default function CreateJobPostScreen() {
         specialty,
         payStructure: resolvedPayStructure,
         type: selectedType as CreateJobPostDto['type'],
+        listingType: (listingType || 'JOB') as CreateJobPostDto['listingType'],
         isUrgent,
         cityId,
         expiresAt,
+        ...(listingType === 'SPACE' ? {
+          spaceSize: spaceSize.trim() || undefined,
+          spaceAmenities: spaceAmenities.split(',').map((s) => s.trim()).filter(Boolean),
+          rentalDeposit: rentalDeposit ? parseFloat(rentalDeposit) : undefined,
+        } : {}),
+        ...(listingType === 'RENTAL' ? {
+          rentalDeposit: rentalDeposit ? parseFloat(rentalDeposit) : undefined,
+        } : {}),
       }
       await jobsApi.create(dto)
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+      const typeLabel = listingType === 'RENTAL' ? 'Rental' : listingType === 'SPACE' ? 'Space' : 'Job'
       Alert.alert(
-        'Job Posted! 🎉',
+        `${typeLabel} Posted!`,
         'Notifying nearby workers now.',
         [{ text: 'Done', onPress: () => router.back() }],
       )
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to create post')
+      setError(parseApiError(e))
     } finally {
       setIsSubmitting(false)
     }
-  }, [title, specialty, description, resolvedPayStructure, selectedType, isUrgent, durationDays, cityId])
+  }, [title, specialty, description, resolvedPayStructure, selectedType, listingType, isUrgent, durationDays, cityId, spaceSize, spaceAmenities, rentalDeposit])
 
   return (
     <View style={[styles.screen, { backgroundColor: theme.bg.base, paddingTop: top }]}>
@@ -154,16 +214,18 @@ export default function CreateJobPostScreen() {
       <View style={[styles.header, { borderBottomColor: theme.border.subtle }]}>
         <TouchableOpacity onPress={() => void goBack()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Text style={[styles.headerAction, { color: theme.brand.primary }]}>
-            {step === 1 ? 'Cancel' : '‹ Back'}
+            {step === 0 ? 'Cancel' : '‹ Back'}
           </Text>
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text.primary }]}>Post a Job</Text>
+        <Text style={[styles.headerTitle, { color: theme.text.primary }]}>
+          {listingType === 'RENTAL' ? 'Post a Rental' : listingType === 'SPACE' ? 'Post a Space' : 'Post a Job'}
+        </Text>
         <View style={{ width: 56 }} />
       </View>
 
       {/* ── Step dots ── */}
       <View style={styles.progressDots}>
-        {[1, 2, 3].map((s) => (
+        {[0, 1, 2, 3].map((s) => (
           <View
             key={s}
             style={[
@@ -184,19 +246,60 @@ export default function CreateJobPostScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* ══ STEP 1: Title + Specialty + Employment Type ══ */}
+          {/* ══ STEP 0: Choose listing type ══ */}
+          {step === 0 && (
+            <View style={styles.stepContent}>
+              <Text style={[styles.stepTitle, { color: theme.text.primary }]}>
+                What are you posting?
+              </Text>
+              <View style={{ gap: 12 }}>
+                {LISTING_TYPE_CARDS.map(({ value, label, sub }) => {
+                  const active = listingType === value
+                  return (
+                    <TouchableOpacity
+                      key={value}
+                      onPress={() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setListingType(value); setError(undefined) }}
+                      style={[
+                        styles.listingTypeCard,
+                        {
+                          backgroundColor: active ? 'rgba(216,90,48,0.08)' : theme.bg.elevated,
+                          borderColor: active ? '#D85A30' : theme.border.default,
+                        },
+                      ]}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={{ fontSize: 17, fontWeight: '700', color: active ? '#D85A30' : theme.text.primary }}>{label}</Text>
+                      <Text style={{ fontSize: 13, color: theme.text.tertiary, marginTop: 4 }}>{sub}</Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+            </View>
+          )}
+
+          {/* ══ STEP 1: Title + Specialty/Professional + Employment Type ══ */}
           {step === 1 && (
             <View style={styles.stepContent}>
               <Text style={[styles.stepTitle, { color: theme.text.primary }]}>
-                What role are you hiring for?
+                {listingType === 'RENTAL'
+                  ? 'What are you renting out?'
+                  : listingType === 'SPACE'
+                  ? 'Describe your space'
+                  : 'What role are you hiring for?'}
               </Text>
 
               <View style={styles.fieldGroup}>
-                <Text style={[styles.fieldLabel, { color: theme.text.secondary }]}>Job Title</Text>
+                <Text style={[styles.fieldLabel, { color: theme.text.secondary }]}>
+                  {listingType === 'RENTAL' ? 'Rental Title' : listingType === 'SPACE' ? 'Space Title' : 'Job Title'}
+                </Text>
                 <TextInput
                   value={title}
                   onChangeText={(v) => { setTitle(v); setError(undefined) }}
-                  placeholder="e.g. Experienced Colorist Needed"
+                  placeholder={
+                    listingType === 'RENTAL' ? 'e.g. Booth Rental — Nail Tech Station' :
+                    listingType === 'SPACE'  ? 'e.g. Private Suite — 250 sqft' :
+                    'e.g. Experienced Colorist Needed'
+                  }
                   placeholderTextColor={theme.text.tertiary}
                   style={[styles.textInputLarge, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default, color: theme.text.primary }]}
                   returnKeyType="next"
@@ -204,9 +307,11 @@ export default function CreateJobPostScreen() {
               </View>
 
               <View style={styles.fieldGroup}>
-                <Text style={[styles.fieldLabel, { color: theme.text.secondary }]}>Specialty</Text>
+                <Text style={[styles.fieldLabel, { color: theme.text.secondary }]}>
+                  {listingType === 'RENTAL' || listingType === 'SPACE' ? 'Who is this for?' : 'Specialty'}
+                </Text>
                 <View style={styles.pillGrid}>
-                  {SPECIALTIES.map((s) => {
+                  {(listingType === 'RENTAL' || listingType === 'SPACE' ? PROFESSIONALS : SPECIALTIES).map((s) => {
                     const active = specialty === s
                     return (
                       <TouchableOpacity
@@ -229,10 +334,11 @@ export default function CreateJobPostScreen() {
                 </View>
               </View>
 
+              {listingType === 'JOB' && (
               <View style={styles.fieldGroup}>
                 <Text style={[styles.fieldLabel, { color: theme.text.secondary }]}>Employment Type</Text>
                 <View style={styles.typeCardGrid}>
-                  {EMPLOYMENT_TYPES.map(({ value, label, icon, sub }) => {
+                  {EMPLOYMENT_TYPES.map(({ value, label, sub }) => {
                     const active = selectedType === value
                     return (
                       <TouchableOpacity
@@ -247,7 +353,6 @@ export default function CreateJobPostScreen() {
                         ]}
                         activeOpacity={0.8}
                       >
-                        <Text style={{ fontSize: 22, marginBottom: 4 }}>{icon}</Text>
                         <Text style={{ fontSize: 13, fontWeight: '700', color: active ? '#D85A30' : theme.text.primary }}>{label}</Text>
                         <Text style={{ fontSize: 11, color: theme.text.tertiary, marginTop: 2, textAlign: 'center' }} numberOfLines={2}>{sub}</Text>
                       </TouchableOpacity>
@@ -255,6 +360,7 @@ export default function CreateJobPostScreen() {
                   })}
                 </View>
               </View>
+              )}
             </View>
           )}
 
@@ -262,91 +368,224 @@ export default function CreateJobPostScreen() {
           {step === 2 && (
             <View style={styles.stepContent}>
               <Text style={[styles.stepTitle, { color: theme.text.primary }]}>
-                Pay & details
+                {listingType === 'RENTAL' || listingType === 'SPACE' ? 'Pricing & terms' : 'Pay & details'}
               </Text>
 
-              <View style={styles.fieldGroup}>
-                <Text style={[styles.fieldLabel, { color: theme.text.secondary }]}>Pay Structure</Text>
-                <View style={styles.typeCardGrid}>
-                  {PAY_TYPES.map(({ value, label }) => {
-                    const active = payType === value
-                    return (
-                      <TouchableOpacity
-                        key={value}
-                        onPress={() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setPayType(value); setError(undefined) }}
-                        style={[
-                          styles.payCard,
-                          {
-                            backgroundColor: active ? 'rgba(216,90,48,0.08)' : theme.bg.elevated,
-                            borderColor: active ? '#D85A30' : theme.border.default,
-                          },
-                        ]}
-                        activeOpacity={0.8}
-                      >
-                        <Text style={{ fontSize: 13, fontWeight: '700', color: active ? '#D85A30' : theme.text.primary, textAlign: 'center' }}>{label}</Text>
-                      </TouchableOpacity>
-                    )
-                  })}
-                </View>
-              </View>
-
-              {payType === 'Commission' && (
-                <View style={styles.fieldGroup}>
-                  <Text style={[styles.fieldLabel, { color: theme.text.secondary }]}>Commission Split (worker / salon)</Text>
-                  <View style={styles.splitCards}>
-                    {COMMISSION_SPLITS.map(({ value, label, sub }) => {
-                      const active = commissionSplit === value
-                      return (
-                        <TouchableOpacity
-                          key={value}
-                          onPress={() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setCommissionSplit(value) }}
-                          style={[
-                            styles.splitCard,
-                            {
-                              backgroundColor: active ? 'rgba(216,90,48,0.08)' : theme.bg.elevated,
-                              borderColor: active ? '#D85A30' : theme.border.default,
-                            },
-                          ]}
-                          activeOpacity={0.8}
-                        >
-                          <Text style={{ fontSize: 18, fontWeight: '800', color: active ? '#D85A30' : theme.text.primary }}>{label}</Text>
-                          <Text style={{ fontSize: 11, color: theme.text.tertiary, marginTop: 2 }}>{sub}</Text>
-                        </TouchableOpacity>
-                      )
-                    })}
+              {/* ── JOB pay flow ── */}
+              {listingType === 'JOB' && (
+                <>
+                  <View style={styles.fieldGroup}>
+                    <Text style={[styles.fieldLabel, { color: theme.text.secondary }]}>Pay Structure</Text>
+                    <View style={styles.typeCardGrid}>
+                      {PAY_TYPES.map(({ value, label }) => {
+                        const active = payType === value
+                        return (
+                          <TouchableOpacity
+                            key={value}
+                            onPress={() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setPayType(value); setError(undefined) }}
+                            style={[
+                              styles.payCard,
+                              {
+                                backgroundColor: active ? 'rgba(216,90,48,0.08)' : theme.bg.elevated,
+                                borderColor: active ? '#D85A30' : theme.border.default,
+                              },
+                            ]}
+                            activeOpacity={0.8}
+                          >
+                            <Text style={{ fontSize: 13, fontWeight: '700', color: active ? '#D85A30' : theme.text.primary, textAlign: 'center' }}>{label}</Text>
+                          </TouchableOpacity>
+                        )
+                      })}
+                    </View>
                   </View>
-                </View>
+
+                  {payType === 'Commission' && (
+                    <View style={styles.fieldGroup}>
+                      <Text style={[styles.fieldLabel, { color: theme.text.secondary }]}>Commission Split (worker / salon)</Text>
+                      <View style={styles.splitCards}>
+                        {COMMISSION_SPLITS.map(({ value, label, sub }) => {
+                          const active = commissionSplit === value
+                          return (
+                            <TouchableOpacity
+                              key={value}
+                              onPress={() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setCommissionSplit(value) }}
+                              style={[
+                                styles.splitCard,
+                                {
+                                  backgroundColor: active ? 'rgba(216,90,48,0.08)' : theme.bg.elevated,
+                                  borderColor: active ? '#D85A30' : theme.border.default,
+                                },
+                              ]}
+                              activeOpacity={0.8}
+                            >
+                              <Text style={{ fontSize: 18, fontWeight: '800', color: active ? '#D85A30' : theme.text.primary }}>{label}</Text>
+                              <Text style={{ fontSize: 11, color: theme.text.tertiary, marginTop: 2 }}>{sub}</Text>
+                            </TouchableOpacity>
+                          )
+                        })}
+                      </View>
+                    </View>
+                  )}
+
+                  {(payType === 'Hourly' || payType === 'Daily') && (
+                    <View style={styles.fieldGroup}>
+                      <Text style={[styles.fieldLabel, { color: theme.text.secondary }]}>Rate ({payType === 'Hourly' ? 'per hour' : 'per day'})</Text>
+                      <View style={[styles.rateInputWrap, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}>
+                        <Text style={{ fontSize: 20, color: theme.text.secondary }}>$</Text>
+                        <TextInput
+                          value={rateInput}
+                          onChangeText={(v) => { setRateInput(v); setError(undefined) }}
+                          placeholder="0"
+                          placeholderTextColor={theme.text.tertiary}
+                          keyboardType="decimal-pad"
+                          style={{ flex: 1, fontSize: 22, fontWeight: '700', color: theme.text.primary, paddingVertical: 0 }}
+                        />
+                        <Text style={{ fontSize: 14, color: theme.text.tertiary }}>/{payType === 'Hourly' ? 'hr' : 'day'}</Text>
+                      </View>
+                    </View>
+                  )}
+
+                  {payType === 'Custom' && (
+                    <View style={styles.fieldGroup}>
+                      <Text style={[styles.fieldLabel, { color: theme.text.secondary }]}>Describe the pay arrangement</Text>
+                      <TextInput
+                        value={payStructure}
+                        onChangeText={(v) => { setPayStructure(v); setError(undefined) }}
+                        placeholder="e.g. Booth rent $300/week"
+                        placeholderTextColor={theme.text.tertiary}
+                        style={[styles.textInput, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default, color: theme.text.primary }]}
+                      />
+                    </View>
+                  )}
+                </>
               )}
 
-              {(payType === 'Hourly' || payType === 'Daily') && (
-                <View style={styles.fieldGroup}>
-                  <Text style={[styles.fieldLabel, { color: theme.text.secondary }]}>Rate ({payType === 'Hourly' ? 'per hour' : 'per day'})</Text>
-                  <View style={[styles.rateInputWrap, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}>
-                    <Text style={{ fontSize: 20, color: theme.text.secondary }}>$</Text>
-                    <TextInput
-                      value={rateInput}
-                      onChangeText={(v) => { setRateInput(v); setError(undefined) }}
-                      placeholder="0"
-                      placeholderTextColor={theme.text.tertiary}
-                      keyboardType="decimal-pad"
-                      style={{ flex: 1, fontSize: 22, fontWeight: '700', color: theme.text.primary, paddingVertical: 0 }}
-                    />
-                    <Text style={{ fontSize: 14, color: theme.text.tertiary }}>/{payType === 'Hourly' ? 'hr' : 'day'}</Text>
+              {/* ── RENTAL / SPACE pay flow ── */}
+              {(listingType === 'RENTAL' || listingType === 'SPACE') && (
+                <>
+                  <View style={styles.fieldGroup}>
+                    <Text style={[styles.fieldLabel, { color: theme.text.secondary }]}>Rental Type</Text>
+                    <View style={styles.typeCardGrid}>
+                      {RENTAL_PAY_TYPES.map(({ value, label }) => {
+                        const active = rentalPayType === value
+                        return (
+                          <TouchableOpacity
+                            key={value}
+                            onPress={() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setRentalPayType(value); setError(undefined) }}
+                            style={[
+                              styles.payCard,
+                              {
+                                backgroundColor: active ? 'rgba(216,90,48,0.08)' : theme.bg.elevated,
+                                borderColor: active ? '#D85A30' : theme.border.default,
+                              },
+                            ]}
+                            activeOpacity={0.8}
+                          >
+                            <Text style={{ fontSize: 13, fontWeight: '700', color: active ? '#D85A30' : theme.text.primary, textAlign: 'center' }}>{label}</Text>
+                          </TouchableOpacity>
+                        )
+                      })}
+                    </View>
                   </View>
-                </View>
-              )}
 
-              {payType === 'Custom' && (
-                <View style={styles.fieldGroup}>
-                  <Text style={[styles.fieldLabel, { color: theme.text.secondary }]}>Describe the pay arrangement</Text>
-                  <TextInput
-                    value={payStructure}
-                    onChangeText={(v) => { setPayStructure(v); setError(undefined) }}
-                    placeholder="e.g. Booth rent $300/week"
-                    placeholderTextColor={theme.text.tertiary}
-                    style={[styles.textInput, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default, color: theme.text.primary }]}
-                  />
-                </View>
+                  {rentalPayType !== 'Custom' && (
+                    <>
+                      <View style={styles.fieldGroup}>
+                        <Text style={[styles.fieldLabel, { color: theme.text.secondary }]}>Rate</Text>
+                        <View style={[styles.rateInputWrap, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}>
+                          <Text style={{ fontSize: 20, color: theme.text.secondary }}>$</Text>
+                          <TextInput
+                            value={rateInput}
+                            onChangeText={(v) => { setRateInput(v); setError(undefined) }}
+                            placeholder="0"
+                            placeholderTextColor={theme.text.tertiary}
+                            keyboardType="decimal-pad"
+                            style={{ flex: 1, fontSize: 22, fontWeight: '700', color: theme.text.primary, paddingVertical: 0 }}
+                          />
+                        </View>
+                      </View>
+
+                      <View style={styles.fieldGroup}>
+                        <Text style={[styles.fieldLabel, { color: theme.text.secondary }]}>Frequency</Text>
+                        <View style={styles.splitCards}>
+                          {RENTAL_FREQ.map(({ value, label }) => {
+                            const active = rentalFreq === value
+                            return (
+                              <TouchableOpacity
+                                key={value}
+                                onPress={() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setRentalFreq(value) }}
+                                style={[
+                                  styles.splitCard,
+                                  {
+                                    backgroundColor: active ? 'rgba(216,90,48,0.08)' : theme.bg.elevated,
+                                    borderColor: active ? '#D85A30' : theme.border.default,
+                                  },
+                                ]}
+                                activeOpacity={0.8}
+                              >
+                                <Text style={{ fontSize: 14, fontWeight: '700', color: active ? '#D85A30' : theme.text.primary }}>{label}</Text>
+                              </TouchableOpacity>
+                            )
+                          })}
+                        </View>
+                      </View>
+                    </>
+                  )}
+
+                  {rentalPayType === 'Custom' && (
+                    <View style={styles.fieldGroup}>
+                      <Text style={[styles.fieldLabel, { color: theme.text.secondary }]}>Describe the rental arrangement</Text>
+                      <TextInput
+                        value={payStructure}
+                        onChangeText={(v) => { setPayStructure(v); setError(undefined) }}
+                        placeholder="e.g. $400/month all-inclusive"
+                        placeholderTextColor={theme.text.tertiary}
+                        style={[styles.textInput, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default, color: theme.text.primary }]}
+                      />
+                    </View>
+                  )}
+
+                  <View style={styles.fieldGroup}>
+                    <Text style={[styles.fieldLabel, { color: theme.text.secondary }]}>Security Deposit (optional)</Text>
+                    <View style={[styles.rateInputWrap, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}>
+                      <Text style={{ fontSize: 20, color: theme.text.secondary }}>$</Text>
+                      <TextInput
+                        value={rentalDeposit}
+                        onChangeText={setRentalDeposit}
+                        placeholder="0"
+                        placeholderTextColor={theme.text.tertiary}
+                        keyboardType="decimal-pad"
+                        style={{ flex: 1, fontSize: 22, fontWeight: '700', color: theme.text.primary, paddingVertical: 0 }}
+                      />
+                    </View>
+                  </View>
+
+                  {listingType === 'SPACE' && (
+                    <>
+                      <View style={styles.fieldGroup}>
+                        <Text style={[styles.fieldLabel, { color: theme.text.secondary }]}>Space Size (optional)</Text>
+                        <TextInput
+                          value={spaceSize}
+                          onChangeText={setSpaceSize}
+                          placeholder="e.g. 250 sqft"
+                          placeholderTextColor={theme.text.tertiary}
+                          style={[styles.textInput, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default, color: theme.text.primary }]}
+                        />
+                      </View>
+
+                      <View style={styles.fieldGroup}>
+                        <Text style={[styles.fieldLabel, { color: theme.text.secondary }]}>Amenities (comma-separated)</Text>
+                        <TextInput
+                          value={spaceAmenities}
+                          onChangeText={setSpaceAmenities}
+                          placeholder="e.g. Wi-Fi, Wash bowl, Parking"
+                          placeholderTextColor={theme.text.tertiary}
+                          style={[styles.textInput, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default, color: theme.text.primary }]}
+                        />
+                      </View>
+                    </>
+                  )}
+                </>
               )}
 
               <TouchableOpacity
@@ -360,7 +599,6 @@ export default function CreateJobPostScreen() {
                 onPress={() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setIsUrgent((v) => !v) }}
                 activeOpacity={0.8}
               >
-                <Text style={{ fontSize: 22 }}>🚨</Text>
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={[styles.urgentTitle, { color: isUrgent ? '#EF9F27' : theme.text.primary }]}>Mark as Urgent</Text>
                   <Text style={[styles.urgentSub, { color: theme.text.tertiary }]}>Gets priority placement in feed</Text>
@@ -376,7 +614,9 @@ export default function CreateJobPostScreen() {
           {step === 3 && (
             <View style={styles.stepContent}>
               <Text style={[styles.stepTitle, { color: theme.text.primary }]}>
-                How long is this position?
+                {listingType === 'RENTAL' || listingType === 'SPACE'
+                  ? 'How long to list this?'
+                  : 'How long is this position?'}
               </Text>
 
               <View style={styles.fieldGroup}>
@@ -446,7 +686,7 @@ export default function CreateJobPostScreen() {
           activeOpacity={0.85}
         >
           <Text style={[styles.ctaBtnText, { color: theme.text.inverse }]}>
-            {isSubmitting ? 'Posting…' : step < 3 ? 'Continue →' : 'Post Job →'}
+            {isSubmitting ? 'Posting…' : step < totalSteps ? 'Continue' : 'Post Now'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -518,6 +758,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+  },
+  listingTypeCard: {
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    gap: 2,
   },
   typeCard: {
     width: '47%',

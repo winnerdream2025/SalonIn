@@ -1,26 +1,34 @@
-import { IsBoolean, IsDateString, IsIn, IsOptional, IsString } from 'class-validator'
-import type { EmploymentType } from '@prisma/client'
+import { IsArray, IsBoolean, IsDateString, IsIn, IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator'
+import type { EmploymentType, ListingType } from '@prisma/client'
 
 export class UpdateJobPostDto {
   @IsOptional()
   @IsString()
+  @MaxLength(100)
   title?: string
 
   @IsOptional()
   @IsString()
+  @MaxLength(3000)
   description?: string
 
   @IsOptional()
   @IsString()
+  @MaxLength(50)
   specialty?: string
 
   @IsOptional()
   @IsString()
+  @MaxLength(200)
   payStructure?: string
 
   @IsOptional()
-  @IsIn(['FULL_TIME', 'PART_TIME', 'TEMPORARY', 'WEEKEND', 'EMERGENCY'])
+  @IsIn(['FULL_TIME', 'PART_TIME', 'TEMPORARY', 'WEEKEND', 'EMERGENCY', 'CONTRACT', 'SEASONAL', 'APPRENTICESHIP', 'FREELANCE'])
   type?: EmploymentType
+
+  @IsOptional()
+  @IsIn(['JOB', 'RENTAL', 'SPACE'])
+  listingType?: ListingType
 
   @IsOptional()
   @IsBoolean()
@@ -29,4 +37,28 @@ export class UpdateJobPostDto {
   @IsOptional()
   @IsDateString()
   expiresAt?: string
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  spacePhotos?: string[]
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  spaceSize?: string
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  spaceAmenities?: string[]
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  rentalDeposit?: number
+
+  @IsOptional()
+  @IsDateString()
+  availableFrom?: string
 }

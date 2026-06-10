@@ -88,6 +88,16 @@ api.interceptors.response.use(
       }
     }
 
-    return Promise.reject(err)
+    // Extract the API's human-readable error message from the response body
+    // GlobalExceptionFilter returns { success, error, code, statusCode }
+    if (err.response?.data && typeof err.response.data === 'object') {
+      const data = err.response.data as { error?: string; message?: string | string[] }
+      const msg =
+        data.error ??
+        (Array.isArray(data.message) ? data.message.join(', ') : data.message)
+      if (msg && typeof msg === 'string') return Promise.reject(new Error(msg))
+    }
+
+    return Promise.reject(new Error(err.message))
   },
 )

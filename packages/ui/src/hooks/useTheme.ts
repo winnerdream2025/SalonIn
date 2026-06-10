@@ -12,13 +12,13 @@ export interface Theme {
 
 const dark: Theme = {
   bg: {
-    base: '#0A0A0A',
-    surface: '#111111',
-    elevated: '#1A1A1A',
-    input: '#141414',
-    card: '#161616',
+    base: '#0D0A0B',
+    surface: '#15100F',
+    elevated: '#1E1619',
+    input: '#181213',
+    card: '#1C1417',
   },
-  border: { default: '#1E1E1E', subtle: '#2A2A2A' },
+  border: { default: '#261A1E', subtle: '#2E2024' },
   text: { primary: '#FFFFFF', secondary: '#999999', tertiary: '#555555', inverse: '#000000' },
   brand: { primary: '#D85A30', light: '#FF8C5A', dark: '#993C1D' },
   avail: { now: '#1D9E75', today: '#378ADD', weekend: '#EF9F27', none: '#555555' },
@@ -28,13 +28,13 @@ const dark: Theme = {
 
 const light: Theme = {
   bg: {
-    base: '#F8F6F3',
+    base: '#FAF5F6',
     surface: '#FFFFFF',
     elevated: '#FFFFFF',
-    input: '#F0EDE8',
-    card: '#FFFFFF',
+    input: '#F5ECEE',
+    card: '#FFF8F9',
   },
-  border: { default: '#E8E4DF', subtle: '#F0EDE8' },
+  border: { default: '#EDE0E3', subtle: '#F5ECF0' },
   text: { primary: '#1A1A1A', secondary: '#6B6B6B', tertiary: '#AAAAAA', inverse: '#FFFFFF' },
   brand: { primary: '#D85A30', light: '#F4A88A', dark: '#993C1D' },
   avail: { now: '#1D9E75', today: '#378ADD', weekend: '#EF9F27', none: '#555555' },
