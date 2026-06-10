@@ -11,6 +11,8 @@ import { Role } from '@salonin/types'
 
 export default function TabsLayout() {
   const { bottom } = useSafeAreaInsets()
+  const { width } = useWindowDimensions()
+  const isIPad = Platform.OS === 'ios' && width >= 768
   const user = useAuthStore((s) => s.user)
   const role = user?.role
   const isLoggedIn = user != null
@@ -29,9 +31,9 @@ export default function TabsLayout() {
           position: 'absolute',
           backgroundColor: theme.bg.surface,
           borderTopWidth: 0,
-          height: 56 + bottom,
-          paddingBottom: Math.max(bottom, 8),
-          paddingTop: 8,
+          height: isIPad ? 65 + bottom : 56 + bottom,
+          paddingBottom: isIPad ? Math.max(bottom, 12) : Math.max(bottom, 8),
+          paddingTop: isIPad ? 10 : 8,
           shadowColor: '#000000',
           shadowOffset: { width: 0, height: -2 },
           shadowOpacity: 0.08,
