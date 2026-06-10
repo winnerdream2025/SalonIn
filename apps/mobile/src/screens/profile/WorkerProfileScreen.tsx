@@ -38,7 +38,7 @@ export default function WorkerProfileScreen() {
     if (!currentUser) {
       Alert.alert(
         'Sign in to message',
-        'Create a free account to message beauty professionals on Salonin.',
+        'Create a free account to message beauty professionals on My Salon In.',
         [
           { text: 'Create account', onPress: () => router.push('/(auth)/register') },
           { text: 'Sign in', onPress: () => router.push('/(auth)/login') },

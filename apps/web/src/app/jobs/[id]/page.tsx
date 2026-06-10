@@ -17,9 +17,9 @@ async function getJob(id: string): Promise<JobPostDetail | null> {
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const job = await getJob(params.id)
-  if (!job) return { title: 'Job not found — Salonin' }
+  if (!job) return { title: 'Job not found — My Salon In' }
   return {
-    title: `${job.title} at ${job.salon.name} — Salonin`,
+    title: `${job.title} at ${job.salon.name} — My Salon In`,
     description: `${job.specialty} · ${job.payStructure} · ${job.salon.name}`,
   }
 }

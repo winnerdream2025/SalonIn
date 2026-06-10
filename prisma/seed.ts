@@ -561,7 +561,7 @@ function daysFromNow(n: number): Date {
 
 async function main() {
   const passwordHash = await bcrypt.hash('Password123!', 12)
-  console.log('🌱 Starting Salonin seed...\n')
+  console.log('🌱 Starting My Salon In seed...\n')
 
   // ── Clean old seed data ──────────────────────────────────────────────────
 

@@ -1,4 +1,4 @@
-# Salonin — Signing Credentials
+# My Salon In — Signing Credentials
 
 ## Android Keystore
 File: salonin-release.keystore

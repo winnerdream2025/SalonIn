@@ -25,7 +25,7 @@ if (!useLocationStore.getState().cityId) {
 const prefix = Linking.createURL('/')
 
 export const linkingConfig = {
-  prefixes: [prefix, 'https://salonin.com'],
+  prefixes: [prefix, 'https://mysalonin.com'],
   config: {
     screens: {
       'worker/[id]': 'worker/:id',
@@ -70,7 +70,7 @@ function RootLayout() {
     return (
       <View style={{ flex: 1, backgroundColor: '#0A0A0A', justifyContent: 'center', alignItems: 'center', gap: 16 }}>
         <Logo size={100} />
-        <Text style={{ color: '#FFFFFF', fontSize: 22, fontWeight: '700', letterSpacing: -0.5 }}>Salonin</Text>
+        <Text style={{ color: '#FFFFFF', fontSize: 22, fontWeight: '700', letterSpacing: -0.5 }}>My Salon In</Text>
         <Text style={{ color: '#555555', fontSize: 13, letterSpacing: 0.2 }}>Beauty workforce marketplace</Text>
       </View>
     )

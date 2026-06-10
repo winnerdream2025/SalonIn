@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Salonin",
+    "name": "My Salon In",
     "slug": "salonin",
     "owner": "winnerdream",
     "extra": {
@@ -36,11 +36,11 @@
       "buildNumber": "6",
       "supportsTablet": false,
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Salonin uses your location to show nearby beauty professionals and salons in your area.",
-        "NSCameraUsageDescription": "Salonin needs camera access to upload your profile photo and portfolio images.",
-        "NSPhotoLibraryUsageDescription": "Salonin needs photo library access to choose your profile and portfolio images.",
-        "NSPhotoLibraryAddUsageDescription": "Salonin saves your portfolio images to your photo library.",
-        "NSUserNotificationsUsageDescription": "Salonin sends notifications when salons message you or post new job opportunities.",
+        "NSLocationWhenInUseUsageDescription": "My Salon In uses your location to show nearby beauty professionals and salons in your area.",
+        "NSCameraUsageDescription": "My Salon In needs camera access to upload your profile photo and portfolio images.",
+        "NSPhotoLibraryUsageDescription": "My Salon In needs photo library access to choose your profile and portfolio images.",
+        "NSPhotoLibraryAddUsageDescription": "My Salon In saves your portfolio images to your photo library.",
+        "NSUserNotificationsUsageDescription": "My Salon In sends notifications when salons message you or post new job opportunities.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },

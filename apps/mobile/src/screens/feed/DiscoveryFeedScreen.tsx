@@ -431,14 +431,14 @@ export default function DiscoveryFeedScreen() {
                 <Text style={[styles.stateText, { color: theme.text.secondary }]}>
                   {search.trim().length > 0
                     ? 'Try a different search term'
-                    : 'Be the first to join Salonin in your area'}
+                    : 'Be the first to join My Salon In in your area'}
                 </Text>
                 {search.trim().length === 0 && (
                   <TouchableOpacity
                     style={[styles.emptyCtaBtn, { backgroundColor: theme.brand.primary }]}
                     onPress={() => {
                       void Share.share({
-                        message: 'Join me on Salonin — the app connecting beauty pros with top salons! https://salonin.app',
+                        message: 'Join me on My Salon In — the app connecting beauty pros with top salons! https://mysalonin.com',
                       })
                     }}
                     activeOpacity={0.8}

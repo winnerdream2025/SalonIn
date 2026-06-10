@@ -1,8 +1,8 @@
 import type { CSSProperties } from 'react'
 
 export const metadata = {
-  title: 'Privacy Policy — Salonin',
-  description: 'How Salonin collects and uses your data',
+  title: 'Privacy Policy — My Salon In',
+  description: 'How My Salon In collects and uses your data',
 }
 
 const page: CSSProperties = {
@@ -177,7 +177,7 @@ export default function PrivacyPage() {
           <ul style={listStyle}>
             <li>
               <span style={strong}>Access your data</span> — contact{' '}
-              <a href="mailto:privacy@salonin.com" style={link}>privacy@salonin.com</a>
+              <a href="mailto:support@mysalonin.com" style={link}>support@mysalonin.com</a>
             </li>
             <li>
               <span style={strong}>Delete your data</span> — Settings → Delete Account in the app
@@ -191,7 +191,7 @@ export default function PrivacyPage() {
         <section style={section}>
           <h2 style={h2Style}>6. Contact</h2>
           <p style={bodyText}>
-            <a href="mailto:privacy@salonin.com" style={link}>privacy@salonin.com</a>
+            <a href="mailto:support@mysalonin.com" style={link}>support@mysalonin.com</a>
           </p>
         </section>
 
@@ -200,7 +200,7 @@ export default function PrivacyPage() {
           <span aria-hidden="true">·</span>
           <a href="/terms" style={footerLink}>Terms</a>
           <span aria-hidden="true">·</span>
-          <span>© 2026 Salonin</span>
+          <span>© 2026 My Salon In</span>
         </footer>
 
       </div>

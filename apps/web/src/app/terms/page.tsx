@@ -1,8 +1,8 @@
 import type { CSSProperties } from 'react'
 
 export const metadata = {
-  title: 'Terms of Service — Salonin',
-  description: 'Salonin terms of service',
+  title: 'Terms of Service — My Salon In',
+  description: 'My Salon In terms of service',
 }
 
 const page: CSSProperties = {
@@ -107,7 +107,7 @@ export default function TermsPage() {
         <section style={section}>
           <h2 style={h2Style}>1. Platform Description</h2>
           <p style={bodyText}>
-            Salonin is a marketplace connecting beauty professionals with salon owners.
+            My Salon In is a marketplace connecting beauty professionals with salon owners.
             We are not a staffing agency.
           </p>
         </section>
@@ -115,8 +115,8 @@ export default function TermsPage() {
         <section style={section}>
           <h2 style={h2Style}>2. Independent Contractor Status</h2>
           <p style={bodyText}>
-            Beauty professionals on Salonin are independent contractors, not employees
-            of Salonin or any salon. Salonin does not control work schedules, rates,
+            Beauty professionals on My Salon In are independent contractors, not employees
+            of My Salon In or any salon. My Salon In does not control work schedules, rates,
             or methods.
           </p>
         </section>
@@ -144,7 +144,7 @@ export default function TermsPage() {
         <section style={section}>
           <h2 style={h2Style}>5. Account Termination</h2>
           <p style={bodyText}>
-            Salonin may suspend or terminate accounts that violate these terms,
+            My Salon In may suspend or terminate accounts that violate these terms,
             with or without prior notice.
           </p>
         </section>
@@ -152,7 +152,7 @@ export default function TermsPage() {
         <section style={section}>
           <h2 style={h2Style}>6. Limitation of Liability</h2>
           <p style={bodyText}>
-            Salonin is not liable for disputes between workers and salon owners,
+            My Salon In is not liable for disputes between workers and salon owners,
             quality of services, or lost income.
           </p>
         </section>
@@ -160,7 +160,7 @@ export default function TermsPage() {
         <section style={section}>
           <h2 style={h2Style}>7. Dispute Resolution</h2>
           <p style={bodyText}>
-            Any dispute arising from these Terms or your use of Salonin shall first
+            Any dispute arising from these Terms or your use of My Salon In shall first
             be attempted to be resolved through informal negotiation. If unresolved
             within 30 days, disputes shall be resolved through binding arbitration in
             accordance with the American Arbitration Association rules. The arbitration
@@ -181,7 +181,7 @@ export default function TermsPage() {
           <span aria-hidden="true">·</span>
           <a href="/terms" style={footerLink}>Terms</a>
           <span aria-hidden="true">·</span>
-          <span>© 2026 Salonin</span>
+          <span>© 2026 My Salon In</span>
         </footer>
 
       </div>

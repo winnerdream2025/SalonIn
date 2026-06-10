@@ -16,10 +16,10 @@ async function getSalon(id: string): Promise<SalonProfileFull | null> {
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const salon = await getSalon(params.id)
-  if (!salon) return { title: 'Salon not found — Salonin' }
+  if (!salon) return { title: 'Salon not found — My Salon In' }
   return {
-    title: `${salon.name} — Salonin`,
-    description: salon.description ?? `${salon.name} is a salon on Salonin${salon.isHiring ? ' currently hiring' : ''}.`,
+    title: `${salon.name} — My Salon In`,
+    description: salon.description ?? `${salon.name} is a salon on My Salon In${salon.isHiring ? ' currently hiring' : ''}.`,
   }
 }
 

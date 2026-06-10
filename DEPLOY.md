@@ -273,7 +273,7 @@ Add the `EAS_TOKEN` secret in your GitHub repo settings:
 ### Step 8 — Custom Domain (optional)
 
 1. In Railway, select your service → **"Settings"** → **"Networking"** → **"Custom Domain"**
-2. Add your domain (e.g. `api.salonin.com` or `app.salonin.com`)
+2. Add your domain (e.g. `api.mysalonin.com` or `app.mysalonin.com`)
 3. Railway provides a CNAME target — add this DNS record at your domain registrar:
    ```
    Type: CNAME

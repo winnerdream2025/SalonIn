@@ -17,11 +17,11 @@ async function getWorker(id: string): Promise<WorkerProfileFull | null> {
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const worker = await getWorker(params.id)
-  if (!worker) return { title: 'Worker not found — Salonin' }
+  if (!worker) return { title: 'Worker not found — My Salon In' }
   const specialty = worker.specialties[0] ?? 'Beauty Pro'
   return {
-    title: `${worker.name} · ${specialty} — Salonin`,
-    description: worker.bio ?? `${worker.name} is a beauty professional on Salonin.`,
+    title: `${worker.name} · ${specialty} — My Salon In`,
+    description: worker.bio ?? `${worker.name} is a beauty professional on My Salon In.`,
   }
 }
 

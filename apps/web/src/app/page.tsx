@@ -1,5 +1,5 @@
 export const metadata = {
-  title: 'Salonin — Beauty professionals, connected',
+  title: 'My Salon In — Beauty professionals, connected',
   description:
     'Connect with salon owners hiring now. Browse portfolios, check availability, and message directly — no middleman.',
 }
@@ -520,7 +520,7 @@ export default function LandingPage() {
             <span aria-hidden="true">·</span>
             <a href="/terms">Terms</a>
             <span aria-hidden="true">·</span>
-            <span>© 2026 Salonin</span>
+            <span>© 2026 My Salon In</span>
           </div>
         </div>
       </footer>

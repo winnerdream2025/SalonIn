@@ -21,7 +21,7 @@ export class EmailService {
     resetUrl: string,
     userName: string,
   ): Promise<void> {
-    const subject = 'Reset your Salonin password'
+    const subject = 'Reset your My Salon In password'
     const html = this.buildResetEmail(resetUrl, userName)
 
     if (!this.resend) {
@@ -31,7 +31,7 @@ export class EmailService {
 
     try {
       await this.resend.emails.send({
-        from: 'Salonin <noreply@salonin.app>',
+        from: 'My Salon In <noreply@mysalonin.com>',
         to: toEmail,
         subject,
         html,
@@ -65,7 +65,7 @@ export class EmailService {
                           font-size:28px;font-weight:900;color:#FFFFFF;
                           margin-bottom:12px">S</div>
               <div style="font-size:22px;font-weight:800;color:#FFFFFF;
-                          letter-spacing:-0.5px">Salonin</div>
+                          letter-spacing:-0.5px">My Salon In</div>
             </td>
           </tr>
           <tr>
@@ -77,7 +77,7 @@ export class EmailService {
               <p style="margin:0 0 24px;font-size:15px;color:#6B6B6B;
                         line-height:22px">
                 Hi ${userName}, we received a request to reset your
-                Salonin password. Click the button below to choose
+                My Salon In password. Click the button below to choose
                 a new password.
               </p>
               <a href="${resetUrl}"
@@ -99,8 +99,8 @@ export class EmailService {
             <td style="padding:20px 32px;border-top:1px solid #F0EDE8">
               <p style="margin:0;font-size:12px;color:#AAAAAA;
                         text-align:center">
-                Salonin &middot; Beauty Workforce Marketplace<br>
-                <a href="https://salonin-production-77fc.up.railway.app/privacy"
+                My Salon In &middot; Beauty Workforce Marketplace<br>
+                <a href="https://mysalonin.com/privacy"
                    style="color:#D85A30;text-decoration:none">Privacy Policy</a>
               </p>
             </td>

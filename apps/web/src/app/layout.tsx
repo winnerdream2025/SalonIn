@@ -4,20 +4,20 @@ import { Providers } from '../components/Providers'
 import { NavbarWrapper } from '../components/NavbarWrapper'
 
 export const metadata = {
-  title: 'Salonin — Where beauty pros get hired locally',
+  title: 'My Salon In — Beauty Workforce Marketplace',
   description: 'Connect with salon owners hiring now. Browse portfolios, check availability, and message directly.',
   icons: { icon: '/favicon.svg' },
   openGraph: {
-    title: 'Salonin',
-    description: 'Where beauty pros get hired locally.',
-    url: 'https://salonin-production-77fc.up.railway.app',
-    siteName: 'Salonin',
+    title: 'My Salon In',
+    description: 'Connect beauty professionals with salons hiring now.',
+    url: 'https://mysalonin.com',
+    siteName: 'My Salon In',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Salonin',
-    description: 'Where beauty pros get hired locally.',
+    title: 'My Salon In',
+    description: 'Connect beauty professionals with salons hiring now.',
   },
 }
 
