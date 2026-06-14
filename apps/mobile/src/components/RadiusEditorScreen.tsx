@@ -14,9 +14,9 @@ import MapView, { Circle, Marker, PROVIDER_DEFAULT, type Region } from 'react-na
 import Slider from '@react-native-community/slider'
 import * as Haptics from 'expo-haptics'
 import { Text, useTheme } from '@salonin/ui'
-import { searchCities } from '@salonin/config'
-import type { WorldCity } from '@salonin/config'
 import { useLocationStore, type RadiusMode } from '../store/locationStore'
+import { usePlaceSearch } from '../hooks/usePlaceSearch'
+import type { PlaceResult } from '../hooks/usePlaceSearch'
 
 interface Props {
   visible: boolean
@@ -38,10 +38,7 @@ export function RadiusEditorScreen({ visible, onClose, onApply }: Props) {
     lng: location.lng ?? -77.0369,
   })
 
-  const searchResults = useMemo(() => {
-    if (searchQuery.trim().length < 2) return []
-    return searchCities(searchQuery).slice(0, 6)
-  }, [searchQuery])
+  const { results: searchResults, isLoading: isSearching } = usePlaceSearch(showDropdown ? searchQuery : '')
 
   const initialRegion = useMemo(() => {
     const delta = (location.radiusMiles / 69) * 2.5
@@ -50,19 +47,19 @@ export function RadiusEditorScreen({ visible, onClose, onApply }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // only on mount — let MapView own its region after that
 
-  const handleSelectCity = useCallback(
-    (city: WorldCity) => {
+  const handleSelectPlace = useCallback(
+    (place: PlaceResult) => {
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
       location.setLocation({
-        cityId: city.id,
-        lat: city.lat,
-        lng: city.lng,
-        cityName: city.name,
-        countryCode: city.countryCode,
-        flag: city.flag,
+        cityId: place.cityId,
+        lat: place.lat,
+        lng: place.lng,
+        cityName: place.shortName,
+        countryCode: place.cityRef.countryCode,
+        flag: place.cityRef.flag,
       })
-      setMapCenter({ lat: city.lat, lng: city.lng })
-      setSearchQuery(city.state ? `${city.name}, ${city.state}` : city.name)
+      setMapCenter({ lat: place.lat, lng: place.lng })
+      setSearchQuery(place.shortName)
       setShowDropdown(false)
     },
     [location],
@@ -145,25 +142,30 @@ export function RadiusEditorScreen({ visible, onClose, onApply }: Props) {
           </MapView>
 
           {/* Dropdown overlay */}
-          {showDropdown && searchResults.length > 0 && (
+          {showDropdown && (searchResults.length > 0 || isSearching) && (
             <View style={[styles.dropdown, { backgroundColor: theme.bg.surface, shadowColor: theme.text.primary }]}>
-              {searchResults.map((city, idx) => (
-                <TouchableOpacity
-                  key={city.id}
-                  style={[
-                    styles.dropdownRow,
-                    { borderBottomColor: theme.border.subtle },
-                    idx === searchResults.length - 1 && { borderBottomWidth: 0 },
-                  ]}
-                  onPress={() => handleSelectCity(city)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="location-outline" size={18} color={theme.text.secondary} />
-                  <Text style={[styles.dropdownText, { color: theme.text.primary }]}>
-                    {city.state ? `${city.name}, ${city.state}` : city.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+              {isSearching && searchResults.length === 0 ? (
+                <View style={styles.dropdownRow}>
+                  <Ionicons name="search" size={18} color={theme.text.tertiary} />
+                  <Text style={[styles.dropdownText, { color: theme.text.tertiary }]}>Searching…</Text>
+                </View>
+              ) : (
+                searchResults.map((place, idx) => (
+                  <TouchableOpacity
+                    key={place.id}
+                    style={[
+                      styles.dropdownRow,
+                      { borderBottomColor: theme.border.subtle },
+                      idx === searchResults.length - 1 && { borderBottomWidth: 0 },
+                    ]}
+                    onPress={() => handleSelectPlace(place)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="location-outline" size={18} color={theme.text.secondary} />
+                    <Text style={[styles.dropdownText, { color: theme.text.primary }]}>{place.shortName}</Text>
+                  </TouchableOpacity>
+                ))
+              )}
             </View>
           )}
         </View>

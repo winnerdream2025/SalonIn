@@ -16,11 +16,12 @@ import { Ionicons } from '@expo/vector-icons'
 import MapView, { Circle, Marker, PROVIDER_DEFAULT } from 'react-native-maps'
 import * as Haptics from 'expo-haptics'
 import { Text, useTheme } from '@salonin/ui'
-import { searchCities, getNearbyCities } from '@salonin/config'
-import type { WorldCity } from '@salonin/config'
+import { getNearbyCities } from '@salonin/config'
 import { useLocationStore } from '../store/locationStore'
 import { useDeviceLocation } from '../hooks/useDeviceLocation'
 import { RadiusEditorScreen } from './RadiusEditorScreen'
+import { usePlaceSearch } from '../hooks/usePlaceSearch'
+import type { PlaceResult } from '../hooks/usePlaceSearch'
 
 interface Props {
   visible: boolean
@@ -42,7 +43,7 @@ export function LocationModal({ visible, onClose }: Props) {
   const lng = location.lng ?? -77.0369
   const cityName = location.cityName ?? 'Washington DC'
 
-  const searchResults = useMemo(() => searchCities(search), [search])
+  const { results: searchResults, isLoading: isSearching } = usePlaceSearch(showSearch ? search : '')
   const suggestedCities = useMemo(() => getNearbyCities(lat, lng, 4), [lat, lng])
 
   const mapDelta = useMemo(() => {
@@ -51,15 +52,15 @@ export function LocationModal({ visible, onClose }: Props) {
   }, [location.radiusMiles])
 
   const handleSelect = useCallback(
-    (city: WorldCity) => {
+    (place: PlaceResult) => {
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
       setLocation({
-        cityId: city.id,
-        lat: city.lat,
-        lng: city.lng,
-        cityName: city.name,
-        countryCode: city.countryCode,
-        flag: city.flag,
+        cityId: place.cityId,
+        lat: place.lat,
+        lng: place.lng,
+        cityName: place.shortName,
+        countryCode: place.cityRef.countryCode,
+        flag: place.cityRef.flag,
       })
       setSearch('')
       setShowSearch(false)
@@ -161,38 +162,30 @@ export function LocationModal({ visible, onClose }: Props) {
 
             <FlatList
               data={searchResults}
-              keyExtractor={(c) => c.id}
+              keyExtractor={(p) => p.id}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
-              renderItem={({ item }) => {
-                const selected = location.cityId === item.id
-                return (
-                  <TouchableOpacity
-                    style={[styles.cityRow, { borderBottomColor: theme.border.subtle }]}
-                    onPress={() => handleSelect(item)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.flag}>{item.flag}</Text>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.cityName, { color: theme.text.primary }]}>
-                        {item.name}
-                      </Text>
-                      <Text style={[styles.citySub, { color: theme.text.tertiary }]}>
-                        {item.state ? `${item.state}, ` : ''}
-                        {item.country}
-                      </Text>
-                    </View>
-                    {selected && (
-                      <Ionicons name="checkmark" size={18} color={theme.brand.primary} />
-                    )}
-                  </TouchableOpacity>
-                )
-              }}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[styles.cityRow, { borderBottomColor: theme.border.subtle }]}
+                  onPress={() => handleSelect(item)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.flag}>{item.cityRef.flag}</Text>
+                  <Text style={[styles.cityName, { color: theme.text.primary }]}>
+                    {item.shortName}
+                  </Text>
+                </TouchableOpacity>
+              )}
               ListEmptyComponent={
-                search.trim().length > 0 ? (
+                isSearching ? (
+                  <View style={styles.emptyWrap}>
+                    <Text style={[styles.emptyText, { color: theme.text.secondary }]}>Searching…</Text>
+                  </View>
+                ) : search.trim().length >= 2 ? (
                   <View style={styles.emptyWrap}>
                     <Text style={[styles.emptyText, { color: theme.text.secondary }]}>
-                      No cities found for "{search}"
+                      No results for "{search}"
                     </Text>
                   </View>
                 ) : null
@@ -302,7 +295,18 @@ export function LocationModal({ visible, onClose }: Props) {
                 <TouchableOpacity
                   key={city.id}
                   style={[styles.suggestedRow, { borderBottomColor: theme.border.subtle }]}
-                  onPress={() => handleSelect(city)}
+                  onPress={() => {
+                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+                    setLocation({
+                      cityId: city.id,
+                      lat: city.lat,
+                      lng: city.lng,
+                      cityName: city.name,
+                      countryCode: city.countryCode,
+                      flag: city.flag,
+                    })
+                    onClose()
+                  }}
                   activeOpacity={0.7}
                 >
                   <Ionicons name="search-outline" size={18} color={theme.text.tertiary} />
