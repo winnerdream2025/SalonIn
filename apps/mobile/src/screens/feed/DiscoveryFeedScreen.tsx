@@ -33,7 +33,7 @@ const SPECIALTIES = ['All', 'Available Now', 'Braiders', 'Nail Techs', 'Lash', '
 const SKELETON_COUNT = 6
 
 export default function DiscoveryFeedScreen() {
-  const { bottom, top } = useSafeAreaInsets()
+  const { bottom } = useSafeAreaInsets()
   const { theme } = useTheme()
   const cityId = useLocationStore((s) => s.cityId)
   const isGPSLocation = useLocationStore((s) => s.isGPSLocation)
@@ -98,81 +98,16 @@ export default function DiscoveryFeedScreen() {
 
   const cityLabel = isGPSLocation ? 'My location' : getCityLabel(cityId)
 
-  const SearchAndFilters = (
-    <View style={{ gap: 12 }}>
-      <View style={[styles.searchWrap, { backgroundColor: theme.bg.input }]}>
-        <Ionicons name="search" size={20} color={theme.text.tertiary} />
-        <TextInput
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Search workers, specialties..."
-          placeholderTextColor={theme.text.tertiary}
-          style={[styles.searchInput, { color: theme.text.primary }]}
-          returnKeyType="search"
-        />
-        <TouchableOpacity
-          onPress={() => setShowFilterModal(true)}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          style={{ position: 'relative' }}
-        >
-          <Ionicons name="options-outline" size={20} color={filterCount > 0 ? theme.brand.primary : theme.text.tertiary} />
-          {filterCount > 0 && (
-            <View style={{
-              position: 'absolute',
-              top: -4,
-              right: -4,
-              width: 8,
-              height: 8,
-              borderRadius: 4,
-              backgroundColor: theme.brand.primary,
-            }} />
-          )}
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterRow}
-      >
-        {SPECIALTIES.map((sp) => {
-          const active = selectedSpecialty === sp
-          return (
-            <TouchableOpacity
-              key={sp}
-              onPress={() => handleToggleSpecialty(sp)}
-              style={[
-                styles.filterPill,
-                {
-                  backgroundColor: active ? theme.brand.primary : theme.bg.card,
-                  borderColor: active ? theme.brand.primary : theme.border.default,
-                },
-              ]}
-            >
-              <Text
-                style={{
-                  fontSize: 13,
-                  fontWeight: '600',
-                  color: active ? '#FFFFFF' : theme.text.secondary,
-                }}
-              >
-                {sp}
-              </Text>
-            </TouchableOpacity>
-          )
-        })}
-      </ScrollView>
-    </View>
-  )
+  const openLocationModal = useCallback(() => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    setLocationModalVisible(true)
+  }, [])
 
   if (!cityId) {
     return (
       <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]}>
         <View style={styles.headerSection}>
-          <Text style={[styles.serifTitle, { color: theme.text.primary }]}>Workers</Text>
-          <Text style={[styles.subtitle, { color: theme.text.secondary }]}>
-            Find talented professionals ✨
-          </Text>
+          <Text style={[styles.serifTitle, { color: theme.text.primary }]}>Discover</Text>
         </View>
         <View style={styles.centerPane}>
           <Text style={[styles.locTitle, { color: theme.text.primary }]}>Where are you?</Text>
@@ -221,43 +156,93 @@ export default function DiscoveryFeedScreen() {
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]} edges={['top']}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <View style={[styles.headerSection, { paddingTop: top > 0 ? 8 : 16 }]}>
-          <View style={styles.headerTopRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.serifTitle, { color: theme.text.primary }]}>Workers</Text>
-              <Text style={[styles.subtitle, { color: theme.text.secondary }]}>
-                Find talented professionals ✨
-              </Text>
-            </View>
-            <View style={styles.headerRight}>
-              <TouchableOpacity
-                onPress={() => {
-                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                  setLocationModalVisible(true)
-                }}
-                style={[
-                  styles.locationPill,
-                  isGPSLocation
-                    ? { backgroundColor: 'rgba(29,158,117,0.12)', borderColor: 'rgba(29,158,117,0.3)' }
-                    : { backgroundColor: theme.bg.elevated, borderColor: theme.border.default },
-                ]}
-                activeOpacity={0.7}
+        {/* ── Compact title bar ── */}
+        <View style={[styles.titleBar, { borderBottomColor: theme.border.subtle }]}>
+          <Text style={[styles.serifTitle, { color: theme.text.primary }]}>Discover</Text>
+          <View style={styles.headerRight}>
+            <TouchableOpacity
+              onPress={openLocationModal}
+              style={[
+                styles.locationPill,
+                isGPSLocation
+                  ? { backgroundColor: 'rgba(29,158,117,0.12)', borderColor: 'rgba(29,158,117,0.3)' }
+                  : { backgroundColor: theme.bg.elevated, borderColor: theme.border.default },
+              ]}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="location-outline" size={13} color={isGPSLocation ? '#1D9E75' : theme.text.secondary} />
+              <Text
+                style={{ fontSize: 12, fontWeight: '600', color: isGPSLocation ? '#1D9E75' : theme.text.secondary }}
+                numberOfLines={1}
               >
-                <Ionicons name="location-outline" size={14} color={isGPSLocation ? '#1D9E75' : theme.text.secondary} />
-                <Text
-                  style={{ fontSize: 13, fontWeight: '600', color: isGPSLocation ? '#1D9E75' : theme.text.secondary }}
-                  numberOfLines={1}
-                >
-                  {cityLabel}
-                </Text>
-                <Ionicons name="chevron-down" size={14} color={isGPSLocation ? '#1D9E75' : theme.text.tertiary} />
-              </TouchableOpacity>
-              <NotificationBell />
-            </View>
+                {cityLabel}
+              </Text>
+              <Ionicons name="chevron-down" size={12} color={isGPSLocation ? '#1D9E75' : theme.text.tertiary} />
+            </TouchableOpacity>
+            <NotificationBell />
           </View>
-
-          {SearchAndFilters}
         </View>
+
+        {/* ── Search + filter button ── */}
+        <View style={[styles.searchRow, { backgroundColor: theme.bg.base }]}>
+          <View style={[styles.searchWrap, { backgroundColor: theme.bg.input }]}>
+            <Ionicons name="search" size={18} color={theme.text.tertiary} />
+            <TextInput
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Search workers, specialties..."
+              placeholderTextColor={theme.text.tertiary}
+              style={[styles.searchInput, { color: theme.text.primary }]}
+              returnKeyType="search"
+            />
+            {search.length > 0 && (
+              <TouchableOpacity onPress={() => setSearch('')} hitSlop={8}>
+                <Ionicons name="close-circle" size={16} color={theme.text.tertiary} />
+              </TouchableOpacity>
+            )}
+          </View>
+          <TouchableOpacity
+            onPress={() => setShowFilterModal(true)}
+            style={[
+              styles.filterBtn,
+              { backgroundColor: filterCount > 0 ? theme.brand.primary : theme.bg.elevated, borderColor: filterCount > 0 ? theme.brand.primary : theme.border.default },
+            ]}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="options-outline" size={18} color={filterCount > 0 ? '#FFFFFF' : theme.text.secondary} />
+            {filterCount > 0 && (
+              <Text style={styles.filterBadgeText}>{filterCount}</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* ── Specialty chips ── */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={[styles.chipsRow, { backgroundColor: theme.bg.base }]}
+        >
+          {SPECIALTIES.map((sp) => {
+            const active = selectedSpecialty === sp
+            return (
+              <TouchableOpacity
+                key={sp}
+                onPress={() => handleToggleSpecialty(sp)}
+                style={[
+                  styles.chip,
+                  {
+                    backgroundColor: active ? theme.brand.primary : theme.bg.card,
+                    borderColor: active ? theme.brand.primary : theme.border.default,
+                  },
+                ]}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '600', color: active ? '#FFFFFF' : theme.text.secondary }}>
+                  {sp}
+                </Text>
+              </TouchableOpacity>
+            )
+          })}
+        </ScrollView>
 
         <FlatList
           data={filteredWorkers}
@@ -371,69 +356,92 @@ export default function DiscoveryFeedScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
+  // no-city branch reuses this
   headerSection: {
     paddingHorizontal: 16,
     paddingBottom: 12,
     gap: 12,
   },
-  headerTopRow: {
+  titleBar: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   serifTitle: {
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-    fontSize: 34,
-    fontWeight: '900',
-    letterSpacing: -0.5,
-    lineHeight: 40,
-  },
-  subtitle: {
-    fontSize: 14,
-    fontStyle: 'italic',
-    marginTop: 2,
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: -0.3,
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginTop: 4,
+    gap: 8,
   },
   locationPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    gap: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
     borderRadius: 99,
     borderWidth: 1,
-    maxWidth: 160,
+    maxWidth: 140,
   },
-  searchWrap: {
+  searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    height: 48,
-    borderRadius: 24,
+    gap: 8,
     paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 6,
+  },
+  searchWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    height: 44,
+    borderRadius: 22,
+    paddingHorizontal: 14,
   },
   searchInput: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 14,
     paddingVertical: 0,
   },
-  filterRow: {
+  filterBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    height: 44,
+    paddingHorizontal: 14,
+    borderRadius: 22,
+    borderWidth: 1,
+  },
+  filterBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  chipsRow: {
     gap: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingBottom: 4,
-  },
-  filterPill: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingTop: 2,
+    paddingBottom: 8,
+  },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
     borderRadius: 18,
     borderWidth: 1,
-    height: 36,
+    height: 34,
     justifyContent: 'center',
   },
   listContent: { paddingTop: 4 },

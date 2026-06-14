@@ -54,7 +54,7 @@ export class JobsService {
       select: { userId: true },
     })
     const workerIds = nearbyWorkers.map((w) => w.userId)
-    this.notificationsService.notifyNewJobPost(workerIds, dto.title, salon.name).catch(() => {})
+    this.notificationsService.notifyNewJobPost(workerIds, dto.title, salon.name, post.id).catch(() => {})
 
     return post
   }
@@ -193,7 +193,7 @@ export class JobsService {
     })
 
     this.notificationsService
-      .sendPush(job.salon.userId, 'New applicant', `${worker.name} applied`)
+      .notifyNewApplication(job.salon.userId, worker.name, job.id, job.title)
       .catch(() => {})
 
     return { success: true }
@@ -230,12 +230,34 @@ export class JobsService {
     await this.assertOwnership(jobId, userId)
     const app = await this.prisma.jobApplication.findFirst({
       where: { id: applicationId, jobId },
+      include: { worker: { select: { userId: true, name: true } } },
     })
     if (!app) throw new NotFoundException('Application not found')
-    return this.prisma.jobApplication.update({
+
+    const updated = await this.prisma.jobApplication.update({
       where: { id: applicationId },
       data: { status: dto.status },
     })
+
+    if (dto.status === 'ACCEPTED' || dto.status === 'DECLINED') {
+      const job = await this.prisma.jobPost.findUnique({
+        where: { id: jobId },
+        include: { salon: { select: { name: true } } },
+      })
+      if (job) {
+        if (dto.status === 'ACCEPTED') {
+          this.notificationsService
+            .notifyApplicationAccepted(app.worker.userId, job.salon.name, jobId, job.title)
+            .catch(() => {})
+        } else {
+          this.notificationsService
+            .notifyApplicationDeclined(app.worker.userId, job.salon.name, jobId, job.title)
+            .catch(() => {})
+        }
+      }
+    }
+
+    return updated
   }
 
   async update(id: string, userId: string, dto: UpdateJobPostDto) {

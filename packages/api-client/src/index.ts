@@ -31,3 +31,6 @@ export { chatRequestsApi } from './chat-requests.api'
 export { specialtiesApi } from './specialties.api'
 
 export { reviewsApi } from './reviews.api'
+
+export { notificationsApi } from './notifications.api'
+export type { NotificationItem, NotificationsListResponse } from './notifications.api'

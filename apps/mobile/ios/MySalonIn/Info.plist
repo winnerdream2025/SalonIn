@@ -7,7 +7,7 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>$(DEVELOPMENT_LANGUAGE)</string>
     <key>CFBundleDisplayName</key>
-    <string>Salonin</string>
+    <string>My Salon In</string>
     <key>CFBundleExecutable</key>
     <string>$(EXECUTABLE_NAME)</string>
     <key>CFBundleIdentifier</key>
@@ -19,7 +19,7 @@
     <key>CFBundlePackageType</key>
     <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0.1</string>
+    <string>1.0.2</string>
     <key>CFBundleSignature</key>
     <string>????</string>
     <key>CFBundleURLTypes</key>
@@ -28,12 +28,12 @@
         <key>CFBundleURLSchemes</key>
         <array>
           <string>salonin</string>
-          <string>com.salonin.app</string>
+          <string>com.winnerdream.salonin</string>
         </array>
       </dict>
     </array>
     <key>CFBundleVersion</key>
-    <string>6</string>
+    <string>8</string>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
     <key>LSRequiresIPhoneOS</key>
@@ -46,22 +46,27 @@
       <true/>
     </dict>
     <key>NSCameraUsageDescription</key>
-    <string>Salonin needs camera access to upload your profile photo and portfolio images.</string>
+    <string>My Salon In needs camera access to upload your profile photo and portfolio images.</string>
+    <key>NSFaceIDUsageDescription</key>
+    <string>Allow $(PRODUCT_NAME) to access your Face ID biometric data.</string>
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>My Salon In uses your location to show nearby beauty professionals on the map.</string>
+    <key>NSLocationAlwaysUsageDescription</key>
+    <string>My Salon In uses your location to show nearby beauty professionals on the map.</string>
     <key>NSLocationWhenInUseUsageDescription</key>
-    <string>Salonin uses your location to show nearby beauty professionals and salons in your area.</string>
+    <string>My Salon In uses your location to show nearby beauty professionals and salons in your area.</string>
     <key>NSMicrophoneUsageDescription</key>
-    <string>Allow $(PRODUCT_NAME) to access your microphone</string>
+    <string>My Salon In needs microphone access to record video for your portfolio.</string>
     <key>NSPhotoLibraryAddUsageDescription</key>
-    <string>Salonin saves your portfolio images to your photo library.</string>
+    <string>My Salon In saves your portfolio images to your photo library.</string>
     <key>NSPhotoLibraryUsageDescription</key>
-    <string>Salonin needs photo library access to choose your profile and portfolio images.</string>
+    <string>My Salon In needs access to your photo library to upload profile and portfolio images.</string>
     <key>NSUserActivityTypes</key>
     <array>
       <string>$(PRODUCT_BUNDLE_IDENTIFIER).expo.index_route</string>
-      <string>$(PRODUCT_BUNDLE_IDENTIFIER).expo.index_route</string>
     </array>
     <key>NSUserNotificationsUsageDescription</key>
-    <string>Salonin sends notifications when salons message you or post new job opportunities.</string>
+    <string>My Salon In sends notifications when salons message you or post new job opportunities.</string>
     <key>UILaunchStoryboardName</key>
     <string>SplashScreen</string>
     <key>UIRequiredDeviceCapabilities</key>

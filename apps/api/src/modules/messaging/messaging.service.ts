@@ -224,7 +224,7 @@ export class MessagingService {
         sender?.workerProfile?.name ?? sender?.salonProfile?.name ?? 'Someone'
       const preview = content ?? '📷 Media'
 
-      await this.notificationsService.notifyNewMessage(other.userId, senderName, preview)
+      await this.notificationsService.notifyNewMessage(other.userId, senderName, preview, conversationId)
     } catch {
       // graceful fail
     }

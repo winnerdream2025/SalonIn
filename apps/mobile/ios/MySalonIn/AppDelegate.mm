@@ -23,9 +23,11 @@
 
 - (NSURL *)bundleURL
 {
-  NSURL *bundleURL = [[NSBundle mainBundle] URLForResource:@"main" withExtension:@"jsbundle"];
-  NSAssert(bundleURL != nil, @"main.jsbundle not found in app bundle. Make sure the 'Bundle React Native code and images' build phase ran successfully.");
-  return bundleURL;
+#if DEBUG
+  return [[RCTBundleURLProvider sharedSettings] jsBundleURLForBundleRoot:@".expo/.virtual-metro-entry"];
+#else
+  return [[NSBundle mainBundle] URLForResource:@"main" withExtension:@"jsbundle"];
+#endif
 }
 
 // Linking API

@@ -1,27 +1,37 @@
 import React from 'react'
-import { View, Pressable, StyleSheet, Alert } from 'react-native'
+import { View, Pressable, StyleSheet } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
-import { useTheme } from '@salonin/ui'
+import { router } from 'expo-router'
+import * as Haptics from 'expo-haptics'
+import { Text, useTheme } from '@salonin/ui'
+import { useNotificationCenter } from '../hooks/useNotificationCenter'
 
 interface NotificationBellProps {
-  hasUnread?: boolean
   size?: number
 }
 
-export function NotificationBell({ hasUnread = false, size = 24 }: NotificationBellProps) {
+export function NotificationBell({ size = 24 }: NotificationBellProps) {
   const { theme } = useTheme()
+  const { unreadCount } = useNotificationCenter()
 
   return (
     <Pressable
       onPress={() => {
-        Alert.alert('Notifications', 'Notifications coming soon')
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+        router.push('/notifications' as never)
       }}
       style={styles.container}
       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
     >
-      <Ionicons name="notifications-outline" size={size} color={theme.text.primary} />
-      {hasUnread && (
-        <View style={[styles.badge, { backgroundColor: '#E24B4A' }]} />
+      <Ionicons
+        name={unreadCount > 0 ? 'notifications' : 'notifications-outline'}
+        size={size}
+        color={theme.text.primary}
+      />
+      {unreadCount > 0 && (
+        <View style={[styles.badge, { backgroundColor: '#E24B4A' }]}>
+          <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+        </View>
       )}
     </Pressable>
   )
@@ -34,10 +44,19 @@ const styles = StyleSheet.create({
   },
   badge: {
     position: 'absolute',
-    top: 2,
-    right: 2,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    top: 0,
+    right: 0,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    paddingHorizontal: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '700',
+    lineHeight: 12,
   },
 })

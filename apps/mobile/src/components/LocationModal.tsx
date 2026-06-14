@@ -88,8 +88,10 @@ export function LocationModal({ visible, onClose }: Props) {
   const handleApplyRadius = useCallback(
     (miles: number, mode: 'suggested' | 'custom') => {
       setRadius(miles, mode)
+      setShowRadiusEditor(false)
+      onClose()
     },
-    [setRadius],
+    [setRadius, onClose],
   )
 
   if (showRadiusEditor) {

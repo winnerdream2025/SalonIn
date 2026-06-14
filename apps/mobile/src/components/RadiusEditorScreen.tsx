@@ -9,10 +9,11 @@ import {
   KeyboardAvoidingView,
   Keyboard,
   type TextInput as TextInputType,
+  type LayoutChangeEvent,
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
-import MapView, { Circle, Marker, PROVIDER_DEFAULT, type Region } from 'react-native-maps'
+import MapView, { PROVIDER_DEFAULT, type Region } from 'react-native-maps'
 import Slider from '@react-native-community/slider'
 import * as Haptics from 'expo-haptics'
 import { Text, useTheme } from '@salonin/ui'
@@ -30,25 +31,41 @@ export function RadiusEditorScreen({ visible, onClose, onApply }: Props) {
   const { theme } = useTheme()
   const insets = useSafeAreaInsets()
   const location = useLocationStore()
+  const mapRef = useRef<MapView>(null)
 
   const [mode, setMode] = useState<RadiusMode>(location.radiusMode)
   const [miles, setMiles] = useState(location.radiusMiles)
   const [searchQuery, setSearchQuery] = useState(location.cityName ?? '')
   const [showDropdown, setShowDropdown] = useState(false)
   const searchRef = useRef<TextInputType>(null)
-  const [mapCenter, setMapCenter] = useState({
-    lat: location.lat ?? 38.9072,
-    lng: location.lng ?? -77.0369,
+  const [mapContainerHeight, setMapContainerHeight] = useState(300)
+  const [currentLatDelta, setCurrentLatDelta] = useState(() => {
+    const delta = (location.radiusMiles / 69) * 2.5
+    return Math.max(0.02, Math.min(delta, 10))
   })
 
   const { results: searchResults, isLoading: isSearching } = usePlaceSearch(showDropdown ? searchQuery : '')
 
   const initialRegion = useMemo(() => {
-    const delta = (location.radiusMiles / 69) * 2.5
-    const d = Math.max(0.02, Math.min(delta, 10))
-    return { latitude: mapCenter.lat, longitude: mapCenter.lng, latitudeDelta: d, longitudeDelta: d }
+    const d = currentLatDelta
+    return {
+      latitude: location.lat ?? 38.9072,
+      longitude: location.lng ?? -77.0369,
+      latitudeDelta: d,
+      longitudeDelta: d,
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // only on mount — let MapView own its region after that
+  }, []) // only on mount — MapView owns its region after that
+
+  // Pixel radius: miles * (mapPixels / latDelta_miles)
+  const pixelRadius = useMemo(() => {
+    if (!mapContainerHeight || !currentLatDelta) return 0
+    return (miles * mapContainerHeight) / (currentLatDelta * 69)
+  }, [miles, mapContainerHeight, currentLatDelta])
+
+  const handleMapLayout = useCallback((e: LayoutChangeEvent) => {
+    setMapContainerHeight(e.nativeEvent.layout.height)
+  }, [])
 
   const handleSelectPlace = useCallback(
     (place: PlaceResult) => {
@@ -61,11 +78,17 @@ export function RadiusEditorScreen({ visible, onClose, onApply }: Props) {
         countryCode: place.cityRef.countryCode,
         flag: place.cityRef.flag,
       })
-      setMapCenter({ lat: place.lat, lng: place.lng })
+      mapRef.current?.animateToRegion({
+        latitude: place.lat,
+        longitude: place.lng,
+        latitudeDelta: currentLatDelta,
+        longitudeDelta: currentLatDelta,
+      }, 600)
       setSearchQuery(place.shortName)
       setShowDropdown(false)
+      Keyboard.dismiss()
     },
-    [location],
+    [location, currentLatDelta],
   )
 
   const handleBackPress = useCallback(() => {
@@ -80,9 +103,8 @@ export function RadiusEditorScreen({ visible, onClose, onApply }: Props) {
   const handleApply = useCallback(() => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     location.setRadius(miles, mode)
-    onApply(miles, mode)
-    onClose()
-  }, [miles, mode, location, onApply, onClose])
+    onApply(miles, mode) // parent (LocationModal) calls setRadius + onClose
+  }, [miles, mode, location, onApply])
 
   const handleModeChange = useCallback((newMode: RadiusMode) => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
@@ -107,15 +129,49 @@ export function RadiusEditorScreen({ visible, onClose, onApply }: Props) {
           <View style={{ width: 24 }} />
         </View>
 
-        {/* ── Search + dropdown + map (flex area) ── */}
-        <View style={styles.mapArea}>
-          {/* Search bar */}
-          <View style={[styles.searchBar, { backgroundColor: theme.bg.input }]}>
+        {/* ── Map area (flex 1) ── */}
+        <View style={styles.mapArea} onLayout={handleMapLayout}>
+          {/* Map — freely pannable/zoomable */}
+          <MapView
+            ref={mapRef}
+            style={StyleSheet.absoluteFillObject}
+            provider={PROVIDER_DEFAULT}
+            initialRegion={initialRegion}
+            onRegionChangeComplete={(r: Region) => {
+              setCurrentLatDelta(r.latitudeDelta)
+            }}
+            showsUserLocation
+            scrollEnabled
+            zoomEnabled
+            rotateEnabled={false}
+            pitchEnabled={false}
+            showsMyLocationButton={false}
+          />
+
+          {/* Fixed circle ring — map moves under this */}
+          <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+            {/* Ring centered by flex */}
+            <View style={styles.ringContainer}>
+              {pixelRadius > 8 && (
+                <View style={[
+                  styles.circleRing,
+                  { width: pixelRadius * 2, height: pixelRadius * 2, borderRadius: pixelRadius },
+                ]} />
+              )}
+            </View>
+            {/* Center dot absolutely over center */}
+            <View style={styles.dotContainer}>
+              <View style={styles.centerDot} />
+            </View>
+          </View>
+
+          {/* Search bar — floats above map */}
+          <View style={[styles.searchBar, { backgroundColor: theme.bg.surface }]}>
             <Ionicons name="search" size={18} color={theme.text.tertiary} />
             <TextInput
               ref={searchRef}
               style={[styles.searchInput, { color: theme.text.primary }]}
-              placeholder="Search by city or neighborhood…"
+              placeholder="Search city…"
               placeholderTextColor={theme.text.tertiary}
               value={searchQuery}
               onChangeText={(t) => {
@@ -137,30 +193,7 @@ export function RadiusEditorScreen({ visible, onClose, onApply }: Props) {
             )}
           </View>
 
-          {/* Map — behind dropdown */}
-          <MapView
-            style={StyleSheet.absoluteFillObject}
-            provider={PROVIDER_DEFAULT}
-            initialRegion={initialRegion}
-            onRegionChangeComplete={(r: Region) =>
-              setMapCenter({ lat: r.latitude, lng: r.longitude })
-            }
-            showsUserLocation
-            showsMyLocationButton
-          >
-            <Circle
-              center={{ latitude: mapCenter.lat, longitude: mapCenter.lng }}
-              radius={miles * 1609.34}
-              fillColor="rgba(216,90,48,0.15)"
-              strokeColor="#D85A30"
-              strokeWidth={2.5}
-            />
-            <Marker coordinate={{ latitude: mapCenter.lat, longitude: mapCenter.lng }}>
-              <View style={styles.markerDot} />
-            </Marker>
-          </MapView>
-
-          {/* Dropdown overlay */}
+          {/* Dropdown results */}
           {showDropdown && (searchResults.length > 0 || isSearching) && (
             <View style={[styles.dropdown, { backgroundColor: theme.bg.surface, shadowColor: theme.text.primary }]}>
               {isSearching && searchResults.length === 0 ? (
@@ -192,7 +225,7 @@ export function RadiusEditorScreen({ visible, onClose, onApply }: Props) {
         {/* ── Options panel ── */}
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={[styles.panel, { backgroundColor: theme.bg.base }]}>
-            {/* Suggested */}
+            {/* Suggested radius option */}
             <TouchableOpacity
               style={[styles.optionRow, { borderBottomColor: theme.border.subtle }]}
               onPress={() => handleModeChange('suggested')}
@@ -215,7 +248,7 @@ export function RadiusEditorScreen({ visible, onClose, onApply }: Props) {
               </View>
             </TouchableOpacity>
 
-            {/* Custom */}
+            {/* Custom radius option */}
             <TouchableOpacity
               style={[styles.optionRow, { borderBottomColor: mode === 'custom' ? theme.border.subtle : 'transparent' }]}
               onPress={() => handleModeChange('custom')}
@@ -238,7 +271,7 @@ export function RadiusEditorScreen({ visible, onClose, onApply }: Props) {
               </View>
             </TouchableOpacity>
 
-            {/* Slider + input */}
+            {/* Slider + miles input */}
             {mode === 'custom' && (
               <View style={styles.sliderSection}>
                 <Slider
@@ -290,9 +323,7 @@ export function RadiusEditorScreen({ visible, onClose, onApply }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -300,34 +331,65 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-  },
+  headerTitle: { fontSize: 17, fontWeight: '700' },
   mapArea: {
     flex: 1,
-    position: 'relative',
+    overflow: 'hidden',
   },
+  // Fixed ring overlay — children centered by flex
+  ringContainer: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  circleRing: {
+    borderWidth: 2.5,
+    borderColor: '#D85A30',
+    backgroundColor: 'rgba(216,90,48,0.10)',
+  },
+  dotContainer: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  centerDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#D85A30',
+    borderWidth: 2.5,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.35,
+    shadowRadius: 2,
+    elevation: 4,
+  },
+  // Search bar floats above map
   searchBar: {
+    position: 'absolute',
+    top: 12,
+    left: 16,
+    right: 16,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginHorizontal: 16,
-    marginTop: 4,
-    marginBottom: 8,
     height: 46,
     borderRadius: 23,
     paddingHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 6,
     zIndex: 10,
   },
-  searchInput: {
-    flex: 1,
-    fontSize: 15,
-    paddingVertical: 0,
-  },
+  searchInput: { flex: 1, fontSize: 15, paddingVertical: 0 },
   dropdown: {
     position: 'absolute',
-    top: 58,
+    top: 66,
     left: 16,
     right: 16,
     zIndex: 20,
@@ -346,35 +408,16 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  dropdownText: {
-    fontSize: 15,
-  },
-  markerDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: '#D85A30',
-    borderWidth: 2.5,
-    borderColor: '#FFFFFF',
-  },
-  panel: {
-    paddingHorizontal: 16,
-    paddingTop: 6,
-  },
+  dropdownText: { fontSize: 15 },
+  panel: { paddingHorizontal: 16, paddingTop: 6 },
   optionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  optionTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  optionSub: {
-    fontSize: 12,
-    marginTop: 2,
-  },
+  optionTitle: { fontSize: 15, fontWeight: '600' },
+  optionSub: { fontSize: 12, marginTop: 2 },
   radio: {
     width: 22,
     height: 22,
@@ -383,27 +426,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  radioDot: {
-    width: 9,
-    height: 9,
-    borderRadius: 5,
-    backgroundColor: '#fff',
-  },
-  sliderSection: {
-    paddingTop: 8,
-  },
-  slider: {
-    width: '100%',
-    height: 40,
-  },
-  sliderLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: -6,
-  },
-  sliderLabel: {
-    fontSize: 12,
-  },
+  radioDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: '#fff' },
+  sliderSection: { paddingTop: 8 },
+  slider: { width: '100%', height: 40 },
+  sliderLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: -6 },
+  sliderLabel: { fontSize: 12 },
   milesBox: {
     borderRadius: 12,
     borderWidth: 1,
@@ -411,23 +438,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     marginTop: 12,
   },
-  milesLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  milesValue: {
-    fontSize: 22,
-    fontWeight: '700',
-    paddingVertical: 0,
-    marginTop: 2,
-  },
-  note: {
-    fontSize: 12,
-    marginTop: 10,
-    marginBottom: 4,
-  },
+  milesLabel: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+  milesValue: { fontSize: 22, fontWeight: '700', paddingVertical: 0, marginTop: 2 },
+  note: { fontSize: 12, marginTop: 10, marginBottom: 4 },
   applyBtn: {
     backgroundColor: '#D85A30',
     borderRadius: 14,
@@ -436,10 +449,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 12,
   },
-  applyBtnText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
+  applyBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
 })
 

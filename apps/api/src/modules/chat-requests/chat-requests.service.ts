@@ -8,6 +8,7 @@ import {
 import { ChatRequestStatus } from '@prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
 import { MessagingGateway } from '../messaging/messaging.gateway'
+import { NotificationsService } from '../notifications/notifications.service'
 import type { ChatRequestPreview } from '@salonin/types'
 
 @Injectable()
@@ -15,6 +16,7 @@ export class ChatRequestsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly messagingGateway: MessagingGateway,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async create(senderId: string, receiverId: string): Promise<ChatRequestPreview> {
@@ -42,6 +44,12 @@ export class ChatRequestsService {
         },
       },
     })
+
+    const senderName =
+      req.sender.workerProfile?.name ?? req.sender.salonProfile?.name ?? 'Someone'
+    this.notificationsService
+      .notifyChatRequest(receiverId, senderName)
+      .catch(() => {})
 
     return this.toPreview(req)
   }
