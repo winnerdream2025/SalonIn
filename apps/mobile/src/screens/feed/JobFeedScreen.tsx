@@ -6,7 +6,6 @@ import {
   ScrollView,
   ActivityIndicator,
   StyleSheet,
-  Modal,
   Platform,
   Alert,
   TextInput,
@@ -18,8 +17,10 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { JobPostCard, JobPostCardSkeleton, Text, Button, useTheme } from '@salonin/ui'
 import type { JobPostCardData } from '@salonin/types'
+import { getCityLabel } from '@salonin/config'
 import { useJobFeed } from '../../hooks/useJobFeed'
 import { useLocationStore } from '../../store/locationStore'
+import { LocationModal } from '../../components/LocationModal'
 import { useAuthStore } from '../../store/authStore'
 import { NotificationBell } from '../../components/NotificationBell'
 import { jobsApi, messagesApi, parseApiError } from '@salonin/api-client'
@@ -35,20 +36,12 @@ const LISTING_TYPES = [
 
 const SPECIALTIES = ['All', 'Knotless', 'Braids', 'Color', 'Locs', 'Wigs', 'Nails', 'Lashes']
 
-const CITY_PRESETS = [
-  { cityId: 'dmv',     label: 'Washington DC / DMV', lat: 38.9072, lng: -77.0369 },
-  { cityId: 'atlanta', label: 'Atlanta, GA',          lat: 33.749,  lng: -84.388  },
-  { cityId: 'houston', label: 'Houston, TX',          lat: 29.7604, lng: -95.3698 },
-  { cityId: 'miami',   label: 'Miami, FL',            lat: 25.7617, lng: -80.1918 },
-]
-
 const SKELETON_COUNT = 5
 
 export default function JobFeedScreen() {
   const { bottom, top } = useSafeAreaInsets()
   const { theme } = useTheme()
   const cityId = useLocationStore((s) => s.cityId)
-  const setLocation = useLocationStore((s) => s.setLocation)
   const user = useAuthStore((s) => s.user)
   const isSalon = user?.role === 'SALON'
 
@@ -60,7 +53,7 @@ export default function JobFeedScreen() {
   const [jobFilters, setJobFilters] = useState<JobFilters>(EMPTY_JOB_FILTERS)
   const filterCount = activeFilterCount(jobFilters)
 
-  const cityLabel = CITY_PRESETS.find((c) => c.cityId === cityId)?.label ?? cityId?.toUpperCase() ?? ''
+  const cityLabel = getCityLabel(cityId)
   const specialtyFilter = selectedSpecialty === 'All' ? undefined : selectedSpecialty
 
   const { jobs, isLoading, isRefreshing, isLoadingMore, hasMore, error, refresh, loadMore } =
@@ -178,9 +171,11 @@ export default function JobFeedScreen() {
   }, [])
 
   const SearchAndFilters = (
-    <View style={{ gap: 12 }}>
+    <View style={[styles.filterCard, { backgroundColor: theme.bg.surface, borderColor: theme.border.subtle }]}>
+      <Text style={[styles.kicker, { color: theme.text.tertiary }]}>Curated beauty work near you</Text>
+
       {/* Search bar */}
-      <View style={[styles.searchWrap, { backgroundColor: theme.bg.input }]}>
+      <View style={[styles.searchWrap, { backgroundColor: theme.bg.input }]}> 
         <Ionicons name="search" size={20} color={theme.text.tertiary} />
         <TextInput
           value={search}
@@ -291,20 +286,20 @@ export default function JobFeedScreen() {
         <View style={styles.centerPane}>
           <Text style={[styles.locTitle, { color: theme.text.primary }]}>Where are you?</Text>
           <Text style={[styles.locSubtitle, { color: theme.text.secondary }]}>
-            Choose your city to find nearby job posts
+            Set your location to find nearby beauty jobs
           </Text>
-          <View style={styles.cityList}>
-            {CITY_PRESETS.map((city) => (
-              <TouchableOpacity
-                key={city.cityId}
-                style={[styles.cityPill, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}
-                onPress={() => setLocation(city.cityId, city.lat, city.lng)}
-              >
-                <Text style={{ fontSize: 15, color: theme.text.primary }}>{city.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <TouchableOpacity
+            style={[styles.searchCityBtn, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}
+            onPress={() => setShowLocationModal(true)}
+          >
+            <Ionicons name="search" size={16} color={theme.text.secondary} />
+            <Text style={{ fontSize: 15, color: theme.text.secondary }}>Search a city…</Text>
+          </TouchableOpacity>
         </View>
+        <LocationModal
+          visible={showLocationModal}
+          onClose={() => setShowLocationModal(false)}
+        />
       </SafeAreaView>
     )
   }
@@ -316,75 +311,47 @@ export default function JobFeedScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         {/* Header */}
-        <View style={[styles.headerSection, { paddingTop: top > 0 ? 8 : 16 }]}>
-          <View style={styles.headerTopRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.serifTitle, { color: theme.text.primary }]}>Jobs</Text>
-              <Text style={[styles.subtitle, { color: theme.text.secondary }]}>
-                Find your next opportunity ✨
-              </Text>
-            </View>
-            <View style={styles.headerRight}>
-              <TouchableOpacity
-                onPress={() => {
-                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                  setShowLocationModal(true)
-                }}
-                style={[styles.locationPill, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="location-outline" size={14} color={theme.text.secondary} />
-                <Text style={{ fontSize: 13, fontWeight: '600', color: theme.text.secondary }}>
-                  {cityId.toUpperCase()}
-                </Text>
-                <Ionicons name="chevron-down" size={14} color={theme.text.tertiary} />
-              </TouchableOpacity>
-              <NotificationBell />
-            </View>
+        <View style={[styles.headerSection, { paddingTop: top + 8 }]}>
+          <View style={styles.headerAccent} pointerEvents="none">
+            <View style={styles.accentGlow} />
+            <View style={styles.accentPill} />
           </View>
 
-          {SearchAndFilters}
-        </View>
-
-        {/* Location Modal */}
-        <Modal
-          visible={showLocationModal}
-          transparent
-          animationType="slide"
-          presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'overFullScreen'}
-          onRequestClose={() => setShowLocationModal(false)}
-        >
-          <View style={[styles.modalOverlay, Platform.OS === 'android' && { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
-            <View style={[styles.modalSheet, { backgroundColor: theme.bg.surface }]}>
-              <View style={[styles.modalHandle, { backgroundColor: theme.border.default }]} />
-              <View style={styles.modalHeader}>
-                <Text style={{ fontSize: 18, fontWeight: '800', color: theme.text.primary, letterSpacing: -0.3 }}>
-                  Change City
+          <View style={styles.headerContent}>
+            <View style={styles.headerTopRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.serifTitle, { color: theme.text.primary }]}>Beauty work</Text>
+                <Text style={[styles.subtitle, { color: theme.text.secondary }]}>
+                  Jobs, rentals, and spaces curated for SalonIn
                 </Text>
-                <TouchableOpacity onPress={() => setShowLocationModal(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Text style={{ fontSize: 15, color: theme.brand.primary, fontWeight: '600' }}>Done</Text>
-                </TouchableOpacity>
               </View>
-              {CITY_PRESETS.map((city) => (
+              <View style={styles.headerRight}>
                 <TouchableOpacity
-                  key={city.cityId}
                   onPress={() => {
-                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-                    setLocation(city.cityId, city.lat, city.lng)
-                    setShowLocationModal(false)
+                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                    setShowLocationModal(true)
                   }}
-                  style={[styles.cityRow, { borderBottomColor: theme.border.subtle }]}
+                  style={[styles.locationPill, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}
                   activeOpacity={0.7}
                 >
-                  <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text.primary, flex: 1 }}>{city.label}</Text>
-                  {cityId === city.cityId && (
-                    <Text style={{ color: theme.brand.primary, fontSize: 16, fontWeight: '700' }}>✓</Text>
-                  )}
+                  <Ionicons name="location-outline" size={14} color={theme.text.secondary} />
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: theme.text.secondary }} numberOfLines={1}>
+                    {cityLabel}
+                  </Text>
+                  <Ionicons name="chevron-down" size={14} color={theme.text.tertiary} />
                 </TouchableOpacity>
-              ))}
+                <NotificationBell />
+              </View>
             </View>
+
+            {SearchAndFilters}
           </View>
-        </Modal>
+        </View>
+
+        <LocationModal
+          visible={showLocationModal}
+          onClose={() => setShowLocationModal(false)}
+        />
 
         <JobFilterModal
           visible={showFilterModal}
@@ -495,6 +462,37 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 12,
     gap: 12,
+    position: 'relative',
+  },
+  headerAccent: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 180,
+    overflow: 'hidden',
+  },
+  accentGlow: {
+    position: 'absolute',
+    top: -80,
+    right: -60,
+    width: 240,
+    height: 240,
+    borderRadius: 200,
+    backgroundColor: 'rgba(216,90,48,0.12)',
+  },
+  accentPill: {
+    position: 'absolute',
+    top: 80,
+    left: -20,
+    width: 200,
+    height: 50,
+    borderRadius: 34,
+    backgroundColor: 'rgba(216,90,48,0.08)',
+    transform: [{ rotate: '-8deg' }],
+  },
+  headerContent: {
+    gap: 12,
   },
   headerTopRow: {
     flexDirection: 'row',
@@ -518,6 +516,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     marginTop: 4,
+  },
+  filterCard: {
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 14,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  },
+  kicker: {
+    fontSize: 12,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+    fontWeight: '700',
   },
   locationPill: {
     flexDirection: 'row',
@@ -561,15 +576,18 @@ const styles = StyleSheet.create({
   centerPane: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 64, gap: 12 },
   locTitle: { fontSize: 22, fontWeight: '700', textAlign: 'center' },
   locSubtitle: { textAlign: 'center', paddingHorizontal: 32, fontSize: 14 },
-  cityList: { gap: 12, width: '100%', paddingHorizontal: 32 },
-  cityPill: {
+  stateText: { textAlign: 'center', paddingHorizontal: 32 },
+  searchCityBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderRadius: 14,
     borderWidth: 1,
-    alignItems: 'center',
+    width: '80%',
   },
-  stateText: { textAlign: 'center', paddingHorizontal: 32 },
   emptyCtaBtn: {
     paddingHorizontal: 28,
     paddingVertical: 14,
@@ -596,33 +614,5 @@ const styles = StyleSheet.create({
     bottom: -18,
     fontSize: 11,
     fontWeight: '700',
-  },
-  modalOverlay: { flex: 1, justifyContent: 'flex-end' },
-  modalSheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingTop: 8,
-    paddingBottom: 32,
-  },
-  modalHandle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 8,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-  },
-  cityRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
   },
 })

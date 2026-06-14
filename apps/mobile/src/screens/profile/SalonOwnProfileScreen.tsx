@@ -8,6 +8,7 @@ import {
   StyleSheet,
   FlatList,
   Alert,
+  Linking,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
@@ -224,6 +225,17 @@ export default function SalonOwnProfileScreen() {
           </Button>
         </View>
 
+        {/* ── Legal ── */}
+        <View style={styles.legalRow}>
+          <TouchableOpacity onPress={() => void Linking.openURL('https://salonin-production-77fc.up.railway.app/terms')}>
+            <Text style={{ fontSize: 12, color: theme.text.tertiary, textDecorationLine: 'underline' }}>Terms of Service</Text>
+          </TouchableOpacity>
+          <Text style={{ fontSize: 12, color: theme.text.tertiary }}>·</Text>
+          <TouchableOpacity onPress={() => void Linking.openURL('https://salonin-production-77fc.up.railway.app/privacy')}>
+            <Text style={{ fontSize: 12, color: theme.text.tertiary, textDecorationLine: 'underline' }}>Privacy Policy</Text>
+          </TouchableOpacity>
+        </View>
+
         <Pressable onPress={() => void handleSignOut()} style={styles.signOutBtn}>
           <Text style={{ fontSize: 14, color: theme.text.secondary, fontWeight: '500' }}>Sign out</Text>
         </Pressable>
@@ -330,7 +342,8 @@ const styles = StyleSheet.create({
   emptyJobs: { borderRadius: 16, padding: 24, alignItems: 'center', gap: 16 },
 
   actionSection: { paddingHorizontal: 16, marginTop: 8 },
-  signOutBtn: { marginTop: 24, padding: 16, alignItems: 'center' },
+  legalRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 20, paddingHorizontal: 16 },
+  signOutBtn: { marginTop: 12, padding: 16, alignItems: 'center' },
   deleteBtn: { marginTop: 4, padding: 16, alignItems: 'center' },
   errorState: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, paddingHorizontal: 24 },
   errorText: { textAlign: 'center' },

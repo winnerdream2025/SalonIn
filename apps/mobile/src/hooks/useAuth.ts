@@ -1,19 +1,15 @@
 import { useCallback } from 'react'
 import { authApi } from '@salonin/api-client'
 import type { LoginPayload, RegisterPayload } from '@salonin/api-client'
+import { getCityById } from '@salonin/config'
 import { useAuthStore } from '../store/authStore'
 import { useLocationStore } from '../store/locationStore'
 
-const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
-  dmv:     { lat: 38.9072, lng: -77.0369 },
-  atlanta: { lat: 33.7490, lng: -84.3880 },
-  houston: { lat: 29.7604, lng: -95.3698 },
-  miami:   { lat: 25.7617, lng: -80.1918 },
-}
-
 function applyDefaultCity(): void {
-  if (!useLocationStore.getState().cityId) {
-    useLocationStore.getState().setLocation('dmv', CITY_COORDS.dmv.lat, CITY_COORDS.dmv.lng)
+  const store = useLocationStore.getState()
+  if (!store.cityId) {
+    const city = getCityById('dmv')!
+    store.setLocation({ cityId: city.id, lat: city.lat, lng: city.lng, cityName: city.name, countryCode: city.countryCode, flag: city.flag })
   }
 }
 

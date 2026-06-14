@@ -107,7 +107,7 @@ export default function JobsPage() {
             gap: 24,
           }}
         >
-          <span style={{ color: T.brand.primary, fontSize: 18, fontWeight: 800 }}>SalonIn</span>
+          <span style={{ color: T.brand.primary, fontSize: 18, fontWeight: 800 }}>My Salon In</span>
           <span style={{ color: T.text.secondary, fontSize: 13 }}>
             {isSalon ? 'My Job Posts' : 'Hiring Posts'}
           </span>

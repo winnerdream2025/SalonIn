@@ -159,6 +159,29 @@ export function JobPostCard({
           shadowColor: '#000000',
         }]}
       >
+        {/* ── META ROW: listing + employment type + pay ── */}
+        <View style={styles.metaTopRow}>
+          {job.listingType && (
+            <View style={[styles.typePill, { backgroundColor: (LISTING_PILL_COLOR[job.listingType] ?? LISTING_PILL_COLOR.JOB).bg }]}
+            >
+              <Text style={[styles.typePillText, { color: (LISTING_PILL_COLOR[job.listingType] ?? LISTING_PILL_COLOR.JOB).text }]}>
+                {LISTING_LABEL[job.listingType] ?? job.listingType}
+              </Text>
+            </View>
+          )}
+          <View style={[styles.typePill, { backgroundColor: (TYPE_PILL_COLOR[job.type] ?? TYPE_PILL_COLOR.FULL_TIME).bg }]}
+          >
+            <Text style={[styles.typePillText, { color: (TYPE_PILL_COLOR[job.type] ?? TYPE_PILL_COLOR.FULL_TIME).text }]}>
+              {typeLabel}
+            </Text>
+          </View>
+          {job.payStructure && (
+            <View style={[styles.payChip, { borderColor: theme.border.subtle, backgroundColor: theme.bg.elevated }]}>
+              <Text style={[styles.payChipText, { color: theme.text.secondary }]} numberOfLines={1}>{job.payStructure}</Text>
+            </View>
+          )}
+        </View>
+
         {/* ── HEADER: salon logo + name/meta + bookmark (top-right) ── */}
         <View style={styles.headerRow}>
           <Avatar
@@ -363,16 +386,22 @@ export function JobPostCardSkeleton() {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 16,
-    padding: 10,
+    borderRadius: 18,
+    padding: 14,
     marginHorizontal: 16,
-    marginBottom: 8,
+    marginBottom: 10,
     borderWidth: 1,
-    gap: 4,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
+    gap: 10,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  metaTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
   },
   // ── Header ──
   headerRow: {
@@ -474,6 +503,27 @@ const styles = StyleSheet.create({
     flexWrap: 'nowrap',
     gap: 5,
     overflow: 'hidden',
+  },
+  typePill: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+  },
+  typePillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  payChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    borderWidth: 1,
+    flexShrink: 1,
+  },
+  payChipText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   pill: {
     paddingHorizontal: 8,

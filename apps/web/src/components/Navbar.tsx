@@ -102,7 +102,7 @@ export function Navbar() {
 
       <header className="nb-root">
         <nav className="nb-inner" aria-label="Main navigation">
-          <a href="/" className="nb-logo">Salon<span>in</span></a>
+          <a href="/" className="nb-logo">My Salon <span>In</span></a>
 
           {!isAuthenticated ? (
             <div className="nb-links">

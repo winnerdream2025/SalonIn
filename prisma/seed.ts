@@ -297,6 +297,8 @@ const SALONS: SalonSeed[] = [
         isUrgent: false,
         daysUntilExpiry: 60,
         rentalDeposit: 350,
+        spaceSize: 'Station',
+        spaceAmenities: ['Wash bowl', 'Styling chair', 'Mirror', 'Storage', 'Parking'],
       },
       {
         title: 'Private Suite — Full Salon Room',

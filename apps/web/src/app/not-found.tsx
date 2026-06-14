@@ -13,8 +13,8 @@ export default function NotFoundPage() {
       }}
     >
       <a href="/" style={{ textDecoration: 'none', marginBottom: 40 }}>
-        <span style={{ fontSize: 26, fontWeight: 800, color: 'var(--color-text-primary)' }}>Salon</span>
-        <span style={{ fontSize: 26, fontWeight: 800, color: 'var(--color-brand)' }}>in</span>
+        <span style={{ fontSize: 26, fontWeight: 800, color: 'var(--color-text-primary)' }}>My Salon </span>
+        <span style={{ fontSize: 26, fontWeight: 800, color: 'var(--color-brand)' }}>In</span>
       </a>
 
       <p

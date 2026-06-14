@@ -37,8 +37,8 @@ export default function ForgotPasswordPage() {
       <div style={{ width: '100%', maxWidth: 400 }}>
         <div style={{ marginBottom: 32 }}>
           <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: -0.8, color: '#FFFFFF', margin: 0 }}>
-            <span style={{ color: '#FFFFFF' }}>Salon</span>
-            <span style={{ color: '#D85A30' }}>in</span>
+            <span style={{ color: '#FFFFFF' }}>My Salon </span>
+            <span style={{ color: '#D85A30' }}>In</span>
           </h1>
           <p style={{ fontSize: 13, color: '#9A9A9A', marginTop: 8 }}>
             Reset your password

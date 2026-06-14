@@ -17,12 +17,12 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
 import { ReviewsService } from './reviews.service'
 import { CreateReviewDto } from './dto/create-review.dto'
 
-@UseGuards(JwtAuthGuard)
 @Controller('reviews')
 export class ReviewsController {
   constructor(private readonly reviews: ReviewsService) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard)
   create(@CurrentUser() user: User, @Body() dto: CreateReviewDto) {
     return this.reviews.create(user.id, dto)
   }
@@ -37,6 +37,7 @@ export class ReviewsController {
   }
 
   @Get('can-review/:subjectId')
+  @UseGuards(JwtAuthGuard)
   canReview(
     @CurrentUser() user: User,
     @Param('subjectId') subjectId: string,
@@ -45,12 +46,14 @@ export class ReviewsController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   deleteReview(@CurrentUser() user: User, @Param('id') id: string) {
     return this.reviews.deleteReview(id, user.id, user.role)
   }
 
   @Patch(':id/reply')
+  @UseGuards(JwtAuthGuard)
   replyToReview(
     @CurrentUser() user: User,
     @Param('id') id: string,

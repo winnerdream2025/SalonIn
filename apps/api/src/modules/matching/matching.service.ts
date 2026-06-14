@@ -173,8 +173,7 @@ export class MatchingService {
           ))::integer AS "distanceMeters"
         FROM "WorkerProfile" wp
         WHERE
-          wp."cityId" = ${params.cityId}
-          AND wp.location IS NOT NULL
+          wp.location IS NOT NULL
           AND ST_DWithin(
             wp.location::geography,
             ST_SetSRID(ST_MakePoint(${params.lng}, ${params.lat}), 4326)::geography,
@@ -207,10 +206,10 @@ export class MatchingService {
     return rows
   }
 
-  private async getFallbackWorkers(cityId: string, specialty?: string) {
+  private async getFallbackWorkers(cityId: string | undefined, specialty?: string) {
     return this.prisma.workerProfile.findMany({
       where: {
-        cityId,
+        ...(cityId ? { cityId } : {}),
         user: { isActive: true },
         availability: { not: 'NOT_AVAILABLE' as Availability },
         ...(specialty ? { specialties: { has: specialty } } : {}),

@@ -6,7 +6,6 @@ import {
   ScrollView,
   ActivityIndicator,
   StyleSheet,
-  Modal,
   TextInput,
   KeyboardAvoidingView,
   Platform,
@@ -19,144 +18,24 @@ import * as Haptics from 'expo-haptics'
 import { WorkerCard, WorkerCardSkeleton, Text, Button, useTheme, ReportModal } from '@salonin/ui'
 import type { WorkerCardData } from '@salonin/types'
 import { reportsApi, messagesApi } from '@salonin/api-client'
+import { getCityLabel } from '@salonin/config'
 import { useAuthStore } from '../../store/authStore'
 import { useNearbyWorkers } from '../../hooks/useNearbyWorkers'
 import { useLocationStore } from '../../store/locationStore'
 import { useDeviceLocation } from '../../hooks/useDeviceLocation'
 import { NotificationBell } from '../../components/NotificationBell'
+import { LocationModal } from '../../components/LocationModal'
 import { WorkerFilterModal, activeWorkerFilterCount, EMPTY_WORKER_FILTERS } from '../../components/WorkerFilterModal'
 import type { WorkerFilters } from '../../components/WorkerFilterModal'
 
 const SPECIALTIES = ['All', 'Available Now', 'Braiders', 'Nail Techs', 'Lash', 'Makeup', 'Barbers']
 
-const CITY_PRESETS = [
-  { cityId: 'dmv',     label: 'Washington DC / DMV', short: 'DC / DMV',    lat: 38.9072, lng: -77.0369 },
-  { cityId: 'atlanta', label: 'Atlanta, GA',          short: 'Atlanta, GA', lat: 33.749,  lng: -84.388  },
-  { cityId: 'houston', label: 'Houston, TX',          short: 'Houston, TX', lat: 29.7604, lng: -95.3698 },
-  { cityId: 'miami',   label: 'Miami, FL',            short: 'Miami, FL',   lat: 25.7617, lng: -80.1918 },
-]
-
 const SKELETON_COUNT = 6
-
-function LocationModal({
-  visible,
-  onClose,
-}: {
-  visible: boolean
-  onClose: () => void
-}) {
-  const { theme } = useTheme()
-  const { bottom } = useSafeAreaInsets()
-  const { requestLocation, status } = useDeviceLocation()
-  const setLocation = useLocationStore((s) => s.setLocation)
-  const [query, setQuery] = useState('')
-
-  const filtered = query.trim().length > 0
-    ? CITY_PRESETS.filter((c) => c.label.toLowerCase().includes(query.toLowerCase()))
-    : CITY_PRESETS
-
-  const handleSelectCity = useCallback((city: typeof CITY_PRESETS[0]) => {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-    setLocation(city.cityId, city.lat, city.lng)
-    setQuery('')
-    onClose()
-  }, [setLocation, onClose])
-
-  const handleGPS = useCallback(async () => {
-    await requestLocation()
-    onClose()
-  }, [requestLocation, onClose])
-
-  return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <View style={[styles.modalSheet, { backgroundColor: theme.bg.surface }]}>
-          <View style={[styles.modalHandle, { backgroundColor: theme.border.default }]} />
-
-          <View style={styles.modalHeader}>
-            <Text style={{ fontSize: 18, fontWeight: '800', color: theme.text.primary, letterSpacing: -0.3 }}>
-              Change Location
-            </Text>
-            <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={{ fontSize: 15, color: theme.brand.primary, fontWeight: '600' }}>Done</Text>
-            </TouchableOpacity>
-          </View>
-
-          <TouchableOpacity
-            onPress={() => void handleGPS()}
-            disabled={status === 'requesting'}
-            style={[styles.gpsRow, { backgroundColor: 'rgba(29,158,117,0.08)', borderColor: 'rgba(29,158,117,0.3)' }]}
-            activeOpacity={0.8}
-          >
-            {status === 'requesting' ? (
-              <ActivityIndicator color="#1D9E75" size="small" />
-            ) : (
-              <Ionicons name="location" size={20} color="#1D9E75" />
-            )}
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: '700', color: '#1D9E75' }}>Use my location</Text>
-              <Text style={{ fontSize: 12, color: theme.text.tertiary, marginTop: 1 }}>
-                {status === 'requesting' ? 'Getting your location…' : 'Auto-detect via GPS'}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={16} color="#1D9E75" />
-          </TouchableOpacity>
-
-          <View style={[styles.searchWrap, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}>
-            <Ionicons name="search" size={18} color={theme.text.tertiary} />
-            <TextInput
-              value={query}
-              onChangeText={setQuery}
-              placeholder="Search city or area…"
-              placeholderTextColor={theme.text.tertiary}
-              style={{ flex: 1, fontSize: 15, color: theme.text.primary, paddingVertical: 0 }}
-              autoCapitalize="words"
-              returnKeyType="search"
-            />
-            {query.length > 0 && (
-              <TouchableOpacity onPress={() => setQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Ionicons name="close" size={16} color={theme.text.tertiary} />
-              </TouchableOpacity>
-            )}
-          </View>
-
-          <ScrollView
-            style={{ flex: 1 }}
-            contentContainerStyle={{ paddingBottom: bottom + 16 }}
-            keyboardShouldPersistTaps="handled"
-          >
-            {filtered.length === 0 ? (
-              <View style={{ alignItems: 'center', paddingTop: 32 }}>
-                <Text style={{ fontSize: 14, color: theme.text.tertiary }}>No cities found</Text>
-              </View>
-            ) : (
-              filtered.map((city) => (
-                <TouchableOpacity
-                  key={city.cityId}
-                  onPress={() => handleSelectCity(city)}
-                  style={[styles.cityRow, { borderBottomColor: theme.border.subtle }]}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="business" size={18} color={theme.text.secondary} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text.primary }}>{city.label}</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
-                </TouchableOpacity>
-              ))
-            )}
-          </ScrollView>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
-  )
-}
 
 export default function DiscoveryFeedScreen() {
   const { bottom, top } = useSafeAreaInsets()
   const { theme } = useTheme()
   const cityId = useLocationStore((s) => s.cityId)
-  const setLocation = useLocationStore((s) => s.setLocation)
   const isGPSLocation = useLocationStore((s) => s.isGPSLocation)
 
   const { requestLocation, status } = useDeviceLocation()
@@ -216,9 +95,7 @@ export default function DiscoveryFeedScreen() {
     setSelectedSpecialty((prev) => (prev === specialty ? 'All' : specialty))
   }, [])
 
-  const cityLabel = isGPSLocation
-    ? 'My location'
-    : CITY_PRESETS.find((c) => c.cityId === cityId)?.short ?? cityId?.toUpperCase() ?? ''
+  const cityLabel = isGPSLocation ? 'My location' : getCityLabel(cityId)
 
   const SearchAndFilters = (
     <View style={{ gap: 12 }}>
@@ -299,7 +176,7 @@ export default function DiscoveryFeedScreen() {
         <View style={styles.centerPane}>
           <Text style={[styles.locTitle, { color: theme.text.primary }]}>Where are you?</Text>
           <Text style={[styles.locSubtitle, { color: theme.text.secondary }]}>
-            Use GPS or choose your city to find talent nearby
+            Find talented beauty professionals near you
           </Text>
 
           {status === 'requesting' ? (
@@ -318,29 +195,24 @@ export default function DiscoveryFeedScreen() {
             </TouchableOpacity>
           )}
 
-          {status === 'denied' && (
-            <Text style={[styles.deniedText, { color: theme.text.secondary }]}>
-              Location access denied. Please select your city below.
-            </Text>
-          )}
-
           {status !== 'requesting' && (
             <>
               <Text style={[styles.orLabel, { color: theme.text.secondary }]}>or</Text>
-              <View style={styles.cityList}>
-                {CITY_PRESETS.map((city) => (
-                  <TouchableOpacity
-                    key={city.cityId}
-                    style={[styles.cityPill, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}
-                    onPress={() => setLocation(city.cityId, city.lat, city.lng)}
-                  >
-                    <Text style={{ fontSize: 15, color: theme.text.primary }}>{city.label}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              <TouchableOpacity
+                style={[styles.searchCityBtn, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}
+                onPress={() => setLocationModalVisible(true)}
+              >
+                <Ionicons name="search" size={16} color={theme.text.secondary} />
+                <Text style={{ fontSize: 15, color: theme.text.secondary }}>Search a city…</Text>
+              </TouchableOpacity>
             </>
           )}
         </View>
+
+        <LocationModal
+          visible={locationModalVisible}
+          onClose={() => setLocationModalVisible(false)}
+        />
       </SafeAreaView>
     )
   }
@@ -370,7 +242,7 @@ export default function DiscoveryFeedScreen() {
                 ]}
                 activeOpacity={0.7}
               >
-                <Ionicons name={isGPSLocation ? 'location' : 'business'} size={14} color={isGPSLocation ? '#1D9E75' : theme.text.secondary} />
+                <Ionicons name="location-outline" size={14} color={isGPSLocation ? '#1D9E75' : theme.text.secondary} />
                 <Text
                   style={{ fontSize: 13, fontWeight: '600', color: isGPSLocation ? '#1D9E75' : theme.text.secondary }}
                   numberOfLines={1}
@@ -400,11 +272,9 @@ export default function DiscoveryFeedScreen() {
           contentContainerStyle={[styles.listContent, { paddingBottom: 56 + bottom + 16 }]}
           ListHeaderComponent={
             isExpanded ? (
-              <View style={[styles.expandedBanner, { backgroundColor: 'rgba(216,90,48,0.08)', borderColor: 'rgba(216,90,48,0.25)' }]}>
-                <Text style={{ fontSize: 13, color: theme.brand.primary, textAlign: 'center' }}>
-                  No workers found nearby. Showing results within {usedRadius} miles.
-                </Text>
-              </View>
+              <Text style={[styles.expandedNote, { color: theme.text.tertiary }]}>
+                Showing results within {usedRadius} miles
+              </Text>
             ) : null
           }
           ListEmptyComponent={
@@ -567,13 +437,11 @@ const styles = StyleSheet.create({
   },
   listContent: { paddingTop: 4 },
   skeletonList: { gap: 8, paddingTop: 8 },
-  expandedBanner: {
-    marginHorizontal: 16,
-    marginBottom: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1,
+  expandedNote: {
+    fontSize: 11,
+    textAlign: 'center' as const,
+    marginBottom: 6,
+    marginTop: 2,
   },
   emptyCtaBtn: {
     paddingHorizontal: 28,
@@ -586,56 +454,19 @@ const styles = StyleSheet.create({
   centerPane: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 64, gap: 12 },
   locTitle: { fontSize: 22, fontWeight: '700', textAlign: 'center' },
   locSubtitle: { textAlign: 'center', paddingHorizontal: 32, fontSize: 14 },
-  cityList: { gap: 12, width: '100%', paddingHorizontal: 32 },
-  cityPill: {
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    alignItems: 'center',
-  },
   stateText: { textAlign: 'center', paddingHorizontal: 32 },
   gpsLoading: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8 },
   gpsBtn: { paddingHorizontal: 24, paddingVertical: 14, borderRadius: 14, alignItems: 'center', width: '100%' },
-  deniedText: { textAlign: 'center', paddingHorizontal: 32 },
   orLabel: { textAlign: 'center' },
-  modalSheet: {
-    flex: 1,
-    marginTop: 60,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingTop: 8,
-  },
-  modalHandle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 8,
-  },
-  modalHeader: {
+  searchCityBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  gpsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-  },
-  cityRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+    justifyContent: 'center',
+    gap: 8,
     paddingHorizontal: 20,
     paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderRadius: 14,
+    borderWidth: 1,
+    width: '100%',
   },
 })

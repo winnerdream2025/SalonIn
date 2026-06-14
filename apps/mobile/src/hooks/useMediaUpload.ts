@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { Alert, Linking } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 import { mediaApi } from '@salonin/api-client'
 import type { MediaFolder } from '@salonin/api-client'
@@ -24,8 +25,20 @@ export function useMediaUpload({
   const [isUploading, setIsUploading] = useState(false)
 
   const pickAndUpload = useCallback(async (): Promise<string | null> => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
-    if (status !== 'granted') return null
+    const { status, canAskAgain } = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (status !== 'granted') {
+      if (!canAskAgain) {
+        Alert.alert(
+          'Photo library access required',
+          'My Salon In needs access to your photo library to upload profile and portfolio images. Please enable it in Settings.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => void Linking.openSettings() },
+          ]
+        )
+      }
+      return null
+    }
 
     const mediaTypes =
       type === 'video'

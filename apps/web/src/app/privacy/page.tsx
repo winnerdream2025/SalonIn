@@ -107,7 +107,7 @@ export default function PrivacyPage() {
 
         <a href="/" style={logoLink}>
           <span style={logoText}>
-            Salon<span style={accent}>in</span>
+            My Salon <span style={accent}>In</span>
           </span>
         </a>
 

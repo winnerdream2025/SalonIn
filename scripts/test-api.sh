@@ -6,7 +6,7 @@
 
 set -eo pipefail
 
-BASE="https://salonin-production.up.railway.app"
+BASE="${API_URL:-https://salonin-production-77fc.up.railway.app}"
 TS=$(date +%s)
 WORKER_EMAIL="test-worker-${TS}@salonin.test"
 SALON_EMAIL="test-salon-${TS}@salonin.test"
@@ -376,6 +376,112 @@ call "POST /reports (duplicate — should 409 400 201)" "201 409 400" \
   -d "{\"reportedUserId\":\"$SALON_USER_ID\",\"type\":\"FAKE_PROFILE\"}" || true
 
 # ─────────────────────────────────────────────────────────────────────────────
+section "REVIEWS"
+# ─────────────────────────────────────────────────────────────────────────────
+
+# can-review (requires ACCEPTED application — these test users won't have one yet, so expect false)
+call "GET /reviews/can-review/:id (no eligibility yet)" "200" \
+  "$BASE/reviews/can-review/${SALON_USER_ID:-missing}" \
+  -H "Authorization: Bearer $WORKER_TOKEN" || true
+
+# list reviews for the worker user
+call "GET /reviews/user/:id (worker)" "200" \
+  "$BASE/reviews/user/${WORKER_ID:-missing}" || true
+
+# POST review — will likely 403 because no ACCEPTED application (expected)
+call "POST /reviews (no eligibility — expect 403 400 201)" "403 400 201" \
+  -X POST "$BASE/reviews" \
+  -H "Authorization: Bearer $WORKER_TOKEN" \
+  -d "{\"subjectId\":\"$SALON_USER_ID\",\"rating\":5,\"comment\":\"Great salon\"}" || true
+
+# ─────────────────────────────────────────────────────────────────────────────
+section "CHAT REQUESTS"
+# ─────────────────────────────────────────────────────────────────────────────
+
+call "POST /chat-requests (worker→salon)" "201" \
+  -X POST "$BASE/chat-requests" \
+  -H "Authorization: Bearer $WORKER_TOKEN" \
+  -d "{\"recipientId\":\"$SALON_USER_ID\"}" || true
+CHAT_REQ_ID=$(echo "$BODY" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4 || echo "")
+
+call "GET /chat-requests/received (salon)" "200" \
+  "$BASE/chat-requests/received" \
+  -H "Authorization: Bearer $SALON_TOKEN" || true
+
+if [[ -n "$CONV_ID" ]]; then
+  call "GET /chat-requests/conversation/:id" "200" \
+    "$BASE/chat-requests/conversation/${CONV_ID}" \
+    -H "Authorization: Bearer $WORKER_TOKEN" || true
+fi
+
+if [[ -n "$CHAT_REQ_ID" ]]; then
+  call "PATCH /chat-requests/:id (ACCEPTED)" "200" \
+    -X PATCH "$BASE/chat-requests/${CHAT_REQ_ID}" \
+    -H "Authorization: Bearer $SALON_TOKEN" \
+    -d '{"status":"ACCEPTED"}' || true
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+section "SPECIALTIES (PUBLIC)"
+# ─────────────────────────────────────────────────────────────────────────────
+
+call "GET /specialties (no auth)" "200" \
+  "$BASE/specialties" || true
+
+if echo "$BODY" | grep -q '"name"\|"category"\|\['; then
+  ok "GET /specialties — response has expected shape"
+else
+  fail "GET /specialties — unexpected body: $(echo "$BODY" | head -c 120)"
+  FAILED=$(( FAILED + 1 ))
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+section "ROLE GUARD / MIDDLEWARE BOUNDARIES"
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Worker trying salon-only endpoints → must get 403
+call "PATCH /salons/me with WORKER token (must 401 403)" "401 403" \
+  -X PATCH "$BASE/salons/me" \
+  -H "Authorization: Bearer $WORKER_TOKEN" \
+  -d '{"description":"Should not work"}' || true
+
+call "POST /jobs with WORKER token (must 401 403)" "401 403" \
+  -X POST "$BASE/jobs" \
+  -H "Authorization: Bearer $WORKER_TOKEN" \
+  -d '{"title":"Should fail"}' || true
+
+# Salon trying worker-only endpoints → must get 403
+call "PATCH /workers/availability with SALON token (must 401 403)" "401 403" \
+  -X PATCH "$BASE/workers/availability" \
+  -H "Authorization: Bearer $SALON_TOKEN" \
+  -d '{"availability":"NOW"}' || true
+
+# No auth on protected endpoints → 401
+call "GET /workers/me (no token — must 401)" "401" \
+  "$BASE/workers/me" || true
+
+call "GET /conversations (no token — must 401)" "401" \
+  "$BASE/conversations" || true
+
+# ─────────────────────────────────────────────────────────────────────────────
+section "AUTH — FORGOT PASSWORD"
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Always 200 (no email enumeration leak)
+call "POST /auth/forgot-password (valid email)" "200" \
+  -X POST "$BASE/auth/forgot-password" \
+  -d "{\"email\":\"$WORKER_EMAIL\"}" || true
+
+call "POST /auth/forgot-password (unknown email — no leak)" "200" \
+  -X POST "$BASE/auth/forgot-password" \
+  -d '{"email":"does-not-exist@salonin.test"}' || true
+
+# Invalid reset token → 400 or 404
+call "POST /auth/reset-password (bad token — expect 400 404)" "400 404" \
+  -X POST "$BASE/auth/reset-password" \
+  -d '{"token":"invalid_token_xyz","password":"NewPass999!"}' || true
+
+# ─────────────────────────────────────────────────────────────────────────────
 section "DEVICES"
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -449,3 +555,8 @@ echo "  SLOW (>500ms): $SLOW"
 echo "  AVG LATENCY:  ${AVG}ms"
 echo "  TOTAL CALLS:  $COUNT"
 echo "════════════════════════════════════════════"
+
+# Non-zero exit if any failures
+if (( FAILED > 0 )); then
+  exit 1
+fi

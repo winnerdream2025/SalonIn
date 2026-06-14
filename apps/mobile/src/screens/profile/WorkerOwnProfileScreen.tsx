@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react'
-import { View, ScrollView, Image, TouchableOpacity, Pressable, StyleSheet, Alert, Modal, ActivityIndicator } from 'react-native'
+import { View, ScrollView, Image, TouchableOpacity, Pressable, StyleSheet, Alert, Modal, ActivityIndicator, Linking } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Text, AvailabilityBadge, PortfolioGrid, Skeleton, Button, useTheme } from '@salonin/ui'
@@ -239,6 +239,17 @@ export default function WorkerOwnProfileScreen() {
           </Button>
         </View>
 
+        {/* ── Legal ── */}
+        <View style={styles.legalRow}>
+          <TouchableOpacity onPress={() => void Linking.openURL('https://salonin-production-77fc.up.railway.app/terms')}>
+            <Text style={{ fontSize: 12, color: theme.text.tertiary, textDecorationLine: 'underline' }}>Terms of Service</Text>
+          </TouchableOpacity>
+          <Text style={{ fontSize: 12, color: theme.text.tertiary }}>·</Text>
+          <TouchableOpacity onPress={() => void Linking.openURL('https://salonin-production-77fc.up.railway.app/privacy')}>
+            <Text style={{ fontSize: 12, color: theme.text.tertiary, textDecorationLine: 'underline' }}>Privacy Policy</Text>
+          </TouchableOpacity>
+        </View>
+
         <Pressable onPress={() => void handleSignOut()} style={styles.signOutBtn}>
           <Text style={{ fontSize: 14, color: theme.text.secondary, fontWeight: '500' }}>Sign out</Text>
         </Pressable>
@@ -396,7 +407,8 @@ const styles = StyleSheet.create({
   pendingBadgeText: { fontSize: 11, fontWeight: '700' },
 
   actionSection: { marginHorizontal: 16, marginTop: 6 },
-  signOutBtn: { marginTop: 24, padding: 16, alignItems: 'center' },
+  legalRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 20, paddingHorizontal: 16 },
+  signOutBtn: { marginTop: 12, padding: 16, alignItems: 'center' },
   deleteBtn: { marginTop: 4, padding: 16, alignItems: 'center' },
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 

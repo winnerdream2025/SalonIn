@@ -79,11 +79,10 @@ const styles = StyleSheet.create({
   primaryBtn: {
     width: '100%',
     height: 52,
-    backgroundColor: '#D85A30',
     borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 4,
   },
   primaryBtnText: {
     color: '#FFFFFF',
@@ -97,7 +96,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 32,
+    marginBottom: 0,
   },
   secondaryBtnText: {
     fontSize: 15,

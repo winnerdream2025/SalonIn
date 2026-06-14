@@ -397,7 +397,7 @@ export default function LandingPage() {
       {/* ── Navbar ── */}
       <header className="ln-nav">
         <nav className="ln-nav-inner" aria-label="Main navigation">
-          <a href="/" className="ln-logo">Salon<span>in</span></a>
+          <a href="/" className="ln-logo">My Salon <span>In</span></a>
           <div className="ln-nav-links">
             <a href="/workers" className="ln-nav-link">Browse workers</a>
             <a href="/login" className="ln-btn-outline">Sign in</a>
@@ -440,7 +440,7 @@ export default function LandingPage() {
                     <div className="ph-notch-row"><div className="ph-notch" /></div>
 
                     <div className="ph-header">
-                      <span className="ph-logo">Salon<span className="ph-accent">in</span></span>
+                      <span className="ph-logo">My Salon <span className="ph-accent">In</span></span>
                       <div className="ph-avatar-sm" />
                     </div>
 
@@ -514,7 +514,7 @@ export default function LandingPage() {
       {/* ── Footer ── */}
       <footer className="ln-footer">
         <div className="ln-footer-inner">
-          <a href="/" className="ln-footer-logo">Salon<span>in</span></a>
+          <a href="/" className="ln-footer-logo">My Salon <span>In</span></a>
           <div className="ln-footer-links">
             <a href="/privacy">Privacy Policy</a>
             <span aria-hidden="true">·</span>

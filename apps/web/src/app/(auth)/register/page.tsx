@@ -91,7 +91,7 @@ export default function RegisterPage() {
           Create account
         </h1>
         <p style={{ color: T.text.secondary, fontSize: 14, margin: '0 0 32px 0' }}>
-          Join SalonIn as a {role === 'WORKER' ? 'beauty professional' : 'salon owner'}
+          Join My Salon In as a {role === 'WORKER' ? 'beauty professional' : 'salon owner'}
         </p>
 
         <div style={{ display: 'flex', gap: 8, marginBottom: 28 }}>

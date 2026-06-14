@@ -72,8 +72,8 @@ export default async function WorkerProfilePage({ params }: { params: { id: stri
         }}
       >
         <a href="/" style={{ textDecoration: 'none' }}>
-          <span style={{ fontSize: 17, fontWeight: 800, color: 'var(--color-text-primary)' }}>Salon</span>
-          <span style={{ fontSize: 17, fontWeight: 800, color: 'var(--color-brand)' }}>in</span>
+          <span style={{ fontSize: 17, fontWeight: 800, color: 'var(--color-text-primary)' }}>My Salon </span>
+          <span style={{ fontSize: 17, fontWeight: 800, color: 'var(--color-brand)' }}>In</span>
         </a>
         <a href="/workers" style={{ color: 'var(--color-text-tertiary)', fontSize: 13, textDecoration: 'none' }}>
           ← Professionals

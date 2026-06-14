@@ -8,7 +8,7 @@
         "projectId": "4b8c3233-ffb4-4c1d-b74b-bebdf9298f7b"
       }
     },
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "scheme": "salonin",
     "icon": "./assets/icon.png",
@@ -20,10 +20,20 @@
     },
     "android": {
       "package": "com.salonin.app",
-      "versionCode": 6,
+      "versionCode": 7,
+      "compileSdkVersion": 35,
+      "targetSdkVersion": 35,
+      "minSdkVersion": 24,
       "permissions": [
         "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_COARSE_LOCATION"
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.VIBRATE",
+        "android.permission.INTERNET"
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -33,11 +43,13 @@
     },
     "ios": {
       "bundleIdentifier": "com.winnerdream.salonin",
-      "buildNumber": "7",
+      "buildNumber": "8",
       "supportsTablet": true,
+      "minimumOsVersion": "15.1",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "My Salon In uses your location to show nearby beauty professionals and salons in your area.",
         "NSCameraUsageDescription": "My Salon In needs camera access to upload your profile photo and portfolio images.",
+        "NSMicrophoneUsageDescription": "My Salon In needs microphone access to record video for your portfolio.",
         "NSPhotoLibraryUsageDescription": "My Salon In needs photo library access to choose your profile and portfolio images.",
         "NSPhotoLibraryAddUsageDescription": "My Salon In saves your portfolio images to your photo library.",
         "NSUserNotificationsUsageDescription": "My Salon In sends notifications when salons message you or post new job opportunities.",
@@ -47,7 +59,20 @@
     "plugins": [
       "expo-router",
       "expo-notifications",
-      "expo-location",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "My Salon In needs access to your photo library to upload profile and portfolio images.",
+          "cameraPermission": "My Salon In needs camera access to upload your profile photo and portfolio images.",
+          "microphonePermission": "My Salon In needs microphone access to record video for your portfolio."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "My Salon In uses your location to show nearby beauty professionals and salons in your area."
+        }
+      ],
       "expo-secure-store"
     ],
     "experiments": {

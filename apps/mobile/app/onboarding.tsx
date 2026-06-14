@@ -10,9 +10,12 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
+import * as Location from 'expo-location'
 import { Avatar, Text, Button, Input, useTheme } from '@salonin/ui'
 import { Availability } from '@salonin/types'
 import { workersApi, parseApiError } from '@salonin/api-client'
+import { findNearestCity, getCityLabel } from '@salonin/config'
+import { useLocationStore } from '../src/store/locationStore'
 import { useMyWorkerProfile } from '../src/hooks/useWorkerProfile'
 import { useMediaUpload } from '../src/hooks/useMediaUpload'
 
@@ -33,21 +36,6 @@ const AVAIL_LABELS: Record<Availability, string> = {
   [Availability.NOT_AVAILABLE]: 'Not Available',
 }
 
-type GeoPosition = { coords: { latitude: number; longitude: number } }
-function requestGeolocation(onSuccess: (pos: GeoPosition) => void): void {
-  const nav = (global as Record<string, unknown>)['navigator'] as
-    | { geolocation?: { getCurrentPosition?: (s: (p: GeoPosition) => void, e: () => void) => void } }
-    | undefined
-  nav?.geolocation?.getCurrentPosition?.(onSuccess, () => {})
-}
-
-const CITY_NAMES: Record<string, string> = {
-  dmv: 'DMV (DC / MD / VA)',
-  atlanta: 'Atlanta, GA',
-  houston: 'Houston, TX',
-  miami: 'Miami, FL',
-}
-
 export default function OnboardingScreen() {
   const { profile, isLoading } = useMyWorkerProfile()
   const { theme } = useTheme()
@@ -56,6 +44,7 @@ export default function OnboardingScreen() {
     type: 'image',
     allowsEditing: true,
   })
+  const setLocation = useLocationStore((s) => s.setLocation)
 
   const [step, setStep] = useState(0)
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
@@ -81,14 +70,29 @@ export default function OnboardingScreen() {
     }
   }, [pickAndUpload])
 
-  const handleShareLocation = useCallback(() => {
-    requestGeolocation((pos) => {
-      workersApi
-        .updateLocation(pos.coords.latitude, pos.coords.longitude)
-        .then(() => setLocationShared(true))
-        .catch(() => {})
-    })
-  }, [])
+  const handleShareLocation = useCallback(async () => {
+    try {
+      const { status, canAskAgain } = await Location.requestForegroundPermissionsAsync()
+      if (status !== 'granted') {
+        if (!canAskAgain) {
+          Alert.alert(
+            'Location access required',
+            'Enable location in Settings so nearby salons can discover you.',
+            [{ text: 'OK' }]
+          )
+        }
+        return
+      }
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
+      const { latitude: lat, longitude: lng } = pos.coords
+      const city = findNearestCity(lat, lng)
+      setLocation({ cityId: city.id, lat, lng, cityName: city.name, countryCode: city.countryCode, flag: city.flag })
+      await workersApi.updateLocation(lat, lng)
+      setLocationShared(true)
+    } catch {
+      Alert.alert('Could not get location', 'Please try again.')
+    }
+  }, [setLocation])
 
   const handleFinish = useCallback(async () => {
     const specialties = specialtiesText
@@ -114,7 +118,7 @@ export default function OnboardingScreen() {
     .filter(Boolean)
 
   const canAdvanceStep1 = specialtiesChips.length > 0
-  const cityLabel = CITY_NAMES[profile?.cityId ?? ''] ?? profile?.cityId ?? '—'
+  const cityLabel = getCityLabel(profile?.cityId)
 
   if (isLoading) {
     return (
@@ -256,7 +260,7 @@ export default function OnboardingScreen() {
               <Button
                 variant={locationShared ? 'secondary' : 'primary'}
                 fullWidth
-                onPress={handleShareLocation}
+                onPress={() => void handleShareLocation()}
                 disabled={locationShared}
               >
                 {locationShared ? '✓ Location shared' : 'Share my location'}

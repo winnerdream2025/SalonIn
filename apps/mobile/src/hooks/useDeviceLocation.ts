@@ -1,27 +1,12 @@
 import * as Location from 'expo-location'
 import { useCallback, useState } from 'react'
+import { Alert, Linking } from 'react-native'
 import { useLocationStore } from '../store/locationStore'
 import { workersApi } from '@salonin/api-client'
 import { useAuthStore } from '../store/authStore'
+import { findNearestCity } from '@salonin/config'
 
 export type LocationStatus = 'idle' | 'requesting' | 'granted' | 'denied' | 'error'
-
-const CITY_REFS = [
-  { id: 'dmv',     lat: 38.9072, lng: -77.0369 },
-  { id: 'atlanta', lat: 33.7490, lng: -84.3880 },
-  { id: 'houston', lat: 29.7604, lng: -95.3698 },
-  { id: 'miami',   lat: 25.7617, lng: -80.1918 },
-]
-
-const detectCity = (lat: number, lng: number): string => {
-  let nearest = CITY_REFS[0]!
-  let minDist = Infinity
-  for (const city of CITY_REFS) {
-    const d = Math.abs(lat - city.lat) + Math.abs(lng - city.lng)
-    if (d < minDist) { minDist = d; nearest = city }
-  }
-  return nearest.id
-}
 
 export const useDeviceLocation = () => {
   const setGPSLocation = useLocationStore((s) => s.setGPSLocation)
@@ -31,10 +16,20 @@ export const useDeviceLocation = () => {
   const requestLocation = useCallback(async (): Promise<boolean> => {
     setStatus('requesting')
     try {
-      const { status: permStatus } = await Location.requestForegroundPermissionsAsync()
+      const { status: permStatus, canAskAgain } = await Location.requestForegroundPermissionsAsync()
 
       if (permStatus !== 'granted') {
         setStatus('denied')
+        if (!canAskAgain) {
+          Alert.alert(
+            'Location access required',
+            'My Salon In uses your location to show nearby beauty professionals and salons. Please enable location access in Settings.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Open Settings', onPress: () => void Linking.openSettings() },
+            ]
+          )
+        }
         return false
       }
 
@@ -43,8 +38,15 @@ export const useDeviceLocation = () => {
       })
 
       const { latitude: lat, longitude: lng } = position.coords
-      const cityId = detectCity(lat, lng)
-      setGPSLocation(cityId, lat, lng)
+      const city = findNearestCity(lat, lng)
+      setGPSLocation({
+        cityId: city.id,
+        lat,
+        lng,
+        cityName: city.name,
+        countryCode: city.countryCode,
+        flag: city.flag,
+      })
 
       if (user?.role === 'WORKER') {
         workersApi.updateLocation(lat, lng).catch(() => {})

@@ -9,7 +9,8 @@
     "./cities": "./src/cities.ts",
     "./specialties": "./src/specialties.ts",
     "./professionals": "./src/professionals.ts",
-    "./compensation": "./src/compensation.ts"
+    "./compensation": "./src/compensation.ts",
+    "./world-cities": "./src/world-cities.ts"
   },
   "scripts": {
     "type-check": "tsc --noEmit"

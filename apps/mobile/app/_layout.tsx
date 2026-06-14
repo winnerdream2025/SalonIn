@@ -4,6 +4,7 @@ import { Stack, useRouter, useSegments } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import * as Linking from 'expo-linking'
 import { configureClient } from '@salonin/api-client'
+import { getCityById } from '@salonin/config'
 import { useNotifications } from '../src/hooks/useNotifications'
 import { useLocationStore } from '../src/store/locationStore'
 import { useAuthStore } from '../src/store/authStore'
@@ -18,9 +19,6 @@ import { Logo } from '@salonin/ui'
 //   enabled: !!process.env.EXPO_PUBLIC_SENTRY_DSN,
 // })
 
-if (!useLocationStore.getState().cityId) {
-  useLocationStore.getState().setLocation('dmv', 38.9072, -77.0369)
-}
 
 const prefix = Linking.createURL('/')
 
@@ -62,7 +60,15 @@ function RootLayout() {
       if (state === 'active') {
         const { cityId, lat, lng } = useLocationStore.getState()
         if (cityId && lat !== null && lng !== null) {
-          useLocationStore.getState().setLocation(cityId, lat, lng)
+          const city = getCityById(cityId)
+          useLocationStore.getState().setLocation({
+            cityId,
+            lat,
+            lng,
+            cityName: city?.name,
+            countryCode: city?.countryCode,
+            flag: city?.flag,
+          })
         }
       }
     })

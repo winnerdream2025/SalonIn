@@ -1,6 +1,6 @@
 import React from 'react'
 import { View, Text, Pressable, StyleSheet, Platform, useWindowDimensions } from 'react-native'
-import { Tabs } from 'expo-router'
+import { Tabs, router } from 'expo-router'
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuthStore } from '../../src/store/authStore'
@@ -93,6 +93,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 
       {/* Sparkle / AI search floating button */}
       <Pressable
+        onPress={() => router.push('/search')}
         style={[styles.searchBtn, { backgroundColor: tabBg, height: tabH, width: tabH }]}
         accessibilityRole="button"
         accessibilityLabel="Search"
