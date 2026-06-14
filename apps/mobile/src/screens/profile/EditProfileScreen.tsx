@@ -36,7 +36,7 @@ const AVAIL_OPTIONS: { value: Availability; icon: string; label: string; sub: st
   { value: Availability.NOT_AVAILABLE, icon: '⚫', label: 'Not available',    sub: 'Pause visibility',             color: '#6B6B6B' },
 ]
 
-const RADIUS_PRESETS = [5, 10, 15, 25, 50]
+const RADIUS_PRESETS = [5, 10, 15, 25, 50, 100]
 
 function TrackSlider({
   value,
@@ -649,19 +649,20 @@ export default function EditProfileScreen() {
                           },
                         ]}
                       >
-                        <Text style={{ fontSize: 14, fontWeight: '700', color: active ? '#fff' : theme.text.primary }}>{r}</Text>
-                        <Text style={{ fontSize: 11, color: active ? 'rgba(255,255,255,0.8)' : theme.text.tertiary }}>mi</Text>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: active ? '#fff' : theme.text.primary }}>{r}</Text>
+                        <Text style={{ fontSize: 10, color: active ? 'rgba(255,255,255,0.8)' : theme.text.tertiary }}>mi</Text>
                       </TouchableOpacity>
                     )
                   })}
                 </View>
-                <View style={[styles.radiusVisual, { borderColor: theme.border.default }]}>
-                  <View style={[styles.radiusRing, { borderColor: '#D85A3030', width: 120, height: 120, borderRadius: 60 }]} />
-                  <View style={[styles.radiusRing, { borderColor: '#D85A3055', width: 72, height: 72, borderRadius: 36 }]} />
-                  <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: '#D85A30' }} />
-                  <Text style={{ position: 'absolute', bottom: 8, fontSize: 11, color: theme.text.tertiary }}>
-                    {radiusMiles} mi radius
-                  </Text>
+                <View style={{ marginTop: 16 }}>
+                  <TrackSlider
+                    value={radiusMiles}
+                    min={1}
+                    max={100}
+                    label={(v) => `${v} mi`}
+                    onChange={(v) => setRadiusMiles(v)}
+                  />
                 </View>
               </View>
             )}
@@ -860,18 +861,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     gap: 2,
-  },
-  radiusVisual: {
-    height: 160,
-    borderRadius: 14,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  radiusRing: {
-    position: 'absolute',
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
   },
   rateInputWrap: {
     flexDirection: 'row',
