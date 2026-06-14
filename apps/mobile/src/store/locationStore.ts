@@ -9,6 +9,8 @@ export interface SetLocationParams {
   flag?: string
 }
 
+export type RadiusMode = 'suggested' | 'custom'
+
 interface LocationState {
   cityId: string | null
   cityName: string | null
@@ -17,10 +19,15 @@ interface LocationState {
   lat: number | null
   lng: number | null
   isGPSLocation: boolean
+  radiusMiles: number
+  radiusMode: RadiusMode
   setLocation: (params: SetLocationParams) => void
   setGPSLocation: (params: SetLocationParams) => void
+  setRadius: (miles: number, mode: RadiusMode) => void
   clearLocation: () => void
 }
+
+const DEFAULT_RADIUS_MILES = 15
 
 export const useLocationStore = create<LocationState>((set) => ({
   cityId: null,
@@ -30,10 +37,24 @@ export const useLocationStore = create<LocationState>((set) => ({
   lat: null,
   lng: null,
   isGPSLocation: false,
+  radiusMiles: DEFAULT_RADIUS_MILES,
+  radiusMode: 'suggested',
   setLocation: ({ cityId, lat, lng, cityName = null, countryCode = null, flag = null }) =>
     set({ cityId, lat, lng, cityName, countryCode, flag, isGPSLocation: false }),
   setGPSLocation: ({ cityId, lat, lng, cityName = null, countryCode = null, flag = null }) =>
     set({ cityId, lat, lng, cityName, countryCode, flag, isGPSLocation: true }),
+  setRadius: (miles, mode) =>
+    set({ radiusMiles: miles, radiusMode: mode }),
   clearLocation: () =>
-    set({ cityId: null, cityName: null, countryCode: null, flag: null, lat: null, lng: null, isGPSLocation: false }),
+    set({
+      cityId: null,
+      cityName: null,
+      countryCode: null,
+      flag: null,
+      lat: null,
+      lng: null,
+      isGPSLocation: false,
+      radiusMiles: DEFAULT_RADIUS_MILES,
+      radiusMode: 'suggested',
+    }),
 }))

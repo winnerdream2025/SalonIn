@@ -130,3 +130,18 @@ export const getCityLabel = (id: string | null | undefined): string => {
   if (!c) return id.toUpperCase()
   return c.countryCode === 'US' ? c.name : `${c.flag} ${c.name}`
 }
+
+export const getNearbyCities = (
+  lat: number,
+  lng: number,
+  count: number = 5,
+): WorldCity[] => {
+  return [...WORLD_CITIES]
+    .map((city) => ({
+      city,
+      dist: haversineKm(lat, lng, city.lat, city.lng),
+    }))
+    .sort((a, b) => a.dist - b.dist)
+    .slice(1, count + 1) // skip self (closest)
+    .map((x) => x.city)
+}

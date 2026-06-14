@@ -7,6 +7,7 @@ export {
   searchCities,
   getCityById,
   getCityLabel,
+  getNearbyCities,
 } from './world-cities'
 export type { WorldCity } from './world-cities'
 

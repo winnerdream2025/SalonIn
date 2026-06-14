@@ -37,6 +37,7 @@ export default function DiscoveryFeedScreen() {
   const { theme } = useTheme()
   const cityId = useLocationStore((s) => s.cityId)
   const isGPSLocation = useLocationStore((s) => s.isGPSLocation)
+  const radiusMiles = useLocationStore((s) => s.radiusMiles)
 
   const { requestLocation, status } = useDeviceLocation()
 
@@ -64,7 +65,7 @@ export default function DiscoveryFeedScreen() {
   const specialtyFilter = selectedSpecialty === 'All' ? undefined : selectedSpecialty
 
   const { workers, isLoading, isRefreshing, isLoadingMore, hasMore, error, isExpanded, usedRadius, refresh, loadMore } =
-    useNearbyWorkers({ specialty: specialtyFilter })
+    useNearbyWorkers({ specialty: specialtyFilter, radiusMiles })
 
   const filteredWorkers = useMemo(() => {
     let result = workers
