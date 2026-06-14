@@ -56,7 +56,8 @@ export class AuthService {
     })
 
     const tokens = await this.issueTokens(user.id, user.email, user.role)
-    return { ...tokens, user }
+    const { passwordHash: _pw, ...safeUser } = user
+    return { ...tokens, user: safeUser }
   }
 
   async login(dto: LoginDto) {
@@ -69,7 +70,8 @@ export class AuthService {
     if (!user.isActive) throw new UnauthorizedException('Account suspended')
 
     const tokens = await this.issueTokens(user.id, user.email, user.role)
-    return { ...tokens, user }
+    const { passwordHash: _pw, ...safeUser } = user
+    return { ...tokens, user: safeUser }
   }
 
   async refresh(refreshToken: string) {
@@ -81,7 +83,8 @@ export class AuthService {
 
     await this.redis.del(`refresh:${refreshToken}`)
     const tokens = await this.issueTokens(user.id, user.email, user.role)
-    return { ...tokens, user }
+    const { passwordHash: _pw, ...safeUser } = user
+    return { ...tokens, user: safeUser }
   }
 
   async logout(refreshToken: string): Promise<void> {

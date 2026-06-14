@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common'
+import { ConflictException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common'
 import { Cron, CronExpression } from '@nestjs/schedule'
 import { PrismaService } from '../../prisma/prisma.service'
 import { NotificationsService } from '../notifications/notifications.service'
@@ -186,7 +186,7 @@ export class JobsService {
     const existing = await this.prisma.jobApplication.findFirst({
       where: { jobId, workerId: worker.id },
     })
-    if (existing) return { success: true }
+    if (existing) throw new ConflictException('Already applied to this job')
 
     await this.prisma.jobApplication.create({
       data: { jobId, workerId: worker.id },
