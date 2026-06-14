@@ -1,8 +1,9 @@
 import React, { useState, useCallback } from 'react'
 import { View, ScrollView, Image, TouchableOpacity, Pressable, StyleSheet, Alert, Modal, ActivityIndicator, Linking } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
-import { Text, AvailabilityBadge, PortfolioGrid, Skeleton, Button, useTheme } from '@salonin/ui'
+import { Text, AvailabilityBadge, PortfolioGrid, Skeleton, useTheme } from '@salonin/ui'
 import type { Theme } from '@salonin/ui'
 import type { PortfolioItem } from '@salonin/types'
 import { Availability } from '@salonin/types'
@@ -20,6 +21,7 @@ export default function WorkerOwnProfileScreen() {
   const { applications } = useMyApplications()
   const pendingCount = applications.filter((a) => a.status === 'PENDING').length
   const { theme } = useTheme()
+  const { bottom } = useSafeAreaInsets()
 
   const AVAIL_OPTIONS: Array<{ value: Availability; label: string; color: string }> = [
     { value: Availability.NOW, label: 'Available now', color: theme.avail.now },
@@ -116,7 +118,7 @@ export default function WorkerOwnProfileScreen() {
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]} edges={['top', 'left', 'right']}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 52 + bottom + 24 }} showsVerticalScrollIndicator={false}>
 
         {/* ── Hero: blurred bg + circle photo ── */}
         <View style={styles.hero}>
@@ -217,46 +219,100 @@ export default function WorkerOwnProfileScreen() {
           <PortfolioGrid items={profile.portfolioItems} onPressItem={handlePressItem} isLoading={false} />
         </View>
 
-        {/* ── My Applications ── */}
-        <TouchableOpacity
-          style={[styles.listRow, { borderColor: theme.border.default, backgroundColor: theme.bg.elevated }]}
-          onPress={() => router.push('/worker/applications' as never)}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.listRowLabel, { color: theme.text.primary }]}>My Applications</Text>
-          {pendingCount > 0 && (
-            <View style={[styles.pendingBadge, { backgroundColor: theme.brand.primary }]}>
-              <Text style={[styles.pendingBadgeText, { color: theme.text.inverse }]}>{pendingCount}</Text>
+        {/* ── Action menu ── */}
+        <View style={[styles.menuCard, { backgroundColor: theme.bg.elevated, borderColor: theme.border.subtle }]}>
+          <TouchableOpacity
+            style={styles.menuRow}
+            onPress={() => router.push('/worker/edit')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}>
+              <Ionicons name="create-outline" size={18} color="#D85A30" />
             </View>
-          )}
-          <Text style={{ color: theme.text.secondary, fontSize: 18 }}>›</Text>
-        </TouchableOpacity>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Edit Profile</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
+          </TouchableOpacity>
 
-        {/* ── Edit Profile ── */}
-        <View style={styles.actionSection}>
-          <Button variant="secondary" fullWidth onPress={() => router.push('/worker/edit')}>
-            Edit Profile
-          </Button>
+          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
+
+          <TouchableOpacity
+            style={styles.menuRow}
+            onPress={() => router.push('/worker/applications' as never)}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}>
+              <Ionicons name="briefcase-outline" size={18} color="#D85A30" />
+            </View>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>My Applications</Text>
+            {pendingCount > 0 && (
+              <View style={[styles.pendingBadge, { backgroundColor: theme.brand.primary }]}>
+                <Text style={[styles.pendingBadgeText, { color: theme.text.inverse }]}>{pendingCount}</Text>
+              </View>
+            )}
+            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
+          </TouchableOpacity>
+
+          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
+
+          <TouchableOpacity
+            style={styles.menuRow}
+            onPress={() => router.push('/worker/portfolio')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}>
+              <Ionicons name="images-outline" size={18} color="#D85A30" />
+            </View>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Portfolio</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
+          </TouchableOpacity>
         </View>
 
-        {/* ── Legal ── */}
-        <View style={styles.legalRow}>
-          <TouchableOpacity onPress={() => void Linking.openURL('https://salonin-production-77fc.up.railway.app/terms')}>
-            <Text style={{ fontSize: 12, color: theme.text.tertiary, textDecorationLine: 'underline' }}>Terms of Service</Text>
+        {/* ── Account ── */}
+        <View style={[styles.menuCard, { backgroundColor: theme.bg.elevated, borderColor: theme.border.subtle }]}>
+          <TouchableOpacity
+            style={styles.menuRow}
+            onPress={() => void Linking.openURL('https://salonin-production-77fc.up.railway.app/terms')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.menuIcon, { backgroundColor: theme.bg.input }]}>
+              <Ionicons name="document-text-outline" size={18} color={theme.text.secondary} />
+            </View>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Terms of Service</Text>
+            <Ionicons name="open-outline" size={14} color={theme.text.tertiary} />
           </TouchableOpacity>
-          <Text style={{ fontSize: 12, color: theme.text.tertiary }}>·</Text>
-          <TouchableOpacity onPress={() => void Linking.openURL('https://salonin-production-77fc.up.railway.app/privacy')}>
-            <Text style={{ fontSize: 12, color: theme.text.tertiary, textDecorationLine: 'underline' }}>Privacy Policy</Text>
+
+          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
+
+          <TouchableOpacity
+            style={styles.menuRow}
+            onPress={() => void Linking.openURL('https://salonin-production-77fc.up.railway.app/privacy')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.menuIcon, { backgroundColor: theme.bg.input }]}>
+              <Ionicons name="shield-checkmark-outline" size={18} color={theme.text.secondary} />
+            </View>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Privacy Policy</Text>
+            <Ionicons name="open-outline" size={14} color={theme.text.tertiary} />
+          </TouchableOpacity>
+
+          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
+
+          <TouchableOpacity style={styles.menuRow} onPress={() => void handleSignOut()} activeOpacity={0.7}>
+            <View style={[styles.menuIcon, { backgroundColor: theme.bg.input }]}>
+              <Ionicons name="log-out-outline" size={18} color={theme.text.secondary} />
+            </View>
+            <Text style={[styles.menuLabel, { color: theme.text.secondary }]}>Sign Out</Text>
+          </TouchableOpacity>
+
+          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
+
+          <TouchableOpacity style={styles.menuRow} onPress={handleDeleteAccount} activeOpacity={0.7}>
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(220,38,38,0.08)' }]}>
+              <Ionicons name="trash-outline" size={18} color="#DC2626" />
+            </View>
+            <Text style={[styles.menuLabel, { color: '#DC2626' }]}>Delete Account</Text>
           </TouchableOpacity>
         </View>
-
-        <Pressable onPress={() => void handleSignOut()} style={styles.signOutBtn}>
-          <Text style={{ fontSize: 14, color: theme.text.secondary, fontWeight: '500' }}>Sign out</Text>
-        </Pressable>
-
-        <Pressable onPress={handleDeleteAccount} style={styles.deleteBtn}>
-          <Text style={{ fontSize: 13, color: theme.semantic.error.text, fontWeight: '500' }}>Delete Account</Text>
-        </Pressable>
       </ScrollView>
 
       <Modal visible={showAvailSheet} transparent animationType="slide">
@@ -309,7 +365,7 @@ function ProfileSkeleton({ theme }: { theme: Theme }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  content: { paddingBottom: 48 },
+  content: { paddingBottom: 96 },
 
   hero: {
     height: 240,
@@ -406,10 +462,29 @@ const styles = StyleSheet.create({
   },
   pendingBadgeText: { fontSize: 11, fontWeight: '700' },
 
-  actionSection: { marginHorizontal: 16, marginTop: 6 },
-  legalRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 20, paddingHorizontal: 16 },
-  signOutBtn: { marginTop: 12, padding: 16, alignItems: 'center' },
-  deleteBtn: { marginTop: 4, padding: 16, alignItems: 'center' },
+  menuCard: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    borderRadius: 18,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
+  },
+  menuRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  menuIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuLabel: { flex: 1, fontSize: 15, fontWeight: '500' },
+  menuDivider: { height: StyleSheet.hairlineWidth, marginLeft: 62 },
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
   sheetOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },

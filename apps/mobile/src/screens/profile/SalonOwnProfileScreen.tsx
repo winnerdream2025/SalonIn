@@ -10,7 +10,8 @@ import {
   Alert,
   Linking,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { Text, Button, Skeleton, JobPostCard, useTheme } from '@salonin/ui'
 import type { Theme } from '@salonin/ui'
@@ -24,6 +25,7 @@ import * as Haptics from 'expo-haptics'
 export default function SalonOwnProfileScreen() {
   const { salon, jobs, isLoading, error, refetch } = useMySalonProfile()
   const { theme } = useTheme()
+  const { bottom } = useSafeAreaInsets()
   const clearAuth = useAuthStore((s) => s.clearAuth)
   const { logout } = useAuth()
   const [hiringOverride, setHiringOverride] = useState<boolean | null>(null)
@@ -100,7 +102,7 @@ export default function SalonOwnProfileScreen() {
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]} edges={['top', 'left', 'right']}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 52 + bottom + 24 }} showsVerticalScrollIndicator={false}>
 
         {/* ── Cover + Logo overlap ── */}
         <View style={styles.cover}>
@@ -218,31 +220,65 @@ export default function SalonOwnProfileScreen() {
           )}
         </View>
 
-        {/* ── Edit Profile ── */}
-        <View style={styles.actionSection}>
-          <Button variant="secondary" fullWidth onPress={() => router.push('/salon/edit' as never)}>
-            Edit Salon
-          </Button>
+        {/* ── Action menu ── */}
+        <View style={[styles.menuCard, { backgroundColor: theme.bg.elevated, borderColor: theme.border.subtle }]}>
+          <TouchableOpacity style={styles.menuRow} onPress={() => router.push('/salon/edit' as never)} activeOpacity={0.7}>
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}>
+              <Ionicons name="create-outline" size={18} color="#D85A30" />
+            </View>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Edit Salon</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
+          </TouchableOpacity>
+
+          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
+
+          <TouchableOpacity style={styles.menuRow} onPress={() => router.push('/jobs/create')} activeOpacity={0.7}>
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}>
+              <Ionicons name="add-circle-outline" size={18} color="#D85A30" />
+            </View>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Post a Job</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
+          </TouchableOpacity>
         </View>
 
-        {/* ── Legal ── */}
-        <View style={styles.legalRow}>
-          <TouchableOpacity onPress={() => void Linking.openURL('https://salonin-production-77fc.up.railway.app/terms')}>
-            <Text style={{ fontSize: 12, color: theme.text.tertiary, textDecorationLine: 'underline' }}>Terms of Service</Text>
+        {/* ── Account ── */}
+        <View style={[styles.menuCard, { backgroundColor: theme.bg.elevated, borderColor: theme.border.subtle }]}>
+          <TouchableOpacity style={styles.menuRow} onPress={() => void Linking.openURL('https://salonin-production-77fc.up.railway.app/terms')} activeOpacity={0.7}>
+            <View style={[styles.menuIcon, { backgroundColor: theme.bg.input }]}>
+              <Ionicons name="document-text-outline" size={18} color={theme.text.secondary} />
+            </View>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Terms of Service</Text>
+            <Ionicons name="open-outline" size={14} color={theme.text.tertiary} />
           </TouchableOpacity>
-          <Text style={{ fontSize: 12, color: theme.text.tertiary }}>·</Text>
-          <TouchableOpacity onPress={() => void Linking.openURL('https://salonin-production-77fc.up.railway.app/privacy')}>
-            <Text style={{ fontSize: 12, color: theme.text.tertiary, textDecorationLine: 'underline' }}>Privacy Policy</Text>
+
+          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
+
+          <TouchableOpacity style={styles.menuRow} onPress={() => void Linking.openURL('https://salonin-production-77fc.up.railway.app/privacy')} activeOpacity={0.7}>
+            <View style={[styles.menuIcon, { backgroundColor: theme.bg.input }]}>
+              <Ionicons name="shield-checkmark-outline" size={18} color={theme.text.secondary} />
+            </View>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Privacy Policy</Text>
+            <Ionicons name="open-outline" size={14} color={theme.text.tertiary} />
+          </TouchableOpacity>
+
+          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
+
+          <TouchableOpacity style={styles.menuRow} onPress={() => void handleSignOut()} activeOpacity={0.7}>
+            <View style={[styles.menuIcon, { backgroundColor: theme.bg.input }]}>
+              <Ionicons name="log-out-outline" size={18} color={theme.text.secondary} />
+            </View>
+            <Text style={[styles.menuLabel, { color: theme.text.secondary }]}>Sign Out</Text>
+          </TouchableOpacity>
+
+          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
+
+          <TouchableOpacity style={styles.menuRow} onPress={handleDeleteAccount} activeOpacity={0.7}>
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(220,38,38,0.08)' }]}>
+              <Ionicons name="trash-outline" size={18} color="#DC2626" />
+            </View>
+            <Text style={[styles.menuLabel, { color: '#DC2626' }]}>Delete Account</Text>
           </TouchableOpacity>
         </View>
-
-        <Pressable onPress={() => void handleSignOut()} style={styles.signOutBtn}>
-          <Text style={{ fontSize: 14, color: theme.text.secondary, fontWeight: '500' }}>Sign out</Text>
-        </Pressable>
-
-        <Pressable onPress={handleDeleteAccount} style={styles.deleteBtn}>
-          <Text style={{ fontSize: 13, color: theme.semantic.error.text, fontWeight: '500' }}>Delete Account</Text>
-        </Pressable>
       </ScrollView>
     </SafeAreaView>
   )
@@ -277,7 +313,7 @@ function SalonProfileSkeleton({ theme }: { theme: Theme }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  content: { paddingBottom: 48 },
+  content: { paddingBottom: 96 },
 
   cover: {
     height: 160,
@@ -341,10 +377,30 @@ const styles = StyleSheet.create({
   jobCardWrap: { marginBottom: 8 },
   emptyJobs: { borderRadius: 16, padding: 24, alignItems: 'center', gap: 16 },
 
-  actionSection: { paddingHorizontal: 16, marginTop: 8 },
-  legalRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 20, paddingHorizontal: 16 },
-  signOutBtn: { marginTop: 12, padding: 16, alignItems: 'center' },
-  deleteBtn: { marginTop: 4, padding: 16, alignItems: 'center' },
+  menuCard: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 0,
+    borderRadius: 18,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
+  },
+  menuRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  menuIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuLabel: { flex: 1, fontSize: 15, fontWeight: '500' },
+  menuDivider: { height: StyleSheet.hairlineWidth, marginLeft: 62 },
   errorState: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, paddingHorizontal: 24 },
   errorText: { textAlign: 'center' },
 })

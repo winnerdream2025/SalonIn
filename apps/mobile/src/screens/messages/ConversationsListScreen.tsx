@@ -1,8 +1,9 @@
 import React, { useCallback } from 'react'
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { FlatList, StyleSheet, TouchableOpacity, View, Platform } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
-import { useTheme, ConversationItem, ConversationItemSkeleton } from '@salonin/ui'
+import { Ionicons } from '@expo/vector-icons'
+import { useTheme, ConversationItem, ConversationItemSkeleton, Text } from '@salonin/ui'
 import type { ConversationPreview } from '@salonin/types'
 import { useConversations } from '../../hooks/useConversations'
 import { useChatRequests } from '../../hooks/useChatRequests'
@@ -27,46 +28,52 @@ export default function ConversationsListScreen() {
     })
   }, [])
 
-  if (error != null) {
-    return (
-      <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]}>
-        <View style={styles.center}>
-          <Text style={{ fontSize: 48 }}>⚠️</Text>
-          <Text style={{ fontSize: 17, fontWeight: '700', color: theme.text.primary, marginTop: 12 }}>
-            Something went wrong
-          </Text>
-          <Text style={{ fontSize: 15, color: theme.text.secondary, textAlign: 'center', lineHeight: 22, marginTop: 4 }}>
-            Failed to load conversations
-          </Text>
-          <TouchableOpacity
-            onPress={() => void refresh()}
-            style={{ marginTop: 16, backgroundColor: theme.brand.primary, borderRadius: 22, paddingHorizontal: 20, height: 44, alignItems: 'center', justifyContent: 'center' }}
-            activeOpacity={0.8}
-          >
-            <Text style={{ fontSize: 15, fontWeight: '700', color: theme.text.inverse }}>Try again</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    )
-  }
-
   return (
-    <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]}>
-      <View style={[styles.header, { borderBottomColor: theme.border.default }]}>
-        <Text style={[styles.headerTitle, { color: theme.text.primary }]}>Messages</Text>
+    <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]} edges={['top']}>
+      {/* Decorative background accent */}
+      <View style={styles.accentWrap} pointerEvents="none">
+        <View style={[styles.accentBlob, { backgroundColor: 'rgba(216,90,48,0.09)' }]} />
+        <View style={[styles.accentPill, { backgroundColor: 'rgba(216,90,48,0.05)' }]} />
+      </View>
+
+      {/* Header */}
+      <View style={styles.header}>
+        <View>
+          <Text style={[styles.titleSerif, { color: theme.text.primary }]}>Inbox</Text>
+          {!isLoading && conversations.length > 0 && (
+            <Text style={[styles.headerSub, { color: theme.text.tertiary }]}>
+              {conversations.length} conversation{conversations.length !== 1 ? 's' : ''}
+            </Text>
+          )}
+        </View>
+
         <TouchableOpacity
           onPress={() => router.push('/chat-requests' as Parameters<typeof router.push>[0])}
-          style={[styles.requestsBtn, { backgroundColor: theme.bg.elevated }]}
-          activeOpacity={0.7}
+          style={[
+            styles.requestsBtn,
+            pendingCount > 0
+              ? { backgroundColor: '#D85A30' }
+              : { backgroundColor: theme.bg.elevated, borderColor: theme.border.default, borderWidth: 1 },
+          ]}
+          activeOpacity={0.8}
         >
-          <Text style={[styles.requestsBtnText, { color: theme.text.primary }]}>Requests</Text>
+          <Ionicons
+            name={pendingCount > 0 ? 'people' : 'people-outline'}
+            size={15}
+            color={pendingCount > 0 ? '#fff' : theme.text.secondary}
+          />
+          <Text style={[styles.requestsBtnText, { color: pendingCount > 0 ? '#fff' : theme.text.secondary }]}>
+            Requests
+          </Text>
           {pendingCount > 0 && (
-            <View style={[styles.requestsBadge, { backgroundColor: theme.brand.primary }]}>
-              <Text style={[styles.requestsBadgeText, { color: theme.text.inverse }]}>{pendingCount}</Text>
+            <View style={styles.requestsBadge}>
+              <Text style={styles.requestsBadgeText}>{pendingCount}</Text>
             </View>
           )}
         </TouchableOpacity>
       </View>
+
+      <View style={[styles.divider, { backgroundColor: theme.border.subtle }]} />
 
       <FlatList
         data={isLoading ? [] : conversations}
@@ -81,26 +88,39 @@ export default function ConversationsListScreen() {
                 <ConversationItemSkeleton key={i} />
               ))}
             </>
+          ) : error != null ? (
+            <View style={styles.emptyWrap}>
+              <View style={[styles.emptyIconBox, { backgroundColor: theme.bg.elevated }]}>
+                <Ionicons name="wifi-outline" size={26} color={theme.text.tertiary} />
+              </View>
+              <Text style={[styles.emptyTitle, { color: theme.text.primary }]}>Couldn't load messages</Text>
+              <Text style={[styles.emptySub, { color: theme.text.secondary }]}>Check your connection and try again</Text>
+              <TouchableOpacity
+                onPress={() => void refresh()}
+                style={[styles.retryBtn, { backgroundColor: theme.brand.primary }]}
+                activeOpacity={0.8}
+              >
+                <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }}>Retry</Text>
+              </TouchableOpacity>
+            </View>
           ) : (
-            <View style={styles.empty}>
-              <View style={[styles.emptyIcon, { backgroundColor: theme.bg.elevated }]}>
+            <View style={styles.emptyWrap}>
+              <View style={[styles.emptyIconBox, { backgroundColor: 'rgba(216,90,48,0.08)' }]}>
                 <Text style={styles.emptyEmoji}>💬</Text>
               </View>
-              <Text style={[styles.emptyTitle, { color: theme.text.primary }]}>
-                No conversations yet
-              </Text>
-              <Text style={[styles.emptySubtitle, { color: theme.text.secondary }]}>
-                Start a chat by visiting a worker or salon profile.
+              <Text style={[styles.emptyTitle, { color: theme.text.primary }]}>No conversations yet</Text>
+              <Text style={[styles.emptySub, { color: theme.text.secondary }]}>
+                Visit a worker or salon profile{'\n'}to start a conversation
               </Text>
             </View>
           )
         }
         refreshing={isRefreshing}
         onRefresh={() => void refresh()}
-        contentContainerStyle={[styles.list, { paddingBottom: 56 + bottom + 16 }]}
+        contentContainerStyle={[styles.list, { paddingBottom: 52 + bottom + 20 }]}
         showsVerticalScrollIndicator={false}
         ItemSeparatorComponent={() => (
-          <View style={[styles.separator, { backgroundColor: theme.border.default }]} />
+          <View style={[styles.separator, { backgroundColor: theme.border.subtle }]} />
         )}
       />
     </SafeAreaView>
@@ -109,52 +129,96 @@ export default function ConversationsListScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
+
+  accentWrap: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 220,
+    height: 180,
+    overflow: 'hidden',
+    pointerEvents: 'none',
+  } as const,
+  accentBlob: {
+    position: 'absolute',
+    top: -70,
+    right: -70,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+  },
+  accentPill: {
+    position: 'absolute',
+    top: 60,
+    right: 10,
+    width: 120,
+    height: 36,
+    borderRadius: 22,
+    transform: [{ rotate: '-15deg' }],
+  },
+
   header: {
-    height: 56,
-    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 16,
   },
-  headerTitle: { fontSize: 24, fontWeight: '800', letterSpacing: -0.5 },
+  titleSerif: {
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+    fontSize: 32,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+    lineHeight: 36,
+  },
+  headerSub: { fontSize: 13, marginTop: 2 },
+
   requestsBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    gap: 6,
+    paddingHorizontal: 13,
+    paddingVertical: 9,
     borderRadius: 22,
-    gap: 4,
   },
   requestsBtnText: { fontSize: 13, fontWeight: '600' },
   requestsBadge: {
     minWidth: 18,
     height: 18,
     borderRadius: 9,
+    backgroundColor: 'rgba(255,255,255,0.3)',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,
   },
-  requestsBadgeText: { fontSize: 10, fontWeight: '700' },
+  requestsBadgeText: { fontSize: 10, fontWeight: '800', color: '#fff' },
+
+  divider: { height: StyleSheet.hairlineWidth },
   list: { flexGrow: 1 },
-  separator: { height: 1, marginLeft: 72 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  errorText: { fontSize: 15 },
-  empty: {
-    flex: 1,
+  separator: { height: StyleSheet.hairlineWidth, marginLeft: 72 },
+
+  emptyWrap: {
+    alignItems: 'center',
+    paddingTop: 80,
+    paddingHorizontal: 40,
+    gap: 10,
+  },
+  emptyIconBox: {
+    width: 72,
+    height: 72,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 40,
-    gap: 12,
+    marginBottom: 6,
   },
-  emptyIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+  emptyEmoji: { fontSize: 30 },
+  emptyTitle: { fontSize: 18, fontWeight: '700', textAlign: 'center' },
+  emptySub: { fontSize: 14, textAlign: 'center', lineHeight: 21, color: 'gray' },
+  retryBtn: {
+    marginTop: 6,
+    paddingHorizontal: 24,
+    paddingVertical: 11,
+    borderRadius: 22,
   },
-  emptyEmoji: { fontSize: 28 },
-  emptyTitle: { fontSize: 17, fontWeight: '700' },
-  emptySubtitle: { fontSize: 15, textAlign: 'center', lineHeight: 22 },
 })
