@@ -171,16 +171,14 @@ export default function JobFeedScreen() {
   }, [])
 
   const SearchAndFilters = (
-    <View style={[styles.filterCard, { backgroundColor: theme.bg.surface, borderColor: theme.border.subtle }]}>
-      <Text style={[styles.kicker, { color: theme.text.tertiary }]}>Curated beauty work near you</Text>
-
+    <View style={styles.filtersWrap}>
       {/* Search bar */}
-      <View style={[styles.searchWrap, { backgroundColor: theme.bg.input }]}> 
-        <Ionicons name="search" size={20} color={theme.text.tertiary} />
+      <View style={[styles.searchWrap, { backgroundColor: theme.bg.input }]}>
+        <Ionicons name="search" size={18} color={theme.text.tertiary} />
         <TextInput
           value={search}
           onChangeText={setSearch}
-          placeholder="Search jobs, salons, skills..."
+          placeholder="Search jobs, salons, skills…"
           placeholderTextColor={theme.text.tertiary}
           style={[styles.searchInput, { color: theme.text.primary }]}
           returnKeyType="search"
@@ -190,22 +188,18 @@ export default function JobFeedScreen() {
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           style={{ position: 'relative' }}
         >
-          <Ionicons name="options-outline" size={20} color={filterCount > 0 ? theme.brand.primary : theme.text.tertiary} />
+          <Ionicons
+            name="options-outline"
+            size={18}
+            color={filterCount > 0 ? theme.brand.primary : theme.text.tertiary}
+          />
           {filterCount > 0 && (
-            <View style={{
-              position: 'absolute',
-              top: -4,
-              right: -4,
-              width: 8,
-              height: 8,
-              borderRadius: 4,
-              backgroundColor: theme.brand.primary,
-            }} />
+            <View style={styles.filterDot} />
           )}
         </TouchableOpacity>
       </View>
 
-      {/* Listing type pills */}
+      {/* Listing type + Specialty pills — single scrollable row */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -220,33 +214,19 @@ export default function JobFeedScreen() {
               style={[
                 styles.filterPill,
                 {
-                  backgroundColor: active ? theme.brand.primary : theme.bg.card,
-                  borderColor: active ? theme.brand.primary : theme.border.default,
+                  backgroundColor: active ? '#D85A30' : theme.bg.elevated,
+                  borderColor: active ? '#D85A30' : theme.border.default,
                 },
               ]}
             >
-              <Text
-                style={{
-                  fontSize: 13,
-                  fontWeight: '600',
-                  color: active ? '#FFFFFF' : theme.text.secondary,
-                }}
-              >
+              <Text style={{ fontSize: 13, fontWeight: '600', color: active ? '#fff' : theme.text.secondary }}>
                 {lt.label}
               </Text>
             </TouchableOpacity>
           )
         })}
-      </ScrollView>
-
-      {/* Specialty pills — only for JOB listings or unfiltered */}
-      {(selectedListingType === undefined || selectedListingType === 'JOB') && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterRow}
-        >
-          {SPECIALTIES.map((s) => {
+        {(selectedListingType === undefined || selectedListingType === 'JOB') &&
+          SPECIALTIES.filter((s) => s !== 'All').map((s) => {
             const active = selectedSpecialty === s
             return (
               <TouchableOpacity
@@ -255,25 +235,18 @@ export default function JobFeedScreen() {
                 style={[
                   styles.filterPill,
                   {
-                    backgroundColor: active ? theme.brand.primary : theme.bg.card,
-                    borderColor: active ? theme.brand.primary : theme.border.default,
+                    backgroundColor: active ? '#D85A30' : theme.bg.elevated,
+                    borderColor: active ? '#D85A30' : theme.border.default,
                   },
                 ]}
               >
-                <Text
-                  style={{
-                    fontSize: 13,
-                    fontWeight: '600',
-                    color: active ? '#FFFFFF' : theme.text.secondary,
-                  }}
-                >
+                <Text style={{ fontSize: 13, fontWeight: '600', color: active ? '#fff' : theme.text.secondary }}>
                   {s}
                 </Text>
               </TouchableOpacity>
             )
           })}
-        </ScrollView>
-      )}
+      </ScrollView>
     </View>
   )
 
@@ -322,7 +295,7 @@ export default function JobFeedScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={[styles.serifTitle, { color: theme.text.primary }]}>Beauty work</Text>
                 <Text style={[styles.subtitle, { color: theme.text.secondary }]}>
-                  Jobs, rentals, and spaces curated for SalonIn
+                  Jobs, rentals & spaces
                 </Text>
               </View>
               <View style={styles.headerRight}>
@@ -343,8 +316,6 @@ export default function JobFeedScreen() {
                 <NotificationBell />
               </View>
             </View>
-
-            {SearchAndFilters}
           </View>
         </View>
 
@@ -364,6 +335,7 @@ export default function JobFeedScreen() {
         <FlatList
           data={filteredJobs}
           keyExtractor={(item) => item.id}
+          ListHeaderComponent={SearchAndFilters}
           renderItem={({ item }) => (
             <JobPostCard
               job={item}
@@ -460,8 +432,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   headerSection: {
     paddingHorizontal: 16,
-    paddingBottom: 12,
-    gap: 12,
+    paddingBottom: 8,
     position: 'relative',
   },
   headerAccent: {
@@ -474,21 +445,21 @@ const styles = StyleSheet.create({
   },
   accentGlow: {
     position: 'absolute',
-    top: -80,
-    right: -60,
-    width: 240,
-    height: 240,
-    borderRadius: 200,
-    backgroundColor: 'rgba(216,90,48,0.12)',
+    top: -60,
+    right: -50,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: 'rgba(216,90,48,0.10)',
   },
   accentPill: {
     position: 'absolute',
-    top: 80,
-    left: -20,
-    width: 200,
-    height: 50,
-    borderRadius: 34,
-    backgroundColor: 'rgba(216,90,48,0.08)',
+    top: 60,
+    left: -10,
+    width: 160,
+    height: 40,
+    borderRadius: 28,
+    backgroundColor: 'rgba(216,90,48,0.06)',
     transform: [{ rotate: '-8deg' }],
   },
   headerContent: {
@@ -501,14 +472,14 @@ const styles = StyleSheet.create({
   },
   serifTitle: {
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-    fontSize: 34,
+    fontSize: 28,
     fontWeight: '900',
     letterSpacing: -0.5,
-    lineHeight: 40,
+    lineHeight: 34,
   },
   subtitle: {
-    fontSize: 14,
-    fontStyle: 'italic',
+    fontSize: 13,
+    color: 'rgba(0,0,0,0.45)',
     marginTop: 2,
   },
   headerRight: {
@@ -517,22 +488,11 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 4,
   },
-  filterCard: {
-    borderWidth: 1,
-    borderRadius: 18,
-    padding: 14,
-    gap: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 3,
-  },
-  kicker: {
-    fontSize: 12,
-    letterSpacing: 0.3,
-    textTransform: 'uppercase',
-    fontWeight: '700',
+  filtersWrap: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 4,
+    gap: 10,
   },
   locationPill: {
     flexDirection: 'row',
@@ -543,13 +503,22 @@ const styles = StyleSheet.create({
     borderRadius: 99,
     borderWidth: 1,
   },
+  filterDot: {
+    position: 'absolute',
+    top: -3,
+    right: -3,
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#D85A30',
+  },
   searchWrap: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    height: 48,
-    borderRadius: 24,
-    paddingHorizontal: 16,
+    height: 42,
+    borderRadius: 21,
+    paddingHorizontal: 14,
   },
   searchInput: {
     flex: 1,
@@ -557,17 +526,17 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
   },
   filterRow: {
-    gap: 8,
+    gap: 7,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingBottom: 4,
+    paddingBottom: 2,
   },
   filterPill: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 0,
+    borderRadius: 16,
     borderWidth: 1,
-    height: 36,
+    height: 32,
     justifyContent: 'center',
   },
   listContent: { paddingTop: 4 },
