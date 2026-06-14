@@ -83,7 +83,7 @@ export function RadiusEditorScreen({ visible, onClose, onApply }: Props) {
 
   const handleMilesInput = useCallback((text: string) => {
     const n = parseInt(text, 10) || 1
-    setMiles(Math.min(250, Math.max(1, n)))
+    setMiles(Math.min(100, Math.max(1, n)))
   }, [])
 
   if (showSearch) {
@@ -250,7 +250,7 @@ export function RadiusEditorScreen({ visible, onClose, onApply }: Props) {
                 <Slider
                   style={styles.slider}
                   minimumValue={1}
-                  maximumValue={250}
+                  maximumValue={100}
                   value={miles}
                   onValueChange={handleSliderChange}
                   minimumTrackTintColor="#D85A30"
@@ -259,7 +259,7 @@ export function RadiusEditorScreen({ visible, onClose, onApply }: Props) {
                 />
                 <View style={styles.sliderLabels}>
                   <Text style={[styles.sliderLabel, { color: theme.text.tertiary }]}>1</Text>
-                  <Text style={[styles.sliderLabel, { color: theme.text.tertiary }]}>250</Text>
+                  <Text style={[styles.sliderLabel, { color: theme.text.tertiary }]}>100</Text>
                 </View>
 
                 <View style={[styles.milesInputWrap, { backgroundColor: theme.bg.input, borderColor: theme.border.default }]}>
