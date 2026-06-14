@@ -235,7 +235,7 @@ export function LocationModal({ visible, onClose }: Props) {
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false}>
-            <View style={styles.mapContainer}>
+            <Pressable style={styles.mapContainer} onPress={() => setShowRadiusEditor(true)}>
               <MapView
                 style={styles.map}
                 provider={PROVIDER_DEFAULT}
@@ -249,6 +249,7 @@ export function LocationModal({ visible, onClose }: Props) {
                 zoomEnabled={false}
                 rotateEnabled={false}
                 pitchEnabled={false}
+                pointerEvents="none"
               >
                 <Circle
                   center={{ latitude: lat, longitude: lng }}
@@ -261,7 +262,11 @@ export function LocationModal({ visible, onClose }: Props) {
                   <View style={styles.markerDot} />
                 </Marker>
               </MapView>
-            </View>
+              <View style={styles.mapEditHint}>
+                <Ionicons name="pencil" size={13} color="#fff" />
+                <Text style={styles.mapEditHintText}>Tap to adjust radius</Text>
+              </View>
+            </Pressable>
 
             <View style={styles.locationInfo}>
               <Text style={[styles.locationName, { color: theme.text.primary }]}>{cityName}</Text>
@@ -274,7 +279,7 @@ export function LocationModal({ visible, onClose }: Props) {
 
             <View style={styles.actionRow}>
               <TouchableOpacity
-                style={[styles.locateBtn, { backgroundColor: '#D85A30' }]}
+                style={[styles.locateBtn, { backgroundColor: '#D85A30', flex: 1 }]}
                 onPress={() => void handleUseGPS()}
                 activeOpacity={0.8}
               >
@@ -283,16 +288,9 @@ export function LocationModal({ visible, onClose }: Props) {
                 ) : (
                   <>
                     <Ionicons name="navigate" size={16} color="#FFFFFF" />
-                    <Text style={styles.locateBtnText}>Locate me</Text>
+                    <Text style={styles.locateBtnText}>Use my location</Text>
                   </>
                 )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.editBtn, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}
-                onPress={() => setShowRadiusEditor(true)}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.editBtnText, { color: theme.text.primary }]}>Edit</Text>
               </TouchableOpacity>
             </View>
 
@@ -378,6 +376,23 @@ const styles = StyleSheet.create({
   map: {
     flex: 1,
   },
+  mapEditHint: {
+    position: 'absolute',
+    bottom: 10,
+    right: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(0,0,0,0.52)',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  mapEditHintText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
   markerDot: {
     width: 12,
     height: 12,
@@ -415,18 +430,6 @@ const styles = StyleSheet.create({
   },
   locateBtnText: {
     color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  editBtn: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 44,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  editBtnText: {
     fontSize: 14,
     fontWeight: '600',
   },
