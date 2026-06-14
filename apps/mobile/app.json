@@ -48,7 +48,7 @@
     },
     "ios": {
       "bundleIdentifier": "com.winnerdream.salonin",
-      "buildNumber": "8",
+      "buildNumber": "9",
       "supportsTablet": true,
       "minimumOsVersion": "15.1",
       "infoPlist": {
