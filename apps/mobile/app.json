@@ -58,18 +58,14 @@
         "NSPhotoLibraryUsageDescription": "My Salon In needs photo library access to choose your profile and portfolio images.",
         "NSPhotoLibraryAddUsageDescription": "My Salon In saves your portfolio images to your photo library.",
         "NSUserNotificationsUsageDescription": "My Salon In sends notifications when salons message you or post new job opportunities.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "My Salon In uses your location to show nearby beauty professionals on the map.",
+        "NSLocationAlwaysUsageDescription": "My Salon In uses your location to show nearby beauty professionals on the map.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "plugins": [
       "expo-router",
       "expo-notifications",
-      [
-        "react-native-maps",
-        {
-          "locationAlwaysAndWhenInUsePermission": "My Salon In uses your location to show nearby beauty professionals on the map."
-        }
-      ],
       [
         "expo-image-picker",
         {
