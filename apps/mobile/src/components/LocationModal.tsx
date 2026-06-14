@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Pressable,
   ScrollView,
+  Keyboard,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -152,6 +153,7 @@ export function LocationModal({ visible, onClose }: Props) {
                 autoFocus
                 returnKeyType="search"
                 clearButtonMode="while-editing"
+                onSubmitEditing={() => Keyboard.dismiss()}
               />
               {search.length > 0 && Platform.OS === 'android' && (
                 <TouchableOpacity onPress={() => setSearch('')}>

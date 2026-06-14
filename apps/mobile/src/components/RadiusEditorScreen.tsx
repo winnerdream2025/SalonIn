@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react'
+import React, { useState, useCallback, useMemo, useRef } from 'react'
 import {
   View,
   Modal,
@@ -7,6 +7,8 @@ import {
   TextInput,
   Platform,
   KeyboardAvoidingView,
+  Keyboard,
+  type TextInput as TextInputType,
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -33,6 +35,7 @@ export function RadiusEditorScreen({ visible, onClose, onApply }: Props) {
   const [miles, setMiles] = useState(location.radiusMiles)
   const [searchQuery, setSearchQuery] = useState(location.cityName ?? '')
   const [showDropdown, setShowDropdown] = useState(false)
+  const searchRef = useRef<TextInputType>(null)
   const [mapCenter, setMapCenter] = useState({
     lat: location.lat ?? 38.9072,
     lng: location.lng ?? -77.0369,
@@ -65,6 +68,15 @@ export function RadiusEditorScreen({ visible, onClose, onApply }: Props) {
     [location],
   )
 
+  const handleBackPress = useCallback(() => {
+    if (showDropdown) {
+      Keyboard.dismiss()
+      setShowDropdown(false)
+      return
+    }
+    onClose()
+  }, [showDropdown, onClose])
+
   const handleApply = useCallback(() => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     location.setRadius(miles, mode)
@@ -79,7 +91,12 @@ export function RadiusEditorScreen({ visible, onClose, onApply }: Props) {
   }, [])
 
   return (
-    <Modal visible={visible} animationType="slide">
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'overFullScreen'}
+      onRequestClose={handleBackPress}
+    >
       <SafeAreaView style={[styles.container, { backgroundColor: theme.bg.base }]} edges={['top']}>
         {/* ── Header ── */}
         <View style={styles.header}>
@@ -96,6 +113,7 @@ export function RadiusEditorScreen({ visible, onClose, onApply }: Props) {
           <View style={[styles.searchBar, { backgroundColor: theme.bg.input }]}>
             <Ionicons name="search" size={18} color={theme.text.tertiary} />
             <TextInput
+              ref={searchRef}
               style={[styles.searchInput, { color: theme.text.primary }]}
               placeholder="Search by city or neighborhood…"
               placeholderTextColor={theme.text.tertiary}
@@ -110,6 +128,7 @@ export function RadiusEditorScreen({ visible, onClose, onApply }: Props) {
               autoCorrect={false}
               returnKeyType="search"
               clearButtonMode="while-editing"
+              onSubmitEditing={() => setShowDropdown(false)}
             />
             {searchQuery.length > 0 && Platform.OS === 'android' && (
               <TouchableOpacity onPress={() => { setSearchQuery(''); setShowDropdown(false) }}>
