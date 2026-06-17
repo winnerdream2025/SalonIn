@@ -31,7 +31,7 @@ export class EmailService {
 
     try {
       await this.resend.emails.send({
-        from: 'My Salon In <noreply@mysalon.com>',
+        from: 'My Salon In <noreply@mysalonin.com>',
         to: toEmail,
         subject,
         html,
