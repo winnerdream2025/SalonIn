@@ -1,5 +1,8 @@
 import React, { useState, useCallback } from 'react'
-import { View, ScrollView, Image, TouchableOpacity, Pressable, StyleSheet, Alert, Modal, ActivityIndicator, Linking } from 'react-native'
+import {
+  View, ScrollView, Image, TouchableOpacity, Pressable,
+  StyleSheet, Alert, Modal, ActivityIndicator, Linking, Platform,
+} from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
@@ -10,7 +13,7 @@ import { Availability } from '@salonin/types'
 import { formatExperience } from '@salonin/utils'
 import { useMyWorkerProfile } from '../../hooks/useWorkerProfile'
 import { useMyApplications } from '../../hooks/useJobDetail'
-import { authApi, workersApi } from '@salonin/api-client'
+import { authApi, workersApi, verifyApi } from '@salonin/api-client'
 import { useAuthStore } from '../../store/authStore'
 import { useAuth } from '../../hooks/useAuth'
 import * as Haptics from 'expo-haptics'
@@ -24,16 +27,19 @@ export default function WorkerOwnProfileScreen() {
   const { bottom } = useSafeAreaInsets()
 
   const AVAIL_OPTIONS: Array<{ value: Availability; label: string; color: string }> = [
-    { value: Availability.NOW, label: 'Available now', color: theme.avail.now },
-    { value: Availability.TODAY, label: 'Available today', color: theme.avail.today },
-    { value: Availability.WEEKEND, label: 'This weekend', color: theme.avail.weekend },
-    { value: Availability.NOT_AVAILABLE, label: 'Not available', color: theme.avail.none },
+    { value: Availability.NOW,           label: 'Available now',   color: theme.avail.now    },
+    { value: Availability.TODAY,         label: 'Available today', color: theme.avail.today  },
+    { value: Availability.WEEKEND,       label: 'This weekend',    color: theme.avail.weekend },
+    { value: Availability.NOT_AVAILABLE, label: 'Not available',   color: theme.avail.none   },
   ]
-  const clearAuth = useAuthStore((s) => s.clearAuth)
+
+  const clearAuth  = useAuthStore((s) => s.clearAuth)
   const { logout } = useAuth()
-  const [showAvailSheet, setShowAvailSheet] = useState(false)
-  const [currentAvail, setCurrentAvail] = useState<Availability | null>(null)
+  const [showAvailSheet, setShowAvailSheet]   = useState(false)
+  const [currentAvail,   setCurrentAvail]     = useState<Availability | null>(null)
   const [optimisticPhoto, setOptimisticPhoto] = useState<string | null>(null)
+  const [bioExpanded,    setBioExpanded]       = useState(false)
+  const [isVerifying,    setIsVerifying]       = useState(false)
 
   const { pickAndUpload, isUploading } = useMediaUpload({ folder: 'avatars', allowsEditing: true })
 
@@ -96,6 +102,18 @@ export default function WorkerOwnProfileScreen() {
     router.push(`/worker/portfolio-view?url=${encodeURIComponent(item.mediaUrl)}` as never)
   }
 
+  const handleGetVerified = async () => {
+    setIsVerifying(true)
+    try {
+      const { url } = await verifyApi.createIdentitySession()
+      await Linking.openURL(url)
+    } catch {
+      Alert.alert('Verification unavailable', 'Could not start verification. Please try again later.')
+    } finally {
+      setIsVerifying(false)
+    }
+  }
+
   if (isLoading) {
     return (
       <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]} edges={['top', 'left', 'right']}>
@@ -114,113 +132,182 @@ export default function WorkerOwnProfileScreen() {
     )
   }
 
-  const photoUrl = optimisticPhoto ?? profile.photoUrl ?? null
+  const photoUrl     = optimisticPhoto ?? profile.photoUrl ?? null
+  const firstInitial = (profile.name?.[0] ?? 'W').toUpperCase()
+  const hasBio       = !!profile.bio
+  const hasSpecialties = profile.specialties.length > 0
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]} edges={['top', 'left', 'right']}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 52 + bottom + 24 }} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 52 + bottom + 24 }}
+        showsVerticalScrollIndicator={false}
+      >
 
-        {/* ── Hero: blurred bg + circle photo ── */}
-        <View style={styles.hero}>
-          {photoUrl ? (
-            <Image
-              source={{ uri: photoUrl }}
-              style={[StyleSheet.absoluteFillObject, styles.heroBg]}
-              blurRadius={22}
-              resizeMode="cover"
-            />
-          ) : null}
-          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: photoUrl ? 'rgba(0,0,0,0.42)' : theme.bg.elevated }]} />
-
+        {/* ── Page title bar ─────────────────────────────── */}
+        <View style={styles.titleBar}>
+          <Text style={[styles.pageTitle, { color: theme.text.primary }]}>Profile</Text>
           <TouchableOpacity
             onPress={() => router.push('/worker/edit')}
-            style={styles.heroEditBtn}
-            activeOpacity={0.8}
+            style={[styles.editPill, { backgroundColor: 'rgba(216,90,48,0.10)' }]}
+            activeOpacity={0.75}
           >
-            <Text style={[styles.heroEditText, { color: photoUrl ? '#fff' : theme.text.secondary }]}>Edit</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => void handlePickPhoto()}
-            disabled={isUploading}
-            style={styles.avatarWrap}
-            activeOpacity={0.85}
-          >
-            <View style={[styles.avatarCircle, { borderColor: photoUrl ? 'rgba(255,255,255,0.7)' : theme.border.default }]}>
-              {isUploading ? (
-                <ActivityIndicator color="#D85A30" size="large" />
-              ) : photoUrl ? (
-                <Image source={{ uri: photoUrl }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
-              ) : null}
-            </View>
-            <View style={[styles.cameraBadge, { backgroundColor: theme.brand.primary }]}>
-              <Text style={styles.cameraBadgeText}>+</Text>
-            </View>
+            <Ionicons name="create-outline" size={14} color="#D85A30" />
+            <Text style={styles.editPillText}>Edit</Text>
           </TouchableOpacity>
         </View>
 
-        {/* ── Identity ── */}
-        <View style={styles.identity}>
-          <Text style={[styles.heroName, { color: theme.text.primary }]}>{profile.name}</Text>
-          <Text style={[styles.heroSub, { color: theme.text.secondary }]}>
-            {[profile.specialties[0], formatExperience(profile.experienceYears)].filter(Boolean).join(' · ')}
+        {/* ── Cover strip ────────────────────────────────── */}
+        <View style={[styles.cover, { backgroundColor: theme.bg.elevated }]} />
+
+        {/* ── Hero section ───────────────────────────────── */}
+        <View style={styles.heroSection}>
+          <TouchableOpacity
+            onPress={() => void handlePickPhoto()}
+            disabled={isUploading}
+            activeOpacity={0.85}
+            style={styles.avatarWrap}
+          >
+            <View style={[styles.avatarCircle, { borderColor: '#D85A30', backgroundColor: theme.bg.elevated }]}>
+              {isUploading ? (
+                <ActivityIndicator color="#D85A30" />
+              ) : photoUrl ? (
+                <Image source={{ uri: photoUrl }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+              ) : (
+                <Text style={styles.avatarInitial}>{firstInitial}</Text>
+              )}
+            </View>
+            <View style={styles.cameraBadge}>
+              <Ionicons name="camera-outline" size={12} color="#FFFFFF" />
+            </View>
+          </TouchableOpacity>
+
+          <Text style={[styles.profileName, { color: theme.text.primary }]} numberOfLines={1}>
+            {profile.name}
           </Text>
+
+          {profile.isVerified ? (
+            <View style={styles.verifiedRow}>
+              <Ionicons name="checkmark-circle" size={13} color="#378ADD" />
+              <Text style={styles.verifiedText}>Verified</Text>
+            </View>
+          ) : (
+            <TouchableOpacity
+              onPress={() => void handleGetVerified()}
+              disabled={isVerifying}
+              style={styles.verifyBtn}
+              activeOpacity={0.75}
+            >
+              <Ionicons name="shield-outline" size={13} color="#D85A30" />
+              <Text style={styles.verifyBtnText}>
+                {isVerifying ? 'Opening…' : 'Get Verified'}
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          <Text style={[styles.profileSpec, { color: theme.text.secondary }]} numberOfLines={1}>
+            {profile.specialties[0] ?? 'Beauty Professional'}
+          </Text>
+
           <Pressable
             onPress={() => setShowAvailSheet(true)}
-            style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.95 : 1 }], marginTop: 8 })}
+            style={({ pressed }) => [{ marginTop: 8, transform: [{ scale: pressed ? 0.96 : 1 }] }]}
           >
             <AvailabilityBadge status={availability} />
           </Pressable>
         </View>
 
-        {/* ── Bio ── */}
-        {profile.bio ? (
-          <View style={[styles.section, { backgroundColor: theme.bg.elevated }]}>
-            <Text style={[styles.sectionLabel, { color: theme.text.tertiary }]}>ABOUT</Text>
-            <Text style={[styles.bodyText, { color: theme.text.secondary }]} numberOfLines={5}>{profile.bio}</Text>
-          </View>
-        ) : null}
-
-        {/* ── Stats row ── */}
-        <View style={[styles.statsRow, { backgroundColor: theme.bg.elevated }]}>
-          <View style={styles.statCell}>
-            <Text style={[styles.statValue, { color: theme.text.primary }]}>{applications.length}</Text>
-            <Text style={[styles.statLabel, { color: theme.text.secondary }]}>Applied</Text>
-          </View>
-          <View style={[styles.statDivider, { backgroundColor: theme.border.default }]} />
-          <View style={styles.statCell}>
-            <Text style={[styles.statValue, { color: theme.text.primary }]}>{formatExperience(profile.experienceYears)}</Text>
-            <Text style={[styles.statLabel, { color: theme.text.secondary }]}>Experience</Text>
+        {/* ── Stats card ─────────────────────────────────── */}
+        <View style={[styles.card, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
+          <View style={styles.statsRow}>
+            <View style={styles.statCell}>
+              <Text style={[styles.statValue, { color: theme.text.primary }]}>{applications.length}</Text>
+              <Text style={[styles.statLabel, { color: theme.text.tertiary }]}>Applied</Text>
+            </View>
+            <View style={[styles.statDivider, { backgroundColor: theme.border.subtle }]} />
+            <View style={styles.statCell}>
+              <Text style={[styles.statValue, { color: theme.text.primary }]}>{formatExperience(profile.experienceYears)}</Text>
+              <Text style={[styles.statLabel, { color: theme.text.tertiary }]}>Experience</Text>
+            </View>
+            <View style={[styles.statDivider, { backgroundColor: theme.border.subtle }]} />
+            <View style={styles.statCell}>
+              <Text style={[styles.statValue, { color: '#EF9F27' }]}>
+                {profile.rating != null ? profile.rating.toFixed(1) : '—'}
+              </Text>
+              <Text style={[styles.statLabel, { color: theme.text.tertiary }]}>Rating</Text>
+            </View>
           </View>
         </View>
 
-        {/* ── Specialties ── */}
-        {profile.specialties.length > 0 && (
-          <View style={[styles.section, { backgroundColor: theme.bg.elevated }]}>
-            <Text style={[styles.sectionLabel, { color: theme.text.tertiary }]}>SPECIALTIES</Text>
-            <View style={styles.pillRow}>
-              {profile.specialties.map((s) => (
-                <View key={s} style={[styles.pill, { backgroundColor: theme.bg.input }]}>
-                  <Text variant="caption">{s}</Text>
+        {/* ── About + Specialties merged card ─────────────── */}
+        {(hasBio || hasSpecialties) ? (
+          <View style={[styles.card, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
+            {hasBio && (
+              <>
+                <Text style={[styles.cardLabel, { color: theme.text.tertiary }]}>About</Text>
+                <Text style={[styles.bioText, { color: theme.text.secondary }]} numberOfLines={bioExpanded ? undefined : 3}>
+                  {profile.bio}
+                </Text>
+                {(profile.bio?.length ?? 0) > 120 && (
+                  <Pressable onPress={() => setBioExpanded((e) => !e)} style={{ marginTop: 2 }}>
+                    <Text style={styles.readMoreText}>{bioExpanded ? 'Show less' : 'Read more'}</Text>
+                  </Pressable>
+                )}
+              </>
+            )}
+            {hasBio && hasSpecialties && (
+              <View style={[styles.inlineDivider, { backgroundColor: theme.border.subtle }]} />
+            )}
+            {hasSpecialties && (
+              <>
+                <Text style={[styles.cardLabel, { color: theme.text.tertiary }]}>Specialties</Text>
+                <View style={styles.chipsWrap}>
+                  {profile.specialties.map((s) => (
+                    <View key={s} style={styles.specialtyChip}>
+                      <Text style={styles.specialtyChipText}>{s}</Text>
+                    </View>
+                  ))}
                 </View>
-              ))}
-            </View>
+              </>
+            )}
           </View>
+        ) : (
+          <TouchableOpacity
+            onPress={() => router.push('/worker/edit')}
+            activeOpacity={0.7}
+            style={[styles.card, styles.emptyBioCard, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}
+          >
+            <View style={[styles.emptyBioIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}>
+              <Ionicons name="pencil-outline" size={18} color="#D85A30" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.emptyBioTitle, { color: theme.text.primary }]}>Add a bio</Text>
+              <Text style={[styles.emptyBioSub, { color: theme.text.tertiary }]}>
+                Tell salons what makes you stand out
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
+          </TouchableOpacity>
         )}
 
-        {/* ── Portfolio ── */}
-        <View style={styles.portfolioSection}>
-          <View style={styles.sectionHeader}>
-            <Text variant="title">Portfolio</Text>
-            <TouchableOpacity onPress={() => router.push('/worker/portfolio')}>
-              <Text variant="caption" color="brand">+ Add</Text>
+        {/* ── Portfolio ────────────────────────────────────── */}
+        <View style={styles.portfolioWrap}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={[styles.sectionTitle, { color: theme.text.primary }]}>Portfolio</Text>
+            <TouchableOpacity
+              onPress={() => router.push('/worker/portfolio')}
+              style={styles.addBtn}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="add-circle-outline" size={15} color="#D85A30" />
+              <Text style={styles.addBtnText}>Add photos</Text>
             </TouchableOpacity>
           </View>
           <PortfolioGrid items={profile.portfolioItems} onPressItem={handlePressItem} isLoading={false} />
         </View>
 
-        {/* ── Action menu ── */}
-        <View style={[styles.menuCard, { backgroundColor: theme.bg.elevated, borderColor: theme.border.subtle }]}>
+        {/* ── Profile actions ──────────────────────────────── */}
+        <View style={[styles.menuGroup, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
           <TouchableOpacity
             style={styles.menuRow}
             onPress={() => router.push('/worker/edit')}
@@ -245,40 +332,26 @@ export default function WorkerOwnProfileScreen() {
             </View>
             <Text style={[styles.menuLabel, { color: theme.text.primary }]}>My Applications</Text>
             {pendingCount > 0 && (
-              <View style={[styles.pendingBadge, { backgroundColor: theme.brand.primary }]}>
-                <Text style={[styles.pendingBadgeText, { color: theme.text.inverse }]}>{pendingCount}</Text>
+              <View style={styles.pendingBadge}>
+                <Text style={styles.pendingBadgeText}>{pendingCount}</Text>
               </View>
             )}
             <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
           </TouchableOpacity>
-
-          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
-
-          <TouchableOpacity
-            style={styles.menuRow}
-            onPress={() => router.push('/worker/portfolio')}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}>
-              <Ionicons name="images-outline" size={18} color="#D85A30" />
-            </View>
-            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Portfolio</Text>
-            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
-          </TouchableOpacity>
         </View>
 
-        {/* ── Account ── */}
-        <View style={[styles.menuCard, { backgroundColor: theme.bg.elevated, borderColor: theme.border.subtle }]}>
+        {/* ── Account ─────────────────────────────────────── */}
+        <View style={[styles.menuGroup, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
           <TouchableOpacity
             style={styles.menuRow}
             onPress={() => void Linking.openURL('https://salonin-production-77fc.up.railway.app/terms')}
             activeOpacity={0.7}
           >
-            <View style={[styles.menuIcon, { backgroundColor: theme.bg.input }]}>
+            <View style={[styles.menuIcon, { backgroundColor: theme.bg.elevated }]}>
               <Ionicons name="document-text-outline" size={18} color={theme.text.secondary} />
             </View>
             <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Terms of Service</Text>
-            <Ionicons name="open-outline" size={14} color={theme.text.tertiary} />
+            <Ionicons name="open-outline" size={13} color={theme.text.tertiary} />
           </TouchableOpacity>
 
           <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
@@ -288,17 +361,17 @@ export default function WorkerOwnProfileScreen() {
             onPress={() => void Linking.openURL('https://salonin-production-77fc.up.railway.app/privacy')}
             activeOpacity={0.7}
           >
-            <View style={[styles.menuIcon, { backgroundColor: theme.bg.input }]}>
+            <View style={[styles.menuIcon, { backgroundColor: theme.bg.elevated }]}>
               <Ionicons name="shield-checkmark-outline" size={18} color={theme.text.secondary} />
             </View>
             <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Privacy Policy</Text>
-            <Ionicons name="open-outline" size={14} color={theme.text.tertiary} />
+            <Ionicons name="open-outline" size={13} color={theme.text.tertiary} />
           </TouchableOpacity>
 
           <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
 
           <TouchableOpacity style={styles.menuRow} onPress={() => void handleSignOut()} activeOpacity={0.7}>
-            <View style={[styles.menuIcon, { backgroundColor: theme.bg.input }]}>
+            <View style={[styles.menuIcon, { backgroundColor: theme.bg.elevated }]}>
               <Ionicons name="log-out-outline" size={18} color={theme.text.secondary} />
             </View>
             <Text style={[styles.menuLabel, { color: theme.text.secondary }]}>Sign Out</Text>
@@ -313,26 +386,28 @@ export default function WorkerOwnProfileScreen() {
             <Text style={[styles.menuLabel, { color: '#DC2626' }]}>Delete Account</Text>
           </TouchableOpacity>
         </View>
+
       </ScrollView>
 
+      {/* ── Availability bottom sheet ─────────────────────── */}
       <Modal visible={showAvailSheet} transparent animationType="slide">
-        <Pressable style={styles.sheetOverlay} onPress={() => setShowAvailSheet(false)}>
-          <View style={[styles.sheet, { backgroundColor: theme.bg.elevated }]}>
+        <Pressable style={styles.overlay} onPress={() => setShowAvailSheet(false)}>
+          <View style={[styles.sheet, { backgroundColor: theme.bg.card }]}>
             <View style={[styles.sheetHandle, { backgroundColor: theme.border.default }]} />
-            <Text variant="title" style={styles.sheetTitle}>Set availability</Text>
+            <Text style={[styles.sheetTitle, { color: theme.text.primary }]}>Set availability</Text>
             {AVAIL_OPTIONS.map((opt) => (
               <Pressable
                 key={opt.value}
                 onPress={() => handleAvailChange(opt.value)}
                 style={({ pressed }) => [
                   styles.sheetOption,
-                  { backgroundColor: pressed ? theme.bg.input : 'transparent' },
+                  { backgroundColor: pressed ? theme.bg.elevated : 'transparent' },
                 ]}
               >
                 <View style={[styles.sheetDot, { backgroundColor: opt.color }]} />
-                <Text variant="body" style={{ flex: 1 }}>{opt.label}</Text>
+                <Text style={[styles.sheetOptionText, { color: theme.text.primary }]}>{opt.label}</Text>
                 {availability === opt.value && (
-                  <Text style={{ color: theme.brand.primary, fontWeight: '700', fontSize: 16 }}>✓</Text>
+                  <Ionicons name="checkmark" size={18} color="#D85A30" />
                 )}
               </Pressable>
             ))}
@@ -343,131 +418,315 @@ export default function WorkerOwnProfileScreen() {
   )
 }
 
+// ── Skeleton ──────────────────────────────────────────────────────────────────
 function ProfileSkeleton({ theme }: { theme: Theme }) {
   return (
-    <ScrollView contentContainerStyle={{ paddingBottom: 48 }}>
-      <View style={{ height: 240, backgroundColor: theme.bg.elevated, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 28 }}>
-        <Skeleton width={112} height={112} radius={56} />
+    <ScrollView contentContainerStyle={{ paddingBottom: 48 }} showsVerticalScrollIndicator={false}>
+      {/* Title bar */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 }}>
+        <Skeleton width={90} height={28} radius={6} />
+        <Skeleton width={68} height={32} radius={16} />
       </View>
-      <View style={{ alignItems: 'center', paddingVertical: 16, gap: 8 }}>
-        <Skeleton width={160} height={24} radius={6} />
-        <Skeleton width={120} height={14} radius={7} />
-        <Skeleton width={100} height={22} radius={11} />
+      {/* Cover + hero */}
+      <View style={{ height: 120, backgroundColor: theme.bg.elevated }} />
+      <View style={{ alignItems: 'center', marginTop: -46, paddingBottom: 16, gap: 8 }}>
+        <Skeleton width={92} height={92} radius={46} />
+        <Skeleton width={130} height={18} radius={6} />
+        <Skeleton width={100} height={13} radius={5} />
+        <Skeleton width={110} height={26} radius={13} />
       </View>
-      <View style={{ marginHorizontal: 16, backgroundColor: theme.bg.elevated, borderRadius: 16, padding: 16, gap: 8 }}>
-        <Skeleton width={60} height={11} radius={5} />
-        <Skeleton width="90%" height={14} radius={7} />
-        <Skeleton width="70%" height={14} radius={7} />
+      {/* Stats card */}
+      <View style={{ marginHorizontal: 16, marginBottom: 10, backgroundColor: theme.bg.card, borderRadius: 20, overflow: 'hidden', padding: 16 }}>
+        <View style={{ flexDirection: 'row' }}>
+          {[0, 1, 2].map((i) => (
+            <View key={i} style={{ flex: 1, alignItems: 'center', gap: 6 }}>
+              <Skeleton width={40} height={22} radius={5} />
+              <Skeleton width={56} height={11} radius={4} />
+            </View>
+          ))}
+        </View>
+      </View>
+      {/* Bio + specialties skeleton */}
+      <View style={{ marginHorizontal: 16, marginBottom: 10, backgroundColor: theme.bg.card, borderRadius: 20, padding: 16, gap: 8 }}>
+        <Skeleton width={50} height={10} radius={4} />
+        <Skeleton width="100%" height={13} radius={5} />
+        <Skeleton width="80%"  height={13} radius={5} />
+        <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: theme.border.subtle, marginVertical: 4 }} />
+        <Skeleton width={80} height={10} radius={4} />
+        <View style={{ flexDirection: 'row', gap: 6 }}>
+          <Skeleton width={80} height={26} radius={13} />
+          <Skeleton width={70} height={26} radius={13} />
+          <Skeleton width={60} height={26} radius={13} />
+        </View>
       </View>
     </ScrollView>
   )
 }
 
+// ── Styles ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
-  content: { paddingBottom: 96 },
+  screen:     { flex: 1 },
+  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
-  hero: {
-    height: 240,
+  // Title bar
+  titleBar: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-end',
-    paddingBottom: 28,
-    overflow: 'hidden',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 12,
   },
-  heroBg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-  heroEditBtn: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
+  pageTitle: {
+    fontSize: 28,
+    fontWeight: '900',
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+    letterSpacing: -0.5,
+  },
+  editPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderRadius: 20,
   },
-  heroEditText: { fontSize: 15, fontWeight: '600' },
+  editPillText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#D85A30',
+  },
 
-  avatarWrap: { alignItems: 'center', justifyContent: 'center' },
+  // Cover strip
+  cover: {
+    height: 120,
+  },
+
+  // Hero section
+  heroSection: {
+    marginTop: -46,
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+    gap: 3,
+  },
+
+  // Avatar
+  avatarWrap:   { position: 'relative', flexShrink: 0, marginBottom: 6 },
   avatarCircle: {
-    width: 112,
-    height: 112,
-    borderRadius: 56,
+    width: 92,
+    height: 92,
+    borderRadius: 46,
     borderWidth: 3,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  avatarInitial: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#D85A30',
   },
   cameraBadge: {
     position: 'absolute',
-    bottom: 0,
-    right: -2,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    bottom: 2,
+    right: 2,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#D85A30',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
-  cameraBadgeText: { color: '#fff', fontSize: 18, fontWeight: '700', lineHeight: 22 },
 
-  identity: { alignItems: 'center', paddingTop: 16, paddingBottom: 20, paddingHorizontal: 24 },
-  heroName: { fontSize: 22, fontWeight: '800', letterSpacing: -0.4 },
-  heroSub: { fontSize: 15, marginTop: 4 },
+  // Identity text
+  profileName: {
+    fontSize: 20,
+    fontWeight: '900',
+    letterSpacing: -0.4,
+    textAlign: 'center',
+  },
+  verifiedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    marginTop: 1,
+  },
+  verifiedText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#378ADD',
+  },
+  verifyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(216,90,48,0.35)',
+    backgroundColor: 'rgba(216,90,48,0.08)',
+  },
+  verifyBtnText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#D85A30',
+  },
+  profileSpec: {
+    fontSize: 14,
+    fontWeight: '500',
+    textAlign: 'center',
+    marginTop: 1,
+  },
 
-  section: { marginHorizontal: 16, marginBottom: 10, borderRadius: 16, padding: 16, gap: 8 },
-  sectionLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.8 },
-  bodyText: { fontSize: 15, lineHeight: 22 },
+  // Generic card
+  card: {
+    marginHorizontal: 16,
+    marginBottom: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 16,
+    gap: 10,
+    shadowColor: '#1A1A1A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.09,
+    shadowRadius: 12,
+    elevation: 4,
+  },
 
+  // Stats
   statsRow: {
     flexDirection: 'row',
-    marginHorizontal: 16,
-    marginBottom: 10,
-    borderRadius: 16,
-    overflow: 'hidden',
   },
-  statCell: { flex: 1, alignItems: 'center', paddingVertical: 16 },
-  statValue: { fontSize: 18, fontWeight: '800', letterSpacing: -0.3 },
-  statLabel: { fontSize: 11, marginTop: 4 },
-  statDivider: { width: StyleSheet.hairlineWidth },
-
-  pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  pill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
-
-  portfolioSection: { marginBottom: 10 },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  statCell: {
+    flex: 1,
     alignItems: 'center',
-    marginBottom: 12,
-    paddingHorizontal: 16,
+    gap: 4,
+  },
+  statValue: {
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  statLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  statDivider: {
+    width: StyleSheet.hairlineWidth,
+    marginVertical: 4,
   },
 
-  listRow: {
+  // Inline divider inside merged card
+  inlineDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginVertical: 2,
+  },
+
+  // Card label
+  cardLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+
+  // Bio
+  bioText: {
+    fontSize: 14,
+    lineHeight: 21,
+    fontWeight: '400',
+  },
+  readMoreText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#D85A30',
+  },
+
+  // Empty bio prompt
+  emptyBioCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 16,
-    marginBottom: 10,
-    padding: 16,
-    borderRadius: 16,
-    gap: 10,
-    borderWidth: StyleSheet.hairlineWidth,
+    gap: 12,
+    paddingVertical: 14,
   },
-  listRowLabel: { flex: 1, fontSize: 15, fontWeight: '600' },
-  pendingBadge: {
-    minWidth: 20,
-    height: 20,
+  emptyBioIcon: {
+    width: 36,
+    height: 36,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 6,
+    flexShrink: 0,
   },
-  pendingBadgeText: { fontSize: 11, fontWeight: '700' },
+  emptyBioTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  emptyBioSub: {
+    fontSize: 12,
+    fontWeight: '400',
+    marginTop: 1,
+  },
 
-  menuCard: {
+  // Specialty chips
+  chipsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  specialtyChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    backgroundColor: 'rgba(29,158,117,0.09)',
+  },
+  specialtyChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#147A5A',
+  },
+
+  // Portfolio
+  portfolioWrap:    { marginBottom: 10 },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    marginBottom: 10,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+  addBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  addBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#D85A30',
+  },
+
+  // Menu group
+  menuGroup: {
     marginHorizontal: 16,
-    marginBottom: 12,
-    borderRadius: 18,
-    borderWidth: StyleSheet.hairlineWidth,
+    marginBottom: 10,
+    borderRadius: 20,
+    borderWidth: 1,
     overflow: 'hidden',
+    shadowColor: '#1A1A1A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.09,
+    shadowRadius: 12,
+    elevation: 4,
   },
   menuRow: {
     flexDirection: 'row',
@@ -482,15 +741,74 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
-  menuLabel: { flex: 1, fontSize: 15, fontWeight: '500' },
-  menuDivider: { height: StyleSheet.hairlineWidth, marginLeft: 62 },
-  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  menuLabel: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  menuDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 62,
+  },
+  pendingBadge: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#D85A30',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+    marginRight: 4,
+  },
+  pendingBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
 
-  sheetOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 16, paddingBottom: 40 },
-  sheetHandle: { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 16 },
-  sheetTitle: { marginBottom: 16 },
-  sheetOption: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 12, borderRadius: 12, gap: 12 },
-  sheetDot: { width: 10, height: 10, borderRadius: 5 },
+  // Bottom sheet
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    paddingHorizontal: 16,
+    paddingBottom: 44,
+  },
+  sheetHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginTop: 12,
+    marginBottom: 18,
+  },
+  sheetTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  sheetOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    gap: 12,
+  },
+  sheetDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  sheetOptionText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '500',
+  },
 })

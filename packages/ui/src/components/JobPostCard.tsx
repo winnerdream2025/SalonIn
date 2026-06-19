@@ -2,6 +2,7 @@ import React, { useRef, useCallback, useState } from 'react'
 import { View, Text, Pressable, Animated, StyleSheet, Image } from 'react-native'
 import type { JobPostCardData } from '@salonin/types'
 import { isJobExpired } from '@salonin/utils'
+import { getCityLabel } from '@salonin/config'
 import Svg, { Path } from 'react-native-svg'
 import { Skeleton } from '../primitives/Skeleton'
 import { Avatar } from '../primitives/Avatar'
@@ -17,40 +18,115 @@ export interface JobPostCardProps {
   isSaved?: boolean
 }
 
-const TYPE_LABEL: Record<string, string> = {
-  FULL_TIME: 'Full-time',
-  PART_TIME: 'Part-time',
-  TEMPORARY: 'Temporary',
-  WEEKEND: 'Weekend',
-  EMERGENCY: 'Emergency',
-  CONTRACT: 'Contract',
-  SEASONAL: 'Seasonal',
-  APPRENTICESHIP: 'Apprenticeship',
-  FREELANCE: 'Freelance',
+// ── Employment type ───────────────────────────────────────────────────────────
+const TYPE_META: Record<string, { label: string; color: string; bg: string }> = {
+  FULL_TIME:      { label: 'Full-time',      color: '#147A5A', bg: 'rgba(29,158,117,0.13)'  },
+  PART_TIME:      { label: 'Part-time',      color: '#6930B8', bg: 'rgba(147,92,255,0.13)'  },
+  TEMPORARY:      { label: 'Temporary',      color: '#1F5FA6', bg: 'rgba(55,138,221,0.13)'  },
+  WEEKEND:        { label: 'Weekend',        color: '#A05C00', bg: 'rgba(239,159,39,0.13)'  },
+  EMERGENCY:      { label: 'Urgent',         color: '#B52A2A', bg: 'rgba(226,75,74,0.13)'   },
+  CONTRACT:       { label: 'Contract',       color: '#3D4A5C', bg: 'rgba(107,114,128,0.13)' },
+  SEASONAL:       { label: 'Seasonal',       color: '#A03A06', bg: 'rgba(234,88,12,0.13)'   },
+  APPRENTICESHIP: { label: 'Apprenticeship', color: '#5A28A0', bg: 'rgba(139,92,246,0.13)'  },
+  FREELANCE:      { label: 'Freelance',      color: '#0A7A9A', bg: 'rgba(6,182,212,0.13)'   },
 }
 
-const TYPE_PILL_COLOR: Record<string, { bg: string; text: string }> = {
-  FULL_TIME:       { bg: 'rgba(29,158,117,0.1)',  text: '#1D9E75' },
-  PART_TIME:       { bg: 'rgba(147,92,255,0.1)',  text: '#935CFF' },
-  TEMPORARY:       { bg: 'rgba(55,138,221,0.1)',  text: '#378ADD' },
-  WEEKEND:         { bg: 'rgba(239,159,39,0.1)',   text: '#EF9F27' },
-  EMERGENCY:       { bg: 'rgba(226,75,74,0.1)',    text: '#E24B4A' },
-  CONTRACT:        { bg: 'rgba(75,85,99,0.1)',     text: '#4B5563' },
-  SEASONAL:        { bg: 'rgba(234,88,12,0.1)',    text: '#EA580C' },
-  APPRENTICESHIP:  { bg: 'rgba(139,92,246,0.1)',   text: '#8B5CF6' },
-  FREELANCE:       { bg: 'rgba(6,182,212,0.1)',    text: '#06B6D4' },
+// ── Listing type ──────────────────────────────────────────────────────────────
+const LISTING_META: Record<string, { buttonLabel: string }> = {
+  JOB:    { buttonLabel: 'Apply Now' },
+  RENTAL: { buttonLabel: 'Inquire'   },
+  SPACE:  { buttonLabel: 'Book'      },
 }
 
-const LISTING_LABEL: Record<string, string> = {
-  JOB: 'Job',
-  RENTAL: 'Rental',
-  SPACE: 'Space',
+// ── Status badge — shown as a photo sticker ───────────────────────────────────
+type BadgeIcon = 'flash' | 'fire' | 'sparkle'
+interface StatusBadge {
+  label: string
+  solidBg: string   // semi-opaque for photo overlay
+  icon: BadgeIcon
 }
 
-const LISTING_PILL_COLOR: Record<string, { bg: string; text: string }> = {
-  JOB:    { bg: 'rgba(29,158,117,0.1)',  text: '#1D9E75' },
-  RENTAL: { bg: 'rgba(234,88,12,0.1)',   text: '#EA580C' },
-  SPACE:  { bg: 'rgba(139,92,246,0.1)',  text: '#8B5CF6' },
+function deriveStatusBadge(job: JobPostCardData): StatusBadge | null {
+  if (job.isUrgent || job.type === 'EMERGENCY') {
+    return { label: 'Urgent', solidBg: 'rgba(196,78,40,0.88)', icon: 'flash' }
+  }
+  if ((job.appliedToday ?? 0) >= 3) {
+    return { label: 'Hot', solidBg: 'rgba(181,117,12,0.88)', icon: 'fire' }
+  }
+  if ((job.applicantCount ?? 0) === 0 && (job.appliedToday ?? 0) === 0) {
+    return { label: 'New', solidBg: 'rgba(109,51,204,0.88)', icon: 'sparkle' }
+  }
+  return null
+}
+
+// ── SVG Icons ─────────────────────────────────────────────────────────────────
+function BookmarkIcon({ filled, color, size }: { filled: boolean; color: string; size: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+        stroke={color} strokeWidth={1.8}
+        strokeLinecap="round" strokeLinejoin="round"
+        fill={filled ? color : 'none'}
+      />
+    </Svg>
+  )
+}
+
+function PinIcon({ color = '#9CA3AF', size = 10 }: { color?: string; size?: number }) {
+  return (
+    <Svg width={size} height={size * 1.3} viewBox="0 0 10 13" fill="none">
+      <Path
+        d="M5 0C2.79 0 1 1.79 1 4c0 3 4 9 4 9s4-6 4-9c0-2.21-1.79-4-4-4zm0 5.5C4.17 5.5 3.5 4.83 3.5 4S4.17 2.5 5 2.5 6.5 3.17 6.5 4 5.83 5.5 5 5.5z"
+        fill={color}
+      />
+    </Svg>
+  )
+}
+
+function FlashIcon({ color, size }: { color: string; size: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"
+        stroke={color} strokeWidth={1.8}
+        strokeLinecap="round" strokeLinejoin="round"
+        fill={color} fillOpacity={0.25}
+      />
+    </Svg>
+  )
+}
+
+function FireIcon({ color, size }: { color: string; size: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M12 22c3.31 0 6-2.69 6-6 0-1.82-.86-3.45-2.2-4.5.12.48.2.98.2 1.5 0 2.21-1.79 4-4 4s-4-1.79-4-4c0-1.56.89-2.91 2.19-3.6C9.73 10.83 9.5 11.66 9.5 12.5c0 .28.02.55.07.81C8.59 12.62 8 11.38 8 10c0-.79.22-1.53.6-2.16C7.01 9.07 6 11.17 6 13.5c0 3.31 2.69 6 6 6z"
+        fill={color} fillOpacity={0.9}
+      />
+    </Svg>
+  )
+}
+
+function SparkleIcon({ color, size }: { color: string; size: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M12 2l2.4 7.4L22 12l-7.6 2.6L12 22l-2.4-7.4L2 12l7.6-2.6L12 2z"
+        stroke={color} strokeWidth={1.8}
+        strokeLinecap="round" strokeLinejoin="round"
+        fill={color} fillOpacity={0.2}
+      />
+    </Svg>
+  )
+}
+
+function PeopleIcon({ color, size }: { color: string; size: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+      <Path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
+    </Svg>
+  )
 }
 
 function ChatIcon({ color, size }: { color: string; size: number }) {
@@ -58,63 +134,14 @@ function ChatIcon({ color, size }: { color: string; size: number }) {
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <Path
         d="M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-        stroke={color}
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        stroke={color} strokeWidth={1.8}
+        strokeLinecap="round" strokeLinejoin="round"
       />
     </Svg>
   )
 }
 
-function MapPinIcon({ size = 13 }: { size?: number }) {
-  const w = Math.round(size * 0.78)
-  return (
-    <Svg width={w} height={size} viewBox="0 0 14 18" fill="none">
-      <Path
-        d="M7 0C4.24 0 2 2.24 2 5c0 3.75 5 11 5 11s5-7.25 5-11c0-2.76-2.24-5-5-5zm0 7.5C5.62 7.5 4.5 6.38 4.5 5S5.62 2.5 7 2.5 9.5 3.62 9.5 5 8.38 7.5 7 7.5z"
-        fill="#E53935"
-      />
-    </Svg>
-  )
-}
-
-function BookmarkIcon({ filled, color, size }: { filled: boolean; color: string; size: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
-        stroke={color}
-        strokeWidth={1.8}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill={filled ? color : 'none'}
-      />
-    </Svg>
-  )
-}
-
-
-const CITY_DISPLAY: Record<string, string> = {
-  dmv:     'DMV (DC/MD/VA)',
-  atlanta: 'Atlanta',
-  houston: 'Houston',
-  miami:   'Miami',
-}
-
-function formatCity(cityId: string | undefined | null): string {
-  if (!cityId) return ''
-  if (CITY_DISPLAY[cityId]) return CITY_DISPLAY[cityId]
-  const parts = cityId.split(/[_\-]+/)
-  const last = parts[parts.length - 1]
-  if (last.length === 2 && parts.length > 1) {
-    const city = parts.slice(0, -1).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
-    return `${city}, ${last.toUpperCase()}`
-  }
-  return parts.map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
-}
-
-
+// ── Main Component ────────────────────────────────────────────────────────────
 export function JobPostCard({
   job,
   onPress,
@@ -128,24 +155,28 @@ export function JobPostCard({
   const scale = useRef(new Animated.Value(1)).current
   const [savedLocal, setSavedLocal] = useState<boolean>(isSaved)
 
-  const animIn = useCallback(() => {
-    Animated.timing(scale, { toValue: 0.97, duration: 100, useNativeDriver: true }).start()
-  }, [scale])
-
-  const animOut = useCallback(() => {
-    Animated.timing(scale, { toValue: 1, duration: 150, useNativeDriver: true }).start()
-  }, [scale])
-
-  const handleSave = useCallback(() => {
-    setSavedLocal((s) => !s)
-    onSave?.()
-  }, [onSave])
+  const animIn  = useCallback(() => Animated.timing(scale, { toValue: 0.975, duration: 90,  useNativeDriver: true }).start(), [scale])
+  const animOut = useCallback(() => Animated.timing(scale, { toValue: 1,     duration: 140, useNativeDriver: true }).start(), [scale])
+  const handleSave = useCallback(() => { setSavedLocal((s) => !s); onSave?.() }, [onSave])
 
   if (isLoading) return <JobPostCardSkeleton />
 
-  const expired = isJobExpired(job.expiresAt)
-  const typeLabel = TYPE_LABEL[job.type] ?? job.type
-  const coverUri = job.salonCoverUrl ?? job.salonPhotoUrl ?? null
+  const expired      = isJobExpired(job.expiresAt)
+  const listingMeta  = LISTING_META[job.listingType ?? 'JOB'] ?? LISTING_META.JOB
+  const typeMeta     = TYPE_META[job.type] ?? TYPE_META.FULL_TIME
+  const tags         = job.specialty.split(/[,/]/).map((t) => t.trim()).filter(Boolean)
+  const statusBadge  = deriveStatusBadge(job)
+  const buttonLabel  = expired ? 'Closed' : listingMeta.buttonLabel
+
+  // Strip leading "$" — money badge icon handles the symbol
+  const payDisplay     = job.payStructure.replace(/^\$\s*/, '')
+  const hasSocialProof = (job.appliedToday ?? 0) > 0 || job.replyTime != null
+
+  // Photo sources
+  const allPhotos       = job.portfolioPhotoUrls?.length ? job.portfolioPhotoUrls : (job.spacePhotos ?? [])
+  const mainPhoto       = job.salonCoverUrl ?? (allPhotos.length > 0 ? allPhotos[0] : null)
+  const portfolioPhotos = (job.salonCoverUrl != null) ? allPhotos : allPhotos.slice(1)
+  const hasPortfolio    = portfolioPhotos.length > 0
 
   return (
     <Animated.View style={{ transform: [{ scale }] }}>
@@ -153,462 +184,634 @@ export function JobPostCard({
         onPress={onPress}
         onPressIn={animIn}
         onPressOut={animOut}
-        style={[styles.card, {
-          backgroundColor: theme.bg.card,
-          borderColor: theme.border.subtle,
-          shadowColor: '#000000',
-        }]}
+        style={[
+          styles.card,
+          {
+            backgroundColor: theme.bg.card,
+            borderColor: theme.border.subtle,
+            shadowColor: '#1A1A1A',
+          },
+        ]}
       >
-        {/* ── META ROW: listing + employment type + pay ── */}
-        <View style={styles.metaTopRow}>
-          {job.listingType && (
-            <View style={[styles.typePill, { backgroundColor: (LISTING_PILL_COLOR[job.listingType] ?? LISTING_PILL_COLOR.JOB).bg }]}
-            >
-              <Text style={[styles.typePillText, { color: (LISTING_PILL_COLOR[job.listingType] ?? LISTING_PILL_COLOR.JOB).text }]}>
-                {LISTING_LABEL[job.listingType] ?? job.listingType}
-              </Text>
-            </View>
-          )}
-          <View style={[styles.typePill, { backgroundColor: (TYPE_PILL_COLOR[job.type] ?? TYPE_PILL_COLOR.FULL_TIME).bg }]}
-          >
-            <Text style={[styles.typePillText, { color: (TYPE_PILL_COLOR[job.type] ?? TYPE_PILL_COLOR.FULL_TIME).text }]}>
-              {typeLabel}
-            </Text>
-          </View>
-          {job.payStructure && (
-            <View style={[styles.payChip, { borderColor: theme.border.subtle, backgroundColor: theme.bg.elevated }]}>
-              <Text style={[styles.payChipText, { color: theme.text.secondary }]} numberOfLines={1}>{job.payStructure}</Text>
-            </View>
-          )}
-        </View>
-
-        {/* ── HEADER: salon logo + name/meta + bookmark (top-right) ── */}
+        {/* ── HEADER ────────────────────────────────────────────────────────── */}
         <View style={styles.headerRow}>
-          <Avatar
-            uri={job.salonPhotoUrl}
-            name={job.salonName}
-            size="lg"
-          />
+          <Avatar uri={job.salonPhotoUrl} name={job.salonName} size="md" />
+
           <View style={styles.headerInfo}>
+            {/* Name + verified */}
             <View style={styles.nameRow}>
-              <Text style={[styles.salonName, { color: theme.text.primary }]} numberOfLines={1}>
+              <Text
+                style={[styles.salonName, { color: theme.text.primary }]}
+                numberOfLines={1}
+              >
                 {job.salonName}
               </Text>
-              {job.salonVerified && (
-                <View style={styles.verifiedCircle}>
-                  <Text style={styles.verifiedCheckmark}>✓</Text>
+              {job.salonVerified === true && (
+                <View style={styles.verifiedDot}>
+                  <Text style={styles.verifiedMark}>✓</Text>
                 </View>
               )}
             </View>
-            {/* Rating row — right under name */}
-            <View style={styles.ratingRow}>
-              <Text style={{ color: '#EF9F27', fontSize: 12, fontWeight: '700' }}>★</Text>
-              <Text style={[styles.ratingText, { color: theme.text.secondary }]}>
-                {(job.salonRating ?? 0).toFixed(1)}
+
+            {/* Location · rating */}
+            <View style={styles.metaRow}>
+              <PinIcon color={theme.text.tertiary} size={10} />
+              <Text
+                style={[styles.metaText, { color: theme.text.secondary }]}
+                numberOfLines={1}
+              >
+                {getCityLabel(job.cityId)}
               </Text>
-              <Text style={{ color: theme.text.tertiary, fontSize: 11 }}>
-                ({job.salonReviewCount ?? 0})
-              </Text>
-              {job.salonHiringCount != null && job.salonHiringCount > 0 && (
+              {(job.salonRating ?? 0) > 0 && (
                 <>
-                  <Text style={{ color: theme.text.tertiary, fontSize: 11 }}> · </Text>
-                  <Text style={{ color: '#D85A30', fontSize: 11, fontWeight: '600' }}>
-                    {job.salonHiringCount} open
+                  <Text style={[styles.metaDot, { color: theme.text.tertiary }]}>·</Text>
+                  <Text style={styles.starChar}>★</Text>
+                  <Text style={[styles.metaText, { color: theme.text.secondary, fontWeight: '600' }]}>
+                    {job.salonRating!.toFixed(1)}
                   </Text>
+                  {(job.salonReviewCount ?? 0) > 0 && (
+                    <Text style={[styles.metaText, { color: theme.text.tertiary }]}>
+                      {' '}({job.salonReviewCount})
+                    </Text>
+                  )}
                 </>
               )}
             </View>
-            {/* City row */}
-            <View style={styles.metaRow}>
-              <MapPinIcon size={13} />
-              <Text style={[styles.metaText, { color: theme.text.tertiary }]} numberOfLines={1}>
-                {formatCity(job.cityId)}
-              </Text>
-            </View>
+
+            {/* Hiring count */}
+            {(job.salonHiringCount ?? 0) > 0 && (
+              <View style={styles.hiringRow}>
+                <PeopleIcon size={11} color={theme.text.tertiary} />
+                <Text style={[styles.metaText, { color: theme.text.tertiary }]}>
+                  {job.salonHiringCount} hiring this month
+                </Text>
+              </View>
+            )}
           </View>
-          {onSave && (
-            <Pressable
-              onPress={handleSave}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              style={styles.bookmarkBtn}
-            >
-              <BookmarkIcon
-                filled={savedLocal}
-                color={savedLocal ? theme.brand.primary : theme.text.tertiary}
-                size={20}
+
+          {/* Actions: message + bookmark — no badge here */}
+          <View style={styles.headerActions}>
+            {onMessage !== undefined && (
+              <Pressable onPress={onMessage} hitSlop={10} style={styles.iconAction}>
+                <ChatIcon color={theme.text.tertiary} size={17} />
+              </Pressable>
+            )}
+            {onSave !== undefined && (
+              <Pressable onPress={handleSave} hitSlop={10} style={styles.iconAction}>
+                <BookmarkIcon
+                  filled={savedLocal}
+                  color={savedLocal ? '#D85A30' : theme.text.tertiary}
+                  size={18}
+                />
+              </Pressable>
+            )}
+          </View>
+        </View>
+
+        {/* ── CONTENT: photo + right col ────────────────────────────────────── */}
+        <View style={styles.contentRow}>
+
+          {/* Main photo with status sticker overlay */}
+          {mainPhoto != null && (
+            <View style={styles.mainPhotoWrap}>
+              <Image
+                source={{ uri: mainPhoto }}
+                style={StyleSheet.absoluteFillObject}
+                resizeMode="cover"
               />
-            </Pressable>
-          )}
-        </View>
-
-        {/* ── BODY: left thumb (cover image or initials) + pills/description ── */}
-        <View style={styles.bodyRow}>
-          {coverUri ? (
-            <Image source={{ uri: coverUri }} style={styles.coverImg} resizeMode="cover" />
-          ) : (
-            <View style={[styles.coverInitials, { backgroundColor: theme.brand.primary + '18' }]}>
-              <Text style={[styles.coverInitialsText, { color: theme.brand.primary }]}>
-                {(job.salonName[0] ?? 'S').toUpperCase()}
-              </Text>
-            </View>
-          )}
-          <View style={styles.bodyRight}>
-            {/* Pills — single line: listing type + first specialty + +N + employment type */}
-            {(() => {
-              const tags = job.specialty.split(/[,/]/).map((t) => t.trim()).filter(Boolean)
-              const firstTag = tags[0]
-              const overflow = tags.length - 1
-              return (
-                <View style={styles.pillsRow}>
-                  {job.listingType && job.listingType !== 'JOB' && (
-                    <View style={[styles.pill, { backgroundColor: (LISTING_PILL_COLOR[job.listingType] ?? LISTING_PILL_COLOR.JOB).bg }]}>
-                      <Text style={[styles.pillText, { color: (LISTING_PILL_COLOR[job.listingType] ?? LISTING_PILL_COLOR.JOB).text }]}>{LISTING_LABEL[job.listingType] ?? job.listingType}</Text>
-                    </View>
-                  )}
-                  {firstTag ? (
-                    <View style={[styles.pill, styles.pillCoral]}>
-                      <Text style={[styles.pillText, styles.pillCoralText]}>{firstTag}</Text>
-                    </View>
-                  ) : null}
-                  {overflow > 0 && (
-                    <View style={[styles.pill, styles.pillCoral]}>
-                      <Text style={[styles.pillText, styles.pillCoralText]}>+{overflow}</Text>
-                    </View>
-                  )}
-                  <View style={[styles.pill, { backgroundColor: (TYPE_PILL_COLOR[job.type] ?? TYPE_PILL_COLOR.FULL_TIME).bg }]}>
-                    <Text style={[styles.pillText, { color: (TYPE_PILL_COLOR[job.type] ?? TYPE_PILL_COLOR.FULL_TIME).text }]}>{typeLabel}</Text>
-                  </View>
-                </View>
-              )
-            })()}
-            {job.description ? (
-              <Text style={[styles.description, { color: theme.text.secondary }]} numberOfLines={2} ellipsizeMode="tail">
-                {job.description}
-              </Text>
-            ) : null}
-          </View>
-        </View>
-
-        {/* ── PHOTOS STRIP ── */}
-        {(() => {
-          const photos = (job.portfolioPhotoUrls?.length ? job.portfolioPhotoUrls : (job.spacePhotos ?? []))
-          if (photos.length === 0) return null
-          return (
-            <View style={styles.photosStrip}>
-              {photos.slice(0, 3).map((url, i) => (
-                <Image key={i} source={{ uri: url }} style={styles.photoThumb} resizeMode="cover" />
-              ))}
-              {photos.length > 3 && (
-                <View style={[styles.photoMore, { backgroundColor: theme.bg.elevated }]}>
-                  <Text style={[styles.photoMoreText, { color: theme.text.secondary }]}>+{photos.length - 3}</Text>
+              {/* Status sticker — bottom-left of photo */}
+              {statusBadge !== null && (
+                <View style={[styles.photoBadge, { backgroundColor: statusBadge.solidBg }]}>
+                  {statusBadge.icon === 'flash'   && <FlashIcon   color="#FFFFFF" size={9} />}
+                  {statusBadge.icon === 'fire'    && <FireIcon    color="#FFFFFF" size={9} />}
+                  {statusBadge.icon === 'sparkle' && <SparkleIcon color="#FFFFFF" size={9} />}
+                  <Text style={styles.photoBadgeText}>{statusBadge.label}</Text>
                 </View>
               )}
             </View>
-          )
-        })()}
+          )}
 
-        {/* ── DIVIDER ── */}
+          {/* Right col: title · tags · portfolio */}
+          <View style={[styles.rightCol, mainPhoto == null && styles.rightColFull]}>
+
+            {/* Badge fallback when no photo */}
+            {mainPhoto == null && statusBadge !== null && (
+              <View style={[styles.inlineBadge, { backgroundColor: statusBadge.solidBg }]}>
+                {statusBadge.icon === 'flash'   && <FlashIcon   color="#FFFFFF" size={9} />}
+                {statusBadge.icon === 'fire'    && <FireIcon    color="#FFFFFF" size={9} />}
+                {statusBadge.icon === 'sparkle' && <SparkleIcon color="#FFFFFF" size={9} />}
+                <Text style={styles.photoBadgeText}>{statusBadge.label}</Text>
+              </View>
+            )}
+
+            {/* Job title — hero element */}
+            <Text
+              style={[styles.jobTitle, { color: theme.text.primary }]}
+              numberOfLines={2}
+            >
+              {job.title}
+            </Text>
+
+            {/* Specialty + type chips */}
+            <View style={styles.tagsRow}>
+              {tags.slice(0, 2).map((tag, i) => (
+                <View key={i} style={styles.tagSpecialty}>
+                  <Text style={styles.tagSpecialtyText}>{tag}</Text>
+                </View>
+              ))}
+              <View style={[styles.tagType, { backgroundColor: typeMeta.bg }]}>
+                <Text style={[styles.tagTypeText, { color: typeMeta.color }]}>
+                  {typeMeta.label}
+                </Text>
+              </View>
+            </View>
+
+            {/* Portfolio strip */}
+            {hasPortfolio && (
+              <View style={styles.portfolioStrip}>
+                {portfolioPhotos.slice(0, 3).map((url, i) => (
+                  <View key={i} style={styles.portfolioThumb}>
+                    <Image
+                      source={{ uri: url }}
+                      style={StyleSheet.absoluteFillObject}
+                      resizeMode="cover"
+                    />
+                  </View>
+                ))}
+                {portfolioPhotos.length > 3 && (
+                  <View style={[styles.portfolioMore, { backgroundColor: theme.bg.elevated }]}>
+                    <Text style={[styles.portfolioMoreText, { color: theme.text.secondary }]}>
+                      +{portfolioPhotos.length - 3}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
+
+            {/* Space extras (RENTAL / SPACE only) */}
+            {job.listingType !== 'JOB' &&
+              (job.spaceSize !== undefined || job.availableFrom !== undefined ||
+               (job.spaceAmenities?.length ?? 0) > 0) && (
+              <View style={styles.spaceExtras}>
+                {job.spaceSize !== undefined && (
+                  <View style={[styles.spaceTag, { backgroundColor: theme.bg.elevated }]}>
+                    <Text style={[styles.spaceTagText, { color: theme.text.secondary }]}>
+                      {job.spaceSize}
+                    </Text>
+                  </View>
+                )}
+                {job.availableFrom !== undefined && (
+                  <View style={[styles.spaceTag, { backgroundColor: theme.bg.elevated }]}>
+                    <Text style={[styles.spaceTagText, { color: theme.text.secondary }]}>
+                      From {job.availableFrom}
+                    </Text>
+                  </View>
+                )}
+                {(job.spaceAmenities ?? []).slice(0, 2).map((a, i) => (
+                  <View key={i} style={[styles.spaceTag, { backgroundColor: theme.bg.elevated }]}>
+                    <Text style={[styles.spaceTagText, { color: theme.text.secondary }]}>{a}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* ── DIVIDER ───────────────────────────────────────────────────────── */}
         <View style={[styles.divider, { backgroundColor: theme.border.subtle }]} />
 
-        {/* ── FOOTER: 3-column — pay | engagement | actions ── */}
+        {/* ── FOOTER: pay · social proof · single CTA ──────────────────────── */}
         <View style={styles.footerRow}>
+
+          {/* Pay */}
           <View style={styles.payCol}>
-            <Text style={[styles.payText, { color: theme.text.primary }]} numberOfLines={1}>
-              {job.payStructure}
-            </Text>
-            {(job.applicantCount ?? 0) > 0 && (
-              <Text style={[styles.payEstimate, { color: theme.text.tertiary }]} numberOfLines={1}>
-                {job.applicantCount} applicants
+            <View style={styles.payAmountRow}>
+              <View style={styles.moneyBadge}>
+                <Text style={styles.moneyBadgeText}>$</Text>
+              </View>
+              <Text
+                style={[styles.payAmount, { color: '#1D9E75' }]}
+                numberOfLines={1}
+              >
+                {payDisplay}
+              </Text>
+            </View>
+            {job.estimatedWeekly != null && (
+              <Text
+                style={[styles.payEst, { color: theme.text.tertiary }]}
+                numberOfLines={1}
+              >
+                Est. {job.estimatedWeekly}
               </Text>
             )}
           </View>
 
-          <View style={styles.actionsCol}>
-            {onMessage && (
-              <Pressable
-                onPress={onMessage}
-                style={[styles.messageBtnIconOnly, { backgroundColor: theme.bg.input }]}
+          {/* Social proof */}
+          {hasSocialProof && (
+            <View style={styles.socialCol}>
+              {(job.appliedToday ?? 0) > 0 && (
+                <View style={styles.socialRow}>
+                  <FireIcon color="#EA580C" size={11} />
+                  <Text style={[styles.socialText, { color: theme.text.secondary }]}>
+                    {job.appliedToday} applied today
+                  </Text>
+                </View>
+              )}
+              {job.replyTime != null && (
+                <View style={styles.socialRow}>
+                  <FlashIcon color="#378ADD" size={11} />
+                  <Text style={[styles.socialText, { color: theme.text.secondary }]}>
+                    Replies in {job.replyTime}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* Single primary CTA */}
+          {onApply !== undefined && (
+            <Pressable
+              onPress={expired ? undefined : onApply}
+              style={[
+                styles.applyBtn,
+                expired
+                  ? { backgroundColor: theme.bg.elevated }
+                  : { backgroundColor: '#D85A30' },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.applyBtnText,
+                  { color: expired ? theme.text.tertiary : '#FFFFFF' },
+                ]}
               >
-                <ChatIcon color={theme.text.primary} size={16} />
-              </Pressable>
-            )}
-            {onApply && !expired && (
-              <Pressable
-                onPress={onApply}
-                style={[styles.applyBtn, { backgroundColor: theme.brand.primary }]}
-              >
-                <Text style={[styles.applyBtnText, { color: '#FFFFFF' }]}>Apply Now</Text>
-              </Pressable>
-            )}
-          </View>
+                {buttonLabel}
+              </Text>
+            </Pressable>
+          )}
         </View>
       </Pressable>
     </Animated.View>
   )
 }
 
+// ── Skeleton ──────────────────────────────────────────────────────────────────
 export function JobPostCardSkeleton() {
   const { theme } = useTheme()
   return (
-    <View style={[styles.card, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
+    <View
+      style={[
+        styles.card,
+        { backgroundColor: theme.bg.card, borderColor: theme.border.subtle },
+      ]}
+    >
+      {/* Header */}
       <View style={styles.headerRow}>
-        <Skeleton width={40} height={40} radius={20} />
-        <View style={[styles.headerInfo, { gap: 4 }]}>
-          <Skeleton width={120} height={14} radius={6} />
-          <Skeleton width={100} height={11} radius={5} />
+        <Skeleton width={42} height={42} radius={21} />
+        <View style={[styles.headerInfo, { gap: 6 }]}>
+          <Skeleton width={110} height={13} radius={6} />
+          <Skeleton width={130} height={10} radius={5} />
+          <Skeleton width={95}  height={10} radius={5} />
+        </View>
+        <View style={[styles.headerActions, { gap: 10 }]}>
+          <Skeleton width={20} height={20} radius={10} />
+          <Skeleton width={20} height={20} radius={10} />
         </View>
       </View>
-      <View style={styles.bodyRow}>
-        <Skeleton width={80} height={80} radius={10} />
-        <View style={[styles.bodyRight, { gap: 6 }]}>
-          <View style={styles.pillsRow}>
-            <Skeleton width={60} height={18} radius={10} />
-            <Skeleton width={56} height={18} radius={10} />
+      {/* Content */}
+      <View style={styles.contentRow}>
+        <Skeleton width={116} height={134} radius={10} />
+        <View style={[styles.rightCol, { gap: 9 }]}>
+          <Skeleton width="95%" height={15} radius={6} />
+          <Skeleton width="80%" height={15} radius={6} />
+          <View style={styles.tagsRow}>
+            <Skeleton width={62} height={23} radius={10} />
+            <Skeleton width={62} height={23} radius={10} />
           </View>
-          <Skeleton width="100%" height={14} radius={5} />
-          <Skeleton width="80%" height={14} radius={5} />
+          <View style={styles.portfolioStrip}>
+            <View style={styles.portfolioThumb}>
+              <Skeleton width="100%" height={54} radius={8} />
+            </View>
+            <View style={styles.portfolioThumb}>
+              <Skeleton width="100%" height={54} radius={8} />
+            </View>
+            <View style={styles.portfolioThumb}>
+              <Skeleton width="100%" height={54} radius={8} />
+            </View>
+          </View>
         </View>
       </View>
+      {/* Divider */}
       <View style={[styles.divider, { backgroundColor: theme.border.subtle }]} />
+      {/* Footer */}
       <View style={styles.footerRow}>
-        <View style={[styles.payCol, { gap: 4 }]}>
-          <Skeleton width={100} height={13} radius={5} />
-          <Skeleton width={80} height={10} radius={5} />
+        <View style={[styles.payCol, { gap: 5 }]}>
+          <Skeleton width={85} height={13} radius={6} />
+          <Skeleton width={65} height={10} radius={5} />
         </View>
-        <View style={styles.actionsCol}>
-          <Skeleton width={36} height={36} radius={18} />
-          <Skeleton width={100} height={36} radius={18} />
+        <View style={[styles.socialCol, { gap: 5 }]}>
+          <Skeleton width="90%" height={10} radius={5} />
+          <Skeleton width="75%" height={10} radius={5} />
         </View>
+        <Skeleton width={90} height={34} radius={22} />
       </View>
     </View>
   )
 }
 
+// ── Styles ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 18,
-    padding: 14,
+    borderRadius: 20,
+    paddingHorizontal: 15,
+    paddingTop: 14,
+    paddingBottom: 13,
     marginHorizontal: 16,
     marginBottom: 10,
     borderWidth: 1,
-    gap: 10,
+    gap: 11,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 4,
+    shadowOpacity: 0.09,
+    shadowRadius: 14,
+    elevation: 5,
   },
-  metaTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
-  },
-  // ── Header ──
+
+  // ── Header ──────────────────────────────────────────────────────────────────
   headerRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 8,
+    gap: 10,
   },
   headerInfo: {
     flex: 1,
     minWidth: 0,
-    gap: 2,
-    paddingTop: 2,
+    gap: 3,
   },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
   },
   salonName: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     letterSpacing: -0.2,
+    flexShrink: 1,
   },
-  verifiedCircle: {
-    width: 16,
-    height: 16,
+  verifiedDot: {
+    width: 15,
+    height: 15,
     borderRadius: 8,
     backgroundColor: '#378ADD',
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
   },
-  verifiedCheckmark: {
+  verifiedMark: {
     fontSize: 9,
     fontWeight: '800',
     color: '#FFFFFF',
     marginTop: -1,
   },
-  ratingRow: {
+  metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    marginTop: 1,
+    flexWrap: 'nowrap',
   },
-  ratingText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  metaRow: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: 3,
+  hiringRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     marginTop: 1,
   },
   metaText: {
     fontSize: 11,
     fontWeight: '400',
-    flex: 1,
-    marginLeft: 2,
   },
-  // ── Body ──
-  bodyRow: {
+  metaDot: {
+    fontSize: 11,
+    marginHorizontal: 1,
+  },
+  starChar: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#EF9F27',
+  },
+
+  // Header icon actions (chat + bookmark)
+  headerActions: {
     flexDirection: 'row',
-    gap: 10,
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    gap: 12,
+    flexShrink: 0,
+    paddingTop: 1,
   },
-  coverImg: {
-    width: 80,
-    height: 80,
+  iconAction: {
+    padding: 2,
+  },
+
+  // ── Content row ─────────────────────────────────────────────────────────────
+  contentRow: {
+    flexDirection: 'row',
+    gap: 11,
+  },
+  mainPhotoWrap: {
+    width: 116,
+    height: 134,
     borderRadius: 10,
     overflow: 'hidden',
-  },
-  coverInitials: {
-    width: 80,
-    height: 80,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#F0EDE8',
     flexShrink: 0,
   },
-  coverInitialsText: {
-    fontSize: 30,
+  photoBadge: {
+    position: 'absolute',
+    bottom: 7,
+    left: 7,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    borderRadius: 7,
+  },
+  photoBadgeText: {
+    fontSize: 10,
     fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.1,
   },
-  bookmarkBtn: {
-    padding: 4,
+  inlineBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 7,
+    marginBottom: 2,
   },
-  bodyRight: {
+  rightCol: {
     flex: 1,
     minWidth: 0,
+    gap: 7,
+  },
+  rightColFull: {
+    flex: 1,
+  },
+
+  // Job title — hero
+  jobTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    lineHeight: 21,
+  },
+
+  // Chips
+  tagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 4,
   },
-  description: {
-    fontSize: 13,
-    fontWeight: '400',
-    lineHeight: 18,
+  tagSpecialty: {
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 10,
+    backgroundColor: 'rgba(216,90,48,0.12)',
   },
-  pillsRow: {
-    flexDirection: 'row',
-    flexWrap: 'nowrap',
-    gap: 5,
-    overflow: 'hidden',
-  },
-  typePill: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 14,
-  },
-  typePillText: {
+  tagSpecialtyText: {
     fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 0.2,
+    color: '#C44E28',
+    letterSpacing: 0.1,
   },
-  payChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 14,
-    borderWidth: 1,
-    flexShrink: 1,
-  },
-  payChipText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  pill: {
-    paddingHorizontal: 8,
+  tagType: {
+    paddingHorizontal: 9,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 10,
   },
-  pillCoral: {
-    backgroundColor: 'rgba(216,90,48,0.10)',
+  tagTypeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.1,
   },
-  pillText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  pillCoralText: {
-    color: '#D85A30',
-  },
-  // ── Photos strip ──
-  photosStrip: {
+
+  // Portfolio strip
+  portfolioStrip: {
     flexDirection: 'row',
     gap: 4,
+  },
+  portfolioThumb: {
+    flex: 1,
+    height: 54,
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: '#F0EDE8',
+  },
+  portfolioMore: {
+    width: 34,
+    height: 54,
+    borderRadius: 8,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  photoThumb: {
-    width: 52,
-    height: 52,
-    borderRadius: 8,
-    backgroundColor: '#F0EDE8',
-    overflow: 'hidden' as const,
-  },
-  photoMore: {
-    width: 52,
-    height: 52,
-    borderRadius: 8,
-    justifyContent: 'center' as const,
-    alignItems: 'center' as const,
-  },
-  photoMoreText: {
-    fontSize: 13,
+  portfolioMoreText: {
+    fontSize: 12,
     fontWeight: '700',
   },
-  // ── Divider ──
+
+  // Space extras
+  spaceExtras: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+  },
+  spaceTag: {
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 7,
+  },
+  spaceTagText: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+
+  // ── Divider ──────────────────────────────────────────────────────────────────
   divider: {
     height: StyleSheet.hairlineWidth,
-    marginVertical: 3,
   },
-  // ── Footer ──
+
+  // ── Footer ──────────────────────────────────────────────────────────────────
   footerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 6,
-  },
-  payCol: {
-    flex: 1,
-    gap: 2,
-  },
-  payText: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  payEstimate: {
-    fontSize: 11,
-    fontWeight: '400',
-  },
-  actionsCol: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
+  payCol: {
+    flex: 1,
+    gap: 3,
+    minWidth: 0,
+  },
+  payAmountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  moneyBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(29,158,117,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  moneyBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#1D9E75',
+    lineHeight: 14,
+  },
+  payAmount: {
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+    flex: 1,
+  },
+  payEst: {
+    fontSize: 11,
+    fontWeight: '400',
+    letterSpacing: 0.1,
+  },
+  socialCol: {
+    flex: 1,
+    gap: 4,
+    minWidth: 0,
+  },
+  socialRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  socialText: {
+    fontSize: 11,
+    fontWeight: '500',
+    flexShrink: 1,
+  },
+
+  // Single primary CTA
   applyBtn: {
-    borderRadius: 18,
+    borderRadius: 22,
     paddingHorizontal: 18,
     paddingVertical: 9,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   applyBtnText: {
     fontSize: 13,
     fontWeight: '800',
-  },
-  messageBtnIconOnly: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center' as const,
-    alignItems: 'center' as const,
+    letterSpacing: 0.1,
   },
 })

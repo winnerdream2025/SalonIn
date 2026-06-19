@@ -213,7 +213,7 @@ export function RadiusEditorScreen({ visible, onClose, onApply }: Props) {
                     onPress={() => handleSelectPlace(place)}
                     activeOpacity={0.7}
                   >
-                    <Ionicons name="location-outline" size={18} color={theme.text.secondary} />
+                    <Ionicons name="location-outline" size={18} color="#D85A30" />
                     <Text style={[styles.dropdownText, { color: theme.text.primary }]}>{place.shortName}</Text>
                   </TouchableOpacity>
                 ))

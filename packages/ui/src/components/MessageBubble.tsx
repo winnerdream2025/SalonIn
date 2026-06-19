@@ -53,17 +53,21 @@ export function MessageBubble({
         style={[
           styles.bubble,
           isSelf
-            ? [styles.bubbleSelf, { backgroundColor: theme.brand.primary }]
-            : [styles.bubbleOther, { backgroundColor: theme.bg.elevated }],
+            ? [styles.bubbleSelf, { backgroundColor: '#D85A30' }]
+            : [styles.bubbleOther, { backgroundColor: theme.bg.card }],
         ]}
       >
         {message.mediaUrl != null && (
           <Image source={{ uri: message.mediaUrl }} style={styles.media} resizeMode="cover" />
         )}
         {message.content != null && message.content.length > 0 && (
-          <Text style={[styles.content, { color: theme.text.primary }]}>{message.content}</Text>
+          <Text style={[styles.content, { color: isSelf ? '#FFFFFF' : theme.text.primary }]}>
+            {message.content}
+          </Text>
         )}
-        <Text style={[styles.time, isSelf ? styles.timeSelf : styles.timeOther]}>{time}</Text>
+        <Text style={[styles.time, { color: isSelf ? 'rgba(255,255,255,0.65)' : theme.text.tertiary }]}>
+          {time}
+        </Text>
       </View>
     </View>
   )
@@ -78,7 +82,7 @@ export function MessageBubbleSkeleton({ isSelf = false }: { isSelf?: boolean }) 
         { marginVertical: 2 },
       ]}
     >
-      <Skeleton width={isSelf ? 200 : 160} height={40} radius={16} />
+      <Skeleton width={isSelf ? 200 : 160} height={42} radius={16} />
     </View>
   )
 }
@@ -88,40 +92,44 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     marginVertical: 2,
-    paddingHorizontal: 16,
-    gap: 6,
+    paddingHorizontal: 14,
+    gap: 7,
   },
-  containerSelf: { justifyContent: 'flex-end' },
+  containerSelf:  { justifyContent: 'flex-end' },
   containerOther: { justifyContent: 'flex-start' },
 
-  avatarSlot: { width: 28 },
+  avatarSlot: { width: 30 },
   avatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  avatarImg: { width: 28, height: 28 },
-  avatarText: { color: '#fff', fontSize: 11, fontWeight: '700' },
-  avatarPlaceholder: { width: 28, height: 28 },
+  avatarImg: { width: 30, height: 30 },
+  avatarText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  avatarPlaceholder: { width: 30, height: 30 },
 
   bubble: {
-    maxWidth: '75%',
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 4,
+    maxWidth: '76%',
+    borderRadius: 18,
+    paddingHorizontal: 13,
+    paddingVertical: 9,
+    gap: 3,
+    // White card shadow for "other" bubbles
+    shadowColor: '#1A1A1A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.07,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  bubbleSelf: { borderBottomRightRadius: 4 },
-  bubbleOther: { borderBottomLeftRadius: 4 },
+  bubbleSelf:  { borderBottomRightRadius: 5 },
+  bubbleOther: { borderBottomLeftRadius: 5 },
 
   media: { width: 200, height: 160, maxWidth: '100%', borderRadius: 10, marginBottom: 4 },
 
-  content: { fontSize: 14, lineHeight: 20 },
+  content: { fontSize: 15, lineHeight: 21 },
 
-  time: { fontSize: 10, alignSelf: 'flex-end', marginTop: 2 },
-  timeSelf: { color: 'rgba(255,255,255,0.6)' },
-  timeOther: { color: '#555' },
+  time: { fontSize: 10, alignSelf: 'flex-end', marginTop: 1 },
 })

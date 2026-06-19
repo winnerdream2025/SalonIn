@@ -111,6 +111,7 @@ model User {
   reviewsWritten   Review[]      @relation("ReviewsWritten")
   reviewsReceived  Review[]      @relation("ReviewsReceived")
   notifications    Notification[]
+  savedJobs        SavedJob[]
 }
 
 model WorkerProfile {
@@ -185,10 +186,23 @@ model JobPost {
   availableFrom   DateTime?
 
   applications JobApplication[]
+  savedBy       SavedJob[]
 
   @@index([cityId, isActive, expiresAt])
   @@index([salonId, isActive])
   @@index([listingType, isActive])
+}
+
+model SavedJob {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId     String
+  job       JobPost  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, jobId])
+  @@index([userId])
 }
 
 model JobApplication {

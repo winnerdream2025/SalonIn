@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Share,
+  Alert,
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -17,7 +18,8 @@ import { router } from 'expo-router'
 import * as Haptics from 'expo-haptics'
 import { WorkerCard, WorkerCardSkeleton, Text, Button, useTheme, ReportModal } from '@salonin/ui'
 import type { WorkerCardData } from '@salonin/types'
-import { reportsApi, messagesApi } from '@salonin/api-client'
+import { Availability } from '@salonin/types'
+import { reportsApi, messagesApi, parseApiError } from '@salonin/api-client'
 import { getCityLabel } from '@salonin/config'
 import { useAuthStore } from '../../store/authStore'
 import { useNearbyWorkers } from '../../hooks/useNearbyWorkers'
@@ -28,7 +30,7 @@ import { LocationModal } from '../../components/LocationModal'
 import { WorkerFilterModal, activeWorkerFilterCount, EMPTY_WORKER_FILTERS } from '../../components/WorkerFilterModal'
 import type { WorkerFilters } from '../../components/WorkerFilterModal'
 
-const SPECIALTIES = ['All', 'Available Now', 'Braiders', 'Nail Techs', 'Lash', 'Makeup', 'Barbers']
+const SPECIALTIES = ['All', 'Braiders', 'Nail Techs', 'Lash', 'Makeup', 'Barbers']
 
 const SKELETON_COUNT = 6
 
@@ -59,33 +61,28 @@ export default function DiscoveryFeedScreen() {
     try {
       const conv = await messagesApi.createConversation(worker.id)
       router.push(`/chat/${conv.id}?name=${encodeURIComponent(worker.name)}` as never)
-    } catch { /* silently fail */ }
+    } catch (e: unknown) {
+      Alert.alert('Couldn\'t start chat', parseApiError(e))
+    }
   }, [currentUser])
 
   const specialtyFilter = selectedSpecialty === 'All' ? undefined : selectedSpecialty
 
   const { workers, isLoading, isRefreshing, isLoadingMore, hasMore, error, isExpanded, usedRadius, refresh, loadMore } =
-    useNearbyWorkers({ specialty: specialtyFilter, radiusMiles })
+    useNearbyWorkers({
+      specialty: workerFilters.category ?? specialtyFilter,
+      availability: workerFilters.availability ? (workerFilters.availability as Availability) : undefined,
+      radiusMiles,
+    })
 
   const filteredWorkers = useMemo(() => {
-    let result = workers
     const q = search.trim().toLowerCase()
-    if (q) {
-      result = result.filter((w) =>
-        w.name.toLowerCase().includes(q) ||
-        w.specialties.some((s) => s.toLowerCase().includes(q))
-      )
-    }
-    if (workerFilters.availability) {
-      result = result.filter((w) => w.availability === workerFilters.availability)
-    }
-    if (workerFilters.category) {
-      result = result.filter((w) =>
-        w.specialties.some((s) => s.toLowerCase().includes(workerFilters.category!.toLowerCase()))
-      )
-    }
-    return result
-  }, [workers, search, workerFilters])
+    if (!q) return workers
+    return workers.filter((w) =>
+      w.name.toLowerCase().includes(q) ||
+      w.specialties.some((s) => s.toLowerCase().includes(q))
+    )
+  }, [workers, search])
 
   const handlePressWorker = useCallback((worker: WorkerCardData) => {
     router.push(`/worker/${worker.id}`)
@@ -170,7 +167,7 @@ export default function DiscoveryFeedScreen() {
               ]}
               activeOpacity={0.7}
             >
-              <Ionicons name="location-outline" size={13} color={isGPSLocation ? '#1D9E75' : theme.text.secondary} />
+              <Ionicons name="location-outline" size={13} color={isGPSLocation ? '#1D9E75' : '#D85A30'} />
               <Text
                 style={{ fontSize: 12, fontWeight: '600', color: isGPSLocation ? '#1D9E75' : theme.text.secondary }}
                 numberOfLines={1}
@@ -183,7 +180,7 @@ export default function DiscoveryFeedScreen() {
           </View>
         </View>
 
-        {/* ── Search + filter button ── */}
+        {/* ── Search (filter icon inside, matching JobFeedScreen) ── */}
         <View style={[styles.searchRow, { backgroundColor: theme.bg.base }]}>
           <View style={[styles.searchWrap, { backgroundColor: theme.bg.input }]}>
             <Ionicons name="search" size={18} color={theme.text.tertiary} />
@@ -200,28 +197,54 @@ export default function DiscoveryFeedScreen() {
                 <Ionicons name="close-circle" size={16} color={theme.text.tertiary} />
               </TouchableOpacity>
             )}
+            <TouchableOpacity
+              onPress={() => setShowFilterModal(true)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={{ position: 'relative' }}
+            >
+              <Ionicons
+                name="options-outline"
+                size={18}
+                color={filterCount > 0 ? theme.brand.primary : theme.text.tertiary}
+              />
+              {filterCount > 0 && <View style={styles.filterDot} />}
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            onPress={() => setShowFilterModal(true)}
-            style={[
-              styles.filterBtn,
-              { backgroundColor: filterCount > 0 ? theme.brand.primary : theme.bg.elevated, borderColor: filterCount > 0 ? theme.brand.primary : theme.border.default },
-            ]}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="options-outline" size={18} color={filterCount > 0 ? '#FFFFFF' : theme.text.secondary} />
-            {filterCount > 0 && (
-              <Text style={styles.filterBadgeText}>{filterCount}</Text>
-            )}
-          </TouchableOpacity>
         </View>
 
-        {/* ── Specialty chips ── */}
+        {/* ── Availability toggle + Specialty chips ── */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
+          style={styles.chipsScroll}
           contentContainerStyle={[styles.chipsRow, { backgroundColor: theme.bg.base }]}
         >
+          {/* Availability quick-filter — separate from specialty */}
+          {(() => {
+            const availActive = workerFilters.availability === 'NOW'
+            return (
+              <TouchableOpacity
+                onPress={() => {
+                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                  setWorkerFilters((f) => ({
+                    ...f,
+                    availability: availActive ? null : 'NOW',
+                  }))
+                }}
+                style={[
+                  styles.chip,
+                  {
+                    backgroundColor: availActive ? '#1D9E75' : theme.bg.card,
+                    borderColor: availActive ? '#1D9E75' : theme.border.default,
+                  },
+                ]}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '600', color: availActive ? '#FFFFFF' : theme.text.secondary }}>
+                  Available Now
+                </Text>
+              </TouchableOpacity>
+            )
+          })()}
           {SPECIALTIES.map((sp) => {
             const active = selectedSpecialty === sp
             return (
@@ -272,21 +295,36 @@ export default function DiscoveryFeedScreen() {
               </View>
             ) : error != null ? (
               <View style={styles.centerPane}>
-                <Text style={[styles.stateText, { color: theme.text.secondary }]}>
-                  {error.message}
+                <View style={[styles.emptyIcon, { backgroundColor: 'rgba(226,75,74,0.10)' }]}>
+                  <Ionicons name="cloud-offline-outline" size={28} color="#E24B4A" />
+                </View>
+                <Text style={[styles.emptyTitle, { color: theme.text.primary }]}>
+                  Couldn't load professionals
                 </Text>
-                <Button variant="secondary" onPress={refresh}>Retry</Button>
+                <Text style={[styles.stateText, { color: theme.text.secondary }]}>
+                  {error.message.toLowerCase().includes('network')
+                    ? 'Check your connection and try again.'
+                    : 'Something went wrong on our end.'}
+                </Text>
+                <Button variant="secondary" onPress={refresh}>Try again</Button>
               </View>
             ) : (
               <View style={styles.centerPane}>
-                <Text style={[styles.stateText, { fontSize: 18, fontWeight: '700', color: theme.text.primary }]}>
+                <View style={[styles.emptyIcon, { backgroundColor: 'rgba(29,158,117,0.10)' }]}>
+                  <Ionicons
+                    name={search.trim().length > 0 ? 'search-outline' : 'people-outline'}
+                    size={28}
+                    color="#1D9E75"
+                  />
+                </View>
+                <Text style={[styles.emptyTitle, { color: theme.text.primary }]}>
                   {search.trim().length > 0
                     ? 'No matching professionals'
-                    : 'No workers available right now'}
+                    : `No pros in ${cityLabel} yet`}
                 </Text>
                 <Text style={[styles.stateText, { color: theme.text.secondary }]}>
                   {search.trim().length > 0
-                    ? 'Try a different search term'
+                    ? 'Try different keywords or adjust your filters'
                     : 'Be the first to join My Salon In in your area'}
                 </Text>
                 {search.trim().length === 0 && (
@@ -299,7 +337,7 @@ export default function DiscoveryFeedScreen() {
                     }}
                     activeOpacity={0.8}
                   >
-                    <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>Invite a friend</Text>
+                    <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>Invite a pro</Text>
                   </TouchableOpacity>
                 )}
                 <TouchableOpacity
@@ -373,9 +411,9 @@ const styles = StyleSheet.create({
   },
   serifTitle: {
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-    fontSize: 22,
-    fontWeight: '800',
-    letterSpacing: -0.3,
+    fontSize: 34,
+    fontWeight: '900',
+    letterSpacing: -0.5,
   },
   headerRight: {
     flexDirection: 'row',
@@ -393,15 +431,11 @@ const styles = StyleSheet.create({
     maxWidth: 140,
   },
   searchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
     paddingHorizontal: 16,
     paddingTop: 10,
     paddingBottom: 6,
   },
   searchWrap: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -414,26 +448,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     paddingVertical: 0,
   },
-  filterBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    height: 44,
-    paddingHorizontal: 14,
-    borderRadius: 22,
-    borderWidth: 1,
+  filterDot: {
+    position: 'absolute',
+    top: -3,
+    right: -3,
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#D85A30',
   },
-  filterBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#FFFFFF',
+  chipsScroll: {
+    flexGrow: 0,
+    flexShrink: 0,
   },
   chipsRow: {
     gap: 8,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 2,
+    paddingTop: 8,
     paddingBottom: 8,
   },
   chip: {
@@ -463,7 +496,13 @@ const styles = StyleSheet.create({
   centerPane: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 64, gap: 12 },
   locTitle: { fontSize: 22, fontWeight: '700', textAlign: 'center' },
   locSubtitle: { textAlign: 'center', paddingHorizontal: 32, fontSize: 14 },
-  stateText: { textAlign: 'center', paddingHorizontal: 32 },
+  stateText: { textAlign: 'center', paddingHorizontal: 32, fontSize: 14, lineHeight: 20 },
+  emptyIcon: {
+    width: 64, height: 64, borderRadius: 32,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 4,
+  },
+  emptyTitle: { fontSize: 18, fontWeight: '700', textAlign: 'center', paddingHorizontal: 24 },
   gpsLoading: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8 },
   gpsBtn: { paddingHorizontal: 24, paddingVertical: 14, borderRadius: 14, alignItems: 'center', width: '100%' },
   orLabel: { textAlign: 'center' },

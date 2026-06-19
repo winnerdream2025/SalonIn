@@ -17,7 +17,7 @@ export function Input({ label, error, style, ...props }: InputProps) {
     backgroundColor: theme.bg.input,
     borderWidth: 1,
     borderColor: error
-      ? '#E74C3C'
+      ? '#E24B4A'
       : focused
         ? theme.brand.primary
         : theme.border.default,
@@ -40,7 +40,7 @@ export function Input({ label, error, style, ...props }: InputProps) {
   }
 
   const errorStyle: TextStyle = {
-    color: '#E74C3C',
+    color: '#E24B4A',
     fontSize: 12,
     marginTop: 4,
   }

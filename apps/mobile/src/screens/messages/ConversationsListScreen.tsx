@@ -30,12 +30,6 @@ export default function ConversationsListScreen() {
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]} edges={['top']}>
-      {/* Decorative background accent */}
-      <View style={styles.accentWrap} pointerEvents="none">
-        <View style={[styles.accentBlob, { backgroundColor: 'rgba(216,90,48,0.09)' }]} />
-        <View style={[styles.accentPill, { backgroundColor: 'rgba(216,90,48,0.05)' }]} />
-      </View>
-
       {/* Header */}
       <View style={styles.header}>
         <View>
@@ -129,33 +123,6 @@ export default function ConversationsListScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-
-  accentWrap: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: 220,
-    height: 180,
-    overflow: 'hidden',
-    pointerEvents: 'none',
-  } as const,
-  accentBlob: {
-    position: 'absolute',
-    top: -70,
-    right: -70,
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-  },
-  accentPill: {
-    position: 'absolute',
-    top: 60,
-    right: 10,
-    width: 120,
-    height: 36,
-    borderRadius: 22,
-    transform: [{ rotate: '-15deg' }],
-  },
 
   header: {
     flexDirection: 'row',

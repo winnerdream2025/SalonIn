@@ -13,6 +13,7 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
+import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import { Text, Button, useTheme } from '@salonin/ui'
 import { salonsApi, parseApiError } from '@salonin/api-client'
@@ -51,7 +52,7 @@ function SectionHeader({
           <Text style={{ fontSize: 12, color: theme.text.tertiary, marginTop: 2 }} numberOfLines={1}>{subtitle}</Text>
         )}
       </View>
-      <Text style={{ fontSize: 18, color: theme.text.tertiary }}>{isOpen ? '⌃' : '⌄'}</Text>
+      <Ionicons name={isOpen ? 'chevron-up' : 'chevron-down'} size={18} color={theme.text.tertiary} />
     </TouchableOpacity>
   )
 }

@@ -1,8 +1,10 @@
 import React, { useCallback } from 'react'
 import { View, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Text, Button, PortfolioGrid, useTheme } from '@salonin/ui'
+import type { PortfolioItem } from '@salonin/types'
 import { workersApi, parseApiError } from '@salonin/api-client'
 import { useMyWorkerProfile } from '../../hooks/useWorkerProfile'
 import { useMediaUpload } from '../../hooks/useMediaUpload'
@@ -21,6 +23,10 @@ export default function PortfolioUploadScreen() {
   })
 
   const isUploading = isUploadingImage || isUploadingVideo
+
+  const handlePressItem = useCallback((item: PortfolioItem) => {
+    router.push(`/worker/portfolio-view?url=${encodeURIComponent(item.mediaUrl)}` as never)
+  }, [])
 
   const handleAddImage = useCallback(async () => {
     try {
@@ -48,7 +54,7 @@ export default function PortfolioUploadScreen() {
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]}>
       <View style={[styles.header, { borderBottomColor: theme.border.default }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.headerSide}>
-          <Text variant="body" color="brand">‹ Back</Text>
+          <Ionicons name="chevron-back" size={24} color={theme.brand.primary} />
         </TouchableOpacity>
         <Text variant="title" style={styles.headerCenter}>Portfolio</Text>
         <View style={styles.headerSide} />
@@ -60,7 +66,7 @@ export default function PortfolioUploadScreen() {
       >
         <PortfolioGrid
           items={profile?.portfolioItems ?? []}
-          onPressItem={() => {}}
+          onPressItem={handlePressItem}
           isLoading={isLoading}
         />
 

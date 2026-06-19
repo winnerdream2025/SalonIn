@@ -13,6 +13,7 @@ import {
   PanResponder,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import * as Haptics from 'expo-haptics'
 import { Text, Button, useTheme } from '@salonin/ui'
@@ -22,38 +23,49 @@ import { BEAUTY_SPECIALTIES } from '@salonin/config'
 import { useMyWorkerProfile } from '../../hooks/useWorkerProfile'
 import { useMediaUpload } from '../../hooks/useMediaUpload'
 
-const CATEGORY_ICONS: Record<string, string> = {
-  Hair: '💇', Nails: '💅', Lashes: '�', Makeup: '💄', Barber: '✂️', Skincare: '✨', Other: '�',
-}
-const SPECIALTY_CATEGORIES = Object.fromEntries(
-  Object.entries(BEAUTY_SPECIALTIES).map(([cat, subs]) => [cat, { icon: CATEGORY_ICONS[cat] ?? '🔧', subs }]),
-) as Record<string, { icon: string; subs: string[] }>
+// ── Constants ─────────────────────────────────────────────────────────────────
 
-const AVAIL_OPTIONS: { value: Availability; icon: string; label: string; sub: string; color: string }[] = [
-  { value: Availability.NOW,           icon: '🟢', label: 'Available now',    sub: 'Ready to work immediately',   color: '#1D9E75' },
-  { value: Availability.TODAY,         icon: '🔵', label: 'Available today',  sub: 'Free later today',             color: '#378ADD' },
-  { value: Availability.WEEKEND,       icon: '🟡', label: 'This weekend',     sub: 'Available Sat or Sun',         color: '#EF9F27' },
-  { value: Availability.NOT_AVAILABLE, icon: '⚫', label: 'Not available',    sub: 'Pause visibility',             color: '#6B6B6B' },
+type IoniconsName = React.ComponentProps<typeof Ionicons>['name']
+
+const CATEGORY_ICONS: Record<string, IoniconsName> = {
+  Hair:     'cut-outline',
+  Nails:    'color-palette-outline',
+  Lashes:   'eye-outline',
+  Makeup:   'sparkles-outline',
+  Barber:   'cut-outline',
+  Skincare: 'leaf-outline',
+  Other:    'ellipsis-horizontal-circle-outline',
+}
+
+const SPECIALTY_CATEGORIES = Object.fromEntries(
+  Object.entries(BEAUTY_SPECIALTIES).map(([cat, subs]) => [
+    cat,
+    { icon: (CATEGORY_ICONS[cat] ?? 'ellipsis-horizontal-circle-outline') as IoniconsName, subs },
+  ]),
+) as Record<string, { icon: IoniconsName; subs: string[] }>
+
+const AVAIL_OPTIONS: { value: Availability; label: string; sub: string; color: string }[] = [
+  { value: Availability.NOW,           label: 'Available now',   sub: 'Ready to work immediately', color: '#1D9E75' },
+  { value: Availability.TODAY,         label: 'Available today', sub: 'Free later today',           color: '#378ADD' },
+  { value: Availability.WEEKEND,       label: 'This weekend',    sub: 'Available Sat or Sun',       color: '#EF9F27' },
+  { value: Availability.NOT_AVAILABLE, label: 'Not available',   sub: 'Pause your visibility',      color: '#6B6B6B' },
 ]
 
 const RADIUS_PRESETS = [5, 10, 15, 25, 50, 100]
 
+const COMPLETION_STEPS = ['Photo', 'Bio', 'Skills', 'Exp.', 'Status']
+
+// ── TrackSlider ───────────────────────────────────────────────────────────────
+
 function TrackSlider({
-  value,
-  min,
-  max,
-  label,
-  onChange,
+  value, min, max, label, onChange,
 }: {
-  value: number
-  min: number
-  max: number
-  label: (v: number) => string
-  onChange: (v: number) => void
+  value: number; min: number; max: number
+  label: (v: number) => string; onChange: (v: number) => void
 }) {
   const { theme } = useTheme()
   const widthRef = useRef(0)
-  const KNOB = 22
+  const KNOB = 24
 
   const toValue = (x: number) => {
     const pct = Math.max(0, Math.min(1, x / widthRef.current))
@@ -70,9 +82,7 @@ function TrackSlider({
         onChange(toValue(e.nativeEvent.locationX))
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
       },
-      onPanResponderMove: (e) => {
-        onChange(toValue(e.nativeEvent.locationX))
-      },
+      onPanResponderMove: (e) => { onChange(toValue(e.nativeEvent.locationX)) },
     }),
   ).current
 
@@ -82,78 +92,152 @@ function TrackSlider({
     <View style={{ paddingVertical: 4 }}>
       <View
         onLayout={(e) => { widthRef.current = e.nativeEvent.layout.width }}
-        style={{ height: 44, justifyContent: 'center' }}
+        style={{ height: 48, justifyContent: 'center' }}
         {...pan.panHandlers}
       >
-        <View style={{ height: 4, borderRadius: 2, backgroundColor: theme.border.default }}>
-          <View style={{ width: `${fillPct}%`, height: '100%', backgroundColor: '#D85A30', borderRadius: 2 }} />
+        <View style={{ height: 5, borderRadius: 3, backgroundColor: theme.border.default }}>
+          <View style={{ width: `${fillPct}%`, height: '100%', backgroundColor: '#D85A30', borderRadius: 3 }} />
         </View>
         <View
           style={{
             position: 'absolute',
             left: `${fillPct}%` as `${number}%`,
             marginLeft: -(KNOB / 2),
-            top: (44 - KNOB) / 2,
+            top: (48 - KNOB) / 2,
             width: KNOB,
             height: KNOB,
             borderRadius: KNOB / 2,
             backgroundColor: '#D85A30',
             borderWidth: 3,
             borderColor: theme.bg.card,
-            elevation: 4,
-            shadowColor: '#000',
+            elevation: 5,
+            shadowColor: '#D85A30',
             shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.2,
-            shadowRadius: 4,
+            shadowOpacity: 0.35,
+            shadowRadius: 5,
           }}
         />
       </View>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 }}>
         <Text style={{ color: theme.text.tertiary, fontSize: 11 }}>{min}</Text>
-        <Text style={{ color: '#D85A30', fontSize: 14, fontWeight: '700' }}>{label(value)}</Text>
+        <Text style={{ color: '#D85A30', fontSize: 15, fontWeight: '800' }}>{label(value)}</Text>
         <Text style={{ color: theme.text.tertiary, fontSize: 11 }}>{max}+</Text>
       </View>
     </View>
   )
 }
 
-function SectionHeader({
-  title,
-  subtitle,
-  isComplete,
-  isOpen,
-  onPress,
+// ── AccordionSection ──────────────────────────────────────────────────────────
+
+function AccordionSection({
+  title, subtitle, icon, isComplete, isOpen, onPress, children,
 }: {
-  title: string
-  subtitle: string
-  isComplete: boolean
-  isOpen: boolean
-  onPress: () => void
+  title: string; subtitle: string; icon: IoniconsName; isComplete: boolean
+  isOpen: boolean; onPress: () => void; children: React.ReactNode
 }) {
   const { theme } = useTheme()
+  const iconBg = isComplete ? 'rgba(29,158,117,0.12)' : 'rgba(216,90,48,0.10)'
+  const iconColor = isComplete ? '#1D9E75' : '#D85A30'
+
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      style={[styles.sectionHeader, { borderBottomColor: isOpen ? theme.border.default : 'transparent' }]}
-      activeOpacity={0.7}
-    >
-      <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 15, fontWeight: '700', color: theme.text.primary, letterSpacing: -0.2 }}>{title}</Text>
-        {!isOpen && (
-          <Text style={{ fontSize: 12, color: theme.text.tertiary, marginTop: 2 }} numberOfLines={1}>{subtitle}</Text>
-        )}
-      </View>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-        {isComplete && (
-          <View style={styles.completeBadge}>
-            <Text style={{ fontSize: 11, color: '#1D9E75', fontWeight: '700' }}>✓</Text>
-          </View>
-        )}
-        <Text style={{ fontSize: 18, color: theme.text.tertiary }}>{isOpen ? '⌃' : '⌄'}</Text>
-      </View>
-    </TouchableOpacity>
+    <View style={[accordionStyles.wrap, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
+      <TouchableOpacity
+        onPress={onPress}
+        style={[accordionStyles.header, { borderBottomColor: isOpen ? theme.border.subtle : 'transparent' }]}
+        activeOpacity={0.7}
+      >
+        {/* Icon badge */}
+        <View style={[accordionStyles.iconBadge, { backgroundColor: iconBg }]}>
+          <Ionicons name={icon} size={17} color={iconColor} />
+        </View>
+
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={[accordionStyles.title, { color: theme.text.primary }]}>{title}</Text>
+          {!isOpen && (
+            <Text style={[accordionStyles.subtitle, { color: theme.text.tertiary }]} numberOfLines={1}>
+              {subtitle}
+            </Text>
+          )}
+        </View>
+
+        <View style={accordionStyles.headerRight}>
+          {isComplete && (
+            <View style={accordionStyles.completeBadge}>
+              <Ionicons name="checkmark" size={11} color="#1D9E75" />
+            </View>
+          )}
+          <Ionicons
+            name={isOpen ? 'chevron-up' : 'chevron-down'}
+            size={17}
+            color={theme.text.tertiary}
+          />
+        </View>
+      </TouchableOpacity>
+
+      {isOpen && <View style={accordionStyles.body}>{children}</View>}
+    </View>
   )
 }
+
+const accordionStyles = StyleSheet.create({
+  wrap: {
+    marginHorizontal: 16,
+    marginBottom: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    overflow: 'hidden',
+    shadowColor: '#1A1A1A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 15,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 12,
+  },
+  iconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  title: {
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+  subtitle: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexShrink: 0,
+  },
+  completeBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(29,158,117,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  body: {
+    padding: 16,
+    gap: 12,
+  },
+})
+
+// ── EditProfileScreen ─────────────────────────────────────────────────────────
 
 export default function EditProfileScreen() {
   const { top, bottom } = useSafeAreaInsets()
@@ -165,20 +249,21 @@ export default function EditProfileScreen() {
     allowsEditing: true,
   })
 
-  const [name, setName] = useState('')
-  const [bio, setBio] = useState('')
-  const [specialties, setSpecialties] = useState<string[]>([])
+  // ── State ──
+  const [name,             setName]             = useState('')
+  const [bio,              setBio]              = useState('')
+  const [specialties,      setSpecialties]      = useState<string[]>([])
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-  const [experienceYears, setExperienceYears] = useState(0)
-  const [licenseNumber, setLicenseNumber] = useState('')
-  const [availability, setAvailability] = useState<Availability>(Availability.NOW)
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
-  const [radiusMiles, setRadiusMiles] = useState(15)
-  const [rateMin, setRateMin] = useState('')
-  const [rateMax, setRateMax] = useState('')
-  const [rateNote, setRateNote] = useState('')
-  const [isSaving, setIsSaving] = useState(false)
-  const [openSection, setOpenSection] = useState<string | null>('photo')
+  const [experienceYears,  setExperienceYears]  = useState(0)
+  const [licenseNumber,    setLicenseNumber]    = useState('')
+  const [availability,     setAvailability]     = useState<Availability>(Availability.NOW)
+  const [photoUrl,         setPhotoUrl]         = useState<string | null>(null)
+  const [radiusMiles,      setRadiusMiles]      = useState(15)
+  const [rateMin,          setRateMin]          = useState('')
+  const [rateMax,          setRateMax]          = useState('')
+  const [rateNote,         setRateNote]         = useState('')
+  const [isSaving,         setIsSaving]         = useState(false)
+  const [openSection,      setOpenSection]      = useState<string | null>(null)
 
   useEffect(() => {
     if (!profile) return
@@ -190,25 +275,29 @@ export default function EditProfileScreen() {
     setPhotoUrl(profile.photoUrl)
     setLicenseNumber((profile as { licenseNumber?: string }).licenseNumber ?? '')
     setRadiusMiles((profile as { radiusMiles?: number }).radiusMiles ?? 15)
-    const rr = (profile as { rateRange?: string }).rateRange ?? ''
+    const rr    = (profile as { rateRange?: string }).rateRange ?? ''
     const match = rr.match(/\$(\d+)\s*[–-]\s*\$(\d+)/)
     if (match) { setRateMin(match[1]!); setRateMax(match[2]!) }
     setRateNote((profile as { rateNote?: string }).rateNote ?? '')
-    const firstIncomplete = !profile.photoUrl ? 'photo'
-      : (profile.bio?.length ?? 0) < 20 ? 'bio'
-      : profile.specialties.length === 0 ? 'specialties'
+    const firstIncomplete =
+      profile.specialties.length === 0 ? 'specialties'
+      : profile.experienceYears === 0  ? 'experience'
       : null
     setOpenSection(firstIncomplete)
   }, [profile])
 
-  const completionScore = [
+  // Completion
+  const completionSteps = [
     !!photoUrl,
     bio.length > 20,
     specialties.length > 0,
     experienceYears > 0,
     availability !== Availability.NOT_AVAILABLE,
-  ].filter(Boolean).length
-  const completionPct = Math.round((completionScore / 5) * 100)
+  ]
+  const completionScore = completionSteps.filter(Boolean).length
+  const completionPct   = Math.round((completionScore / 5) * 100)
+  const isComplete      = completionPct === 100
+  const progressColor   = isComplete ? '#1D9E75' : '#D85A30'
 
   const toggleSection = useCallback((id: string) => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
@@ -217,9 +306,7 @@ export default function EditProfileScreen() {
 
   const toggleSpecialty = useCallback((sub: string) => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-    setSpecialties((prev) =>
-      prev.includes(sub) ? prev.filter((s) => s !== sub) : [...prev, sub],
-    )
+    setSpecialties((prev) => prev.includes(sub) ? prev.filter((s) => s !== sub) : [...prev, sub])
   }, [])
 
   const handleChangePhoto = useCallback(async () => {
@@ -228,25 +315,6 @@ export default function EditProfileScreen() {
     setPhotoUrl(url)
     await workersApi.updateProfile({ photoUrl: url })
   }, [pickAvatar])
-
-  const handleSave = useCallback(async () => {
-    if (!name.trim()) {
-      Alert.alert('Name required', 'Please enter your name.')
-      return
-    }
-    if (specialties.length === 0) {
-      Alert.alert(
-        'No specialties selected',
-        'Add at least one specialty so salons can find you.',
-        [
-          { text: 'Add now', style: 'cancel' },
-          { text: 'Save anyway', onPress: () => void doSave() },
-        ],
-      )
-      return
-    }
-    void doSave()
-  }, [name, specialties, bio, experienceYears, licenseNumber, radiusMiles, rateMin, rateMax, rateNote, availability])
 
   const doSave = useCallback(async () => {
     setIsSaving(true)
@@ -272,417 +340,466 @@ export default function EditProfileScreen() {
     }
   }, [name, bio, specialties, experienceYears, licenseNumber, radiusMiles, rateMin, rateMax, rateNote, availability])
 
+  const handleSave = useCallback(async () => {
+    if (!name.trim()) {
+      Alert.alert('Name required', 'Please enter your name.')
+      return
+    }
+    if (specialties.length === 0) {
+      Alert.alert(
+        'No specialties selected',
+        'Add at least one specialty so salons can find you.',
+        [
+          { text: 'Add now', style: 'cancel' },
+          { text: 'Save anyway', onPress: () => void doSave() },
+        ],
+      )
+      return
+    }
+    void doSave()
+  }, [name, specialties, doSave])
+
+  const firstInitial = (name?.[0] ?? 'W').toUpperCase()
+
   return (
     <View style={[styles.screen, { backgroundColor: theme.bg.base, paddingTop: top }]}>
-      <View style={[styles.header, { borderBottomColor: theme.border.subtle }]}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text style={{ fontSize: 15, color: '#D85A30', fontWeight: '500' }}>Cancel</Text>
+
+      {/* ── Nav bar ─────────────────────────────────────── */}
+      <View style={[styles.navbar, { borderBottomColor: theme.border.subtle, backgroundColor: theme.bg.base }]}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Text style={[styles.navAction, { color: theme.text.secondary }]}>Cancel</Text>
         </TouchableOpacity>
-        <Text style={{ fontSize: 16, fontWeight: '700', color: theme.text.primary }}>Edit Profile</Text>
+        <Text style={[styles.navTitle, { color: theme.text.primary }]}>Edit Profile</Text>
         <TouchableOpacity
           onPress={() => void handleSave()}
           disabled={isSaving || isLoading}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Text style={{ fontSize: 15, color: isSaving ? theme.text.tertiary : '#D85A30', fontWeight: '700' }}>
+          <Text style={[styles.navAction, { color: isSaving ? theme.text.tertiary : '#D85A30', fontWeight: '700' }]}>
             {isSaving ? 'Saving…' : 'Save'}
           </Text>
         </TouchableOpacity>
       </View>
 
-      {/* ── Completion bar ── */}
-      <View style={[styles.completionBar, { backgroundColor: theme.bg.elevated }]}>
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 12, color: theme.text.secondary, marginBottom: 6 }}>
-            Your profile is{' '}
-            <Text style={{ color: completionPct === 100 ? '#1D9E75' : '#D85A30', fontWeight: '700' }}>
-              {completionPct}% complete
-            </Text>
-          </Text>
-          <View style={{ height: 4, borderRadius: 2, backgroundColor: theme.border.default }}>
-            <View
-              style={{
-                width: `${completionPct}%`,
-                height: '100%',
-                backgroundColor: completionPct === 100 ? '#1D9E75' : '#D85A30',
-                borderRadius: 2,
-              }}
-            />
-          </View>
-        </View>
-      </View>
-
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView
-          contentContainerStyle={{ paddingBottom: bottom + 24 }}
+          contentContainerStyle={{ paddingBottom: bottom + 32 }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* ─── Name ─── */}
-          <View style={[styles.section, { backgroundColor: theme.bg.card, borderBottomColor: theme.border.subtle }]}>
-            <Text style={[styles.fieldLabel, { color: theme.text.tertiary }]}>DISPLAY NAME</Text>
-            <TextInput
-              value={name}
-              onChangeText={setName}
-              placeholder="Your full name"
-              placeholderTextColor={theme.text.tertiary}
-              style={[styles.inlineInput, { color: theme.text.primary, borderBottomColor: theme.border.default }]}
-              autoCapitalize="words"
-            />
+
+          {/* ── Photo hero ──────────────────────────────────── */}
+          <View style={[styles.heroCover, { backgroundColor: theme.bg.elevated }]} />
+          <View style={styles.heroContent}>
+            <TouchableOpacity
+              onPress={() => void handleChangePhoto()}
+              disabled={isUploadingPhoto}
+              activeOpacity={0.85}
+              style={styles.photoWrap}
+            >
+              <View style={[styles.photoCircle, { borderColor: '#D85A30', backgroundColor: theme.bg.elevated }]}>
+                {isUploadingPhoto ? (
+                  <ActivityIndicator color="#D85A30" size="large" />
+                ) : photoUrl ? (
+                  <Image source={{ uri: photoUrl }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+                ) : (
+                  <Text style={styles.photoInitial}>{firstInitial}</Text>
+                )}
+              </View>
+              <View style={styles.photoCameraBadge}>
+                <Ionicons name="camera" size={13} color="#FFFFFF" />
+              </View>
+            </TouchableOpacity>
+            <Text style={[styles.photoHint, { color: theme.text.tertiary }]}>
+              {isUploadingPhoto ? 'Uploading…' : 'Tap to change photo'}
+            </Text>
           </View>
 
-          {/* ─── PHOTO ─── */}
-          <View style={[styles.sectionCard, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
-            <SectionHeader
-              title="Photo"
-              subtitle={photoUrl ? 'Profile photo set' : 'Add a profile photo'}
-              isComplete={!!photoUrl}
-              isOpen={openSection === 'photo'}
-              onPress={() => toggleSection('photo')}
-            />
-            {openSection === 'photo' && (
-              <View style={styles.sectionBody}>
-                <TouchableOpacity
-                  style={styles.photoCircleWrap}
-                  onPress={() => void handleChangePhoto()}
-                  disabled={isUploadingPhoto}
-                  activeOpacity={0.8}
-                >
-                  {photoUrl ? (
-                    <Image source={{ uri: photoUrl }} style={styles.photoCircle} resizeMode="cover" />
-                  ) : (
-                    <View style={[styles.photoCircle, styles.photoPlaceholder, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}>
-                      <Text style={{ fontSize: 36 }}>📷</Text>
-                    </View>
-                  )}
-                  {isUploadingPhoto && (
-                    <View style={[styles.photoOverlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
-                      <ActivityIndicator color="#FFFFFF" />
-                    </View>
-                  )}
-                  <View style={[styles.photoBadge, { backgroundColor: '#D85A30' }]}>
-                    <Text style={{ fontSize: 12, color: theme.text.inverse }}>✎</Text>
-                  </View>
-                </TouchableOpacity>
-                <Text style={{ fontSize: 13, color: theme.text.secondary, textAlign: 'center', marginTop: 8 }}>
-                  {isUploadingPhoto ? 'Uploading…' : 'Tap to change your photo'}
+          {/* ── Progress card ──────────────────────────────── */}
+          <View style={[styles.progressCard, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
+            <View style={styles.progressHeader}>
+              <View style={styles.progressTitleRow}>
+                <Ionicons
+                  name={isComplete ? 'checkmark-circle' : 'stats-chart-outline'}
+                  size={15}
+                  color={progressColor}
+                />
+                <Text style={[styles.progressTitle, { color: theme.text.secondary }]}>
+                  Profile strength
                 </Text>
               </View>
-            )}
+              <Text style={[styles.progressPct, { color: progressColor }]}>{completionPct}%</Text>
+            </View>
+
+            <View style={[styles.progressTrack, { backgroundColor: theme.border.default }]}>
+              <View style={[styles.progressFill, { width: `${completionPct}%`, backgroundColor: progressColor }]} />
+            </View>
+
+            <View style={styles.stepsRow}>
+              {COMPLETION_STEPS.map((step, i) => {
+                const done = completionSteps[i] ?? false
+                return (
+                  <View key={step} style={styles.stepCell}>
+                    <View style={[styles.stepDot, { backgroundColor: done ? progressColor : theme.border.default }]}>
+                      {done && <Ionicons name="checkmark" size={9} color="#FFF" />}
+                    </View>
+                    <Text style={[styles.stepLabel, { color: done ? progressColor : theme.text.tertiary }]}>
+                      {step}
+                    </Text>
+                  </View>
+                )
+              })}
+            </View>
           </View>
 
-          {/* ─── BIO ─── */}
+          <View style={{ height: 6 }} />
+
+          {/* ── About card (Name + Bio) ─────────────────────── */}
           <View style={[styles.sectionCard, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
-            <SectionHeader
-              title="Bio"
-              subtitle={bio.length > 20 ? bio.slice(0, 50) + '…' : 'Tell salons what makes you unique'}
-              isComplete={bio.length > 20}
-              isOpen={openSection === 'bio'}
-              onPress={() => toggleSection('bio')}
-            />
-            {openSection === 'bio' && (
-              <View style={styles.sectionBody}>
-                <TextInput
-                  value={bio}
-                  onChangeText={setBio}
-                  placeholder="Tell salons what makes you unique..."
-                  placeholderTextColor={theme.text.tertiary}
-                  multiline
-                  maxLength={300}
-                  style={[styles.bioInput, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default, color: theme.text.primary }]}
-                  autoCapitalize="sentences"
-                />
-                <Text style={{ fontSize: 11, color: bio.length > 280 ? '#D85A30' : theme.text.tertiary, textAlign: 'right', marginTop: 4 }}>
+            {/* Header row */}
+            <View style={styles.sectionCardHeader}>
+              <View style={[styles.sectionIconBadge, { backgroundColor: 'rgba(216,90,48,0.10)' }]}>
+                <Ionicons name="person-outline" size={17} color="#D85A30" />
+              </View>
+              <Text style={[styles.sectionCardTitle, { color: theme.text.primary }]}>About You</Text>
+            </View>
+
+            {/* Display name */}
+            <View style={[styles.fieldGroup, { borderTopColor: theme.border.subtle }]}>
+              <Text style={[styles.fieldLabel, { color: theme.text.tertiary }]}>Display name</Text>
+              <TextInput
+                value={name}
+                onChangeText={setName}
+                placeholder="Your full name"
+                placeholderTextColor={theme.text.tertiary}
+                style={[styles.lineInput, { color: theme.text.primary, borderBottomColor: theme.border.default }]}
+                autoCapitalize="words"
+                returnKeyType="next"
+              />
+            </View>
+
+            {/* Bio */}
+            <View style={[styles.fieldGroup, { borderTopColor: theme.border.subtle }]}>
+              <View style={styles.fieldLabelRow}>
+                <Text style={[styles.fieldLabel, { color: theme.text.tertiary }]}>Bio</Text>
+                <Text style={[styles.charCount, { color: bio.length > 280 ? '#D85A30' : theme.text.tertiary }]}>
                   {bio.length}/300
                 </Text>
               </View>
-            )}
+              <TextInput
+                value={bio}
+                onChangeText={setBio}
+                placeholder="Tell salons what makes you unique — your style, strengths, and experience..."
+                placeholderTextColor={theme.text.tertiary}
+                multiline
+                maxLength={300}
+                style={[styles.bioInput, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default, color: theme.text.primary }]}
+                autoCapitalize="sentences"
+                textAlignVertical="top"
+              />
+            </View>
           </View>
 
-          {/* ─── SPECIALTIES ─── */}
-          <View style={[styles.sectionCard, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
-            <SectionHeader
-              title="Specialties"
-              subtitle={specialties.length > 0 ? specialties.slice(0, 3).join(', ') + (specialties.length > 3 ? ` +${specialties.length - 3}` : '') : 'Select your skills'}
-              isComplete={specialties.length > 0}
-              isOpen={openSection === 'specialties'}
-              onPress={() => toggleSection('specialties')}
-            />
-            {openSection === 'specialties' && (
-              <View style={styles.sectionBody}>
-                <View style={styles.categoryRow}>
-                  {Object.entries(SPECIALTY_CATEGORIES).map(([cat, { icon }]) => {
-                    const active = selectedCategory === cat
-                    return (
-                      <TouchableOpacity
-                        key={cat}
-                        onPress={() => {
-                          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                          setSelectedCategory((prev) => (prev === cat ? null : cat))
-                        }}
-                        style={[
-                          styles.categoryPill,
-                          {
-                            backgroundColor: active ? '#D85A30' : theme.bg.elevated,
-                            borderColor: active ? '#D85A30' : theme.border.default,
-                          },
-                        ]}
-                      >
-                        <Text style={{ fontSize: 14 }}>{icon}</Text>
-                        <Text style={{ fontSize: 12, color: active ? '#fff' : theme.text.secondary, fontWeight: '600' }}>{cat}</Text>
-                      </TouchableOpacity>
-                    )
-                  })}
-                </View>
+          <View style={{ height: 6 }} />
 
-                {selectedCategory && (
-                  <View style={[styles.subPillWrap, { borderTopColor: theme.border.subtle }]}>
-                    <Text style={{ fontSize: 11, color: theme.text.tertiary, marginBottom: 10, letterSpacing: 0.5 }}>
-                      {selectedCategory.toUpperCase()}
+          {/* ── Specialties accordion ──────────────────────── */}
+          <AccordionSection
+            title="Specialties"
+            subtitle={specialties.length > 0
+              ? specialties.slice(0, 3).join(', ') + (specialties.length > 3 ? ` +${specialties.length - 3}` : '')
+              : 'Select your skills'}
+            icon="cut-outline"
+            isComplete={specialties.length > 0}
+            isOpen={openSection === 'specialties'}
+            onPress={() => toggleSection('specialties')}
+          >
+            {/* Category tabs */}
+            <View style={styles.categoryRow}>
+              {Object.entries(SPECIALTY_CATEGORIES).map(([cat, { icon }]) => {
+                const active = selectedCategory === cat
+                return (
+                  <TouchableOpacity
+                    key={cat}
+                    onPress={() => {
+                      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                      setSelectedCategory((prev) => (prev === cat ? null : cat))
+                    }}
+                    style={[
+                      styles.categoryPill,
+                      {
+                        backgroundColor: active ? '#D85A30' : theme.bg.elevated,
+                        borderColor: active ? '#D85A30' : theme.border.default,
+                      },
+                    ]}
+                  >
+                    <Ionicons name={icon} size={14} color={active ? '#FFFFFF' : theme.text.secondary} />
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: active ? '#FFFFFF' : theme.text.secondary }}>
+                      {cat}
                     </Text>
-                    <View style={styles.pillGrid}>
-                      {SPECIALTY_CATEGORIES[selectedCategory]!.subs.map((sub) => {
-                        const active = specialties.includes(sub)
-                        return (
-                          <TouchableOpacity
-                            key={sub}
-                            onPress={() => toggleSpecialty(sub)}
-                            style={[
-                              styles.subPill,
-                              {
-                                backgroundColor: active ? '#D85A30' : theme.bg.base,
-                                borderColor: active ? '#D85A30' : theme.border.default,
-                              },
-                            ]}
-                          >
-                            <Text style={{ fontSize: 12, color: active ? '#fff' : theme.text.secondary }}>{sub}</Text>
-                          </TouchableOpacity>
-                        )
-                      })}
-                    </View>
-                  </View>
-                )}
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
 
-                {specialties.length > 0 && (
-                  <View style={[styles.selectedWrap, { borderTopColor: theme.border.subtle }]}>
-                    <Text style={{ fontSize: 11, color: theme.text.tertiary, marginBottom: 8, letterSpacing: 0.5 }}>SELECTED</Text>
-                    <View style={styles.pillGrid}>
-                      {specialties.map((s) => (
-                        <TouchableOpacity
-                          key={s}
-                          onPress={() => toggleSpecialty(s)}
-                          style={[styles.subPill, { backgroundColor: '#D85A30', borderColor: '#D85A30' }]}
-                        >
-                          <Text style={{ fontSize: 12, color: theme.text.inverse }}>{s} ×</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </View>
-                )}
-              </View>
-            )}
-          </View>
-
-          {/* ─── EXPERIENCE ─── */}
-          <View style={[styles.sectionCard, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
-            <SectionHeader
-              title="Experience"
-              subtitle={experienceYears > 0 ? `${experienceYears} year${experienceYears !== 1 ? 's' : ''} experience` : 'Set your experience level'}
-              isComplete={experienceYears > 0}
-              isOpen={openSection === 'experience'}
-              onPress={() => toggleSection('experience')}
-            />
-            {openSection === 'experience' && (
-              <View style={styles.sectionBody}>
-                <Text style={{ fontSize: 13, color: theme.text.secondary, marginBottom: 12 }}>Years of experience</Text>
-                <TrackSlider
-                  value={experienceYears}
-                  min={0}
-                  max={20}
-                  label={(v) => (v === 0 ? 'New pro' : v >= 20 ? '20+ years' : `${v} year${v !== 1 ? 's' : ''}`)}
-                  onChange={setExperienceYears}
-                />
-                <View style={[styles.certSection, { borderTopColor: theme.border.subtle }]}>
-                  <Text style={{ fontSize: 13, color: theme.text.secondary, marginBottom: 10 }}>License / Certification (optional)</Text>
-                  <TextInput
-                    value={licenseNumber}
-                    onChangeText={setLicenseNumber}
-                    placeholder="e.g. Cosmetology License #12345"
-                    placeholderTextColor={theme.text.tertiary}
-                    style={[styles.textInput, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default, color: theme.text.primary }]}
-                    autoCapitalize="characters"
-                  />
-                </View>
-              </View>
-            )}
-          </View>
-
-          {/* ─── AVAILABILITY ─── */}
-          <View style={[styles.sectionCard, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
-            <SectionHeader
-              title="Availability"
-              subtitle={AVAIL_OPTIONS.find((o) => o.value === availability)?.label ?? 'Set your status'}
-              isComplete={availability !== Availability.NOT_AVAILABLE}
-              isOpen={openSection === 'availability'}
-              onPress={() => toggleSection('availability')}
-            />
-            {openSection === 'availability' && (
-              <View style={[styles.sectionBody, { gap: 10 }]}>
-                {AVAIL_OPTIONS.map(({ value, icon, label, sub, color }) => {
-                  const active = availability === value
-                  return (
-                    <TouchableOpacity
-                      key={value}
-                      onPress={() => {
-                        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-                        setAvailability(value)
-                      }}
-                      activeOpacity={0.8}
-                      style={[
-                        styles.availCard,
-                        {
-                          backgroundColor: active ? `${color}18` : theme.bg.elevated,
-                          borderColor: active ? color : theme.border.default,
-                        },
-                      ]}
-                    >
-                      <Text style={{ fontSize: 24 }}>{icon}</Text>
-                      <View style={{ flex: 1, minWidth: 0 }}>
-                        <Text style={{ fontSize: 14, fontWeight: '700', color: active ? color : theme.text.primary }} numberOfLines={1}>{label}</Text>
-                        <Text style={{ fontSize: 12, color: theme.text.tertiary, marginTop: 1 }} numberOfLines={1}>{sub}</Text>
-                      </View>
-                      <View style={[styles.radioOuter, { borderColor: active ? color : theme.border.default }]}>
-                        {active && <View style={[styles.radioInner, { backgroundColor: color }]} />}
-                      </View>
-                    </TouchableOpacity>
-                  )
-                })}
-              </View>
-            )}
-          </View>
-
-          {/* ─── RATE ─── */}
-          <View style={[styles.sectionCard, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
-            <SectionHeader
-              title="Rate"
-              subtitle={rateMin && rateMax ? `$${rateMin} – $${rateMax} /hr` : 'Set your hourly rate range'}
-              isComplete={!!(rateMin && rateMax)}
-              isOpen={openSection === 'rate'}
-              onPress={() => toggleSection('rate')}
-            />
-            {openSection === 'rate' && (
-              <View style={styles.sectionBody}>
-                <Text style={{ fontSize: 13, color: theme.text.secondary, marginBottom: 12 }}>Hourly rate range</Text>
-                <View style={{ flexDirection: 'row', gap: 12 }}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 11, color: theme.text.tertiary, marginBottom: 4, letterSpacing: 0.5 }}>MIN</Text>
-                    <View style={[styles.rateInputWrap, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}>
-                      <Text style={{ fontSize: 16, color: theme.text.tertiary }}>$</Text>
-                      <TextInput
-                        value={rateMin}
-                        onChangeText={(t) => setRateMin(t.replace(/[^0-9]/g, ''))}
-                        placeholder="60"
-                        placeholderTextColor={theme.text.tertiary}
-                        keyboardType="number-pad"
-                        style={{ flex: 1, fontSize: 16, color: theme.text.primary, paddingVertical: 0 }}
-                      />
-                    </View>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 11, color: theme.text.tertiary, marginBottom: 4, letterSpacing: 0.5 }}>MAX</Text>
-                    <View style={[styles.rateInputWrap, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}>
-                      <Text style={{ fontSize: 16, color: theme.text.tertiary }}>$</Text>
-                      <TextInput
-                        value={rateMax}
-                        onChangeText={(t) => setRateMax(t.replace(/[^0-9]/g, ''))}
-                        placeholder="120"
-                        placeholderTextColor={theme.text.tertiary}
-                        keyboardType="number-pad"
-                        style={{ flex: 1, fontSize: 16, color: theme.text.primary, paddingVertical: 0 }}
-                      />
-                    </View>
-                  </View>
-                </View>
-                <View style={{ marginTop: 16 }}>
-                  <Text style={{ fontSize: 11, color: theme.text.tertiary, marginBottom: 4, letterSpacing: 0.5 }}>NOTE (optional)</Text>
-                  <TextInput
-                    value={rateNote}
-                    onChangeText={setRateNote}
-                    placeholder="Rate varies by style"
-                    placeholderTextColor={theme.text.tertiary}
-                    style={[styles.textInput, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default, color: theme.text.primary }]}
-                  />
-                </View>
-              </View>
-            )}
-          </View>
-
-          {/* ─── RADIUS ─── */}
-          <View style={[styles.sectionCard, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
-            <SectionHeader
-              title="Travel Radius"
-              subtitle={`Up to ${radiusMiles} mi from your location`}
-              isComplete={true}
-              isOpen={openSection === 'radius'}
-              onPress={() => toggleSection('radius')}
-            />
-            {openSection === 'radius' && (
-              <View style={styles.sectionBody}>
-                <Text style={{ fontSize: 13, color: theme.text.secondary, marginBottom: 12 }}>
-                  How far will you travel for work?
+            {/* Sub-specialties */}
+            {selectedCategory && (
+              <View style={[styles.subSection, { borderTopColor: theme.border.subtle }]}>
+                <Text style={[styles.subLabel, { color: theme.text.tertiary }]}>
+                  {selectedCategory}
                 </Text>
-                <View style={styles.radiusPresets}>
-                  {RADIUS_PRESETS.map((r) => {
-                    const active = radiusMiles === r
+                <View style={styles.pillGrid}>
+                  {SPECIALTY_CATEGORIES[selectedCategory]!.subs.map((sub) => {
+                    const active = specialties.includes(sub)
                     return (
                       <TouchableOpacity
-                        key={r}
-                        onPress={() => {
-                          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                          setRadiusMiles(r)
-                        }}
+                        key={sub}
+                        onPress={() => toggleSpecialty(sub)}
                         style={[
-                          styles.radiusBtn,
+                          styles.subPill,
                           {
-                            backgroundColor: active ? '#D85A30' : theme.bg.elevated,
+                            backgroundColor: active ? '#D85A30' : theme.bg.base,
                             borderColor: active ? '#D85A30' : theme.border.default,
                           },
                         ]}
                       >
-                        <Text style={{ fontSize: 13, fontWeight: '700', color: active ? '#fff' : theme.text.primary }}>{r}</Text>
-                        <Text style={{ fontSize: 10, color: active ? 'rgba(255,255,255,0.8)' : theme.text.tertiary }}>mi</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '600', color: active ? '#FFFFFF' : theme.text.secondary }}>
+                          {sub}
+                        </Text>
                       </TouchableOpacity>
                     )
                   })}
                 </View>
-                <View style={{ marginTop: 16 }}>
-                  <TrackSlider
-                    value={radiusMiles}
-                    min={1}
-                    max={100}
-                    label={(v) => `${v} mi`}
-                    onChange={(v) => setRadiusMiles(v)}
-                  />
+              </View>
+            )}
+
+            {/* Selected */}
+            {specialties.length > 0 && (
+              <View style={[styles.subSection, { borderTopColor: theme.border.subtle }]}>
+                <Text style={[styles.subLabel, { color: theme.text.tertiary }]}>Selected ({specialties.length})</Text>
+                <View style={styles.pillGrid}>
+                  {specialties.map((s) => (
+                    <TouchableOpacity
+                      key={s}
+                      onPress={() => toggleSpecialty(s)}
+                      style={[styles.subPill, { backgroundColor: '#D85A30', borderColor: '#D85A30' }]}
+                    >
+                      <Text style={{ fontSize: 12, fontWeight: '600', color: '#FFFFFF' }}>{s} ×</Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
               </View>
             )}
-          </View>
+          </AccordionSection>
 
-          {/* ─── Save button ─── */}
-          <View style={{ paddingHorizontal: 16, paddingTop: 24 }}>
+          {/* ── Experience accordion ───────────────────────── */}
+          <AccordionSection
+            title="Experience"
+            subtitle={experienceYears > 0
+              ? `${experienceYears} year${experienceYears !== 1 ? 's' : ''} of experience`
+              : 'Set your experience level'}
+            icon="trophy-outline"
+            isComplete={experienceYears > 0}
+            isOpen={openSection === 'experience'}
+            onPress={() => toggleSection('experience')}
+          >
+            <Text style={[styles.sectionHint, { color: theme.text.secondary }]}>Years of professional experience</Text>
+            <TrackSlider
+              value={experienceYears}
+              min={0}
+              max={20}
+              label={(v) => v === 0 ? 'New pro' : v >= 20 ? '20+ yrs' : `${v} yr${v !== 1 ? 's' : ''}`}
+              onChange={setExperienceYears}
+            />
+            <View style={[styles.subSection, { borderTopColor: theme.border.subtle }]}>
+              <Text style={[styles.sectionHint, { color: theme.text.secondary }]}>
+                License / Certification{' '}
+                <Text style={{ color: theme.text.tertiary, fontWeight: '400' }}>(optional)</Text>
+              </Text>
+              <TextInput
+                value={licenseNumber}
+                onChangeText={setLicenseNumber}
+                placeholder="e.g. Cosmetology License #12345"
+                placeholderTextColor={theme.text.tertiary}
+                style={[styles.roundedInput, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default, color: theme.text.primary }]}
+                autoCapitalize="characters"
+              />
+            </View>
+          </AccordionSection>
+
+          {/* ── Availability accordion ─────────────────────── */}
+          <AccordionSection
+            title="Availability"
+            subtitle={AVAIL_OPTIONS.find((o) => o.value === availability)?.label ?? 'Set your status'}
+            icon="time-outline"
+            isComplete={availability !== Availability.NOT_AVAILABLE}
+            isOpen={openSection === 'availability'}
+            onPress={() => toggleSection('availability')}
+          >
+            <View style={{ gap: 8 }}>
+              {AVAIL_OPTIONS.map(({ value, label, sub, color }) => {
+                const active = availability === value
+                return (
+                  <TouchableOpacity
+                    key={value}
+                    onPress={() => {
+                      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+                      setAvailability(value)
+                    }}
+                    activeOpacity={0.8}
+                    style={[
+                      styles.availCard,
+                      {
+                        backgroundColor: active ? `${color}14` : theme.bg.elevated,
+                        borderColor: active ? color : theme.border.default,
+                      },
+                    ]}
+                  >
+                    <View style={[styles.availDot, { backgroundColor: color }]} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 14, fontWeight: '700', color: active ? color : theme.text.primary }}>
+                        {label}
+                      </Text>
+                      <Text style={{ fontSize: 12, color: theme.text.tertiary, marginTop: 2 }}>{sub}</Text>
+                    </View>
+                    <View style={[styles.radioOuter, { borderColor: active ? color : theme.border.default }]}>
+                      {active && <View style={[styles.radioInner, { backgroundColor: color }]} />}
+                    </View>
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+          </AccordionSection>
+
+          {/* ── Rate accordion ─────────────────────────────── */}
+          <AccordionSection
+            title="Rate"
+            subtitle={rateMin && rateMax ? `$${rateMin} – $${rateMax} /hr` : 'Set your hourly rate range'}
+            icon="cash-outline"
+            isComplete={!!(rateMin && rateMax)}
+            isOpen={openSection === 'rate'}
+            onPress={() => toggleSection('rate')}
+          >
+            <Text style={[styles.sectionHint, { color: theme.text.secondary }]}>Hourly rate range</Text>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.subLabel, { color: theme.text.tertiary, marginBottom: 6 }]}>Min</Text>
+                <View style={[styles.rateInputWrap, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}>
+                  <Text style={{ fontSize: 17, color: theme.text.tertiary, fontWeight: '600' }}>$</Text>
+                  <TextInput
+                    value={rateMin}
+                    onChangeText={(t) => setRateMin(t.replace(/[^0-9]/g, ''))}
+                    placeholder="60"
+                    placeholderTextColor={theme.text.tertiary}
+                    keyboardType="number-pad"
+                    style={{ flex: 1, fontSize: 17, fontWeight: '700', color: theme.text.primary, paddingVertical: 0 }}
+                  />
+                </View>
+              </View>
+              <View style={{ alignSelf: 'flex-end', paddingBottom: 14 }}>
+                <Text style={{ color: theme.text.tertiary, fontSize: 16 }}>–</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.subLabel, { color: theme.text.tertiary, marginBottom: 6 }]}>Max</Text>
+                <View style={[styles.rateInputWrap, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}>
+                  <Text style={{ fontSize: 17, color: theme.text.tertiary, fontWeight: '600' }}>$</Text>
+                  <TextInput
+                    value={rateMax}
+                    onChangeText={(t) => setRateMax(t.replace(/[^0-9]/g, ''))}
+                    placeholder="120"
+                    placeholderTextColor={theme.text.tertiary}
+                    keyboardType="number-pad"
+                    style={{ flex: 1, fontSize: 17, fontWeight: '700', color: theme.text.primary, paddingVertical: 0 }}
+                  />
+                </View>
+              </View>
+            </View>
+
+            <View style={[styles.subSection, { borderTopColor: theme.border.subtle }]}>
+              <Text style={[styles.sectionHint, { color: theme.text.secondary }]}>
+                Note{' '}
+                <Text style={{ color: theme.text.tertiary, fontWeight: '400' }}>(optional)</Text>
+              </Text>
+              <TextInput
+                value={rateNote}
+                onChangeText={setRateNote}
+                placeholder="e.g. Rate varies by style"
+                placeholderTextColor={theme.text.tertiary}
+                style={[styles.roundedInput, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default, color: theme.text.primary }]}
+              />
+            </View>
+          </AccordionSection>
+
+          {/* ── Travel Radius accordion ────────────────────── */}
+          <AccordionSection
+            title="Travel Radius"
+            subtitle={`Up to ${radiusMiles} mi from your location`}
+            icon="navigate-circle-outline"
+            isComplete
+            isOpen={openSection === 'radius'}
+            onPress={() => toggleSection('radius')}
+          >
+            <Text style={[styles.sectionHint, { color: theme.text.secondary }]}>
+              How far will you travel for work?
+            </Text>
+            <View style={styles.radiusPresets}>
+              {RADIUS_PRESETS.map((r) => {
+                const active = radiusMiles === r
+                return (
+                  <TouchableOpacity
+                    key={r}
+                    onPress={() => {
+                      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                      setRadiusMiles(r)
+                    }}
+                    style={[
+                      styles.radiusBtn,
+                      {
+                        backgroundColor: active ? '#D85A30' : theme.bg.elevated,
+                        borderColor: active ? '#D85A30' : theme.border.default,
+                      },
+                    ]}
+                  >
+                    <Text style={{ fontSize: 15, fontWeight: '800', color: active ? '#FFFFFF' : theme.text.primary }}>
+                      {r}
+                    </Text>
+                    <Text style={{ fontSize: 10, color: active ? 'rgba(255,255,255,0.75)' : theme.text.tertiary }}>
+                      mi
+                    </Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+            <TrackSlider
+              value={radiusMiles}
+              min={1}
+              max={100}
+              label={(v) => `${v} mi`}
+              onChange={(v) => setRadiusMiles(v)}
+            />
+          </AccordionSection>
+
+          {/* ── Save button ─────────────────────────────────── */}
+          <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
             <Button variant="primary" fullWidth loading={isSaving || isLoading} onPress={() => void handleSave()}>
               Save Changes
             </Button>
           </View>
+
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
   )
 }
 
+// ── Styles ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  header: {
+
+  // Nav bar
+  navbar: {
     height: 56,
     paddingHorizontal: 16,
     flexDirection: 'row',
@@ -690,115 +807,214 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  completionBar: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  sectionCard: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  completeBadge: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: 'rgba(29,158,117,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sectionBody: {
-    padding: 16,
-  },
-  section: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  fieldLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    letterSpacing: 0.8,
-    marginBottom: 6,
-  },
-  inlineInput: {
+  navAction: {
     fontSize: 15,
-    paddingVertical: 6,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    fontWeight: '500',
   },
-  photoCircleWrap: {
-    alignSelf: 'center',
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+  navTitle: {
+    fontSize: 16,
+    fontWeight: '700',
   },
+
+  // Hero
+  heroCover: {
+    height: 90,
+  },
+  heroContent: {
+    marginTop: -44,
+    alignItems: 'center',
+    paddingBottom: 20,
+    gap: 6,
+  },
+  photoWrap:   { position: 'relative' },
   photoCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-  },
-  photoPlaceholder: {
-    borderWidth: 0.5,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    borderWidth: 3,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  photoOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderRadius: 60,
-    alignItems: 'center',
-    justifyContent: 'center',
+  photoInitial: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#D85A30',
   },
-  photoBadge: {
+  photoCameraBadge: {
     position: 'absolute',
     bottom: 2,
     right: 2,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#D85A30',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  photoHint: {
+    fontSize: 12,
+    fontWeight: '400',
+  },
+
+  // Progress card
+  progressCard: {
+    marginHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 16,
+    gap: 10,
+    shadowColor: '#1A1A1A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  progressTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  progressTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  progressPct: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  progressTrack: {
+    height: 5,
+    borderRadius: 3,
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  stepsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  stepCell: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  stepDot: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+
+  // About / section card
+  sectionCard: {
+    marginHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    overflow: 'hidden',
+    shadowColor: '#1A1A1A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  sectionCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 15,
+  },
+  sectionIconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  sectionCardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+  fieldGroup: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 8,
+  },
+  fieldLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  fieldLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  lineInput: {
+    fontSize: 16,
+    paddingVertical: 6,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  charCount: {
+    fontSize: 11,
+    fontWeight: '500',
   },
   bioInput: {
     borderRadius: 12,
     borderWidth: 1,
     padding: 12,
-    fontSize: 15,
-    minHeight: 96,
-    textAlignVertical: 'top',
+    fontSize: 14,
+    lineHeight: 21,
+    minHeight: 90,
+  },
+
+  // Accordion internals
+  sectionHint: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   categoryRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 4,
   },
   categoryPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: 22,
     borderWidth: 1,
   },
-  subPillWrap: {
-    marginTop: 12,
-    paddingTop: 12,
+  subSection: {
+    marginTop: 14,
+    paddingTop: 14,
     borderTopWidth: StyleSheet.hairlineWidth,
+    gap: 10,
+  },
+  subLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.7,
+    textTransform: 'uppercase',
   },
   pillGrid: {
     flexDirection: 'row',
@@ -808,33 +1024,29 @@ const styles = StyleSheet.create({
   subPill: {
     paddingHorizontal: 12,
     paddingVertical: 7,
-    borderRadius: 20,
+    borderRadius: 22,
     borderWidth: 1,
   },
-  selectedWrap: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  certSection: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  textInput: {
-    height: 48,
-    borderRadius: 12,
+  roundedInput: {
+    height: 50,
+    borderRadius: 14,
     borderWidth: 1,
     paddingHorizontal: 14,
-    fontSize: 15,
+    fontSize: 14,
   },
   availCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     padding: 14,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
+  },
+  availDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    flexShrink: 0,
   },
   radioOuter: {
     width: 20,
@@ -843,6 +1055,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   radioInner: {
     width: 10,
@@ -852,21 +1065,21 @@ const styles = StyleSheet.create({
   radiusPresets: {
     flexDirection: 'row',
     gap: 8,
-    marginBottom: 20,
+    marginBottom: 8,
   },
   radiusBtn: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingVertical: 13,
+    borderRadius: 14,
     borderWidth: 1,
     gap: 2,
   },
   rateInputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 48,
-    borderRadius: 12,
+    height: 52,
+    borderRadius: 14,
     borderWidth: 1,
     paddingHorizontal: 14,
     gap: 4,

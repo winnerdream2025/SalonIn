@@ -16,6 +16,7 @@ interface RawWorker {
   id: string
   name: string
   photoUrl: string | null
+  bio: string | null
   specialties: string[] | string
   availability: string
   experienceYears: number
@@ -158,6 +159,7 @@ export class MatchingService {
           wp.id,
           wp.name,
           wp."photoUrl",
+          wp.bio,
           wp.specialties,
           wp.availability::text AS availability,
           wp."experienceYears",
@@ -225,6 +227,7 @@ export class MatchingService {
       id: raw.id,
       name: raw.name,
       photoUrl: raw.photoUrl,
+      bio: raw.bio,
       specialties: parsePostgresArray(raw.specialties),
       availability: raw.availability as Availability,
       distanceMiles: Math.round((raw.distanceMeters / 1609.344) * 100) / 100,
@@ -242,6 +245,7 @@ export class MatchingService {
     id: string
     name: string
     photoUrl: string | null
+    bio?: string | null
     specialties: string[] | string
     availability: Availability | string
     experienceYears: number
@@ -255,6 +259,7 @@ export class MatchingService {
       id: worker.id,
       name: worker.name,
       photoUrl: worker.photoUrl,
+      bio: (worker.bio as string | null | undefined) ?? null,
       specialties: parsePostgresArray(worker.specialties),
       availability: worker.availability as Availability,
       distanceMiles: null,

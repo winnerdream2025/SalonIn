@@ -11,10 +11,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import * as Location from 'expo-location'
-import { Avatar, Text, Button, Input, useTheme } from '@salonin/ui'
+import { Avatar, Text, Button, useTheme } from '@salonin/ui'
 import { Availability } from '@salonin/types'
 import { workersApi, parseApiError } from '@salonin/api-client'
-import { findNearestCity, getCityLabel } from '@salonin/config'
+import { findNearestCity, getCityLabel, BEAUTY_SPECIALTIES } from '@salonin/config'
 import { useLocationStore } from '../src/store/locationStore'
 import { useMyWorkerProfile } from '../src/hooks/useWorkerProfile'
 import { useMediaUpload } from '../src/hooks/useMediaUpload'
@@ -48,7 +48,7 @@ export default function OnboardingScreen() {
 
   const [step, setStep] = useState(0)
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
-  const [specialtiesText, setSpecialtiesText] = useState('')
+  const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([])
   const [availability, setAvailability] = useState<Availability>(Availability.NOW)
   const [locationShared, setLocationShared] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -94,15 +94,16 @@ export default function OnboardingScreen() {
     }
   }, [setLocation])
 
-  const handleFinish = useCallback(async () => {
-    const specialties = specialtiesText
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean)
+  const toggleSpecialty = useCallback((s: string) => {
+    setSelectedSpecialties((prev) =>
+      prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]
+    )
+  }, [])
 
+  const handleFinish = useCallback(async () => {
     setIsSaving(true)
     try {
-      await workersApi.updateProfile({ specialties })
+      await workersApi.updateProfile({ specialties: selectedSpecialties })
       await workersApi.updateAvailability({ availability })
       router.replace('/(tabs)')
     } catch (e) {
@@ -110,14 +111,9 @@ export default function OnboardingScreen() {
     } finally {
       setIsSaving(false)
     }
-  }, [specialtiesText, availability])
+  }, [selectedSpecialties, availability])
 
-  const specialtiesChips = specialtiesText
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean)
-
-  const canAdvanceStep1 = specialtiesChips.length > 0
+  const canAdvanceStep1 = selectedSpecialties.length > 0
   const cityLabel = getCityLabel(profile?.cityId)
 
   if (isLoading) {
@@ -181,30 +177,45 @@ export default function OnboardingScreen() {
             <>
               <Text variant="heading" style={styles.heading}>Your specialties</Text>
               <Text variant="body" color="secondary" style={styles.subheading}>
-                Enter your skills separated by commas. This is what salons search for.
+                Select everything that applies — salons filter by these.
               </Text>
-              <Input
-                label="Specialties"
-                value={specialtiesText}
-                onChangeText={setSpecialtiesText}
-                placeholder="e.g. Haircut, Color, Balayage"
-                autoCapitalize="words"
-                autoFocus
-              />
-              {specialtiesChips.length > 0 && (
-                <View style={styles.chipRow}>
-                  {specialtiesChips.map((chip) => (
-                    <View
-                      key={chip}
-                      style={[
-                        styles.chip,
-                        { backgroundColor: theme.bg.elevated, borderColor: theme.border.default },
-                      ]}
-                    >
-                      <Text variant="caption">{chip}</Text>
-                    </View>
-                  ))}
+              {Object.entries(BEAUTY_SPECIALTIES).map(([category, items]) => (
+                <View key={category} style={styles.categoryBlock}>
+                  <Text variant="label" color="secondary" style={styles.categoryLabel}>
+                    {category.toUpperCase()}
+                  </Text>
+                  <View style={styles.chipRow}>
+                    {items.map((spec) => {
+                      const active = selectedSpecialties.includes(spec)
+                      return (
+                        <TouchableOpacity
+                          key={spec}
+                          onPress={() => toggleSpecialty(spec)}
+                          activeOpacity={0.8}
+                          style={[
+                            styles.chip,
+                            {
+                              backgroundColor: active ? theme.brand.primary : theme.bg.elevated,
+                              borderColor: active ? theme.brand.primary : theme.border.default,
+                            },
+                          ]}
+                        >
+                          <Text
+                            variant="caption"
+                            style={{ color: active ? '#FFFFFF' : theme.text.primary }}
+                          >
+                            {spec}
+                          </Text>
+                        </TouchableOpacity>
+                      )
+                    })}
+                  </View>
                 </View>
+              ))}
+              {selectedSpecialties.length > 0 && (
+                <Text variant="caption" color="secondary" style={styles.selectionHint}>
+                  {selectedSpecialties.length} selected
+                </Text>
               )}
             </>
           )}
@@ -367,17 +378,27 @@ const styles = StyleSheet.create({
   photoHint: {
     marginTop: 4,
   },
+  categoryBlock: {
+    marginBottom: 16,
+  },
+  categoryLabel: {
+    letterSpacing: 0.8,
+    marginBottom: 8,
+  },
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginTop: 16,
   },
   chip: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
     borderWidth: 1,
+  },
+  selectionHint: {
+    marginTop: 12,
+    textAlign: 'center',
   },
   availGrid: {
     gap: 12,

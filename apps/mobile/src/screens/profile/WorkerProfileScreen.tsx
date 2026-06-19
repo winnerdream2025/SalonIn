@@ -11,9 +11,11 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
 import * as Haptics from 'expo-haptics'
+import { Ionicons } from '@expo/vector-icons'
 import { Avatar, Text, AvailabilityBadge, PortfolioGrid, Skeleton, useTheme } from '@salonin/ui'
 import type { PortfolioItem } from '@salonin/types'
 import { formatExperience } from '@salonin/utils'
+import { getCityLabel } from '@salonin/config'
 import { useWorkerProfile } from '../../hooks/useWorkerProfile'
 import { useAuthStore } from '../../store/authStore'
 import { messagesApi } from '@salonin/api-client'
@@ -92,7 +94,7 @@ export default function WorkerProfileScreen() {
           style={[styles.backBtn, { backgroundColor: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.85)' }]}
           activeOpacity={0.8}
         >
-          <Text style={[styles.backArrow, { color: theme.text.primary }]}>‹</Text>
+          <Ionicons name="chevron-back" size={24} color={theme.text.primary} />
         </TouchableOpacity>
         {isOwner && (
           <TouchableOpacity
@@ -127,9 +129,12 @@ export default function WorkerProfileScreen() {
           <Text style={[styles.profileSpecialty, { color: theme.text.secondary }]} numberOfLines={1}>
             {profile.specialties[0] ?? 'Beauty Professional'}{profile.experienceYears > 0 ? ` · ${formatExperience(profile.experienceYears)}` : ''}
           </Text>
-          <Text style={[styles.profileLocation, { color: theme.text.tertiary }]} numberOfLines={1}>
-            📍 {profile.cityId.toUpperCase()}
-          </Text>
+          <View style={styles.locationRow}>
+            <Ionicons name="location-outline" size={12} color="#D85A30" />
+            <Text style={[styles.profileLocation, { color: theme.text.tertiary }]} numberOfLines={1}>
+              {getCityLabel(profile.cityId)}
+            </Text>
+          </View>
           <View style={styles.availRow}>
             <AvailabilityBadge status={profile.availability} />
           </View>
@@ -204,7 +209,10 @@ export default function WorkerProfileScreen() {
                 <TouchableOpacity
                   onPress={() => router.push(`/review/list?userId=${profile.userId}&userName=${encodeURIComponent(profile.name)}&rating=${profile.rating}&reviewCount=${profile.reviewCount}` as never)}
                 >
-                  <Text style={[styles.showMore, { color: theme.brand.primary }]}>See all →</Text>
+                  <View style={styles.seeAllRow}>
+                    <Text style={[styles.showMore, { color: theme.brand.primary }]}>See all</Text>
+                    <Ionicons name="chevron-forward" size={13} color={theme.brand.primary} />
+                  </View>
                 </TouchableOpacity>
               )}
             </View>
@@ -262,7 +270,7 @@ export default function WorkerProfileScreen() {
             >
               {isMessaging
                 ? <ActivityIndicator color="#FFFFFF" />
-                : <Text style={[styles.ctaBtnText, { color: theme.text.inverse }]}>💬 Message</Text>
+                : <Text style={[styles.ctaBtnText, { color: theme.text.inverse }]}>Message</Text>
               }
             </Pressable>
             {canReview && !existingReview && (
@@ -270,7 +278,8 @@ export default function WorkerProfileScreen() {
                 onPress={() => router.push(`/review/leave?subjectId=${profile.userId}&subjectName=${encodeURIComponent(profile.name)}&subjectPhoto=${encodeURIComponent(profile.photoUrl ?? '')}` as never)}
                 style={({ pressed }) => [styles.ctaBtnSecondary, { borderColor: theme.brand.primary }, pressed && { opacity: 0.85 }]}
               >
-                <Text style={[styles.ctaBtnSecondaryText, { color: theme.brand.primary }]}>⭐ Review</Text>
+                <Ionicons name="star-outline" size={15} color={theme.brand.primary} />
+                <Text style={[styles.ctaBtnSecondaryText, { color: theme.brand.primary }]}>Review</Text>
               </Pressable>
             )}
             <Pressable
@@ -280,7 +289,8 @@ export default function WorkerProfileScreen() {
                 pressed && { opacity: 0.85 },
               ]}
             >
-              <Text style={[styles.ctaBtnSecondaryText, { color: theme.text.secondary }]}>🔖 Save</Text>
+              <Ionicons name="bookmark-outline" size={15} color={theme.text.secondary} />
+              <Text style={[styles.ctaBtnSecondaryText, { color: theme.text.secondary }]}>Save</Text>
             </Pressable>
           </View>
         </View>
@@ -341,7 +351,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  backArrow: { fontSize: 26, lineHeight: 32, marginTop: -2 },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  seeAllRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
   editBtn: {
     height: 36,
     paddingHorizontal: 14,
@@ -478,9 +498,11 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     borderWidth: 1,
     height: 44,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 5,
   },
   ctaBtnSecondaryText: {
     fontSize: 15,

@@ -49,4 +49,10 @@ export const jobsApi = {
     api
       .patch(`/jobs/${jobId}/applicants/${applicationId}`, { status })
       .then(() => undefined),
+
+  toggleSave: (jobId: string): Promise<{ saved: boolean }> =>
+    api.post<{ saved: boolean }>(`/jobs/${jobId}/save`).then((r) => r.data),
+
+  getSavedJobIds: (): Promise<string[]> =>
+    api.get<string[]>('/jobs/saved/ids').then((r) => r.data),
 }

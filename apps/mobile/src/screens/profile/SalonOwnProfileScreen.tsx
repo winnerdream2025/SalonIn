@@ -9,6 +9,7 @@ import {
   FlatList,
   Alert,
   Linking,
+  Platform,
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -104,6 +105,19 @@ export default function SalonOwnProfileScreen() {
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]} edges={['top', 'left', 'right']}>
       <ScrollView contentContainerStyle={{ paddingBottom: 52 + bottom + 24 }} showsVerticalScrollIndicator={false}>
 
+        {/* ── Page title bar ── */}
+        <View style={styles.titleRow}>
+          <Text style={[styles.titleSerif, { color: theme.text.primary }]}>My Salon</Text>
+          <TouchableOpacity
+            onPress={() => router.push('/salon/edit' as never)}
+            style={[styles.editPill, { backgroundColor: 'rgba(216,90,48,0.10)', borderColor: 'rgba(216,90,48,0.25)' }]}
+            activeOpacity={0.75}
+          >
+            <Ionicons name="pencil" size={13} color="#D85A30" />
+            <Text style={[styles.editPillText, { color: '#D85A30' }]}>Edit</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* ── Cover + Logo overlap ── */}
         <View style={styles.cover}>
           {firstPhoto ? (
@@ -116,13 +130,6 @@ export default function SalonOwnProfileScreen() {
           ) : null}
           <View style={[StyleSheet.absoluteFillObject, { backgroundColor: firstPhoto ? 'rgba(0,0,0,0.38)' : theme.bg.elevated }]} />
 
-          <TouchableOpacity
-            style={styles.heroEditBtn}
-            onPress={() => router.push('/salon/edit' as never)}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.heroEditText, { color: firstPhoto ? '#fff' : theme.text.secondary }]}>Edit</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Logo circle overlapping cover */}
@@ -314,6 +321,32 @@ function SalonProfileSkeleton({ theme }: { theme: Theme }) {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   content: { paddingBottom: 96 },
+
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 12,
+  },
+  titleSerif: {
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+    fontSize: 32,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+    lineHeight: 36,
+  },
+  editPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 22,
+    borderWidth: 1,
+  },
+  editPillText: { fontSize: 13, fontWeight: '600' },
 
   cover: {
     height: 160,

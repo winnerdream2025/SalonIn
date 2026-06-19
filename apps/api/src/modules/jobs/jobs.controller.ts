@@ -70,6 +70,19 @@ export class JobsController {
     return this.jobsService.applyToJob(id, user.id)
   }
 
+  @Post(':id/save')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  toggleSave(@Param('id') id: string, @CurrentUser() user: User) {
+    return this.jobsService.toggleSave(id, user.id)
+  }
+
+  @Get('saved/ids')
+  @UseGuards(JwtAuthGuard)
+  getSavedJobIds(@CurrentUser() user: User) {
+    return this.jobsService.getSavedJobIds(user.id)
+  }
+
   @Get(':id/applicants')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('SALON')

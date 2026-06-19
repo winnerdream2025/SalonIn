@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Avatar, Text, Button, Skeleton, useTheme } from '@salonin/ui'
@@ -104,7 +105,7 @@ export default function MyApplicationsScreen() {
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]}>
       <View style={[styles.header, { borderBottomColor: theme.border.default }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Text variant="body" color="brand">‹ Back</Text>
+          <Ionicons name="chevron-back" size={24} color={theme.brand.primary} />
         </TouchableOpacity>
         <Text variant="title" style={styles.headerTitle}>My Applications</Text>
         <View style={styles.backBtn} />

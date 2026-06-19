@@ -10,11 +10,12 @@ interface AvailabilityConfig {
   dot: string
 }
 
+// Light-mode-first: readable on warm stone bg (#EDE8E3) and white cards
 const CONFIG: Record<Availability, AvailabilityConfig> = {
-  NOW:          { label: 'Available now',   bg: 'rgba(29,158,117,0.2)',  text: '#2DD4A0', dot: '#1D9E75' },
-  TODAY:        { label: 'Available today', bg: 'rgba(55,138,221,0.2)',  text: '#60B4FF', dot: '#378ADD' },
-  WEEKEND:      { label: 'This weekend',    bg: 'rgba(239,159,39,0.2)',  text: '#FABC4E', dot: '#EF9F27' },
-  NOT_AVAILABLE:{ label: 'Not available',   bg: 'rgba(85,85,85,0.2)',    text: '#666666', dot: '#444444' },
+  NOW:          { label: 'Available now',   bg: 'rgba(29,158,117,0.11)',  text: '#147A5A', dot: '#1D9E75' },
+  TODAY:        { label: 'Available today', bg: 'rgba(55,138,221,0.11)',  text: '#2568B0', dot: '#378ADD' },
+  WEEKEND:      { label: 'This weekend',    bg: 'rgba(239,159,39,0.11)',  text: '#A06910', dot: '#EF9F27' },
+  NOT_AVAILABLE:{ label: 'Not available',   bg: 'rgba(107,107,107,0.11)', text: '#6B6B6B', dot: '#9CA3AF' },
 }
 
 export interface AvailabilityBadgeProps {
@@ -44,8 +45,9 @@ export function AvailabilityBadge({ status }: AvailabilityBadgeProps) {
 
   const labelStyle: TextStyle = {
     color: c.text,
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: '600',
+    letterSpacing: 0.1,
   }
 
   return (

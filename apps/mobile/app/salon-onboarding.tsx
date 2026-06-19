@@ -13,19 +13,11 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Text, Button, Input, useTheme } from '@salonin/ui'
 import { salonsApi } from '@salonin/api-client'
+import { BEAUTY_SPECIALTIES } from '@salonin/config'
 
 const STEP_COUNT = 2
 
-const SPECIALTY_OPTIONS = [
-  'Hair braiding',
-  'Nail tech',
-  'Makeup artist',
-  'Lash tech',
-  'Barber',
-  'Hairstylist',
-  'Esthetician',
-  'Waxing',
-]
+const SPECIALTY_OPTIONS = Object.values(BEAUTY_SPECIALTIES).flat()
 
 export default function SalonOnboardingScreen() {
   const { theme } = useTheme()

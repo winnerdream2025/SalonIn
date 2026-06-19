@@ -282,6 +282,28 @@ export class JobsService {
     })
   }
 
+  async toggleSave(jobId: string, userId: string): Promise<{ saved: boolean }> {
+    const existing = await this.prisma.savedJob.findUnique({
+      where: { userId_jobId: { userId, jobId } },
+    })
+    if (existing) {
+      await this.prisma.savedJob.delete({ where: { id: existing.id } })
+      return { saved: false }
+    }
+    const job = await this.prisma.jobPost.findFirst({ where: { id: jobId, isActive: true } })
+    if (!job) throw new NotFoundException('Job post not found')
+    await this.prisma.savedJob.create({ data: { userId, jobId } })
+    return { saved: true }
+  }
+
+  async getSavedJobIds(userId: string): Promise<string[]> {
+    const rows = await this.prisma.savedJob.findMany({
+      where: { userId },
+      select: { jobId: true },
+    })
+    return rows.map((r: { jobId: string }) => r.jobId)
+  }
+
   async remove(id: string, userId: string): Promise<void> {
     await this.assertOwnership(id, userId)
     await this.prisma.jobPost.update({

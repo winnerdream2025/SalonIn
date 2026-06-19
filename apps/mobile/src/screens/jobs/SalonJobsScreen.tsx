@@ -130,7 +130,7 @@ export default function SalonJobsScreen() {
         ]}
       >
         <Ionicons name="add" size={28} color="#FFFFFF" />
-        <Text style={[styles.fabLabel, { color: theme.text.primary }]}>Post Job</Text>
+        <Text style={styles.fabLabel}>Post Job</Text>
       </Pressable>
     </SafeAreaView>
   )
@@ -190,9 +190,9 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   fabLabel: {
-    position: 'absolute',
-    bottom: -18,
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
+    color: '#FFFFFF',
+    marginTop: 2,
   },
 })

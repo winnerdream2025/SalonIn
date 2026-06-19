@@ -78,7 +78,7 @@ export function JobFilterModal({ visible, onClose, filters, onApply }: Props) {
   return (
     <Modal
       visible={visible}
-      transparent
+      transparent={Platform.OS !== 'ios'}
       animationType="slide"
       presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'overFullScreen'}
       onRequestClose={onClose}

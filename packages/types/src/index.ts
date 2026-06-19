@@ -94,6 +94,7 @@ export interface WorkerCardData {
   rateRange?: string
   rateNote?: string
   isSaved?: boolean
+  bio: string | null
 }
 
 export interface SalonCardData {
@@ -141,6 +142,7 @@ export interface JobPostCardData {
   spacePhotos?: string[]
   rentalDeposit?: number
   availableFrom?: string
+  isSaved?: boolean
 }
 
 export interface ConversationPreview {

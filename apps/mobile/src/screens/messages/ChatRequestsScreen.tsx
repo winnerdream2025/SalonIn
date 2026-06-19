@@ -1,5 +1,6 @@
 import React, { useCallback } from 'react'
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { useTheme, Avatar } from '@salonin/ui'
@@ -106,7 +107,7 @@ export default function ChatRequestsScreen() {
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]} edges={['top', 'left', 'right']}>
       <View style={[styles.header, { borderBottomColor: theme.border.default }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
-          <Text style={[styles.backArrow, { color: theme.brand.primary }]}>{'‹'}</Text>
+          <Ionicons name="chevron-back" size={24} color={theme.brand.primary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text.primary }]}>Chat Requests</Text>
         <View style={styles.backBtn} />
@@ -150,7 +151,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  backArrow: { fontSize: 32, lineHeight: 40 },
   headerTitle: { flex: 1, fontSize: 17, fontWeight: '700', textAlign: 'center' },
   list: { flexGrow: 1 },
   item: {

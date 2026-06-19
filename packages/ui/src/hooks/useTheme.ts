@@ -28,13 +28,13 @@ const dark: Theme = {
 
 const light: Theme = {
   bg: {
-    base: '#FAF5F6',
-    surface: '#FFFFFF',
-    elevated: '#FFFFFF',
-    input: '#F5ECEE',
-    card: '#FFF8F9',
+    base: '#EDE8E3',
+    surface: '#F5F1ED',
+    elevated: '#F5F1ED',
+    input: '#E6DFD9',
+    card: '#FFFFFF',
   },
-  border: { default: '#EDE0E3', subtle: '#F5ECF0' },
+  border: { default: '#D8D0C9', subtle: '#E4DDD7' },
   text: { primary: '#1A1A1A', secondary: '#6B6B6B', tertiary: '#AAAAAA', inverse: '#FFFFFF' },
   brand: { primary: '#D85A30', light: '#F4A88A', dark: '#993C1D' },
   avail: { now: '#1D9E75', today: '#378ADD', weekend: '#EF9F27', none: '#555555' },

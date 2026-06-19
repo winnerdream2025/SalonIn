@@ -9,6 +9,7 @@ import {
   Alert,
   Keyboard,
 } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Avatar, Text, useTheme } from '@salonin/ui'
@@ -187,7 +188,7 @@ export default function ReviewsListScreen() {
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: theme.border.subtle }]}>
         <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text style={[styles.headerAction, { color: theme.brand.primary }]}>‹ Back</Text>
+          <Ionicons name="chevron-back" size={24} color={theme.brand.primary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text.primary }]} numberOfLines={1}>
           Reviews

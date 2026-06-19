@@ -49,7 +49,10 @@ export function ConversationItem({ conversation, onPress }: ConversationItemProp
 
       <View style={styles.info}>
         <View style={styles.nameRow}>
-          <Text style={[styles.name, { color: theme.text.primary }]} numberOfLines={1}>
+          <Text
+            style={[styles.name, unreadCount > 0 && styles.nameUnread, { color: theme.text.primary }]}
+            numberOfLines={1}
+          >
             {otherParticipant.name}
           </Text>
           {lastMessage != null && (
@@ -60,7 +63,10 @@ export function ConversationItem({ conversation, onPress }: ConversationItemProp
         </View>
 
         <View style={styles.previewRow}>
-          <Text style={[styles.preview, { color: theme.text.secondary }]} numberOfLines={1}>
+          <Text
+            style={[styles.preview, { color: unreadCount > 0 ? theme.text.primary : theme.text.secondary }]}
+            numberOfLines={1}
+          >
             {lastText}
           </Text>
           {unreadCount > 0 && (
@@ -77,7 +83,7 @@ export function ConversationItem({ conversation, onPress }: ConversationItemProp
 export function ConversationItemSkeleton() {
   return (
     <View style={styles.container}>
-      <Skeleton width={44} height={44} radius={22} />
+      <Skeleton width={50} height={50} radius={25} />
       <View style={[styles.info, { gap: 6 }]}>
         <Skeleton width={120} height={11} radius={6} />
         <Skeleton width={180} height={10} radius={5} />
@@ -95,22 +101,23 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
     flexShrink: 0,
   },
-  avatarImg: { width: 44, height: 44 },
-  avatarText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  avatarImg: { width: 50, height: 50 },
+  avatarText: { color: '#fff', fontSize: 18, fontWeight: '700' },
 
   info: { flex: 1, minWidth: 0, gap: 3 },
 
   nameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minWidth: 0 },
-  name: { fontSize: 14, fontWeight: '600', flex: 1, marginRight: 8 },
-  time: { fontSize: 11 },
+  name: { fontSize: 15, fontWeight: '700', flex: 1, marginRight: 8 },
+  nameUnread: { fontWeight: '800' },
+  time: { fontSize: 12 },
 
   previewRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   preview: { fontSize: 13, flex: 1, marginRight: 6 },

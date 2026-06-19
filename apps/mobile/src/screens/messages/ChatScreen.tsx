@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Ionicons } from '@expo/vector-icons'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useTheme, MessageBubble, MessageBubbleSkeleton, ReportModal, Avatar } from '@salonin/ui'
 import type { Message } from '@salonin/types'
@@ -153,7 +154,7 @@ export default function ChatScreen() {
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]} edges={['top', 'left', 'right']}>
       <View style={[styles.header, { borderBottomColor: theme.border.default }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
-          <Text style={[styles.backArrow, { color: theme.brand.primary }]}>{'‹'}</Text>
+          <Ionicons name="chevron-back" size={26} color={theme.brand.primary} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Avatar uri={otherPhotoUrl ?? null} name={name ?? '?'} size="sm" />
@@ -163,7 +164,7 @@ export default function ChatScreen() {
         </View>
         {otherUserId != null ? (
           <TouchableOpacity onPress={() => setShowReport(true)} style={styles.backBtn} activeOpacity={0.7}>
-            <Text style={[styles.reportIcon, { color: theme.text.secondary }]}>{'⋯'}</Text>
+            <Ionicons name="ellipsis-horizontal" size={20} color={theme.text.secondary} />
           </TouchableOpacity>
         ) : (
           <View style={styles.backBtn} />
@@ -256,7 +257,7 @@ export default function ChatScreen() {
           </View>
         )}
 
-        <View style={[styles.inputRow, { borderTopColor: theme.border.default, backgroundColor: theme.bg.surface, paddingBottom: Math.max(bottom, 12) }]}>
+        <View style={[styles.inputRow, { borderTopColor: theme.border.default, backgroundColor: theme.bg.card, paddingBottom: Math.max(bottom, 12) }]}>
           <TextInput
             ref={inputRef}
             style={[
@@ -277,7 +278,7 @@ export default function ChatScreen() {
             placeholderTextColor={theme.text.secondary}
             multiline
             maxLength={2000}
-            keyboardAppearance="dark"
+            keyboardAppearance="light"
             editable={!inputDisabled}
           />
           <TouchableOpacity
@@ -286,7 +287,7 @@ export default function ChatScreen() {
             activeOpacity={0.8}
             disabled={!draft.trim() || inputDisabled || isSending}
           >
-            <Text style={[styles.sendIcon, { color: theme.text.inverse }]}>↑</Text>
+            <Ionicons name="send" size={16} color={draft.trim() && !inputDisabled ? '#FFFFFF' : theme.text.tertiary} />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -316,7 +317,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  backArrow: { fontSize: 32, lineHeight: 40 },
   headerCenter: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   headerTitle: { fontSize: 17, fontWeight: '700', flexShrink: 1 },
 
@@ -379,8 +379,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 2,
   },
-  sendIcon: { fontSize: 18, fontWeight: '700' },
-  reportIcon: { fontSize: 20, fontWeight: '700' },
   systemMsgRow: { alignItems: 'center', paddingVertical: 8, paddingHorizontal: 24 },
   systemBubble: { borderRadius: 12, paddingHorizontal: 14, paddingVertical: 6 },
   systemText: { fontSize: 12, textAlign: 'center' },

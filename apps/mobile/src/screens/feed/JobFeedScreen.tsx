@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react'
+import React, { useState, useCallback, useMemo, useEffect } from 'react'
 import {
   View,
   FlatList,
@@ -39,7 +39,7 @@ const SPECIALTIES = ['All', 'Knotless', 'Braids', 'Color', 'Locs', 'Wigs', 'Nail
 const SKELETON_COUNT = 5
 
 export default function JobFeedScreen() {
-  const { bottom, top } = useSafeAreaInsets()
+  const { bottom } = useSafeAreaInsets()
   const { theme } = useTheme()
   const cityId = useLocationStore((s) => s.cityId)
   const user = useAuthStore((s) => s.user)
@@ -141,15 +141,34 @@ export default function JobFeedScreen() {
   }, [user])
 
   const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set())
-  const handleToggleSave = useCallback((job: JobPostCardData) => {
+
+  useEffect(() => {
+    if (!user) return
+    jobsApi.getSavedJobIds()
+      .then((ids) => setSavedJobIds(new Set(ids)))
+      .catch(() => {})
+  }, [user])
+
+  const handleToggleSave = useCallback(async (job: JobPostCardData) => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    if (!user) return
     setSavedJobIds((prev) => {
       const next = new Set(prev)
       if (next.has(job.id)) next.delete(job.id)
       else next.add(job.id)
       return next
     })
-  }, [])
+    try {
+      await jobsApi.toggleSave(job.id)
+    } catch {
+      setSavedJobIds((prev) => {
+        const next = new Set(prev)
+        if (next.has(job.id)) next.delete(job.id)
+        else next.add(job.id)
+        return next
+      })
+    }
+  }, [user])
 
   const handleToggleSpecialty = useCallback((specialty: string) => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
@@ -170,39 +189,44 @@ export default function JobFeedScreen() {
     })
   }, [])
 
+  // ── Search + filter chips (FlatList list header) ──────────────────────────
   const SearchAndFilters = (
     <View style={styles.filtersWrap}>
-      {/* Search bar */}
-      <View style={[styles.searchWrap, { backgroundColor: theme.bg.input }]}>
-        <Ionicons name="search" size={18} color={theme.text.tertiary} />
-        <TextInput
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Search jobs, salons, skills…"
-          placeholderTextColor={theme.text.tertiary}
-          style={[styles.searchInput, { color: theme.text.primary }]}
-          returnKeyType="search"
-        />
-        <TouchableOpacity
-          onPress={() => setShowFilterModal(true)}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          style={{ position: 'relative' }}
-        >
-          <Ionicons
-            name="options-outline"
-            size={18}
-            color={filterCount > 0 ? theme.brand.primary : theme.text.tertiary}
+      <View style={styles.searchPad}>
+        <View style={[styles.searchWrap, { backgroundColor: theme.bg.input }]}>
+          <Ionicons name="search" size={18} color={theme.text.tertiary} />
+          <TextInput
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Search jobs, salons, skills…"
+            placeholderTextColor={theme.text.tertiary}
+            style={[styles.searchInput, { color: theme.text.primary }]}
+            returnKeyType="search"
           />
-          {filterCount > 0 && (
-            <View style={styles.filterDot} />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch('')} hitSlop={8}>
+              <Ionicons name="close-circle" size={16} color={theme.text.tertiary} />
+            </TouchableOpacity>
           )}
-        </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setShowFilterModal(true)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={{ position: 'relative' }}
+          >
+            <Ionicons
+              name="options-outline"
+              size={18}
+              color={filterCount > 0 ? theme.brand.primary : theme.text.tertiary}
+            />
+            {filterCount > 0 && <View style={styles.filterDot} />}
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* Listing type + Specialty pills — single scrollable row */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        style={styles.filterScroll}
         contentContainerStyle={styles.filterRow}
       >
         {LISTING_TYPES.map((lt) => {
@@ -250,10 +274,11 @@ export default function JobFeedScreen() {
     </View>
   )
 
+  // ── No city state ─────────────────────────────────────────────────────────
   if (!cityId) {
     return (
-      <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]}>
-        <View style={styles.headerSection}>
+      <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]} edges={['top']}>
+        <View style={styles.pageHeader}>
           <Text style={[styles.serifTitle, { color: theme.text.primary }]}>Jobs</Text>
         </View>
         <View style={styles.centerPane}>
@@ -277,48 +302,43 @@ export default function JobFeedScreen() {
     )
   }
 
+  // ── Page header (scrolls with the list) ──────────────────────────────────
+  const PageHeader = (
+    <View style={styles.pageHeader}>
+      <View style={styles.pageHeaderRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.serifTitle, { color: theme.text.primary }]}>Jobs</Text>
+          <Text style={[styles.subtitle, { color: theme.text.secondary }]}>
+            Find your next opportunity
+          </Text>
+        </View>
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            onPress={() => {
+              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+              setShowLocationModal(true)
+            }}
+            style={[styles.locationPill, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="location-outline" size={14} color="#D85A30" />
+            <Text style={{ fontSize: 13, fontWeight: '600', color: theme.text.secondary }} numberOfLines={1}>
+              {cityLabel}
+            </Text>
+            <Ionicons name="chevron-down" size={14} color={theme.text.tertiary} />
+          </TouchableOpacity>
+          <NotificationBell />
+        </View>
+      </View>
+    </View>
+  )
+
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]} edges={['top']}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        {/* Header */}
-        <View style={[styles.headerSection, { paddingTop: top + 8 }]}>
-          <View style={styles.headerAccent} pointerEvents="none">
-            <View style={styles.accentGlow} />
-            <View style={styles.accentPill} />
-          </View>
-
-          <View style={styles.headerContent}>
-            <View style={styles.headerTopRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.serifTitle, { color: theme.text.primary }]}>Beauty work</Text>
-                <Text style={[styles.subtitle, { color: theme.text.secondary }]}>
-                  Jobs, rentals & spaces
-                </Text>
-              </View>
-              <View style={styles.headerRight}>
-                <TouchableOpacity
-                  onPress={() => {
-                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                    setShowLocationModal(true)
-                  }}
-                  style={[styles.locationPill, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="location-outline" size={14} color={theme.text.secondary} />
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: theme.text.secondary }} numberOfLines={1}>
-                    {cityLabel}
-                  </Text>
-                  <Ionicons name="chevron-down" size={14} color={theme.text.tertiary} />
-                </TouchableOpacity>
-                <NotificationBell />
-              </View>
-            </View>
-          </View>
-        </View>
-
         <LocationModal
           visible={showLocationModal}
           onClose={() => setShowLocationModal(false)}
@@ -331,11 +351,15 @@ export default function JobFeedScreen() {
           onApply={setJobFilters}
         />
 
-        {/* Job list */}
         <FlatList
           data={filteredJobs}
           keyExtractor={(item) => item.id}
-          ListHeaderComponent={SearchAndFilters}
+          ListHeaderComponent={
+            <View>
+              {PageHeader}
+              {SearchAndFilters}
+            </View>
+          }
           renderItem={({ item }) => (
             <JobPostCard
               job={item}
@@ -356,43 +380,53 @@ export default function JobFeedScreen() {
               </View>
             ) : error != null ? (
               <View style={styles.centerPane}>
-                <Text style={[styles.stateText, { fontSize: 16, fontWeight: '600', color: theme.text.primary }]}>
+                <View style={[styles.emptyIcon, { backgroundColor: 'rgba(226,75,74,0.10)' }]}>
+                  <Ionicons name="cloud-offline-outline" size={28} color="#E24B4A" />
+                </View>
+                <Text style={[styles.emptyTitle, { color: theme.text.primary }]}>
                   Couldn't load listings
                 </Text>
                 <Text style={[styles.stateText, { color: theme.text.secondary }]}>
-                  {error.message.includes('network') || error.message.includes('Network')
+                  {error.message.toLowerCase().includes('network')
                     ? 'Check your connection and try again.'
-                    : error.message}
+                    : 'Something went wrong on our end.'}
                 </Text>
-                <Button variant="secondary" onPress={refresh}>Retry</Button>
+                <Button variant="secondary" onPress={refresh}>Try again</Button>
               </View>
             ) : (
               <View style={styles.centerPane}>
-                <Text style={[styles.stateText, { fontSize: 18, fontWeight: '700', color: theme.text.primary }]}>
+                <View style={[styles.emptyIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}>
+                  <Ionicons
+                    name={search.trim().length > 0 ? 'search-outline' : 'briefcase-outline'}
+                    size={28}
+                    color="#D85A30"
+                  />
+                </View>
+                <Text style={[styles.emptyTitle, { color: theme.text.primary }]}>
                   {search.trim().length > 0
                     ? 'No matching results'
                     : selectedListingType === 'RENTAL'
                     ? `No booth rentals in ${cityLabel}`
                     : selectedListingType === 'SPACE'
                     ? `No salon spaces in ${cityLabel}`
-                    : `No open positions in ${cityLabel} right now`}
+                    : `No open positions in ${cityLabel}`}
                 </Text>
                 <Text style={[styles.stateText, { color: theme.text.secondary }]}>
                   {search.trim().length > 0
-                    ? 'Try a different search term'
+                    ? 'Try different keywords or clear your filters'
                     : selectedListingType === 'RENTAL' || selectedListingType === 'SPACE'
                     ? 'New listings are added regularly — check back soon'
-                    : 'New jobs are posted daily — check back soon'}
+                    : 'New jobs are posted daily. Get notified when one matches you.'}
                 </Text>
                 {search.trim().length === 0 && (
                   <TouchableOpacity
                     style={[styles.emptyCtaBtn, { backgroundColor: theme.brand.primary }]}
-                    onPress={() =>
-                      Alert.alert('Job Alerts', 'We’ll notify you when new jobs are posted in your area.')
-                    }
+                    onPress={() => router.push('/notifications' as never)}
                     activeOpacity={0.8}
                   >
-                    <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>Set up job alerts</Text>
+                    <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>
+                      Set up job alerts
+                    </Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -412,15 +446,14 @@ export default function JobFeedScreen() {
           showsVerticalScrollIndicator={false}
         />
 
-        {/* FAB */}
         {isSalon && (
           <TouchableOpacity
             onPress={handlePostJob}
             style={[styles.fab, { backgroundColor: theme.brand.primary, bottom: bottom + 72 }]}
             activeOpacity={0.85}
           >
-            <Ionicons name="add" size={28} color="#FFFFFF" />
-            <Text style={[styles.fabLabel, { color: theme.text.primary }]}>Post Job</Text>
+            <Ionicons name="add" size={20} color="#FFFFFF" />
+            <Text style={styles.fabLabel}>Post Job</Text>
           </TouchableOpacity>
         )}
       </KeyboardAvoidingView>
@@ -430,69 +463,35 @@ export default function JobFeedScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  headerSection: {
+
+  // ── Page header (scrolls with list) ──────────────────────────────────────
+  pageHeader: {
     paddingHorizontal: 16,
-    paddingBottom: 8,
-    position: 'relative',
+    paddingTop: 12,
+    paddingBottom: 4,
   },
-  headerAccent: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 180,
-    overflow: 'hidden',
-  },
-  accentGlow: {
-    position: 'absolute',
-    top: -60,
-    right: -50,
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: 'rgba(216,90,48,0.10)',
-  },
-  accentPill: {
-    position: 'absolute',
-    top: 60,
-    left: -10,
-    width: 160,
-    height: 40,
-    borderRadius: 28,
-    backgroundColor: 'rgba(216,90,48,0.06)',
-    transform: [{ rotate: '-8deg' }],
-  },
-  headerContent: {
-    gap: 12,
-  },
-  headerTopRow: {
+  pageHeaderRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
+    gap: 10,
   },
   serifTitle: {
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-    fontSize: 28,
+    fontSize: 34,
     fontWeight: '900',
     letterSpacing: -0.5,
-    lineHeight: 34,
+    lineHeight: 40,
   },
   subtitle: {
     fontSize: 13,
-    color: 'rgba(0,0,0,0.45)',
-    marginTop: 2,
+    marginTop: 1,
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginTop: 4,
-  },
-  filtersWrap: {
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 4,
-    gap: 10,
+    marginTop: 6,
   },
   locationPill: {
     flexDirection: 'row',
@@ -502,15 +501,17 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 99,
     borderWidth: 1,
+    maxWidth: 130,
   },
-  filterDot: {
-    position: 'absolute',
-    top: -3,
-    right: -3,
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: '#D85A30',
+
+  // ── Search + filter bar ───────────────────────────────────────────────────
+  filtersWrap: {
+    paddingTop: 10,
+    paddingBottom: 4,
+    gap: 8,
+  },
+  searchPad: {
+    paddingHorizontal: 16,
   },
   searchWrap: {
     flexDirection: 'row',
@@ -525,11 +526,25 @@ const styles = StyleSheet.create({
     fontSize: 15,
     paddingVertical: 0,
   },
+  filterDot: {
+    position: 'absolute',
+    top: -3,
+    right: -3,
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#D85A30',
+  },
+  filterScroll: {
+    flexGrow: 0,
+    flexShrink: 0,
+  },
   filterRow: {
-    gap: 7,
+    gap: 6,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingBottom: 2,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
   },
   filterPill: {
     paddingHorizontal: 14,
@@ -539,13 +554,37 @@ const styles = StyleSheet.create({
     height: 32,
     justifyContent: 'center',
   },
-  listContent: { paddingTop: 4 },
+
+  // ── List ──────────────────────────────────────────────────────────────────
+  listContent: { paddingTop: 6 },
   skeletonList: { gap: 8, paddingTop: 8 },
   footer: { paddingVertical: 16, alignItems: 'center' },
-  centerPane: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 64, gap: 12 },
+
+  // ── States ────────────────────────────────────────────────────────────────
+  centerPane: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 64,
+    gap: 12,
+  },
   locTitle: { fontSize: 22, fontWeight: '700', textAlign: 'center' },
   locSubtitle: { textAlign: 'center', paddingHorizontal: 32, fontSize: 14 },
-  stateText: { textAlign: 'center', paddingHorizontal: 32 },
+  stateText: { textAlign: 'center', paddingHorizontal: 32, fontSize: 14, lineHeight: 20 },
+  emptyIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
+    paddingHorizontal: 24,
+  },
   searchCityBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -564,14 +603,17 @@ const styles = StyleSheet.create({
     alignItems: 'center' as const,
     width: '100%',
   },
+
+  // ── FAB ──────────────────────────────────────────────────────────────────
   fab: {
     position: 'absolute',
     right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 6,
+    height: 48,
+    paddingHorizontal: 18,
+    borderRadius: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
@@ -579,9 +621,8 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   fabLabel: {
-    position: 'absolute',
-    bottom: -18,
-    fontSize: 11,
+    fontSize: 14,
     fontWeight: '700',
+    color: '#FFFFFF',
   },
 })

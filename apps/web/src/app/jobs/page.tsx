@@ -7,6 +7,7 @@ import { useJobFeed } from '../../hooks/useJobFeed'
 import { useLocationStore } from '../../store/locationStore'
 import { useAuthStore } from '../../store/authStore'
 import { salonsApi } from '@salonin/api-client'
+import { WORLD_CITIES, ALL_SPECIALTIES } from '@salonin/config'
 
 const T = {
   bg: { base: '#0A0A0A', surface: '#111111', elevated: '#1A1A1A' },
@@ -15,14 +16,9 @@ const T = {
   brand: { primary: '#D85A30' },
 } as const
 
-const SPECIALTIES = [
-  'Haircut', 'Color', 'Balayage', 'Locs', 'Braids', 'Natural', 'Extensions', 'Weave',
-]
+const SPECIALTIES = ALL_SPECIALTIES.slice(0, 20)
 
-const CITY_PRESETS = [
-  { cityId: 'dmv', label: 'Washington DC / DMV', lat: 38.9072, lng: -77.0369 },
-  { cityId: 'atlanta', label: 'Atlanta, GA', lat: 33.749, lng: -84.388 },
-]
+const CITY_PRESETS = WORLD_CITIES.map((c) => ({ cityId: c.id, label: `${c.flag} ${c.name}`, lat: c.lat, lng: c.lng }))
 
 const SKELETON_COUNT = 9
 

@@ -35,7 +35,7 @@ export function Button({
     primary: theme.brand.primary,
     secondary: isDark ? theme.bg.elevated : theme.border.subtle,
     ghost: 'transparent',
-    danger: '#E74C3C',
+    danger: '#E24B4A',
   }
 
   const TEXT_CLR: Record<ButtonVariant, string> = {
@@ -48,7 +48,7 @@ export function Button({
   const containerStyle: ViewStyle = {
     backgroundColor: BG[variant],
     opacity: disabled || loading ? 0.5 : 1,
-    borderRadius: 12,
+    borderRadius: variant === 'primary' ? 22 : 12,
     paddingVertical: V_PAD[size],
     paddingHorizontal: 20,
     alignItems: 'center',

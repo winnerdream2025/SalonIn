@@ -9,6 +9,7 @@ import {
   TextInput,
   Alert,
 } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import * as Haptics from 'expo-haptics'
@@ -213,9 +214,10 @@ export default function CreateJobPostScreen() {
       {/* ── Header ── */}
       <View style={[styles.header, { borderBottomColor: theme.border.subtle }]}>
         <TouchableOpacity onPress={() => void goBack()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text style={[styles.headerAction, { color: theme.brand.primary }]}>
-            {step === 0 ? 'Cancel' : '‹ Back'}
-          </Text>
+          {step === 0
+            ? <Text style={[styles.headerAction, { color: theme.brand.primary }]}>Cancel</Text>
+            : <Ionicons name="chevron-back" size={24} color={theme.brand.primary} />
+          }
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text.primary }]}>
           {listingType === 'RENTAL' ? 'Post a Rental' : listingType === 'SPACE' ? 'Post a Space' : 'Post a Job'}
