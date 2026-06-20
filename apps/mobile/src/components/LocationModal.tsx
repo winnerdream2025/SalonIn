@@ -17,12 +17,14 @@ import { Ionicons } from '@expo/vector-icons'
 import MapView, { Circle, Marker, PROVIDER_DEFAULT } from 'react-native-maps'
 import * as Haptics from 'expo-haptics'
 import { Text, useTheme } from '@salonin/ui'
-import { getNearbyCities } from '@salonin/config'
+import { findNearestCity } from '@salonin/config'
 import { useLocationStore } from '../store/locationStore'
 import { useDeviceLocation } from '../hooks/useDeviceLocation'
 import { RadiusEditorScreen } from './RadiusEditorScreen'
 import { usePlaceSearch } from '../hooks/usePlaceSearch'
 import type { PlaceResult } from '../hooks/usePlaceSearch'
+import { fetchPlaceDetails } from '../utils/googlePlaces'
+import { countryCodeToFlag } from '../utils/countryFlag'
 
 interface Props {
   visible: boolean
@@ -39,13 +41,13 @@ export function LocationModal({ visible, onClose }: Props) {
   const [showSearch, setShowSearch] = useState(false)
   const [showRadiusEditor, setShowRadiusEditor] = useState(false)
   const [search, setSearch] = useState('')
+  const [selectingId, setSelectingId] = useState<string | null>(null)
 
   const lat = location.lat ?? 38.9072
   const lng = location.lng ?? -77.0369
   const cityName = location.cityName ?? 'Washington DC'
 
   const { results: searchResults, isLoading: isSearching } = usePlaceSearch(showSearch ? search : '')
-  const suggestedCities = useMemo(() => getNearbyCities(lat, lng, 4), [lat, lng])
 
   const mapDelta = useMemo(() => {
     const delta = (location.radiusMiles / 69) * 2.5
@@ -53,19 +55,34 @@ export function LocationModal({ visible, onClose }: Props) {
   }, [location.radiusMiles])
 
   const handleSelect = useCallback(
-    (place: PlaceResult) => {
+    async (place: PlaceResult) => {
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-      setLocation({
-        cityId: place.cityId,
-        lat: place.lat,
-        lng: place.lng,
-        cityName: place.shortName,
-        countryCode: place.cityRef.countryCode,
-        flag: place.cityRef.flag,
-      })
-      setSearch('')
-      setShowSearch(false)
-      onClose()
+      setSelectingId(place.id)
+      try {
+        // Fetch real lat/lng from Google Places Details
+        const details = await fetchPlaceDetails(place.id)
+        if (!details) return
+
+        // Map to nearest WorldCity for cityId (backend compat only — not displayed)
+        const city = findNearestCity(details.lat, details.lng)
+        const flag = details.countryCode
+          ? countryCodeToFlag(details.countryCode)
+          : city.flag
+
+        setLocation({
+          cityId: city.id,
+          lat: details.lat,
+          lng: details.lng,
+          cityName: place.shortName,
+          countryCode: details.countryCode ?? city.countryCode,
+          flag,
+        })
+        setSearch('')
+        setShowSearch(false)
+        onClose()
+      } finally {
+        setSelectingId(null)
+      }
     },
     [setLocation, onClose],
   )
@@ -172,18 +189,36 @@ export function LocationModal({ visible, onClose }: Props) {
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
                 style={{ flex: 1, backgroundColor: theme.bg.surface }}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={[styles.cityRow, { borderBottomColor: theme.border.subtle }]}
-                    onPress={() => handleSelect(item)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.flag}>{item.cityRef.flag}</Text>
-                    <Text style={[styles.cityName, { color: theme.text.primary }]}>
-                      {item.shortName}
-                    </Text>
-                  </TouchableOpacity>
-                )}
+                renderItem={({ item }) => {
+                  const isSelecting = selectingId === item.id
+                  return (
+                    <TouchableOpacity
+                      style={[styles.cityRow, { borderBottomColor: theme.border.subtle }]}
+                      onPress={() => void handleSelect(item)}
+                      activeOpacity={0.7}
+                      disabled={selectingId !== null}
+                    >
+                      <View style={[styles.cityIconWrap, { backgroundColor: theme.bg.elevated }]}>
+                        {isSelecting ? (
+                          <ActivityIndicator size="small" color="#D85A30" />
+                        ) : (
+                          <Ionicons name="location" size={16} color="#D85A30" />
+                        )}
+                      </View>
+                      <View style={styles.cityTextBlock}>
+                        <Text style={[styles.cityName, { color: theme.text.primary }]} numberOfLines={1}>
+                          {item.shortName}
+                        </Text>
+                        {item.secondaryText.length > 0 && (
+                          <Text style={[styles.citySub, { color: theme.text.tertiary }]} numberOfLines={1}>
+                            {item.secondaryText}
+                          </Text>
+                        )}
+                      </View>
+                      <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
+                    </TouchableOpacity>
+                  )
+                }}
                 ListEmptyComponent={
                   isSearching ? (
                     <View style={styles.emptyWrap}>
@@ -262,11 +297,24 @@ export function LocationModal({ visible, onClose }: Props) {
                 </Pressable>
 
                 <View style={styles.locationInfo}>
-                  <Text style={[styles.locationName, { color: theme.text.primary }]}>{cityName}</Text>
+                  <View style={styles.locationNameRow}>
+                    {location.flag != null && (
+                      <Text style={styles.locationFlag}>{location.flag}</Text>
+                    )}
+                    <Text style={[styles.locationName, { color: theme.text.primary }]} numberOfLines={1}>
+                      {cityName}
+                    </Text>
+                    {location.isGPSLocation && (
+                      <View style={[styles.gpsBadge, { backgroundColor: 'rgba(29,158,117,0.12)' }]}>
+                        <Ionicons name="navigate" size={10} color="#1D9E75" />
+                        <Text style={styles.gpsBadgeText}>GPS</Text>
+                      </View>
+                    )}
+                  </View>
                   <Text style={[styles.radiusLabel, { color: theme.text.secondary }]}>
                     {location.radiusMode === 'suggested'
                       ? 'Suggested radius'
-                      : `${location.radiusMiles} mile radius`}
+                      : `${location.radiusMiles} mi radius`}
                   </Text>
                 </View>
 
@@ -285,36 +333,15 @@ export function LocationModal({ visible, onClose }: Props) {
                       </>
                     )}
                   </TouchableOpacity>
-                </View>
 
-                <View style={styles.suggestedSection}>
-                  <Text style={[styles.suggestedHeader, { color: theme.text.secondary }]}>
-                    Suggested for you
-                  </Text>
-                  {suggestedCities.map((city) => (
-                    <TouchableOpacity
-                      key={city.id}
-                      style={[styles.suggestedRow, { borderBottomColor: theme.border.subtle }]}
-                      onPress={() => {
-                        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-                        setLocation({
-                          cityId: city.id,
-                          lat: city.lat,
-                          lng: city.lng,
-                          cityName: city.name,
-                          countryCode: city.countryCode,
-                          flag: city.flag,
-                        })
-                        onClose()
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <Ionicons name="search-outline" size={18} color={theme.text.tertiary} />
-                      <Text style={[styles.suggestedText, { color: theme.text.primary }]}>
-                        {city.name}, {city.state ?? city.country}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+                  <TouchableOpacity
+                    style={[styles.locateBtn, { borderWidth: 1.5, borderColor: '#D85A30', flex: 1 }]}
+                    onPress={() => setShowSearch(true)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="search" size={16} color="#D85A30" />
+                    <Text style={[styles.locateBtnText, { color: '#D85A30' }]}>Search a city</Text>
+                  </TouchableOpacity>
                 </View>
               </ScrollView>
             </SafeAreaView>
@@ -410,20 +437,22 @@ const styles = StyleSheet.create({
   locationInfo: {
     paddingHorizontal: 20,
     paddingTop: 14,
+    gap: 3,
   },
   locationName: {
     fontSize: 17,
     fontWeight: '700',
+    flexShrink: 1,
   },
   radiusLabel: {
     fontSize: 13,
-    marginTop: 2,
   },
   actionRow: {
     flexDirection: 'row',
     gap: 12,
     paddingHorizontal: 16,
     paddingTop: 16,
+    paddingBottom: 24,
   },
   locateBtn: {
     flex: 1,
@@ -439,38 +468,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  suggestedSection: {
-    paddingTop: 24,
-    paddingBottom: 16,
-  },
-  suggestedHeader: {
-    fontSize: 13,
-    fontWeight: '700',
-    paddingHorizontal: 20,
-    marginBottom: 8,
-  },
-  suggestedRow: {
+  cityRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingVertical: 13,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  suggestedText: {
-    fontSize: 15,
-  },
-  cityRow: {
-    flexDirection: 'row',
+  cityIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     alignItems: 'center',
-    gap: 14,
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    justifyContent: 'center',
+    flexShrink: 0,
   },
-  flag: {
-    fontSize: 26,
-    lineHeight: 30,
+  cityTextBlock: {
+    flex: 1,
+    minWidth: 0,
+    gap: 1,
   },
   cityName: {
     fontSize: 15,
@@ -478,7 +495,33 @@ const styles = StyleSheet.create({
   },
   citySub: {
     fontSize: 12,
-    marginTop: 2,
+    marginTop: 1,
+  },
+  // Location info section
+  locationNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'nowrap',
+  },
+  locationFlag: {
+    fontSize: 18,
+    lineHeight: 22,
+    flexShrink: 0,
+  },
+  gpsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    flexShrink: 0,
+  },
+  gpsBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#1D9E75',
   },
   emptyWrap: {
     paddingVertical: 48,

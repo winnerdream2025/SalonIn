@@ -17,7 +17,6 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { JobPostCard, JobPostCardSkeleton, Text, Button, useTheme } from '@salonin/ui'
 import type { JobPostCardData } from '@salonin/types'
-import { getCityLabel } from '@salonin/config'
 import { useJobFeed } from '../../hooks/useJobFeed'
 import { useLocationStore } from '../../store/locationStore'
 import { LocationModal } from '../../components/LocationModal'
@@ -42,6 +41,7 @@ export default function JobFeedScreen() {
   const { bottom } = useSafeAreaInsets()
   const { theme } = useTheme()
   const cityId = useLocationStore((s) => s.cityId)
+  const cityName = useLocationStore((s) => s.cityName)
   const user = useAuthStore((s) => s.user)
   const isSalon = user?.role === 'SALON'
 
@@ -53,7 +53,7 @@ export default function JobFeedScreen() {
   const [jobFilters, setJobFilters] = useState<JobFilters>(EMPTY_JOB_FILTERS)
   const filterCount = activeFilterCount(jobFilters)
 
-  const cityLabel = getCityLabel(cityId)
+  const cityLabel = cityName ?? 'Set location'
   const specialtyFilter = selectedSpecialty === 'All' ? undefined : selectedSpecialty
 
   const { jobs, isLoading, isRefreshing, isLoadingMore, hasMore, error, refresh, loadMore } =
@@ -322,7 +322,7 @@ export default function JobFeedScreen() {
             activeOpacity={0.7}
           >
             <Ionicons name="location-outline" size={14} color="#D85A30" />
-            <Text style={{ fontSize: 13, fontWeight: '600', color: theme.text.secondary }} numberOfLines={1}>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: theme.text.secondary, flexShrink: 1 }} numberOfLines={1}>
               {cityLabel}
             </Text>
             <Ionicons name="chevron-down" size={14} color={theme.text.tertiary} />
@@ -501,7 +501,9 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 99,
     borderWidth: 1,
-    maxWidth: 130,
+    flexShrink: 1,
+    minWidth: 0,
+    maxWidth: 160,
   },
 
   // ── Search + filter bar ───────────────────────────────────────────────────

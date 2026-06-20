@@ -1,41 +1,26 @@
 import { useState, useEffect, useRef } from 'react'
-import { findNearestCity } from '@salonin/config'
-import type { WorldCity } from '@salonin/config'
+import { PLACES_KEY } from '../utils/googlePlaces'
 
 export interface PlaceResult {
+  /** Google place_id — used to fetch details on selection */
   id: string
-  displayName: string
+  /** Primary line shown bold: e.g. "Atlanta" */
   shortName: string
-  lat: number
-  lng: number
-  cityId: string
-  cityRef: WorldCity
+  /** Secondary line shown muted: e.g. "Georgia, United States" */
+  secondaryText: string
 }
 
-interface NominatimResult {
-  place_id: number
-  display_name: string
-  lat: string
-  lon: string
-  address?: {
-    city?: string
-    town?: string
-    village?: string
-    suburb?: string
-    neighbourhood?: string
-    county?: string
-    state?: string
-    country?: string
+interface AutocompletePrediction {
+  place_id: string
+  structured_formatting: {
+    main_text: string
+    secondary_text: string
   }
 }
 
-function buildShortName(item: NominatimResult): string {
-  const a = item.address ?? {}
-  const place = a.city ?? a.town ?? a.village ?? a.suburb ?? a.neighbourhood
-  const region = a.state ?? a.county ?? a.country ?? ''
-  if (place && region) return `${place}, ${region}`
-  if (place) return place
-  return item.display_name.split(',').slice(0, 2).join(',').trim()
+interface AutocompleteResponse {
+  status: string
+  predictions: AutocompletePrediction[]
 }
 
 export function usePlaceSearch(query: string, debounceMs = 350) {
@@ -55,30 +40,30 @@ export function usePlaceSearch(query: string, debounceMs = 350) {
       const controller = new AbortController()
       abortRef.current = controller
       setIsLoading(true)
+
       try {
-        const url =
-          `https://nominatim.openstreetmap.org/search` +
-          `?q=${encodeURIComponent(trimmed)}` +
-          `&format=json&limit=6&addressdetails=1`
-        const res = await fetch(url, {
-          signal: controller.signal,
-          headers: { 'User-Agent': 'MySalonIn/1.0 (salonin.app)' },
+        const params = new URLSearchParams({
+          input: trimmed,
+          types: '(cities)',
+          key: PLACES_KEY,
         })
-        const data = (await res.json()) as NominatimResult[]
-        const mapped: PlaceResult[] = data.map((item) => {
-          const lat = parseFloat(item.lat)
-          const lng = parseFloat(item.lon)
-          const cityRef = findNearestCity(lat, lng)
-          return {
-            id: String(item.place_id),
-            displayName: item.display_name,
-            shortName: buildShortName(item),
-            lat,
-            lng,
-            cityId: cityRef.id,
-            cityRef,
-          }
-        })
+        const res = await fetch(
+          `https://maps.googleapis.com/maps/api/place/autocomplete/json?${params.toString()}`,
+          { signal: controller.signal },
+        )
+        const data = (await res.json()) as AutocompleteResponse
+
+        if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
+          setResults([])
+          return
+        }
+
+        const mapped: PlaceResult[] = (data.predictions ?? []).slice(0, 8).map((p) => ({
+          id: p.place_id,
+          shortName: p.structured_formatting.main_text,
+          secondaryText: p.structured_formatting.secondary_text,
+        }))
+
         setResults(mapped)
       } catch (e) {
         if ((e as Error).name !== 'AbortError') setResults([])

@@ -1,7 +1,6 @@
 import { IsIn, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator'
 import { Transform } from 'class-transformer'
 import type { Availability } from '@prisma/client'
-import { IsSupportedCity } from '../../../common/validators/city-id.validator'
 
 export class FindNearbyWorkersDto {
   @Transform(({ value }: { value: unknown }) => parseFloat(value as string))
@@ -22,9 +21,10 @@ export class FindNearbyWorkersDto {
   @Max(100)
   radiusMiles!: number
 
+  /** @deprecated Use lat/lng instead. Kept for backward compatibility. */
+  @IsOptional()
   @IsString()
-  @IsSupportedCity()
-  cityId!: string
+  cityId?: string
 
   @IsOptional()
   @IsString()

@@ -172,11 +172,9 @@ export function JobPostCard({
   const payDisplay     = job.payStructure.replace(/^\$\s*/, '')
   const hasSocialProof = (job.appliedToday ?? 0) > 0 || job.replyTime != null
 
-  // Photo sources
-  const allPhotos       = job.portfolioPhotoUrls?.length ? job.portfolioPhotoUrls : (job.spacePhotos ?? [])
-  const mainPhoto       = job.salonCoverUrl ?? (allPhotos.length > 0 ? allPhotos[0] : null)
-  const portfolioPhotos = (job.salonCoverUrl != null) ? allPhotos : allPhotos.slice(1)
-  const hasPortfolio    = portfolioPhotos.length > 0
+  // Photo sources — portfolio strip removed from list card (detail view only)
+  const allPhotos = job.portfolioPhotoUrls?.length ? job.portfolioPhotoUrls : (job.spacePhotos ?? [])
+  const mainPhoto = job.salonCoverUrl ?? (allPhotos.length > 0 ? allPhotos[0] : null)
 
   return (
     <Animated.View style={{ transform: [{ scale }] }}>
@@ -217,7 +215,7 @@ export function JobPostCard({
             <View style={styles.metaRow}>
               <PinIcon color={theme.text.tertiary} size={10} />
               <Text
-                style={[styles.metaText, { color: theme.text.secondary }]}
+                style={[styles.metaText, styles.metaCity, { color: theme.text.secondary }]}
                 numberOfLines={1}
               >
                 {getCityLabel(job.cityId)}
@@ -249,7 +247,7 @@ export function JobPostCard({
             )}
           </View>
 
-          {/* Actions: message + bookmark — no badge here */}
+          {/* Actions: message + bookmark */}
           <View style={styles.headerActions}>
             {onMessage !== undefined && (
               <Pressable onPress={onMessage} hitSlop={10} style={styles.iconAction}>
@@ -268,10 +266,10 @@ export function JobPostCard({
           </View>
         </View>
 
-        {/* ── CONTENT: photo + right col ────────────────────────────────────── */}
+        {/* ── CONTENT: compact thumbnail + text ─────────────────────────────── */}
         <View style={styles.contentRow}>
 
-          {/* Main photo with status sticker overlay */}
+          {/* Thumbnail — compact square, right-aligned */}
           {mainPhoto != null && (
             <View style={styles.mainPhotoWrap}>
               <Image
@@ -279,32 +277,29 @@ export function JobPostCard({
                 style={StyleSheet.absoluteFillObject}
                 resizeMode="cover"
               />
-              {/* Status sticker — bottom-left of photo */}
               {statusBadge !== null && (
                 <View style={[styles.photoBadge, { backgroundColor: statusBadge.solidBg }]}>
-                  {statusBadge.icon === 'flash'   && <FlashIcon   color="#FFFFFF" size={9} />}
-                  {statusBadge.icon === 'fire'    && <FireIcon    color="#FFFFFF" size={9} />}
-                  {statusBadge.icon === 'sparkle' && <SparkleIcon color="#FFFFFF" size={9} />}
+                  {statusBadge.icon === 'flash'   && <FlashIcon   color="#FFFFFF" size={8} />}
+                  {statusBadge.icon === 'fire'    && <FireIcon    color="#FFFFFF" size={8} />}
+                  {statusBadge.icon === 'sparkle' && <SparkleIcon color="#FFFFFF" size={8} />}
                   <Text style={styles.photoBadgeText}>{statusBadge.label}</Text>
                 </View>
               )}
             </View>
           )}
 
-          {/* Right col: title · tags · portfolio */}
+          {/* Text col: badge (no photo) · title · tags · space extras */}
           <View style={[styles.rightCol, mainPhoto == null && styles.rightColFull]}>
 
-            {/* Badge fallback when no photo */}
             {mainPhoto == null && statusBadge !== null && (
               <View style={[styles.inlineBadge, { backgroundColor: statusBadge.solidBg }]}>
-                {statusBadge.icon === 'flash'   && <FlashIcon   color="#FFFFFF" size={9} />}
-                {statusBadge.icon === 'fire'    && <FireIcon    color="#FFFFFF" size={9} />}
-                {statusBadge.icon === 'sparkle' && <SparkleIcon color="#FFFFFF" size={9} />}
+                {statusBadge.icon === 'flash'   && <FlashIcon   color="#FFFFFF" size={8} />}
+                {statusBadge.icon === 'fire'    && <FireIcon    color="#FFFFFF" size={8} />}
+                {statusBadge.icon === 'sparkle' && <SparkleIcon color="#FFFFFF" size={8} />}
                 <Text style={styles.photoBadgeText}>{statusBadge.label}</Text>
               </View>
             )}
 
-            {/* Job title — hero element */}
             <Text
               style={[styles.jobTitle, { color: theme.text.primary }]}
               numberOfLines={2}
@@ -312,7 +307,6 @@ export function JobPostCard({
               {job.title}
             </Text>
 
-            {/* Specialty + type chips */}
             <View style={styles.tagsRow}>
               {tags.slice(0, 2).map((tag, i) => (
                 <View key={i} style={styles.tagSpecialty}>
@@ -325,28 +319,6 @@ export function JobPostCard({
                 </Text>
               </View>
             </View>
-
-            {/* Portfolio strip */}
-            {hasPortfolio && (
-              <View style={styles.portfolioStrip}>
-                {portfolioPhotos.slice(0, 3).map((url, i) => (
-                  <View key={i} style={styles.portfolioThumb}>
-                    <Image
-                      source={{ uri: url }}
-                      style={StyleSheet.absoluteFillObject}
-                      resizeMode="cover"
-                    />
-                  </View>
-                ))}
-                {portfolioPhotos.length > 3 && (
-                  <View style={[styles.portfolioMore, { backgroundColor: theme.bg.elevated }]}>
-                    <Text style={[styles.portfolioMoreText, { color: theme.text.secondary }]}>
-                      +{portfolioPhotos.length - 3}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            )}
 
             {/* Space extras (RENTAL / SPACE only) */}
             {job.listingType !== 'JOB' &&
@@ -380,7 +352,7 @@ export function JobPostCard({
         {/* ── DIVIDER ───────────────────────────────────────────────────────── */}
         <View style={[styles.divider, { backgroundColor: theme.border.subtle }]} />
 
-        {/* ── FOOTER: pay · social proof · single CTA ──────────────────────── */}
+        {/* ── FOOTER: pay · social proof · CTA ─────────────────────────────── */}
         <View style={styles.footerRow}>
 
           {/* Pay */}
@@ -406,29 +378,31 @@ export function JobPostCard({
             )}
           </View>
 
-          {/* Social proof */}
+          {/* Social proof — inline, single line */}
           {hasSocialProof && (
             <View style={styles.socialCol}>
               {(job.appliedToday ?? 0) > 0 && (
                 <View style={styles.socialRow}>
-                  <FireIcon color="#EA580C" size={11} />
-                  <Text style={[styles.socialText, { color: theme.text.secondary }]}>
-                    {job.appliedToday} applied today
+                  <FireIcon color="#EA580C" size={10} />
+                  <Text style={[styles.socialText, { color: theme.text.secondary }]}
+                    numberOfLines={1}>
+                    {job.appliedToday} today
                   </Text>
                 </View>
               )}
               {job.replyTime != null && (
                 <View style={styles.socialRow}>
-                  <FlashIcon color="#378ADD" size={11} />
-                  <Text style={[styles.socialText, { color: theme.text.secondary }]}>
-                    Replies in {job.replyTime}
+                  <FlashIcon color="#378ADD" size={10} />
+                  <Text style={[styles.socialText, { color: theme.text.secondary }]}
+                    numberOfLines={1}>
+                    {job.replyTime}
                   </Text>
                 </View>
               )}
             </View>
           )}
 
-          {/* Single primary CTA */}
+          {/* CTA */}
           {onApply !== undefined && (
             <Pressable
               onPress={expired ? undefined : onApply}
@@ -468,36 +442,24 @@ export function JobPostCardSkeleton() {
       {/* Header */}
       <View style={styles.headerRow}>
         <Skeleton width={42} height={42} radius={21} />
-        <View style={[styles.headerInfo, { gap: 6 }]}>
+        <View style={[styles.headerInfo, { gap: 5 }]}>
           <Skeleton width={110} height={13} radius={6} />
           <Skeleton width={130} height={10} radius={5} />
-          <Skeleton width={95}  height={10} radius={5} />
         </View>
         <View style={[styles.headerActions, { gap: 10 }]}>
-          <Skeleton width={20} height={20} radius={10} />
-          <Skeleton width={20} height={20} radius={10} />
+          <Skeleton width={18} height={18} radius={9} />
+          <Skeleton width={18} height={18} radius={9} />
         </View>
       </View>
       {/* Content */}
       <View style={styles.contentRow}>
-        <Skeleton width={116} height={134} radius={10} />
-        <View style={[styles.rightCol, { gap: 9 }]}>
-          <Skeleton width="95%" height={15} radius={6} />
-          <Skeleton width="80%" height={15} radius={6} />
+        <Skeleton width={80} height={90} radius={10} />
+        <View style={[styles.rightCol, { gap: 7 }]}>
+          <Skeleton width="95%" height={14} radius={6} />
+          <Skeleton width="75%" height={14} radius={6} />
           <View style={styles.tagsRow}>
-            <Skeleton width={62} height={23} radius={10} />
-            <Skeleton width={62} height={23} radius={10} />
-          </View>
-          <View style={styles.portfolioStrip}>
-            <View style={styles.portfolioThumb}>
-              <Skeleton width="100%" height={54} radius={8} />
-            </View>
-            <View style={styles.portfolioThumb}>
-              <Skeleton width="100%" height={54} radius={8} />
-            </View>
-            <View style={styles.portfolioThumb}>
-              <Skeleton width="100%" height={54} radius={8} />
-            </View>
+            <Skeleton width={58} height={22} radius={10} />
+            <Skeleton width={58} height={22} radius={10} />
           </View>
         </View>
       </View>
@@ -505,15 +467,14 @@ export function JobPostCardSkeleton() {
       <View style={[styles.divider, { backgroundColor: theme.border.subtle }]} />
       {/* Footer */}
       <View style={styles.footerRow}>
-        <View style={[styles.payCol, { gap: 5 }]}>
+        <View style={[styles.payCol, { gap: 4 }]}>
           <Skeleton width={85} height={13} radius={6} />
-          <Skeleton width={65} height={10} radius={5} />
+          <Skeleton width={60} height={10} radius={5} />
         </View>
-        <View style={[styles.socialCol, { gap: 5 }]}>
-          <Skeleton width="90%" height={10} radius={5} />
-          <Skeleton width="75%" height={10} radius={5} />
+        <View style={[styles.socialCol, { gap: 4 }]}>
+          <Skeleton width="85%" height={10} radius={5} />
         </View>
-        <Skeleton width={90} height={34} radius={22} />
+        <Skeleton width={84} height={32} radius={22} />
       </View>
     </View>
   )
@@ -523,29 +484,29 @@ export function JobPostCardSkeleton() {
 const styles = StyleSheet.create({
   card: {
     borderRadius: 20,
-    paddingHorizontal: 15,
-    paddingTop: 14,
-    paddingBottom: 13,
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 11,
     marginHorizontal: 16,
-    marginBottom: 10,
+    marginBottom: 8,
     borderWidth: 1,
-    gap: 11,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.09,
-    shadowRadius: 14,
-    elevation: 5,
+    gap: 9,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 4,
   },
 
   // ── Header ──────────────────────────────────────────────────────────────────
   headerRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 10,
+    gap: 9,
   },
   headerInfo: {
     flex: 1,
     minWidth: 0,
-    gap: 3,
+    gap: 2,
   },
   nameRow: {
     flexDirection: 'row',
@@ -553,22 +514,22 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   salonName: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
     letterSpacing: -0.2,
     flexShrink: 1,
   },
   verifiedDot: {
-    width: 15,
-    height: 15,
-    borderRadius: 8,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     backgroundColor: '#378ADD',
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
   verifiedMark: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: '800',
     color: '#FFFFFF',
     marginTop: -1,
@@ -578,6 +539,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 3,
     flexWrap: 'nowrap',
+    minWidth: 0,
   },
   hiringRow: {
     flexDirection: 'row',
@@ -588,6 +550,11 @@ const styles = StyleSheet.create({
   metaText: {
     fontSize: 11,
     fontWeight: '400',
+    flexShrink: 0,   // rating / review numbers never truncate
+  },
+  metaCity: {
+    flexShrink: 1,   // city name shrinks first if row is tight
+    minWidth: 0,
   },
   metaDot: {
     fontSize: 11,
@@ -603,7 +570,7 @@ const styles = StyleSheet.create({
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 11,
     flexShrink: 0,
     paddingTop: 1,
   },
@@ -614,11 +581,12 @@ const styles = StyleSheet.create({
   // ── Content row ─────────────────────────────────────────────────────────────
   contentRow: {
     flexDirection: 'row',
-    gap: 11,
+    gap: 10,
   },
+  // Compact thumbnail — 80×90, portrait ratio but much smaller
   mainPhotoWrap: {
-    width: 116,
-    height: 134,
+    width: 80,
+    height: 90,
     borderRadius: 10,
     overflow: 'hidden',
     backgroundColor: '#F0EDE8',
@@ -626,17 +594,17 @@ const styles = StyleSheet.create({
   },
   photoBadge: {
     position: 'absolute',
-    bottom: 7,
-    left: 7,
+    bottom: 5,
+    left: 5,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
-    paddingHorizontal: 7,
-    paddingVertical: 4,
-    borderRadius: 7,
+    gap: 2,
+    paddingHorizontal: 5,
+    paddingVertical: 3,
+    borderRadius: 6,
   },
   photoBadgeText: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: 0.1,
@@ -646,26 +614,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'flex-start',
     gap: 3,
-    paddingHorizontal: 7,
+    paddingHorizontal: 6,
     paddingVertical: 3,
-    borderRadius: 7,
+    borderRadius: 6,
     marginBottom: 2,
   },
   rightCol: {
     flex: 1,
     minWidth: 0,
-    gap: 7,
+    gap: 5,
   },
   rightColFull: {
     flex: 1,
   },
 
-  // Job title — hero
+  // Job title
   jobTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
-    letterSpacing: -0.5,
-    lineHeight: 21,
+    letterSpacing: -0.4,
+    lineHeight: 20,
   },
 
   // Chips
@@ -675,9 +643,9 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   tagSpecialty: {
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 9,
     backgroundColor: 'rgba(216,90,48,0.12)',
   },
   tagSpecialtyText: {
@@ -687,38 +655,14 @@ const styles = StyleSheet.create({
     letterSpacing: 0.1,
   },
   tagType: {
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 9,
   },
   tagTypeText: {
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.1,
-  },
-
-  // Portfolio strip
-  portfolioStrip: {
-    flexDirection: 'row',
-    gap: 4,
-  },
-  portfolioThumb: {
-    flex: 1,
-    height: 54,
-    borderRadius: 8,
-    overflow: 'hidden',
-    backgroundColor: '#F0EDE8',
-  },
-  portfolioMore: {
-    width: 34,
-    height: 54,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  portfolioMoreText: {
-    fontSize: 12,
-    fontWeight: '700',
   },
 
   // Space extras
@@ -746,11 +690,11 @@ const styles = StyleSheet.create({
   footerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   payCol: {
     flex: 1,
-    gap: 3,
+    gap: 2,
     minWidth: 0,
   },
   payAmountRow: {
@@ -759,58 +703,58 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   moneyBadge: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     backgroundColor: 'rgba(29,158,117,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
   moneyBadgeText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '800',
     color: '#1D9E75',
-    lineHeight: 14,
+    lineHeight: 13,
   },
   payAmount: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '800',
     letterSpacing: -0.3,
     flex: 1,
   },
   payEst: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '400',
     letterSpacing: 0.1,
   },
   socialCol: {
     flex: 1,
-    gap: 4,
+    gap: 3,
     minWidth: 0,
   },
   socialRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 3,
   },
   socialText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '500',
     flexShrink: 1,
   },
 
-  // Single primary CTA
+  // CTA button — slightly smaller pill
   applyBtn: {
     borderRadius: 22,
-    paddingHorizontal: 18,
-    paddingVertical: 9,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
   applyBtnText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '800',
     letterSpacing: 0.1,
   },

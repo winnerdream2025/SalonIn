@@ -20,7 +20,6 @@ import { WorkerCard, WorkerCardSkeleton, Text, Button, useTheme, ReportModal } f
 import type { WorkerCardData } from '@salonin/types'
 import { Availability } from '@salonin/types'
 import { reportsApi, messagesApi, parseApiError } from '@salonin/api-client'
-import { getCityLabel } from '@salonin/config'
 import { useAuthStore } from '../../store/authStore'
 import { useNearbyWorkers } from '../../hooks/useNearbyWorkers'
 import { useLocationStore } from '../../store/locationStore'
@@ -38,6 +37,7 @@ export default function DiscoveryFeedScreen() {
   const { bottom } = useSafeAreaInsets()
   const { theme } = useTheme()
   const cityId = useLocationStore((s) => s.cityId)
+  const cityName = useLocationStore((s) => s.cityName)
   const isGPSLocation = useLocationStore((s) => s.isGPSLocation)
   const radiusMiles = useLocationStore((s) => s.radiusMiles)
 
@@ -93,7 +93,8 @@ export default function DiscoveryFeedScreen() {
     setSelectedSpecialty((prev) => (prev === specialty ? 'All' : specialty))
   }, [])
 
-  const cityLabel = isGPSLocation ? 'My location' : getCityLabel(cityId)
+  // Show real reverse-geocoded name (e.g. "Atlanta, GA") — fall back to generic label
+  const cityLabel = cityName ?? (isGPSLocation ? 'Near you' : 'Set location')
 
   const openLocationModal = useCallback(() => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
@@ -169,7 +170,7 @@ export default function DiscoveryFeedScreen() {
             >
               <Ionicons name="location-outline" size={13} color={isGPSLocation ? '#1D9E75' : '#D85A30'} />
               <Text
-                style={{ fontSize: 12, fontWeight: '600', color: isGPSLocation ? '#1D9E75' : theme.text.secondary }}
+                style={{ fontSize: 12, fontWeight: '600', color: isGPSLocation ? '#1D9E75' : theme.text.secondary, flexShrink: 1 }}
                 numberOfLines={1}
               >
                 {cityLabel}
@@ -414,11 +415,14 @@ const styles = StyleSheet.create({
     fontSize: 34,
     fontWeight: '900',
     letterSpacing: -0.5,
+    flexShrink: 0,    // never compress — "Discover" must always be fully visible
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flexShrink: 1,    // yield space to title if screen is narrow
+    minWidth: 0,
   },
   locationPill: {
     flexDirection: 'row',
@@ -428,7 +432,9 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 99,
     borderWidth: 1,
-    maxWidth: 140,
+    flexShrink: 1,
+    minWidth: 0,
+    maxWidth: 160,
   },
   searchRow: {
     paddingHorizontal: 16,

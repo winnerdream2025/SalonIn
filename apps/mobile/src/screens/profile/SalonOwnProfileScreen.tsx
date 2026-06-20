@@ -107,7 +107,7 @@ export default function SalonOwnProfileScreen() {
 
         {/* ── Page title bar ── */}
         <View style={styles.titleRow}>
-          <Text style={[styles.titleSerif, { color: theme.text.primary }]}>My Salon</Text>
+          <Text style={[styles.titleSerif, { color: theme.text.primary }]} numberOfLines={1}>My Salon</Text>
           <TouchableOpacity
             onPress={() => router.push('/salon/edit' as never)}
             style={[styles.editPill, { backgroundColor: 'rgba(216,90,48,0.10)', borderColor: 'rgba(216,90,48,0.25)' }]}
@@ -336,6 +336,8 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: -0.5,
     lineHeight: 36,
+    flexShrink: 1,
+    minWidth: 0,
   },
   editPill: {
     flexDirection: 'row',

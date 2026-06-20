@@ -2,10 +2,20 @@ import { Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../../prisma/prisma.service'
 import type { UpdateSalonProfileDto } from './dto/update-salon-profile.dto'
 import type { UpdateHiringStatusDto } from './dto/update-hiring-status.dto'
+import type { UpdateSalonLocationDto } from './dto/update-location.dto'
 
 @Injectable()
 export class SalonsService {
   constructor(private readonly prisma: PrismaService) {}
+
+  async updateLocation(userId: string, dto: UpdateSalonLocationDto): Promise<void> {
+    await this.assertExists(userId)
+    await this.prisma.$executeRaw`
+      UPDATE "SalonProfile"
+      SET location = ST_SetSRID(ST_MakePoint(${dto.lng}, ${dto.lat}), 4326)::geography
+      WHERE "userId" = ${userId}
+    `
+  }
 
   async getMe(userId: string) {
     const profile = await this.prisma.salonProfile.findUnique({

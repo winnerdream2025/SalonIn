@@ -34,8 +34,11 @@ config.resolver.blockList = [
 
 // Hard-map singleton packages so Metro always resolves them to the app's node_modules,
 // regardless of which workspace package originated the import.
+// Also map 'App' so pnpm-deep expo/AppEntry.js (which does `import App from '../../App'`)
+// can find the expo-router entry point correctly in the monorepo.
 config.resolver.extraNodeModules = {
   'react-native-svg': path.resolve(projectRoot, 'node_modules/react-native-svg'),
+  'App': path.resolve(projectRoot, 'node_modules/expo-router/entry'),
 }
 
 // Force a single copy of React and native modules across the entire bundle

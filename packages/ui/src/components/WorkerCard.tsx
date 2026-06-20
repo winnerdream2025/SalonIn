@@ -5,32 +5,28 @@ import Svg, { Path, Circle } from 'react-native-svg'
 import { Skeleton } from '../primitives/Skeleton'
 import { useTheme } from '../hooks/useTheme'
 
-// ── Availability config ──────────────────────────────────────────────────────
-const AVAIL_CONFIG: Record<string, { label: string; dotColor: string; pillBg: string; pillText: string }> = {
-  NOW:           { label: 'Available now', dotColor: '#1D9E75', pillBg: 'rgba(29,158,117,0.10)',  pillText: '#147A5A' },
-  TODAY:         { label: 'Available today', dotColor: '#378ADD', pillBg: 'rgba(55,138,221,0.10)', pillText: '#2568B0' },
-  WEEKEND:       { label: 'This weekend',  dotColor: '#EF9F27', pillBg: 'rgba(239,159,39,0.10)', pillText: '#A06910' },
-  NOT_AVAILABLE: { label: 'Not available', dotColor: '#9CA3AF', pillBg: 'rgba(156,163,175,0.10)',pillText: '#6B7280' },
+// ── Availability ──────────────────────────────────────────────────────────────
+const AVAIL_CONFIG: Record<string, { label: string; dotColor: string }> = {
+  NOW:           { label: 'Available now',   dotColor: '#1D9E75' },
+  TODAY:         { label: 'Available today', dotColor: '#378ADD' },
+  WEEKEND:       { label: 'This weekend',    dotColor: '#EF9F27' },
+  NOT_AVAILABLE: { label: 'Not available',   dotColor: '#9CA3AF' },
 }
 
-// ── Badge config ─────────────────────────────────────────────────────────────
-const BADGE_CONFIG: Record<string, { bg: string; color: string }> = {
-  'Top Rated':   { bg: 'rgba(216,90,48,0.11)',  color: '#C44E28' },
-  'Rising Star': { bg: 'rgba(55,138,221,0.11)', color: '#2568B0' },
-  'Expert':      { bg: 'rgba(29,158,117,0.11)', color: '#147A5A' },
-  'New':         { bg: 'rgba(147,92,255,0.11)', color: '#7240CC' },
+const BADGE_COLOR: Record<string, string> = {
+  'Top Rated':   '#C44E28',
+  'Rising Star': '#2568B0',
+  'Expert':      '#147A5A',
+  'New':         '#7240CC',
 }
 
-// ── SVG Icons ────────────────────────────────────────────────────────────────
+// ── Icons ─────────────────────────────────────────────────────────────────────
 function BookmarkIcon({ filled, color, size }: { filled: boolean; color: string; size: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
-        stroke={color} strokeWidth={1.8}
-        strokeLinecap="round" strokeLinejoin="round"
-        fill={filled ? color : 'none'}
-      />
+      <Path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+        stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"
+        fill={filled ? color : 'none'} />
     </Svg>
   )
 }
@@ -38,21 +34,8 @@ function BookmarkIcon({ filled, color, size }: { filled: boolean; color: string;
 function StarIcon({ color, size }: { color: string; size: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Path
-        d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
-        fill={color}
-      />
-    </Svg>
-  )
-}
-
-function MessageIcon({ color, size }: { color: string; size: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-        stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"
-      />
+      <Path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+        fill={color} />
     </Svg>
   )
 }
@@ -60,16 +43,14 @@ function MessageIcon({ color, size }: { color: string; size: number }) {
 function PinIcon({ color, size }: { color: string; size: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M12 2C8.686 2 6 4.686 6 8c0 4.5 6 12 6 12s6-7.5 6-12c0-3.314-2.686-6-6-6z"
-        stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"
-      />
+      <Path d="M12 2C8.686 2 6 4.686 6 8c0 4.5 6 12 6 12s6-7.5 6-12c0-3.314-2.686-6-6-6z"
+        stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
       <Circle cx="12" cy="8" r="2" fill={color} />
     </Svg>
   )
 }
 
-// ── Props ────────────────────────────────────────────────────────────────────
+// ── Props ─────────────────────────────────────────────────────────────────────
 export interface WorkerCardProps {
   worker: WorkerCardData
   onPress: () => void
@@ -79,7 +60,10 @@ export interface WorkerCardProps {
   onSave?: () => void
 }
 
-// ── Component ────────────────────────────────────────────────────────────────
+const STRIP_VISIBLE = 3   // photos shown as squares
+const THUMB_SIZE    = 64  // px — each square
+
+// ── Component ─────────────────────────────────────────────────────────────────
 export function WorkerCard({
   worker,
   onPress,
@@ -99,16 +83,22 @@ export function WorkerCard({
   if (isLoading) return <WorkerCardSkeleton />
 
   const avail         = AVAIL_CONFIG[worker.availability] ?? AVAIL_CONFIG.NOW
-  const badge         = worker.badge ? BADGE_CONFIG[worker.badge] : null
-  const hasPortfolio  = (worker.portfolioUrls?.length ?? 0) > 0
+  const badgeColor    = worker.badge ? BADGE_COLOR[worker.badge] : null
   const portfolioUrls = worker.portfolioUrls ?? []
   const firstInitial  = (worker.name?.[0] ?? 'W').toUpperCase()
+  const rateDisplay   = worker.rateRange ?? null
+  const specialtyLine = worker.specialties.join(' · ')
 
-  const bioText    = worker.bio && worker.bio.trim().length > 0 ? worker.bio : null
-  const rateDisplay = worker.rateRange ? worker.rateRange.replace(/^\$\s*/, '') : null
+  // Strip: first STRIP_VISIBLE photos shown; remainder as +N
+  const stripPhotos  = portfolioUrls.slice(0, STRIP_VISIBLE)
+  const extraCount   = portfolioUrls.length - STRIP_VISIBLE
+  const hasStrip     = portfolioUrls.length > 0
+
   const replyLabel = worker.replyTimeMinutes != null
     ? `Replies in ${worker.replyTimeMinutes >= 60 ? `${Math.floor(worker.replyTimeMinutes / 60)}h` : `${worker.replyTimeMinutes}min`}`
-    : null
+    : worker.jobsThisMonth != null && worker.jobsThisMonth > 0
+      ? `${worker.jobsThisMonth} jobs this month`
+      : null
 
   return (
     <Animated.View style={{ transform: [{ scale }] }}>
@@ -123,51 +113,11 @@ export function WorkerCard({
           shadowColor: '#1A1A1A',
         }]}
       >
-
-        {/* ════════════════════════════════════
-             PORTFOLIO HERO — flush to top of card
-             card has overflow:hidden, so clips to borderRadius
-            ════════════════════════════════════ */}
-        {hasPortfolio && (
-          <View style={styles.portfolioHero}>
-            {portfolioUrls.length === 1 ? (
-              /* Single image — full width */
-              <View style={styles.heroSingle}>
-                <Image source={{ uri: portfolioUrls[0] }} style={styles.heroImg} resizeMode="cover" />
-              </View>
-            ) : (
-              /* 2+ images — main hero (left, ~62%) + thumbnails column (right, ~38%) */
-              <View style={styles.heroSplit}>
-                <View style={styles.heroMain}>
-                  <Image source={{ uri: portfolioUrls[0] }} style={styles.heroImg} resizeMode="cover" />
-                </View>
-                <View style={styles.heroThumbCol}>
-                  {portfolioUrls.slice(1, 3).map((url, i) => {
-                    const isLast = i === 1 && portfolioUrls.length > 3
-                    return (
-                      <View key={i} style={styles.heroThumb}>
-                        <Image source={{ uri: url }} style={styles.heroImg} resizeMode="cover" />
-                        {isLast && (
-                          <View style={styles.portfolioOverlay}>
-                            <Text style={styles.portfolioMoreText}>+{portfolioUrls.length - 3}</Text>
-                          </View>
-                        )}
-                      </View>
-                    )
-                  })}
-                </View>
-              </View>
-            )}
-          </View>
-        )}
-
-        {/* ════════════════════════════════════
-             CARD CONTENT — padded section below hero
-            ════════════════════════════════════ */}
         <View style={styles.cardContent}>
 
-          {/* Header: avatar · name · bookmark */}
+          {/* ── HEADER: avatar · identity · bookmark ──────────────────────── */}
           <View style={styles.headerRow}>
+
             <View style={styles.avatarWrap}>
               {worker.photoUrl ? (
                 <Image source={{ uri: worker.photoUrl }} style={styles.avatar} resizeMode="cover" />
@@ -189,83 +139,94 @@ export function WorkerCard({
                     <Text style={styles.verifiedCheck}>✓</Text>
                   </View>
                 )}
+                {worker.badge != null && badgeColor != null && (
+                  <Text style={[styles.badgeInline, { color: badgeColor }]} numberOfLines={1}>
+                    {worker.badge}
+                  </Text>
+                )}
               </View>
-              <Text style={[styles.specialty, { color: theme.text.secondary }]} numberOfLines={1}>
+
+              <Text style={[styles.primarySpecialty, { color: theme.text.secondary }]} numberOfLines={1}>
                 {worker.specialties[0] ?? 'Beauty Professional'}
               </Text>
+
+              {/* Rating · distance · availability — one tight line */}
               <View style={styles.metaRow}>
                 {worker.rating != null && worker.rating > 0 && (
-                  <View style={styles.ratingGroup}>
-                    <StarIcon color="#EF9F27" size={11} />
-                    <Text style={[styles.ratingNum, { color: theme.text.primary }]}>
+                  <>
+                    <StarIcon color="#EF9F27" size={10} />
+                    <Text style={[styles.metaText, { color: theme.text.primary, fontWeight: '600' }]}>
                       {worker.rating.toFixed(1)}
                     </Text>
                     {worker.reviewCount != null && worker.reviewCount > 0 && (
-                      <Text style={[styles.ratingCount, { color: theme.text.tertiary }]}>
+                      <Text style={[styles.metaText, { color: theme.text.tertiary }]}>
                         ({worker.reviewCount})
                       </Text>
                     )}
-                  </View>
+                    <Text style={[styles.metaDot, { color: theme.text.tertiary }]}>·</Text>
+                  </>
                 )}
                 {worker.distanceMiles != null && (
-                  <View style={styles.distanceGroup}>
-                    <PinIcon color={theme.text.tertiary} size={11} />
-                    <Text style={[styles.distanceTxt, { color: theme.text.tertiary }]}>
+                  <>
+                    <PinIcon color={theme.text.tertiary} size={10} />
+                    <Text style={[styles.metaText, { color: theme.text.tertiary }]}>
                       {worker.distanceMiles.toFixed(1)} mi
                     </Text>
-                  </View>
+                    <Text style={[styles.metaDot, { color: theme.text.tertiary }]}>·</Text>
+                  </>
                 )}
+                <View style={[styles.availInlineDot, { backgroundColor: avail.dotColor }]} />
+                <Text
+                  style={[styles.metaText, styles.metaAvail, { color: avail.dotColor, fontWeight: '600' }]}
+                  numberOfLines={1}
+                >
+                  {avail.label}
+                </Text>
               </View>
             </View>
 
             <Pressable onPress={handleSave} hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }} style={styles.bookmarkBtn}>
-              <BookmarkIcon filled={saved} color={saved ? '#D85A30' : theme.text.tertiary} size={19} />
+              <BookmarkIcon filled={saved} color={saved ? '#D85A30' : theme.text.tertiary} size={18} />
             </Pressable>
           </View>
 
-          {/* Availability + badge + skill chips */}
-          <View style={styles.chipsRow}>
-            <View style={[styles.availPill, { backgroundColor: avail.pillBg }]}>
-              <Text style={[styles.availPillText, { color: avail.pillText }]}>{avail.label}</Text>
-            </View>
-            {badge !== null && worker.badge != null && (
-              <View style={[styles.badgePill, { backgroundColor: badge.bg }]}>
-                <Text style={[styles.badgePillText, { color: badge.color }]}>{worker.badge}</Text>
-              </View>
-            )}
-            {worker.specialties.slice(1, 3).map((s, i) => (
-              <View key={i} style={styles.skillPill}>
-                <Text style={styles.skillPillText} numberOfLines={1}>{s}</Text>
-              </View>
-            ))}
-            {worker.specialties.length > 3 && (
-              <View style={[styles.skillPill, { backgroundColor: 'rgba(29,158,117,0.05)' }]}>
-                <Text style={[styles.skillPillText, { color: '#1D9E75' }]}>+{worker.specialties.length - 3}</Text>
-              </View>
-            )}
-          </View>
-
-          {/* Bio — 2 lines */}
-          {bioText != null && bioText.length > 0 && (
-            <Text style={[styles.bio, { color: theme.text.secondary }]} numberOfLines={2}>
-              {bioText}
+          {/* ── SPECIALTIES — dot-separated plain text ─────────────────────── */}
+          {worker.specialties.length > 0 && (
+            <Text style={[styles.specialtiesText, { color: theme.text.secondary }]} numberOfLines={1}>
+              {specialtyLine}
             </Text>
           )}
 
-          {/* Footer: rate · reply · Message CTA */}
+          {/* ── WORK PHOTO STRIP ──────────────────────────────────────────── */}
+          {hasStrip && (
+            <View style={styles.photoStrip}>
+              {stripPhotos.map((url, i) => (
+                <View key={i} style={styles.stripThumb}>
+                  <Image source={{ uri: url }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+                </View>
+              ))}
+              {/* +N chip for remaining photos */}
+              {extraCount > 0 && (
+                <View style={[styles.stripMore, { backgroundColor: theme.bg.elevated }]}>
+                  <Text style={[styles.stripMoreText, { color: theme.text.secondary }]}>
+                    +{extraCount}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* ── FOOTER: rate · social proof · outline CTA ─────────────────── */}
           <View style={[styles.divider, { backgroundColor: theme.border.subtle }]} />
           <View style={styles.footerRow}>
             <View style={styles.footerLeft}>
               {rateDisplay != null ? (
-                <View style={styles.rateRow}>
-                  <View style={styles.moneyBadge}>
-                    <Text style={styles.moneyBadgeText}>$</Text>
-                  </View>
-                  <Text style={[styles.rateAmount, { color: '#1D9E75' }]}>{rateDisplay}</Text>
-                </View>
+                <Text style={[styles.rateText, { color: '#1D9E75' }]} numberOfLines={1}>
+                  {rateDisplay}
+                </Text>
               ) : worker.experienceYears > 0 ? (
-                <Text style={[styles.rateAmount, { color: '#1D9E75' }]}>
-                  {worker.experienceYears}yr experience
+                <Text style={[styles.rateText, { color: '#1D9E75' }]} numberOfLines={1}>
+                  {worker.experienceYears} yrs exp.
                 </Text>
               ) : null}
               {replyLabel != null && (
@@ -273,16 +234,10 @@ export function WorkerCard({
                   {replyLabel}
                 </Text>
               )}
-              {worker.jobsThisMonth != null && worker.jobsThisMonth > 0 && replyLabel == null && (
-                <Text style={[styles.replyLabel, { color: theme.text.tertiary }]} numberOfLines={1}>
-                  {worker.jobsThisMonth} jobs this month
-                </Text>
-              )}
             </View>
 
             {onMessage !== undefined && (
-              <Pressable style={styles.messageBtn} onPress={onMessage}>
-                <MessageIcon color="#FFFFFF" size={14} />
+              <Pressable style={[styles.messageBtn, { borderColor: '#D85A30' }]} onPress={onMessage}>
                 <Text style={styles.messageBtnText}>Message</Text>
               </Pressable>
             )}
@@ -299,35 +254,30 @@ export function WorkerCardSkeleton() {
   const { theme } = useTheme()
   return (
     <View style={[styles.card, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
-      {/* Hero skeleton */}
-      <Skeleton width="100%" height={160} radius={0} />
-      {/* Content skeleton */}
       <View style={styles.cardContent}>
         <View style={styles.headerRow}>
-          <Skeleton width={52} height={52} radius={26} />
-          <View style={[styles.nameBlock, { gap: 6 }]}>
-            <Skeleton width={130} height={15} radius={7} />
-            <Skeleton width={95}  height={12} radius={5} />
-            <Skeleton width={75}  height={11} radius={5} />
+          <Skeleton width={44} height={44} radius={22} />
+          <View style={[styles.nameBlock, { gap: 5 }]}>
+            <Skeleton width={120} height={14} radius={6} />
+            <Skeleton width={80}  height={11} radius={5} />
+            <Skeleton width={140} height={10} radius={5} />
           </View>
-          <Skeleton width={19} height={22} radius={4} />
+          <Skeleton width={18} height={20} radius={4} />
         </View>
-        <View style={[styles.chipsRow, { gap: 5 }]}>
-          <Skeleton width={100} height={24} radius={12} />
-          <Skeleton width={72}  height={24} radius={12} />
-          <Skeleton width={60}  height={24} radius={12} />
-        </View>
-        <View style={{ gap: 5 }}>
-          <Skeleton width="100%" height={12} radius={5} />
-          <Skeleton width="72%"  height={12} radius={5} />
+        <Skeleton width="70%" height={11} radius={5} />
+        {/* Strip skeleton */}
+        <View style={styles.photoStrip}>
+          <Skeleton width={THUMB_SIZE} height={THUMB_SIZE} radius={10} />
+          <Skeleton width={THUMB_SIZE} height={THUMB_SIZE} radius={10} />
+          <Skeleton width={THUMB_SIZE} height={THUMB_SIZE} radius={10} />
         </View>
         <View style={[styles.divider, { backgroundColor: theme.border.subtle }]} />
         <View style={styles.footerRow}>
-          <View style={{ gap: 5 }}>
-            <Skeleton width={95}  height={14} radius={6} />
-            <Skeleton width={115} height={11} radius={5} />
+          <View style={{ gap: 4 }}>
+            <Skeleton width={85}  height={13} radius={6} />
+            <Skeleton width={100} height={10} radius={5} />
           </View>
-          <Skeleton width={100} height={36} radius={18} />
+          <Skeleton width={84} height={30} radius={15} />
         </View>
       </View>
     </View>
@@ -336,88 +286,41 @@ export function WorkerCardSkeleton() {
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  // Card — no paddingHorizontal here; hero goes full-bleed, content handles its own padding
   card: {
     borderRadius: 20,
     marginHorizontal: 16,
-    marginBottom: 10,
+    marginBottom: 8,
     borderWidth: 1,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.09,
-    shadowRadius: 14,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 4,
     overflow: 'hidden',
   },
 
-  // ── Portfolio hero ────────────────────────────
-  portfolioHero: {
-    // full-bleed — no horizontal inset, card overflow:hidden clips to radius
-  },
-  heroSingle: {
-    height: 160,
-    backgroundColor: '#F0EDE8',
-  },
-  heroSplit: {
-    flexDirection: 'row',
-    height: 160,
-    gap: 3,
-    backgroundColor: '#E8E4DF',
-  },
-  heroMain: {
-    flex: 5,
-    backgroundColor: '#F0EDE8',
-  },
-  heroThumbCol: {
-    flex: 3,
-    gap: 3,
-    flexDirection: 'column',
-  },
-  heroThumb: {
-    flex: 1,
-    backgroundColor: '#E8E4DF',
-  },
-  heroImg: {
-    width: '100%',
-    height: '100%',
-  },
-  portfolioOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.42)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  portfolioMoreText: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-
-  // ── Card content ──────────────────────────────
   cardContent: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 13,
     paddingTop: 12,
-    paddingBottom: 12,
-    gap: 10,
+    paddingBottom: 11,
+    gap: 8,
   },
 
-  // ── Header ────────────────────────────────
+  // ── Header ────────────────────────────────────────────────────────────────
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 11,
+    gap: 10,
   },
-
-  // Circle avatar
   avatarWrap: {
-    width: 52,
-    height: 52,
+    width: 44,
+    height: 44,
     flexShrink: 0,
     position: 'relative',
   },
   avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#F0EDE8',
   },
   avatarFallback: {
@@ -425,7 +328,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarInitial: {
-    fontSize: 20,
+    fontSize: 17,
     fontWeight: '800',
     color: '#D85A30',
   },
@@ -433,13 +336,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 1,
     right: 1,
-    width: 12,
-    height: 12,
+    width: 11,
+    height: 11,
     borderRadius: 6,
     borderWidth: 2,
   },
-
-  // Name block
   nameBlock: {
     flex: 1,
     minWidth: 0,
@@ -449,17 +350,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
+    flexWrap: 'nowrap',
   },
   name: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '800',
-    letterSpacing: -0.3,
+    letterSpacing: -0.2,
     flexShrink: 1,
   },
   verifiedBadge: {
-    width: 15,
-    height: 15,
-    borderRadius: 8,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     backgroundColor: '#378ADD',
     alignItems: 'center',
     justifyContent: 'center',
@@ -471,105 +373,87 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     marginTop: -1,
   },
-  specialty: {
-    fontSize: 13,
+  badgeInline: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+    flexShrink: 0,
+  },
+  primarySpecialty: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    flexWrap: 'nowrap',
+    minWidth: 0,
+  },
+  metaText: {
+    fontSize: 11,
+    fontWeight: '400',
+    flexShrink: 0,   // numeric values (rating, distance) never truncate
+  },
+  metaAvail: {
+    flexShrink: 1,   // availability label ("Available now") can truncate last
+    minWidth: 0,
+  },
+  metaDot: {
+    fontSize: 11,
+    marginHorizontal: 1,
+    flexShrink: 0,
+  },
+  availInlineDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 2,
+  },
+  bookmarkBtn: {
+    flexShrink: 0,
+    alignSelf: 'flex-start',
+    paddingTop: 2,
+  },
+
+  // ── Specialties text ──────────────────────────────────────────────────────
+  specialtiesText: {
+    fontSize: 11,
     fontWeight: '500',
     letterSpacing: 0.1,
   },
 
-  // Meta: rating + distance
-  metaRow: {
+  // ── Work photo strip ──────────────────────────────────────────────────────
+  photoStrip: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 2,
+    gap: 6,
   },
-  ratingGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  ratingNum: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  ratingCount: {
-    fontSize: 11,
-    fontWeight: '400',
-  },
-  distanceGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  distanceTxt: {
-    fontSize: 11,
-    fontWeight: '400',
-  },
-
-  // Bookmark
-  bookmarkBtn: {
-    flexShrink: 0,
-    alignSelf: 'flex-start',
-    marginTop: 2,
-  },
-
-  // ── Chips row ─────────────────────────────
-  chipsRow: {
-    flexDirection: 'row',
-    flexWrap: 'nowrap',
-    gap: 5,
+  stripThumb: {
+    width: THUMB_SIZE,
+    height: THUMB_SIZE,
+    borderRadius: 10,
     overflow: 'hidden',
+    backgroundColor: '#F0EDE8',
   },
-  availPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
-    flexShrink: 0,
+  stripMore: {
+    width: THUMB_SIZE,
+    height: THUMB_SIZE,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  availPillText: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.1,
-  },
-  badgePill: {
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    borderRadius: 20,
-    flexShrink: 0,
-  },
-  badgePillText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  skillPill: {
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    borderRadius: 20,
-    backgroundColor: 'rgba(29,158,117,0.09)',
-    flexShrink: 1,
-    minWidth: 0,
-  },
-  skillPillText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#147A5A',
+  stripMoreText: {
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: -0.5,
   },
 
-  // ── Bio ──────────────────────────────────
-  bio: {
-    fontSize: 13,
-    fontWeight: '400',
-    lineHeight: 20,
-    letterSpacing: 0.1,
-  },
-
-  // ── Divider ───────────────────────────────
+  // ── Divider ───────────────────────────────────────────────────────────────
   divider: {
     height: StyleSheet.hairlineWidth,
   },
 
-  // ── Footer ───────────────────────────────
+  // ── Footer ────────────────────────────────────────────────────────────────
   footerRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -580,48 +464,27 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 2,
   },
-  rateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
+  rateText: {
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: -0.2,
   },
-  moneyBadge: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#1D9E75',
+  replyLabel: {
+    fontSize: 11,
+    fontWeight: '400',
+  },
+  messageBtn: {
+    borderRadius: 22,
+    borderWidth: 1.5,
+    paddingHorizontal: 15,
+    paddingVertical: 7,
+    flexShrink: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  moneyBadgeText: {
-    fontSize: 10,
-    fontWeight: '900',
-    color: '#FFFFFF',
-    marginTop: -1,
-  },
-  rateAmount: {
-    fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: -0.3,
-  },
-  replyLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    letterSpacing: 0.1,
-  },
-  messageBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    borderRadius: 22,
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    backgroundColor: '#D85A30',
-    flexShrink: 0,
-  },
   messageBtnText: {
-    color: '#FFFFFF',
-    fontSize: 13,
+    color: '#D85A30',
+    fontSize: 12,
     fontWeight: '800',
     letterSpacing: 0.1,
   },

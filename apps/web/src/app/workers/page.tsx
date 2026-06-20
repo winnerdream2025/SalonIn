@@ -23,8 +23,8 @@ const SKELETON_COUNT = 9
 export default function WorkersPage() {
   const router = useRouter()
   const cityId = useLocationStore((s) => s.cityId)
-  const currentLat = useLocationStore((s) => s.lat)
-  const currentLng = useLocationStore((s) => s.lng)
+  const lat = useLocationStore((s) => s.lat)
+  const lng = useLocationStore((s) => s.lng)
   const setLocation = useLocationStore((s) => s.setLocation)
 
   const [selectedSpecialty, setSelectedSpecialty] = useState<string | undefined>()
@@ -59,7 +59,7 @@ export default function WorkersPage() {
   )
 
   const locationLabel = CITY_PRESETS.find((c) => c.cityId === cityId)?.label ?? cityId ?? 'Select city'
-  const isLocationSet = cityId != null && currentLat != null && currentLng != null
+  const isLocationSet = lat != null && lng != null
 
   return (
     <>
@@ -132,7 +132,7 @@ export default function WorkersPage() {
                   return (
                     <button
                       key={city.cityId}
-                      onClick={() => setLocation(city.cityId, city.lat, city.lng)}
+                      onClick={() => setLocation({ cityId: city.cityId, lat: city.lat, lng: city.lng, cityName: city.label })}
                       style={{
                         backgroundColor: active ? 'rgba(216,90,48,0.12)' : T.bg.elevated,
                         border: `1px solid ${active ? T.brand.primary : T.border.default}`,

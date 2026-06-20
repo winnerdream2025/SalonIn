@@ -8,6 +8,7 @@ import {
   Platform,
   KeyboardAvoidingView,
   Keyboard,
+  ActivityIndicator,
   type TextInput as TextInputType,
   type LayoutChangeEvent,
 } from 'react-native'
@@ -20,6 +21,9 @@ import { Text, useTheme } from '@salonin/ui'
 import { useLocationStore, type RadiusMode } from '../store/locationStore'
 import { usePlaceSearch } from '../hooks/usePlaceSearch'
 import type { PlaceResult } from '../hooks/usePlaceSearch'
+import { fetchPlaceDetails } from '../utils/googlePlaces'
+import { findNearestCity } from '@salonin/config'
+import { countryCodeToFlag } from '../utils/countryFlag'
 
 interface Props {
   visible: boolean
@@ -44,6 +48,7 @@ export function RadiusEditorScreen({ visible, onClose, onApply }: Props) {
     return Math.max(0.02, Math.min(delta, 10))
   })
 
+  const [selectingId, setSelectingId] = useState<string | null>(null)
   const { results: searchResults, isLoading: isSearching } = usePlaceSearch(showDropdown ? searchQuery : '')
 
   const initialRegion = useMemo(() => {
@@ -68,25 +73,36 @@ export function RadiusEditorScreen({ visible, onClose, onApply }: Props) {
   }, [])
 
   const handleSelectPlace = useCallback(
-    (place: PlaceResult) => {
+    async (place: PlaceResult) => {
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-      location.setLocation({
-        cityId: place.cityId,
-        lat: place.lat,
-        lng: place.lng,
-        cityName: place.shortName,
-        countryCode: place.cityRef.countryCode,
-        flag: place.cityRef.flag,
-      })
-      mapRef.current?.animateToRegion({
-        latitude: place.lat,
-        longitude: place.lng,
-        latitudeDelta: currentLatDelta,
-        longitudeDelta: currentLatDelta,
-      }, 600)
-      setSearchQuery(place.shortName)
-      setShowDropdown(false)
-      Keyboard.dismiss()
+      setSelectingId(place.id)
+      try {
+        const details = await fetchPlaceDetails(place.id)
+        if (!details) return
+        const city = findNearestCity(details.lat, details.lng)
+        const flag = details.countryCode
+          ? countryCodeToFlag(details.countryCode)
+          : city.flag
+        location.setLocation({
+          cityId: city.id,
+          lat: details.lat,
+          lng: details.lng,
+          cityName: place.shortName,
+          countryCode: details.countryCode ?? city.countryCode,
+          flag,
+        })
+        mapRef.current?.animateToRegion({
+          latitude: details.lat,
+          longitude: details.lng,
+          latitudeDelta: currentLatDelta,
+          longitudeDelta: currentLatDelta,
+        }, 600)
+        setSearchQuery(place.shortName)
+        setShowDropdown(false)
+        Keyboard.dismiss()
+      } finally {
+        setSelectingId(null)
+      }
     },
     [location, currentLatDelta],
   )
@@ -210,10 +226,15 @@ export function RadiusEditorScreen({ visible, onClose, onApply }: Props) {
                       { borderBottomColor: theme.border.subtle },
                       idx === searchResults.length - 1 && { borderBottomWidth: 0 },
                     ]}
-                    onPress={() => handleSelectPlace(place)}
+                    onPress={() => void handleSelectPlace(place)}
                     activeOpacity={0.7}
+                    disabled={selectingId !== null}
                   >
-                    <Ionicons name="location-outline" size={18} color="#D85A30" />
+                    {selectingId === place.id ? (
+                      <ActivityIndicator size="small" color="#D85A30" />
+                    ) : (
+                      <Ionicons name="location-outline" size={18} color="#D85A30" />
+                    )}
                     <Text style={[styles.dropdownText, { color: theme.text.primary }]}>{place.shortName}</Text>
                   </TouchableOpacity>
                 ))

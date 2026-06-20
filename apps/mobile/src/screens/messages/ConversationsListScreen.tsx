@@ -32,8 +32,8 @@ export default function ConversationsListScreen() {
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={[styles.titleSerif, { color: theme.text.primary }]}>Inbox</Text>
+        <View style={styles.titleWrap}>
+          <Text style={[styles.titleSerif, { color: theme.text.primary }]} numberOfLines={1}>Inbox</Text>
           {!isLoading && conversations.length > 0 && (
             <Text style={[styles.headerSub, { color: theme.text.tertiary }]}>
               {conversations.length} conversation{conversations.length !== 1 ? 's' : ''}
@@ -132,6 +132,11 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 16,
   },
+  titleWrap: {
+    flexShrink: 1,
+    minWidth: 0,
+    marginRight: 8,
+  },
   titleSerif: {
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
     fontSize: 32,
@@ -148,6 +153,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 13,
     paddingVertical: 9,
     borderRadius: 22,
+    flexShrink: 0,  // never compress the requests button
   },
   requestsBtnText: { fontSize: 13, fontWeight: '600' },
   requestsBadge: {

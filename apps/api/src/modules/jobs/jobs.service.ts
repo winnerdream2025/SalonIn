@@ -62,9 +62,16 @@ export class JobsService {
   async list(dto: ListJobsDto): Promise<PaginatedResponse<JobPostCardData>> {
     const page = dto.page ?? 1
     const limit = dto.limit ?? 20
+    const radiusMiles = dto.radiusMiles ?? 50
 
+    // If lat/lng provided, use geo-based query
+    if (dto.lat != null && dto.lng != null) {
+      return this.listByGeo(dto.lat, dto.lng, radiusMiles, dto, page, limit)
+    }
+
+    // Fallback to cityId-based query (backward compatibility)
     const where = {
-      cityId: dto.cityId,
+      ...(dto.cityId ? { cityId: dto.cityId } : {}),
       isActive: true,
       expiresAt: { gt: new Date() },
       ...(dto.salonId ? { salonId: dto.salonId } : {}),
@@ -99,37 +106,212 @@ export class JobsService {
     ])
 
     return {
+      data: rows.map((r) => this.toJobPostCardData(r)),
+      total,
+      page,
+      limit,
+      hasMore: page * limit < total,
+    }
+  }
+
+  private async listByGeo(
+    lat: number,
+    lng: number,
+    radiusMiles: number,
+    dto: ListJobsDto,
+    page: number,
+    limit: number,
+  ): Promise<PaginatedResponse<JobPostCardData>> {
+    const radiusMeters = radiusMiles * 1609.344
+    const offset = (page - 1) * limit
+
+    // Build dynamic SQL filters
+    const specialtyFilter = dto.specialty ? `AND jp.specialty = '${dto.specialty}'` : ''
+    const typeFilter = dto.type ? `AND jp.type = '${dto.type}'` : ''
+    const listingTypeFilter = dto.listingType ? `AND jp."listingType" = '${dto.listingType}'` : ''
+    const salonIdFilter = dto.salonId ? `AND jp."salonId" = '${dto.salonId}'` : ''
+
+    const query = `
+      WITH nearby_jobs AS (
+        SELECT
+          jp.id,
+          jp.title,
+          jp.description,
+          jp.specialty,
+          jp."payStructure",
+          jp.type,
+          jp."listingType",
+          jp."isUrgent",
+          jp."cityId",
+          jp."expiresAt",
+          jp."spaceSize",
+          jp."spaceAmenities",
+          jp."spacePhotos",
+          jp."rentalDeposit",
+          jp."availableFrom",
+          sp.id AS "salonId",
+          sp.name AS "salonName",
+          sp."photoUrls" AS "salonPhotoUrls",
+          sp."isVerified" AS "salonVerified",
+          sp.rating AS "salonRating",
+          sp."reviewCount" AS "salonReviewCount",
+          ROUND(ST_Distance(
+            sp.location::geography,
+            ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography
+          ) / 1609.344)::integer AS "distanceMiles",
+          (SELECT COUNT(*) FROM "JobPost" WHERE "salonId" = sp.id AND "isActive" = true) AS "salonHiringCount",
+          (SELECT COUNT(*) FROM "JobApplication" WHERE "jobId" = jp.id) AS "applicantCount"
+        FROM "JobPost" jp
+        JOIN "SalonProfile" sp ON jp."salonId" = sp.id
+        WHERE
+          jp."isActive" = true
+          AND jp."expiresAt" > NOW()
+          AND sp.location IS NOT NULL
+          AND ST_DWithin(
+            sp.location::geography,
+            ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
+            $3
+          )
+          ${specialtyFilter}
+          ${typeFilter}
+          ${listingTypeFilter}
+          ${salonIdFilter}
+      )
+      SELECT *, (SELECT COUNT(*) FROM nearby_jobs) AS total_count
+      FROM nearby_jobs
+      ORDER BY "isUrgent" DESC, "distanceMiles" ASC, id DESC
+      LIMIT $4 OFFSET $5
+    `
+
+    type RawJobRow = {
+      id: string
+      title: string
+      description: string
+      specialty: string
+      payStructure: string
+      type: string
+      listingType: string
+      isUrgent: boolean
+      cityId: string
+      expiresAt: Date
+      spaceSize: string | null
+      spaceAmenities: string[]
+      spacePhotos: string[]
+      rentalDeposit: number | null
+      availableFrom: Date | null
+      salonId: string
+      salonName: string
+      salonPhotoUrls: string[]
+      salonVerified: boolean
+      salonRating: number
+      salonReviewCount: number
+      distanceMiles: number
+      salonHiringCount: string
+      applicantCount: string
+      total_count: string
+    }
+
+    const rows = await this.prisma.$queryRawUnsafe<RawJobRow[]>(
+      query,
+      lng,
+      lat,
+      radiusMeters,
+      limit,
+      offset,
+    )
+
+    const total = rows.length > 0 ? parseInt(rows[0]!.total_count, 10) : 0
+
+    return {
       data: rows.map((r) => ({
         id: r.id,
         title: r.title,
         description: r.description,
         specialty: r.specialty,
         payStructure: r.payStructure,
-        type: r.type,
-        listingType: r.listingType,
+        type: r.type as JobPostCardData['type'],
+        listingType: r.listingType as JobPostCardData['listingType'],
         isUrgent: r.isUrgent,
         cityId: r.cityId,
         expiresAt: r.expiresAt.toISOString(),
-        salonId: r.salon.id,
-        salonName: r.salon.name,
-        salonPhotoUrl: r.salon.photoUrls[0] ?? null,
-        salonCoverUrl: r.salon.photoUrls[1] ?? r.salon.photoUrls[0] ?? null,
-        salonVerified: r.salon.isVerified,
-        salonRating: r.salon.rating > 0 ? r.salon.rating : undefined,
-        salonReviewCount: r.salon.reviewCount > 0 ? r.salon.reviewCount : undefined,
-        salonHiringCount: r.salon._count.jobPosts,
-        applicantCount: r._count.applications,
-        portfolioPhotoUrls: r.salon.photoUrls.slice(0, 6),
+        salonId: r.salonId,
+        salonName: r.salonName,
+        salonPhotoUrl: r.salonPhotoUrls[0] ?? null,
+        salonCoverUrl: r.salonPhotoUrls[1] ?? r.salonPhotoUrls[0] ?? null,
+        salonVerified: r.salonVerified,
+        salonRating: r.salonRating > 0 ? r.salonRating : undefined,
+        salonReviewCount: r.salonReviewCount > 0 ? r.salonReviewCount : undefined,
+        salonHiringCount: parseInt(r.salonHiringCount, 10),
+        applicantCount: parseInt(r.applicantCount, 10),
+        portfolioPhotoUrls: r.salonPhotoUrls.slice(0, 6),
         spaceSize: r.spaceSize ?? undefined,
         spaceAmenities: r.spaceAmenities.length > 0 ? r.spaceAmenities : undefined,
         spacePhotos: r.spacePhotos.length > 0 ? r.spacePhotos : undefined,
         rentalDeposit: r.rentalDeposit ?? undefined,
         availableFrom: r.availableFrom?.toISOString() ?? undefined,
+        distanceMiles: r.distanceMiles,
       })),
       total,
       page,
       limit,
       hasMore: page * limit < total,
+    }
+  }
+
+  private toJobPostCardData(r: {
+    id: string
+    title: string
+    description: string
+    specialty: string
+    payStructure: string
+    type: string
+    listingType: string
+    isUrgent: boolean
+    cityId: string
+    expiresAt: Date
+    spaceSize: string | null
+    spaceAmenities: string[]
+    spacePhotos: string[]
+    rentalDeposit: number | null
+    availableFrom: Date | null
+    salon: {
+      id: string
+      name: string
+      photoUrls: string[]
+      cityId: string
+      isVerified: boolean
+      rating: number
+      reviewCount: number
+      _count: { jobPosts: number }
+    }
+    _count: { applications: number }
+  }): JobPostCardData {
+    return {
+      id: r.id,
+      title: r.title,
+      description: r.description,
+      specialty: r.specialty,
+      payStructure: r.payStructure,
+      type: r.type as JobPostCardData['type'],
+      listingType: r.listingType as JobPostCardData['listingType'],
+      isUrgent: r.isUrgent,
+      cityId: r.cityId,
+      expiresAt: r.expiresAt.toISOString(),
+      salonId: r.salon.id,
+      salonName: r.salon.name,
+      salonPhotoUrl: r.salon.photoUrls[0] ?? null,
+      salonCoverUrl: r.salon.photoUrls[1] ?? r.salon.photoUrls[0] ?? null,
+      salonVerified: r.salon.isVerified,
+      salonRating: r.salon.rating > 0 ? r.salon.rating : undefined,
+      salonReviewCount: r.salon.reviewCount > 0 ? r.salon.reviewCount : undefined,
+      salonHiringCount: r.salon._count.jobPosts,
+      applicantCount: r._count.applications,
+      portfolioPhotoUrls: r.salon.photoUrls.slice(0, 6),
+      spaceSize: r.spaceSize ?? undefined,
+      spaceAmenities: r.spaceAmenities.length > 0 ? r.spaceAmenities : undefined,
+      spacePhotos: r.spacePhotos.length > 0 ? r.spacePhotos : undefined,
+      rentalDeposit: r.rentalDeposit ?? undefined,
+      availableFrom: r.availableFrom?.toISOString() ?? undefined,
     }
   }
 

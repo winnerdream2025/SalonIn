@@ -56,10 +56,10 @@ export class MatchingService {
     const cacheKey = this.buildCacheKey(params, params.radiusMiles)
     const cached = await this.redis.get(cacheKey)
     if (cached) {
-      this.metrics.increment('cache.hit', [`city:${params.cityId}`])
+      this.metrics.increment('cache.hit', [`geo:${params.lat.toFixed(2)},${params.lng.toFixed(2)}`])
       return JSON.parse(cached) as CursorResponse<WorkerCardData>
     }
-    this.metrics.increment('cache.miss', [`city:${params.cityId}`])
+    this.metrics.increment('cache.miss', [`geo:${params.lat.toFixed(2)},${params.lng.toFixed(2)}`])
 
     let rows: RawWorker[] = []
     let usedRadius = params.radiusMiles
@@ -80,7 +80,7 @@ export class MatchingService {
     let result: CursorResponse<WorkerCardData>
 
     if (rows.length === 0 && !params.cursor) {
-      const fallback = await this.getFallbackWorkers(params.cityId, params.specialty)
+      const fallback = await this.getFallbackWorkers(params.cityId ?? undefined, params.specialty)
       result = {
         data: fallback.map((w) => this.toWorkerCardDataFromProfile(w)),
         nextCursor: null,
@@ -198,13 +198,13 @@ export class MatchingService {
       ])
     } catch (err) {
       if (err instanceof Error && err.message === 'GEO_QUERY_TIMEOUT') {
-        this.metrics.increment('geo_query_timeout', [`city:${params.cityId}`])
+        this.metrics.increment('geo_query_timeout', [`geo:${params.lat.toFixed(2)},${params.lng.toFixed(2)}`])
         return []
       }
       throw err
     }
 
-    this.metrics.timing('geo_query_duration', Date.now() - queryStart, [`city:${params.cityId}`])
+    this.metrics.timing('geo_query_duration', Date.now() - queryStart, [`geo:${params.lat.toFixed(2)},${params.lng.toFixed(2)}`])
     return rows
   }
 
@@ -272,8 +272,10 @@ export class MatchingService {
   }
 
   private buildCacheKey(params: FindNearbyWorkersDto, radius: number): string {
-    const { cityId, lat, lng, specialty, availability, cursor } = params
-    return `nearby:${cityId}:${lat}:${lng}:${radius}:${specialty ?? 'all'}:${availability ?? ''}:${cursor ?? ''}`
+    const { lat, lng, specialty, availability, cursor } = params
+    const latRound = Math.round(lat * 1000) / 1000
+    const lngRound = Math.round(lng * 1000) / 1000
+    return `nearby:${latRound}:${lngRound}:${radius}:${specialty ?? 'all'}:${availability ?? ''}:${cursor ?? ''}`
   }
 
   private encodeCursor(worker: RawWorker): string {

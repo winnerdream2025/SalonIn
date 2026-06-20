@@ -22,7 +22,9 @@ export interface UseJobFeedResult {
 
 export function useJobFeed(options: UseJobFeedOptions = {}): UseJobFeedResult {
   const { specialty, type, salonId } = options
-  const cityId = useLocationStore((s) => s.cityId)
+  const lat = useLocationStore((s) => s.lat)
+  const lng = useLocationStore((s) => s.lng)
+  const radiusMiles = useLocationStore((s) => s.radiusMiles)
 
   const [jobs, setJobs] = useState<JobPostCardData[]>([])
   const [page, setPage] = useState(1)
@@ -42,7 +44,7 @@ export function useJobFeed(options: UseJobFeedOptions = {}): UseJobFeedResult {
   }, [])
 
   useEffect(() => {
-    if (!cityId) {
+    if (lat == null || lng == null) {
       setIsLoading(false)
       setIsRefreshing(false)
       return
@@ -60,7 +62,7 @@ export function useJobFeed(options: UseJobFeedOptions = {}): UseJobFeedResult {
     }
 
     jobsApi
-      .list({ cityId, specialty, type, salonId, page: 1, limit: 20 })
+      .list({ lat, lng, radiusMiles, specialty, type, salonId, page: 1, limit: 20 })
       .then((res) => {
         if (!cancelled) {
           setJobs(res.data)
@@ -79,14 +81,14 @@ export function useJobFeed(options: UseJobFeedOptions = {}): UseJobFeedResult {
       })
 
     return () => { cancelled = true }
-  }, [cityId, specialty, type, salonId, tick])
+  }, [lat, lng, radiusMiles, specialty, type, salonId, tick])
 
   const loadMore = useCallback(async () => {
-    if (!hasMore || !cityId || isLoadingMore) return
+    if (!hasMore || lat == null || lng == null || isLoadingMore) return
     const nextPage = page + 1
     setIsLoadingMore(true)
     try {
-      const res = await jobsApi.list({ cityId, specialty, type, salonId, page: nextPage, limit: 20 })
+      const res = await jobsApi.list({ lat, lng, radiusMiles, specialty, type, salonId, page: nextPage, limit: 20 })
       setJobs((prev) => [...prev, ...res.data])
       setPage(nextPage)
       setHasMore(res.hasMore)
@@ -95,7 +97,7 @@ export function useJobFeed(options: UseJobFeedOptions = {}): UseJobFeedResult {
     } finally {
       setIsLoadingMore(false)
     }
-  }, [hasMore, cityId, specialty, type, salonId, page, isLoadingMore])
+  }, [hasMore, lat, lng, radiusMiles, specialty, type, salonId, page, isLoadingMore])
 
   return { jobs, isLoading, isRefreshing, isLoadingMore, hasMore, error, refresh, loadMore }
 }

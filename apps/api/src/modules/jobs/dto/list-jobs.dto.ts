@@ -1,10 +1,33 @@
-import { IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator'
+import { IsIn, IsInt, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator'
 import { Transform } from 'class-transformer'
 import type { EmploymentType, ListingType } from '@prisma/client'
 
 export class ListJobsDto {
+  @Transform(({ value }: { value: unknown }) => value !== undefined ? parseFloat(value as string) : undefined)
+  @IsOptional()
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  lat?: number
+
+  @Transform(({ value }: { value: unknown }) => value !== undefined ? parseFloat(value as string) : undefined)
+  @IsOptional()
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  lng?: number
+
+  @Transform(({ value }: { value: unknown }) => value !== undefined ? parseFloat(value as string) : undefined)
+  @IsOptional()
+  @IsNumber()
+  @Min(0.5)
+  @Max(200)
+  radiusMiles?: number
+
+  /** @deprecated Use lat/lng instead. Kept for backward compatibility. */
+  @IsOptional()
   @IsString()
-  cityId!: string
+  cityId?: string
 
   @IsOptional()
   @IsString()

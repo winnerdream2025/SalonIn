@@ -28,7 +28,8 @@ export interface FindNearbyWorkersDto {
   lat: number
   lng: number
   radiusMiles: number
-  cityId: string
+  /** @deprecated Use lat/lng instead. Kept for backward compatibility. */
+  cityId?: string
   specialty?: string
   availability?: Availability
   cursor?: string
@@ -143,6 +144,8 @@ export interface JobPostCardData {
   rentalDeposit?: number
   availableFrom?: string
   isSaved?: boolean
+  // Geo (optional — only present when queried by lat/lng)
+  distanceMiles?: number
 }
 
 export interface ConversationPreview {

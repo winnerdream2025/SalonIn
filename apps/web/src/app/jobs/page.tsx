@@ -24,6 +24,8 @@ const SKELETON_COUNT = 9
 
 export default function JobsPage() {
   const router = useRouter()
+  const lat = useLocationStore((s) => s.lat)
+  const lng = useLocationStore((s) => s.lng)
   const cityId = useLocationStore((s) => s.cityId)
   const setLocation = useLocationStore((s) => s.setLocation)
   const user = useAuthStore((s) => s.user)
@@ -37,9 +39,9 @@ export default function JobsPage() {
     salonsApi.getMe()
       .then((salon) => {
         setSalonId(salon.id)
-        if (!useLocationStore.getState().cityId) {
+        if (!useLocationStore.getState().lat) {
           const preset = CITY_PRESETS.find((c) => c.cityId === salon.cityId) ?? CITY_PRESETS[0]!
-          setLocation(preset.cityId, preset.lat, preset.lng)
+          setLocation({ cityId: preset.cityId, lat: preset.lat, lng: preset.lng, cityName: preset.label })
         }
       })
       .catch(() => { /* silently fall through to public feed */ })
@@ -75,7 +77,7 @@ export default function JobsPage() {
   )
 
   const locationLabel = CITY_PRESETS.find((c) => c.cityId === cityId)?.label ?? cityId ?? 'Select city'
-  const isLocationSet = cityId != null
+  const isLocationSet = lat != null && lng != null
 
   return (
     <>
@@ -165,7 +167,7 @@ export default function JobsPage() {
                   return (
                     <button
                       key={city.cityId}
-                      onClick={() => setLocation(city.cityId, city.lat, city.lng)}
+                      onClick={() => setLocation({ cityId: city.cityId, lat: city.lat, lng: city.lng, cityName: city.label })}
                       style={{
                         backgroundColor: active ? 'rgba(216,90,48,0.12)' : T.bg.elevated,
                         border: `1px solid ${active ? T.brand.primary : T.border.default}`,
