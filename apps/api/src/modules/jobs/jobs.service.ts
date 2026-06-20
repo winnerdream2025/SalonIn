@@ -64,12 +64,30 @@ export class JobsService {
     const limit = dto.limit ?? 20
     const radiusMiles = dto.radiusMiles ?? 50
 
-    // If lat/lng provided, use geo-based query
+    // If lat/lng provided, use geo-based query with radius expansion
     if (dto.lat != null && dto.lng != null) {
-      return this.listByGeo(dto.lat, dto.lng, radiusMiles, dto, page, limit)
+      const RADIUS_STEPS = [50, 100, 200, 500]
+      let result: PaginatedResponse<JobPostCardData> | null = null
+
+      // Only expand radius on first page (not pagination)
+      if (page === 1) {
+        for (const radius of RADIUS_STEPS) {
+          if (radius < radiusMiles) continue
+          result = await this.listByGeo(dto.lat, dto.lng, radius, dto, page, limit)
+          if (result.total > 0) break
+        }
+      } else {
+        result = await this.listByGeo(dto.lat, dto.lng, radiusMiles, dto, page, limit)
+      }
+
+      // If geo still returns 0, fall back to non-geo query (never return empty)
+      if (result && result.total > 0) {
+        return result
+      }
+      // Fall through to non-geo query
     }
 
-    // Fallback to cityId-based query (backward compatibility)
+    // Fallback to non-geo query (backward compatibility or when geo returns 0)
     const where = {
       ...(dto.cityId ? { cityId: dto.cityId } : {}),
       isActive: true,

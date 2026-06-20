@@ -22,10 +22,11 @@ export interface UseNearbyWorkersResult {
 }
 
 export function useNearbyWorkers(options: UseNearbyWorkersOptions = {}): UseNearbyWorkersResult {
-  const { specialty, availability, radiusMiles = 25 } = options
-  const cityId = useLocationStore((s) => s.cityId)
+  const { specialty, availability } = options
   const lat = useLocationStore((s) => s.lat)
   const lng = useLocationStore((s) => s.lng)
+  const storeRadius = useLocationStore((s) => s.radiusMiles)
+  const radiusMiles = options.radiusMiles ?? storeRadius
 
   const [workers, setWorkers] = useState<WorkerCardData[]>([])
   const [nextCursor, setNextCursor] = useState<string | undefined>()
@@ -45,7 +46,7 @@ export function useNearbyWorkers(options: UseNearbyWorkersOptions = {}): UseNear
   }, [])
 
   useEffect(() => {
-    if (!cityId || lat == null || lng == null) {
+    if (lat == null || lng == null) {
       setIsLoading(false)
       setIsRefreshing(false)
       return
@@ -62,7 +63,7 @@ export function useNearbyWorkers(options: UseNearbyWorkersOptions = {}): UseNear
     }
 
     workersApi
-      .findNearby({ cityId, lat, lng, radiusMiles, specialty, availability })
+      .findNearby({ lat, lng, radiusMiles, specialty, availability })
       .then((res) => {
         if (!cancelled) {
           setWorkers(res.data)
@@ -81,14 +82,14 @@ export function useNearbyWorkers(options: UseNearbyWorkersOptions = {}): UseNear
       })
 
     return () => { cancelled = true }
-  }, [cityId, lat, lng, radiusMiles, specialty, availability, tick])
+  }, [lat, lng, radiusMiles, specialty, availability, tick])
 
   const loadMore = useCallback(async () => {
-    if (!hasMore || !nextCursor || !cityId || lat == null || lng == null || isLoadingMore) return
+    if (!hasMore || !nextCursor || lat == null || lng == null || isLoadingMore) return
     setIsLoadingMore(true)
     try {
       const res = await workersApi.findNearby({
-        cityId, lat, lng, radiusMiles, specialty, availability, cursor: nextCursor,
+        lat, lng, radiusMiles, specialty, availability, cursor: nextCursor,
       })
       setWorkers((prev) => [...prev, ...res.data])
       setNextCursor(res.nextCursor ?? undefined)
@@ -98,7 +99,7 @@ export function useNearbyWorkers(options: UseNearbyWorkersOptions = {}): UseNear
     } finally {
       setIsLoadingMore(false)
     }
-  }, [hasMore, nextCursor, cityId, lat, lng, radiusMiles, specialty, availability, isLoadingMore])
+  }, [hasMore, nextCursor, lat, lng, radiusMiles, specialty, availability, isLoadingMore])
 
   return { workers, isLoading, isRefreshing, isLoadingMore, hasMore, error, refresh, loadMore }
 }
