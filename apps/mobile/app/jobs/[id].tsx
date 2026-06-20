@@ -14,8 +14,11 @@ import * as Haptics from 'expo-haptics'
 import { Avatar, Text, Button, Skeleton, useTheme } from '@salonin/ui'
 import { jobsApi, messagesApi, parseApiError } from '@salonin/api-client'
 import type { JobApplicationDetail, JobPostCardData } from '@salonin/types'
+import { haversineMiles } from '@salonin/utils'
 import { useAuthStore } from '../../src/store/authStore'
+import { useLocationStore } from '../../src/store/locationStore'
 import { useJobDetail, useMyApplications } from '../../src/hooks/useJobDetail'
+import { useMyWorkerProfile } from '../../src/hooks/useWorkerProfile'
 import { useReviews } from '../../src/hooks/useReviews'
 
 const EMP_LABELS: Record<string, string> = {
@@ -59,6 +62,9 @@ export default function JobDetailScreen() {
 
   const { job, isLoading, error } = useJobDetail(id ?? '')
   const { applications } = useMyApplications()
+  const { profile: myProfile } = useMyWorkerProfile()
+  const myLat = useLocationStore((s) => s.lat)
+  const myLng = useLocationStore((s) => s.lng)
 
   const [isApplying, setIsApplying] = useState(false)
   const [applied, setApplied] = useState(false)
@@ -118,15 +124,7 @@ export default function JobDetailScreen() {
     }
   }, [id])
 
-  const handleApply = useCallback(async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-    if (isGuest) {
-      Alert.alert('Sign in required', 'Sign in to apply for this job.', [
-        { text: 'Not now', style: 'cancel' },
-        { text: 'Sign in', onPress: () => router.push({ pathname: '/(auth)/login', params: { redirect: `/jobs/${id}` } } as never) },
-      ])
-      return
-    }
+  const runApply = useCallback(async () => {
     if (!id || !job) return
     setIsApplying(true)
     try {
@@ -151,7 +149,42 @@ export default function JobDetailScreen() {
     } finally {
       setIsApplying(false)
     }
-  }, [id, isGuest, job])
+  }, [id, job])
+
+  const handleApply = useCallback(async () => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    if (isGuest) {
+      Alert.alert('Sign in required', 'Sign in to apply for this job.', [
+        { text: 'Not now', style: 'cancel' },
+        { text: 'Sign in', onPress: () => router.push({ pathname: '/(auth)/login', params: { redirect: `/jobs/${id}` } } as never) },
+      ])
+      return
+    }
+    if (!id || !job) return
+
+    // Warn if the job is beyond the worker's set travel radius (Edit Profile).
+    const travelRadius = myProfile?.radiusMiles
+    if (
+      job.lat != null && job.lng != null &&
+      myLat != null && myLng != null &&
+      travelRadius != null && travelRadius > 0
+    ) {
+      const distance = haversineMiles(myLat, myLng, job.lat, job.lng)
+      if (distance > travelRadius) {
+        Alert.alert(
+          'This job is far from you',
+          `It's about ${Math.round(distance)} miles away — beyond your ${travelRadius} mi travel radius. Apply anyway?`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Apply anyway', style: 'destructive', onPress: () => { void runApply() } },
+          ],
+        )
+        return
+      }
+    }
+
+    void runApply()
+  }, [id, isGuest, job, myProfile, myLat, myLng, runApply])
 
   const handleMessage = useCallback(async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
@@ -229,6 +262,9 @@ export default function JobDetailScreen() {
             </Text>
             <Text style={[styles.salonLoc, { color: theme.text.tertiary }]} numberOfLines={1}>
               📍 {job.salon.city ?? job.city ?? 'Location set on map'}
+              {job.lat != null && job.lng != null && myLat != null && myLng != null
+                ? `  ·  ${Math.round(haversineMiles(myLat, myLng, job.lat, job.lng))} mi away`
+                : ''}
             </Text>
             {job.salon.rating > 0 && (
               <Text style={[styles.salonRating, { color: theme.text.secondary }]} numberOfLines={1}>

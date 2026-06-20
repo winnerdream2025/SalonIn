@@ -426,6 +426,19 @@ export class JobsService {
       },
     })
     if (!post) throw new NotFoundException('Job post not found')
+
+    // Extract job coordinates (geography column isn't selectable via Prisma).
+    // Fall back to the salon's location for older posts without their own point.
+    const coords = await this.prisma.$queryRaw<{ lat: number | null; lng: number | null }[]>`
+      SELECT
+        ST_Y(COALESCE(jp.location, sp.location)::geometry) AS lat,
+        ST_X(COALESCE(jp.location, sp.location)::geometry) AS lng
+      FROM "JobPost" jp
+      JOIN "SalonProfile" sp ON jp."salonId" = sp.id
+      WHERE jp.id = ${id}
+    `
+    const coord = coords[0]
+
     const { salon, _count, ...rest } = post
     return {
       ...rest,
@@ -442,6 +455,8 @@ export class JobsService {
         reviewCount: salon.reviewCount,
       },
       applicantCount: _count.applications,
+      lat: coord?.lat ?? null,
+      lng: coord?.lng ?? null,
     }
   }
 

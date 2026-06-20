@@ -198,6 +198,14 @@ export function JobPostCard({
                   )}
                 </>
               )}
+              {job.distanceMiles != null && (
+                <>
+                  <Text style={[styles.metaDot, { color: theme.text.tertiary }]}>·</Text>
+                  <Text style={[styles.metaText, { color: theme.text.tertiary }]}>
+                    {Math.round(job.distanceMiles)} mi
+                  </Text>
+                </>
+              )}
             </View>
 
             {/* Hiring count */}

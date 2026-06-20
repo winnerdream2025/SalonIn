@@ -24,7 +24,7 @@ interface RawWorker {
   city: string | null
   state: string | null
   country: string | null
-  distanceMeters: number
+  distanceMeters: number | null
   rateRange: string | null
   rateNote: string | null
   rating: number
@@ -82,9 +82,21 @@ export class MatchingService {
     let result: CursorResponse<WorkerCardData>
 
     if (rows.length === 0 && !params.cursor) {
-      const fallback = await this.getFallbackWorkers(params.specialty)
+      // Far-but-real workers: order by true distance from the searcher so the
+      // card still shows "X mi away" instead of hiding distance entirely.
+      const fallback = await this.getFallbackWorkers(params.lat, params.lng, params.specialty)
+      // Fallback cards need portfolio thumbnails too — otherwise every card
+      // renders bare (no work-photo strip) whenever the geo query finds nobody.
+      const portfolioMap = await this.fetchPortfolioMap(fallback.map((w) => w.id))
       result = {
-        data: fallback.map((w) => this.toWorkerCardDataFromProfile(w)),
+        data: fallback.map((r) => {
+          const pf = portfolioMap.get(r.id)
+          return {
+            ...this.toWorkerCardData(r),
+            portfolioUrls: pf?.urls ?? [],
+            portfolioMedia: pf?.media ?? [],
+          }
+        }),
         nextCursor: null,
         hasMore: false,
         usedRadius,
@@ -96,26 +108,17 @@ export class MatchingService {
       const nextCursor = hasMore ? this.encodeCursor(slice[49]!) : null
 
       // Fetch portfolio thumbnails for returned workers
-      const workerIds = slice.map((r) => r.id)
-      const portfolioRows = workerIds.length > 0
-        ? await this.prisma.portfolioItem.findMany({
-            where: { workerId: { in: workerIds }, type: 'IMAGE' },
-            select: { workerId: true, mediaUrl: true },
-            orderBy: { createdAt: 'desc' },
-          })
-        : []
-      const portfolioMap = new Map<string, string[]>()
-      for (const p of portfolioRows) {
-        const list = portfolioMap.get(p.workerId) ?? []
-        if (list.length < 6) list.push(p.mediaUrl)
-        portfolioMap.set(p.workerId, list)
-      }
+      const portfolioMap = await this.fetchPortfolioMap(slice.map((r) => r.id))
 
       result = {
-        data: slice.map((r) => ({
-          ...this.toWorkerCardData(r),
-          portfolioUrls: portfolioMap.get(r.id) ?? [],
-        })),
+        data: slice.map((r) => {
+          const pf = portfolioMap.get(r.id)
+          return {
+            ...this.toWorkerCardData(r),
+            portfolioUrls: pf?.urls ?? [],
+            portfolioMedia: pf?.media ?? [],
+          }
+        }),
         nextCursor,
         hasMore,
         usedRadius,
@@ -212,17 +215,83 @@ export class MatchingService {
     return rows
   }
 
-  private async getFallbackWorkers(specialty?: string) {
-    return this.prisma.workerProfile.findMany({
-      where: {
-        user: { isActive: true },
-        availability: { not: 'NOT_AVAILABLE' as Availability },
-        ...(specialty ? { specialties: { has: specialty } } : {}),
-      },
-      orderBy: { id: 'desc' },
-      take: 10,
-      include: { user: { select: { id: true, email: true } } },
+  /**
+   * Fetch portfolio media for a set of workers in one query.
+   * Returns, per worker: image-only URLs (renderable thumbnails) plus a
+   * combined media list (images first, then videos) for the card strip.
+   * Capped at 6 items per worker.
+   */
+  private async fetchPortfolioMap(
+    workerIds: string[],
+  ): Promise<Map<string, { urls: string[]; media: Array<{ url: string; isVideo: boolean }> }>> {
+    const map = new Map<string, { urls: string[]; media: Array<{ url: string; isVideo: boolean }> }>()
+    if (workerIds.length === 0) return map
+
+    const rows = await this.prisma.portfolioItem.findMany({
+      where: { workerId: { in: workerIds }, type: { in: ['IMAGE', 'VIDEO'] } },
+      select: { workerId: true, mediaUrl: true, type: true },
+      orderBy: { createdAt: 'desc' },
     })
+
+    // Images first, then videos (each newest-first) — so the strip leads with photos.
+    const ranked = [...rows].sort((a, b) => Number(a.type === 'VIDEO') - Number(b.type === 'VIDEO'))
+
+    for (const p of ranked) {
+      const entry = map.get(p.workerId) ?? { urls: [], media: [] }
+      if (entry.media.length < 6) {
+        const isVideo = p.type === 'VIDEO'
+        entry.media.push({ url: p.mediaUrl, isVideo })
+        if (!isVideo) entry.urls.push(p.mediaUrl)
+      }
+      map.set(p.workerId, entry)
+    }
+    return map
+  }
+
+  private async getFallbackWorkers(lat: number, lng: number, specialty?: string): Promise<RawWorker[]> {
+    const specialtyFilter = specialty != null
+      ? Prisma.sql`AND ${specialty} = ANY(wp.specialties)`
+      : Prisma.sql``
+
+    // Same projection as queryNearbyWorkers, but with NO radius filter — so we
+    // surface the nearest available workers even when they're far away, and
+    // compute their real distance (NULL only when a worker has no location).
+    return this.prisma.$queryRaw<RawWorker[]>(Prisma.sql`
+      SELECT
+        wp.id,
+        wp.name,
+        wp."photoUrl",
+        wp.bio,
+        wp.specialties,
+        wp.availability::text AS availability,
+        wp."experienceYears",
+        wp."isVerified",
+        wp.city,
+        wp.state,
+        wp.country,
+        wp."rateRange",
+        wp."rateNote",
+        wp.rating,
+        wp."reviewCount",
+        CASE
+          WHEN wp.location IS NOT NULL THEN ROUND(ST_Distance(
+            wp.location::geography,
+            ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography
+          ))::integer
+          ELSE NULL
+        END AS "distanceMeters"
+      FROM "WorkerProfile" wp
+      WHERE
+        wp.availability != CAST('NOT_AVAILABLE' AS "Availability")
+        AND EXISTS (
+          SELECT 1 FROM "User" u
+          WHERE u.id = wp."userId"
+          AND u."isActive" = true
+        )
+        ${specialtyFilter}
+      ORDER BY "distanceMeters" ASC NULLS LAST, wp.id DESC
+      LIMIT 10
+    `)
   }
 
   private toWorkerCardData(raw: RawWorker): WorkerCardData {
@@ -233,7 +302,9 @@ export class MatchingService {
       bio: raw.bio,
       specialties: parsePostgresArray(raw.specialties),
       availability: raw.availability as Availability,
-      distanceMiles: Math.round((raw.distanceMeters / 1609.344) * 100) / 100,
+      distanceMiles: raw.distanceMeters != null
+        ? Math.round((raw.distanceMeters / 1609.344) * 100) / 100
+        : null,
       experienceYears: Number(raw.experienceYears),
       isVerified: Boolean(raw.isVerified),
       city: raw.city ?? null,
@@ -246,40 +317,6 @@ export class MatchingService {
     }
   }
 
-  private toWorkerCardDataFromProfile(worker: {
-    id: string
-    name: string
-    photoUrl: string | null
-    bio?: string | null
-    specialties: string[] | string
-    availability: Availability | string
-    experienceYears: number
-    isVerified: boolean
-    city?: string | null
-    state?: string | null
-    country?: string | null
-    rateRange?: string | null
-    rateNote?: string | null
-    [key: string]: unknown
-  }): WorkerCardData {
-    return {
-      id: worker.id,
-      name: worker.name,
-      photoUrl: worker.photoUrl,
-      bio: (worker.bio as string | null | undefined) ?? null,
-      specialties: parsePostgresArray(worker.specialties),
-      availability: worker.availability as Availability,
-      distanceMiles: null,
-      experienceYears: Number(worker.experienceYears),
-      isVerified: Boolean(worker.isVerified),
-      city: (worker.city as string | null | undefined) ?? null,
-      state: (worker.state as string | null | undefined) ?? undefined,
-      country: (worker.country as string | null | undefined) ?? undefined,
-      rateRange: (worker.rateRange as string | null | undefined) ?? undefined,
-      rateNote: (worker.rateNote as string | null | undefined) ?? undefined,
-    }
-  }
-
   private buildCacheKey(params: FindNearbyWorkersDto, radius: number): string {
     const { lat, lng, specialty, availability, cursor } = params
     const latRound = Math.round(lat * 1000) / 1000
@@ -288,7 +325,8 @@ export class MatchingService {
   }
 
   private encodeCursor(worker: RawWorker): string {
-    const payload: WorkerCursor = { dm: worker.distanceMeters, id: worker.id }
+    // Cursors are only built from in-radius rows, which always have a distance.
+    const payload: WorkerCursor = { dm: worker.distanceMeters ?? 0, id: worker.id }
     return Buffer.from(JSON.stringify(payload)).toString('base64')
   }
 

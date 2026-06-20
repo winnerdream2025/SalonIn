@@ -40,6 +40,15 @@ function StarIcon({ color, size }: { color: string; size: number }) {
   )
 }
 
+function PlayIcon({ size }: { size: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx="12" cy="12" r="11" fill="rgba(0,0,0,0.45)" />
+      <Path d="M10 8.5l6 3.5-6 3.5v-7z" fill="#FFFFFF" />
+    </Svg>
+  )
+}
+
 function PinIcon({ color, size }: { color: string; size: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -84,15 +93,17 @@ export function WorkerCard({
 
   const avail         = AVAIL_CONFIG[worker.availability] ?? AVAIL_CONFIG.NOW
   const badgeColor    = worker.badge ? BADGE_COLOR[worker.badge] : null
-  const portfolioUrls = worker.portfolioUrls ?? []
+  // Prefer the combined media list (images + videos); fall back to legacy urls.
+  const portfolioMedia = worker.portfolioMedia
+    ?? (worker.portfolioUrls ?? []).map((url) => ({ url, isVideo: false }))
   const firstInitial  = (worker.name?.[0] ?? 'W').toUpperCase()
   const rateDisplay   = worker.rateRange ?? null
   const specialtyLine = worker.specialties.join(' · ')
 
-  // Strip: first STRIP_VISIBLE photos shown; remainder as +N
-  const stripPhotos  = portfolioUrls.slice(0, STRIP_VISIBLE)
-  const extraCount   = portfolioUrls.length - STRIP_VISIBLE
-  const hasStrip     = portfolioUrls.length > 0
+  // Strip: first STRIP_VISIBLE items shown; remainder as +N
+  const stripItems  = portfolioMedia.slice(0, STRIP_VISIBLE)
+  const extraCount  = portfolioMedia.length - STRIP_VISIBLE
+  const hasStrip    = portfolioMedia.length > 0
 
   const replyLabel = worker.replyTimeMinutes != null
     ? `Replies in ${worker.replyTimeMinutes >= 60 ? `${Math.floor(worker.replyTimeMinutes / 60)}h` : `${worker.replyTimeMinutes}min`}`
@@ -200,9 +211,18 @@ export function WorkerCard({
           {/* ── WORK PHOTO STRIP ──────────────────────────────────────────── */}
           {hasStrip && (
             <View style={styles.photoStrip}>
-              {stripPhotos.map((url, i) => (
+              {stripItems.map((item, i) => (
                 <View key={i} style={styles.stripThumb}>
-                  <Image source={{ uri: url }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+                  {item.isVideo ? (
+                    <>
+                      <View style={[StyleSheet.absoluteFillObject, styles.videoFill]} />
+                      <View style={styles.playBadge}>
+                        <PlayIcon size={22} />
+                      </View>
+                    </>
+                  ) : (
+                    <Image source={{ uri: item.url }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+                  )}
                 </View>
               ))}
               {/* +N chip for remaining photos */}
@@ -434,6 +454,14 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     overflow: 'hidden',
     backgroundColor: '#F0EDE8',
+  },
+  videoFill: {
+    backgroundColor: '#2A2A2A',
+  },
+  playBadge: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   stripMore: {
     width: THUMB_SIZE,

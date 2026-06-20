@@ -95,8 +95,9 @@ describe('MatchingService', () => {
 
         await service.findNearbyWorkers(BASE_PARAMS)
 
-        // radiusMiles=10 → all 4 RADIUS_STEPS (15,30,50,100) are tried since each > 10
-        expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(4)
+        // radiusMiles=10 → all 4 RADIUS_STEPS (15,30,50,100) are tried since each > 10,
+        // then a 5th $queryRaw runs for the far-worker fallback (geo found nobody).
+        expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(5)
         expect(mockRedis.set).toHaveBeenCalledTimes(1)
         const [, serialized, , ttl] = mockRedis.set.mock.calls[0] as [string, string, string, number]
         expect(ttl).toBe(300)

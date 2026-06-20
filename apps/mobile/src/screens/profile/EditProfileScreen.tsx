@@ -488,6 +488,31 @@ export default function EditProfileScreen() {
             </Text>
           </View>
 
+          {/* ── Portfolio shortcut ──────────────────────────── */}
+          <TouchableOpacity
+            style={[styles.portfolioRow, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}
+            onPress={() => {
+              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+              router.push('/worker/portfolio')
+            }}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.sectionIconBadge, { backgroundColor: 'rgba(216,90,48,0.10)' }]}>
+              <Ionicons name="images-outline" size={17} color="#D85A30" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.sectionCardTitle, { color: theme.text.primary }]} numberOfLines={1}>
+                Portfolio
+              </Text>
+              <Text style={[styles.photoHint, { color: theme.text.tertiary }]} numberOfLines={1}>
+                {(profile?.portfolioItems?.length ?? 0) > 0
+                  ? `${profile?.portfolioItems.length} item${profile?.portfolioItems.length === 1 ? '' : 's'} · add photos or videos`
+                  : 'Add photos or videos of your work'}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={theme.text.tertiary} />
+          </TouchableOpacity>
+
           {/* ── Progress card ──────────────────────────────── */}
           <View style={[styles.progressCard, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
             <View style={styles.progressHeader}>
@@ -1205,6 +1230,19 @@ const styles = StyleSheet.create({
   stepLabel: {
     fontSize: 10,
     fontWeight: '600',
+  },
+
+  // Portfolio shortcut row
+  portfolioRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginHorizontal: 16,
+    marginBottom: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 16,
+    borderWidth: 1,
   },
 
   // About / section card

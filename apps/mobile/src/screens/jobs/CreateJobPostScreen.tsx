@@ -20,6 +20,7 @@ import { ALL_SPECIALTIES, ALL_PROFESSIONALS, JOB_PAY_TYPES, PERCENTAGE_PRESETS, 
 import type { JobPayType } from '@salonin/config'
 import { useLocationStore } from '../../store/locationStore'
 import { useAuthStore } from '../../store/authStore'
+import { JobLocationStep, type JobLocation } from './JobLocationStep'
 
 const SPECIALTIES = ALL_SPECIALTIES
 const PROFESSIONALS = ALL_PROFESSIONALS
@@ -75,6 +76,13 @@ export default function CreateJobPostScreen() {
   const user = useAuthStore((s) => s.user)
 
   const [step, setStep] = useState(0)
+  // Confirmed job-specific location — seeded from the user's current location
+  // but set explicitly via the dedicated location step before posting.
+  const [jobLocation, setJobLocation] = useState<JobLocation | null>(() =>
+    lat != null && lng != null
+      ? { lat, lng, city: city ?? null, state: state ?? null, country: country ?? null, placeId: placeId ?? null, formattedAddress: formattedAddress ?? null }
+      : null,
+  )
   const [listingType, setListingType] = useState<string>('')
   const [title, setTitle] = useState('')
   const [specialty, setSpecialty] = useState('')
@@ -115,7 +123,7 @@ export default function CreateJobPostScreen() {
     })
   }, [listingType, jobPayType, jobPayMin, jobPayMax, jobPayPercentage, jobSeatRate, rentalPayType, rateInput, rentalFreq, payStructure])
 
-  const totalSteps = 3
+  const totalSteps = 4
 
   const previewJob = useMemo<JobPostCardData>(() => ({
     id: '__preview__',
@@ -126,11 +134,11 @@ export default function CreateJobPostScreen() {
     type: selectedType as JobPostCardData['type'],
     listingType: (listingType || 'JOB') as JobPostCardData['listingType'],
     isUrgent,
-    city: city ?? null,
+    city: jobLocation?.city ?? city ?? null,
     expiresAt: new Date(Date.now() + durationDays * 86_400_000).toISOString(),
     salonName,
     salonPhotoUrl: null,
-  }), [title, description, specialty, resolvedPayStructure, selectedType, listingType, isUrgent, durationDays, city, salonName])
+  }), [title, description, specialty, resolvedPayStructure, selectedType, listingType, isUrgent, durationDays, jobLocation, city, salonName])
 
   const goNext = useCallback(async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
@@ -152,13 +160,16 @@ export default function CreateJobPostScreen() {
         setError('Enter the rental rate'); return
       }
     }
+    if (step === 3) {
+      if (!jobLocation) { setError('Search and confirm the location'); return }
+    }
     setError(undefined)
     if (step < totalSteps) {
       setStep((s) => s + 1)
     } else {
       void handleSubmit()
     }
-  }, [step, listingType, title, specialty, jobPayType, jobPayMin, jobPayMax, jobPayPercentage, jobSeatRate, payStructure, rateInput, rentalPayType, totalSteps])
+  }, [step, listingType, title, specialty, jobPayType, jobPayMin, jobPayMax, jobPayPercentage, jobSeatRate, payStructure, rateInput, rentalPayType, jobLocation, totalSteps])
 
   const goBack = useCallback(async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
@@ -171,7 +182,7 @@ export default function CreateJobPostScreen() {
   }, [step])
 
   const handleSubmit = useCallback(async () => {
-    if (lat == null || lng == null) { setError('Set your location first'); return }
+    if (!jobLocation) { setError('Search and confirm the location'); return }
     setIsSubmitting(true)
     setError(undefined)
     try {
@@ -184,13 +195,13 @@ export default function CreateJobPostScreen() {
         type: selectedType as CreateJobPostDto['type'],
         listingType: (listingType || 'JOB') as CreateJobPostDto['listingType'],
         isUrgent,
-        lat,
-        lng,
-        ...(placeId ? { placeId } : {}),
-        ...(city ? { city } : {}),
-        ...(state ? { state } : {}),
-        ...(country ? { country } : {}),
-        ...(formattedAddress ? { formattedAddress } : {}),
+        lat: jobLocation.lat,
+        lng: jobLocation.lng,
+        ...(jobLocation.placeId ? { placeId: jobLocation.placeId } : {}),
+        ...(jobLocation.city ? { city: jobLocation.city } : {}),
+        ...(jobLocation.state ? { state: jobLocation.state } : {}),
+        ...(jobLocation.country ? { country: jobLocation.country } : {}),
+        ...(jobLocation.formattedAddress ? { formattedAddress: jobLocation.formattedAddress } : {}),
         expiresAt,
         ...(listingType === 'JOB' ? {
           jobPayType,
@@ -221,7 +232,7 @@ export default function CreateJobPostScreen() {
     } finally {
       setIsSubmitting(false)
     }
-  }, [title, specialty, description, resolvedPayStructure, selectedType, listingType, isUrgent, durationDays, lat, lng, city, state, country, placeId, formattedAddress, spaceSize, spaceAmenities, rentalDeposit])
+  }, [title, specialty, description, resolvedPayStructure, selectedType, listingType, isUrgent, durationDays, jobLocation, spaceSize, spaceAmenities, rentalDeposit])
 
   return (
     <View style={[styles.screen, { backgroundColor: theme.bg.base, paddingTop: top }]}>
@@ -241,7 +252,7 @@ export default function CreateJobPostScreen() {
 
       {/* ── Step dots ── */}
       <View style={styles.progressDots}>
-        {[0, 1, 2, 3].map((s) => (
+        {[0, 1, 2, 3, 4].map((s) => (
           <View
             key={s}
             style={[
@@ -684,8 +695,13 @@ export default function CreateJobPostScreen() {
             </View>
           )}
 
-          {/* ══ STEP 3: Duration + Preview ══ */}
+          {/* ══ STEP 3: Confirm location ══ */}
           {step === 3 && (
+            <JobLocationStep value={jobLocation} onChange={setJobLocation} />
+          )}
+
+          {/* ══ STEP 4: Duration + Preview ══ */}
+          {step === 4 && (
             <View style={styles.stepContent}>
               <Text style={[styles.stepTitle, { color: theme.text.primary }]}>
                 {listingType === 'RENTAL' || listingType === 'SPACE'

@@ -117,6 +117,8 @@ export interface WorkerCardData {
   rating?: number
   jobsDone?: number
   portfolioUrls?: string[]
+  /** Portfolio media (images + videos) for the card strip, images first. */
+  portfolioMedia?: Array<{ url: string; isVideo: boolean }>
   // Card enrichment (optional)
   badge?: 'Top Rated' | 'Rising Star' | 'Expert' | 'New'
   reviewCount?: number
@@ -325,6 +327,10 @@ export interface JobPostDetail {
   payPercentage?: number | null
   seatRate?: number | null
   payNote?: string | null
+  // Geo (job-specific coordinates; falls back to the salon's location) — used to
+  // compute distance and warn workers applying beyond their travel radius.
+  lat?: number | null
+  lng?: number | null
 }
 
 // ─── Application types ────────────────────────────────────────────────────────
