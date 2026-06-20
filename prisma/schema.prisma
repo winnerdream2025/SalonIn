@@ -140,15 +140,19 @@ model WorkerProfile {
   stripeSessionId String?
   licenseNumber        String?
   availabilitySchedule Json?
-  cityId          String
+  city            String?
+  state           String?
+  country         String?
+  placeId         String?
+  formattedAddress String?
   rating          Float            @default(0)
   reviewCount     Int              @default(0)
 
   portfolioItems  PortfolioItem[]
   jobApplications JobApplication[]
 
-  @@index([cityId, availability])
-  @@index([cityId, isVerified])
+  @@index([availability])
+  @@index([isVerified])
 }
 
 model SalonProfile {
@@ -162,8 +166,12 @@ model SalonProfile {
   isHiring    Boolean  @default(false)
   isVerified  Boolean  @default(false)
   ein         String?
-  cityId      String
-  location    Unsupported("geography(Point, 4326)")?  
+  city        String?
+  state       String?
+  country     String?
+  placeId     String?
+  formattedAddress String?
+  location    Unsupported("geography(Point, 4326)")?
   rating      Float    @default(0)
   reviewCount Int      @default(0)
 
@@ -181,7 +189,12 @@ model JobPost {
   type            EmploymentType
   listingType     ListingType    @default(JOB)
   isUrgent        Boolean        @default(false)
-  cityId          String
+  city            String?
+  state           String?
+  country         String?
+  placeId         String?
+  formattedAddress String?
+  location        Unsupported("geography(Point, 4326)")?
   expiresAt       DateTime
   createdAt       DateTime       @default(now())
   isActive        Boolean        @default(true)
@@ -200,7 +213,7 @@ model JobPost {
   applications JobApplication[]
   savedBy       SavedJob[]
 
-  @@index([cityId, isActive, expiresAt])
+  @@index([isActive, expiresAt])
   @@index([salonId, isActive])
   @@index([listingType, isActive])
 }

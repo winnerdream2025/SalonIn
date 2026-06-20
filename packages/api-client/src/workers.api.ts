@@ -58,8 +58,14 @@ export const workersApi = {
   updateAvailability: (data: UpdateAvailabilityDto): Promise<WorkerProfile> =>
     api.patch<WorkerProfile>('/workers/availability', data).then((r) => r.data),
 
-  updateLocation: (lat: number, lng: number): Promise<void> =>
-    api.post('/workers/location', { lat, lng }).then(() => undefined),
+  updateLocation: (
+    lat: number,
+    lng: number,
+    city?: string,
+    state?: string,
+    country?: string,
+  ): Promise<void> =>
+    api.post('/workers/location', { lat, lng, city, state, country }).then(() => undefined),
 
   addPortfolioItem: (data: AddPortfolioItemInput): Promise<PortfolioItem> =>
     api.post<PortfolioItem>('/workers/portfolio', data).then((r) => r.data),

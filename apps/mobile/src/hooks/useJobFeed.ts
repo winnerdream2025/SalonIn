@@ -7,6 +7,7 @@ export interface UseJobFeedOptions {
   specialty?: string
   type?: string
   listingType?: string
+  status?: string
 }
 
 export interface UseJobFeedResult {
@@ -21,7 +22,7 @@ export interface UseJobFeedResult {
 }
 
 export function useJobFeed(options: UseJobFeedOptions = {}): UseJobFeedResult {
-  const { specialty, type, listingType } = options
+  const { specialty, type, listingType, status } = options
   const lat = useLocationStore((s) => s.lat)
   const lng = useLocationStore((s) => s.lng)
   const radiusMiles = useLocationStore((s) => s.radiusMiles)
@@ -62,7 +63,7 @@ export function useJobFeed(options: UseJobFeedOptions = {}): UseJobFeedResult {
     }
 
     jobsApi
-      .list({ lat, lng, radiusMiles, specialty, type, listingType, page: 1, limit: 20 })
+      .list({ lat, lng, radiusMiles, specialty, type, listingType, status, page: 1, limit: 20 })
       .then((res) => {
         if (!cancelled) {
           setJobs(res.data)
@@ -81,14 +82,14 @@ export function useJobFeed(options: UseJobFeedOptions = {}): UseJobFeedResult {
       })
 
     return () => { cancelled = true }
-  }, [lat, lng, radiusMiles, specialty, type, listingType, tick])
+  }, [lat, lng, radiusMiles, specialty, type, listingType, status, tick])
 
   const loadMore = useCallback(async () => {
     if (!hasMore || lat == null || lng == null || isLoadingMore) return
     const nextPage = page + 1
     setIsLoadingMore(true)
     try {
-      const res = await jobsApi.list({ lat, lng, radiusMiles, specialty, type, listingType, page: nextPage, limit: 20 })
+      const res = await jobsApi.list({ lat, lng, radiusMiles, specialty, type, listingType, status, page: nextPage, limit: 20 })
       setJobs((prev) => [...prev, ...res.data])
       setPage(nextPage)
       setHasMore(res.hasMore)
@@ -97,7 +98,7 @@ export function useJobFeed(options: UseJobFeedOptions = {}): UseJobFeedResult {
     } finally {
       setIsLoadingMore(false)
     }
-  }, [hasMore, lat, lng, radiusMiles, specialty, type, listingType, page, isLoadingMore])
+  }, [hasMore, lat, lng, radiusMiles, specialty, type, listingType, status, page, isLoadingMore])
 
   return { jobs, isLoading, isRefreshing, isLoadingMore, hasMore, error, refresh, loadMore }
 }

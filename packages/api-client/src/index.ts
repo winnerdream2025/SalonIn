@@ -30,6 +30,9 @@ export { chatRequestsApi } from './chat-requests.api'
 
 export { specialtiesApi } from './specialties.api'
 
+export { placesApi } from './places.api'
+export type { PlaceSuggestion, ResolvedPlace } from './places.api'
+
 export { reviewsApi } from './reviews.api'
 
 export { notificationsApi } from './notifications.api'

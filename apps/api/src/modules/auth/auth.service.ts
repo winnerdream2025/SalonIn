@@ -50,8 +50,8 @@ export class AuthService {
         role: dto.role,
         passwordHash,
         ...(dto.role === Role.WORKER
-          ? { workerProfile: { create: { name: dto.name, cityId: dto.cityId } } }
-          : { salonProfile: { create: { name: dto.name, cityId: dto.cityId } } }),
+          ? { workerProfile: { create: { name: dto.name } } }
+          : { salonProfile: { create: { name: dto.name } } }),
       },
     })
 

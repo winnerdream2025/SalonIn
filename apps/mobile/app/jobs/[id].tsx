@@ -76,7 +76,7 @@ export default function JobDetailScreen() {
     if (!job) return
     setOtherJobsLoading(true)
     jobsApi
-      .list({ salonId: job.salonId, cityId: job.cityId, limit: 6 })
+      .list({ salonId: job.salonId, limit: 6 })
       .then((res) => setOtherJobs(res.data.filter((j) => j.id !== id)))
       .catch(() => {})
       .finally(() => setOtherJobsLoading(false))
@@ -228,7 +228,7 @@ export default function JobDetailScreen() {
               {job.salon.name}
             </Text>
             <Text style={[styles.salonLoc, { color: theme.text.tertiary }]} numberOfLines={1}>
-              📍 {job.salon.cityId.toUpperCase()}
+              📍 {job.salon.city ?? job.city ?? 'Location set on map'}
             </Text>
             {job.salon.rating > 0 && (
               <Text style={[styles.salonRating, { color: theme.text.secondary }]} numberOfLines={1}>

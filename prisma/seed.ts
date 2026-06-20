@@ -559,6 +559,19 @@ function daysFromNow(n: number): Date {
   return new Date(Date.now() + n * 24 * 60 * 60 * 1000)
 }
 
+// Maps the seed's internal market key to normalized display location fields.
+// (cityId no longer exists in the schema — location is now city/state/country + lat/lng.)
+const CITY_MAP: Record<string, { city: string; state: string; country: string }> = {
+  dmv: { city: 'Washington', state: 'DC', country: 'United States' },
+  atlanta: { city: 'Atlanta', state: 'GA', country: 'United States' },
+  houston: { city: 'Houston', state: 'TX', country: 'United States' },
+  miami: { city: 'Miami', state: 'FL', country: 'United States' },
+}
+
+function locationFor(key: string): { city: string; state: string; country: string } {
+  return CITY_MAP[key] ?? { city: key, state: '', country: 'United States' }
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -625,6 +638,7 @@ async function main() {
 
   console.log('── Workers ──────────────────────────────────────')
   for (const w of WORKERS) {
+    const wLocFields = locationFor(w.cityId)
     const user = await prisma.user.upsert({
       where: { email: w.email },
       update: { passwordHash, isActive: true },
@@ -643,7 +657,9 @@ async function main() {
         radiusMiles: w.radiusMiles,
         rateRange: w.rateRange,
         rateNote: w.rateNote,
-        cityId: w.cityId,
+        city: wLocFields.city,
+        state: wLocFields.state,
+        country: wLocFields.country,
       },
       create: {
         userId: user.id,
@@ -656,7 +672,9 @@ async function main() {
         radiusMiles: w.radiusMiles,
         rateRange: w.rateRange,
         rateNote: w.rateNote,
-        cityId: w.cityId,
+        city: wLocFields.city,
+        state: wLocFields.state,
+        country: wLocFields.country,
         employmentTypes: [],
         languages: [],
       },
@@ -691,6 +709,7 @@ async function main() {
 
   console.log('\n── Salons ───────────────────────────────────────')
   for (const s of SALONS) {
+    const sLocFields = locationFor(s.cityId)
     const user = await prisma.user.upsert({
       where: { email: s.email },
       update: { passwordHash, isActive: true },
@@ -704,7 +723,9 @@ async function main() {
         description: s.description,
         specialties: s.specialties,
         photoUrls: s.photoUrls,
-        cityId: s.cityId,
+        city: sLocFields.city,
+        state: sLocFields.state,
+        country: sLocFields.country,
         isHiring: s.isHiring,
         isVerified: s.isVerified ?? false,
         rating: 0,
@@ -716,7 +737,9 @@ async function main() {
         description: s.description,
         specialties: s.specialties,
         photoUrls: s.photoUrls,
-        cityId: s.cityId,
+        city: sLocFields.city,
+        state: sLocFields.state,
+        country: sLocFields.country,
         isHiring: s.isHiring,
         isVerified: s.isVerified ?? false,
         rating: 0,
@@ -737,7 +760,7 @@ async function main() {
 
     // Create job posts for this salon
     for (const jp of s.jobs) {
-      await prisma.jobPost.create({
+      const job = await prisma.jobPost.create({
         data: {
           salonId: profile.id,
           title: jp.title,
@@ -747,7 +770,9 @@ async function main() {
           type: jp.type,
           listingType: jp.listingType ?? 'JOB',
           isUrgent: jp.isUrgent,
-          cityId: s.cityId,
+          city: sLocFields.city,
+          state: sLocFields.state,
+          country: sLocFields.country,
           expiresAt: daysFromNow(jp.daysUntilExpiry),
           isActive: true,
           spaceSize: jp.spaceSize,
@@ -755,6 +780,11 @@ async function main() {
           rentalDeposit: jp.rentalDeposit,
         },
       })
+      await prisma.$executeRaw`
+        UPDATE "JobPost"
+        SET location = ST_SetSRID(ST_MakePoint(${s.lng}, ${s.lat}), 4326)::geography
+        WHERE id = ${job.id}
+      `
       jobPostCount++
       console.log(`    ✓ "${jp.title}" ${jp.isUrgent ? '[URGENT]' : ''}`)
     }

@@ -15,7 +15,6 @@ import { Ionicons } from '@expo/vector-icons'
 import { Avatar, Text, AvailabilityBadge, PortfolioGrid, Skeleton, useTheme } from '@salonin/ui'
 import type { PortfolioItem, AvailabilitySchedule } from '@salonin/types'
 import { formatExperience } from '@salonin/utils'
-import { getCityLabel } from '@salonin/config'
 import { useWorkerProfile } from '../../hooks/useWorkerProfile'
 import { useAuthStore } from '../../store/authStore'
 import { messagesApi } from '@salonin/api-client'
@@ -140,7 +139,7 @@ export default function WorkerProfileScreen() {
           <View style={styles.locationRow}>
             <Ionicons name="location-outline" size={12} color="#D85A30" />
             <Text style={[styles.profileLocation, { color: theme.text.tertiary }]} numberOfLines={1}>
-              {getCityLabel(profile.cityId)}
+              {[profile.city, profile.state].filter(Boolean).join(', ') || 'Location not set'}
             </Text>
           </View>
           <View style={styles.availRow}>

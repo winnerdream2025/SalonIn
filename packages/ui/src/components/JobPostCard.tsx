@@ -2,7 +2,6 @@ import React, { useRef, useCallback, useState } from 'react'
 import { View, Text, Pressable, Animated, StyleSheet, Image } from 'react-native'
 import type { JobPostCardData } from '@salonin/types'
 import { isJobExpired } from '@salonin/utils'
-import { getCityLabel } from '@salonin/config'
 import Svg, { Path } from 'react-native-svg'
 import { Skeleton } from '../primitives/Skeleton'
 import { Avatar } from '../primitives/Avatar'
@@ -36,27 +35,6 @@ const LISTING_META: Record<string, { buttonLabel: string }> = {
   JOB:    { buttonLabel: 'Apply Now' },
   RENTAL: { buttonLabel: 'Inquire'   },
   SPACE:  { buttonLabel: 'Book'      },
-}
-
-// ── Status badge — shown as a photo sticker ───────────────────────────────────
-type BadgeIcon = 'flash' | 'fire' | 'sparkle'
-interface StatusBadge {
-  label: string
-  solidBg: string   // semi-opaque for photo overlay
-  icon: BadgeIcon
-}
-
-function deriveStatusBadge(job: JobPostCardData): StatusBadge | null {
-  if (job.isUrgent || job.type === 'EMERGENCY') {
-    return { label: 'Urgent', solidBg: 'rgba(196,78,40,0.88)', icon: 'flash' }
-  }
-  if ((job.appliedToday ?? 0) >= 3) {
-    return { label: 'Hot', solidBg: 'rgba(181,117,12,0.88)', icon: 'fire' }
-  }
-  if ((job.applicantCount ?? 0) === 0 && (job.appliedToday ?? 0) === 0) {
-    return { label: 'New', solidBg: 'rgba(109,51,204,0.88)', icon: 'sparkle' }
-  }
-  return null
 }
 
 // ── SVG Icons ─────────────────────────────────────────────────────────────────
@@ -108,19 +86,6 @@ function FireIcon({ color, size }: { color: string; size: number }) {
   )
 }
 
-function SparkleIcon({ color, size }: { color: string; size: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M12 2l2.4 7.4L22 12l-7.6 2.6L12 22l-2.4-7.4L2 12l7.6-2.6L12 2z"
-        stroke={color} strokeWidth={1.8}
-        strokeLinecap="round" strokeLinejoin="round"
-        fill={color} fillOpacity={0.2}
-      />
-    </Svg>
-  )
-}
-
 function PeopleIcon({ color, size }: { color: string; size: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
@@ -165,7 +130,6 @@ export function JobPostCard({
   const listingMeta  = LISTING_META[job.listingType ?? 'JOB'] ?? LISTING_META.JOB
   const typeMeta     = TYPE_META[job.type] ?? TYPE_META.FULL_TIME
   const tags         = job.specialty.split(/[,/]/).map((t) => t.trim()).filter(Boolean)
-  const statusBadge  = deriveStatusBadge(job)
   const buttonLabel  = expired ? 'Closed' : listingMeta.buttonLabel
 
   // Strip leading "$" — money badge icon handles the symbol
@@ -218,7 +182,7 @@ export function JobPostCard({
                 style={[styles.metaText, styles.metaCity, { color: theme.text.secondary }]}
                 numberOfLines={1}
               >
-                {getCityLabel(job.cityId)}
+                {[job.city, job.state].filter(Boolean).join(', ') || 'Location on map'}
               </Text>
               {(job.salonRating ?? 0) > 0 && (
                 <>
@@ -277,28 +241,11 @@ export function JobPostCard({
                 style={StyleSheet.absoluteFillObject}
                 resizeMode="cover"
               />
-              {statusBadge !== null && (
-                <View style={[styles.photoBadge, { backgroundColor: statusBadge.solidBg }]}>
-                  {statusBadge.icon === 'flash'   && <FlashIcon   color="#FFFFFF" size={8} />}
-                  {statusBadge.icon === 'fire'    && <FireIcon    color="#FFFFFF" size={8} />}
-                  {statusBadge.icon === 'sparkle' && <SparkleIcon color="#FFFFFF" size={8} />}
-                  <Text style={styles.photoBadgeText}>{statusBadge.label}</Text>
-                </View>
-              )}
             </View>
           )}
 
-          {/* Text col: badge (no photo) · title · tags · space extras */}
+          {/* Text col: title · tags · space extras */}
           <View style={[styles.rightCol, mainPhoto == null && styles.rightColFull]}>
-
-            {mainPhoto == null && statusBadge !== null && (
-              <View style={[styles.inlineBadge, { backgroundColor: statusBadge.solidBg }]}>
-                {statusBadge.icon === 'flash'   && <FlashIcon   color="#FFFFFF" size={8} />}
-                {statusBadge.icon === 'fire'    && <FireIcon    color="#FFFFFF" size={8} />}
-                {statusBadge.icon === 'sparkle' && <SparkleIcon color="#FFFFFF" size={8} />}
-                <Text style={styles.photoBadgeText}>{statusBadge.label}</Text>
-              </View>
-            )}
 
             <Text
               style={[styles.jobTitle, { color: theme.text.primary }]}
@@ -591,33 +538,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: '#F0EDE8',
     flexShrink: 0,
-  },
-  photoBadge: {
-    position: 'absolute',
-    bottom: 5,
-    left: 5,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    paddingHorizontal: 5,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  photoBadgeText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 0.1,
-  },
-  inlineBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 3,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 6,
-    marginBottom: 2,
   },
   rightCol: {
     flex: 1,

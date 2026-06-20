@@ -17,6 +17,7 @@ import { router } from 'expo-router'
 import { Text, Button, Skeleton, JobPostCard, useTheme } from '@salonin/ui'
 import type { Theme } from '@salonin/ui'
 import type { JobPostCardData } from '@salonin/types'
+import { Role } from '@salonin/types'
 import { useMySalonProfile } from '../../hooks/useMySalonProfile'
 import { authApi, salonsApi } from '@salonin/api-client'
 import { useAuthStore } from '../../store/authStore'
@@ -28,6 +29,7 @@ export default function SalonOwnProfileScreen() {
   const { theme } = useTheme()
   const { bottom } = useSafeAreaInsets()
   const clearAuth = useAuthStore((s) => s.clearAuth)
+  const authUser  = useAuthStore((s) => s.user)
   const { logout } = useAuth()
   const [hiringOverride, setHiringOverride] = useState<boolean | null>(null)
 
@@ -250,6 +252,29 @@ export default function SalonOwnProfileScreen() {
 
         {/* ── Account ── */}
         <View style={[styles.menuCard, { backgroundColor: theme.bg.elevated, borderColor: theme.border.subtle }]}>
+          {/* Account type row — non-tappable info row */}
+          <View style={styles.menuRow}>
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(55,138,221,0.10)' }]}>
+              <Ionicons name="person-circle-outline" size={18} color="#378ADD" />
+            </View>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]} numberOfLines={1}>
+              {authUser?.email ?? ''}
+            </Text>
+            <View style={[
+              styles.rolePill,
+              { backgroundColor: authUser?.role === Role.WORKER ? 'rgba(147,92,255,0.12)' : 'rgba(55,138,221,0.12)' },
+            ]}>
+              <Text style={[
+                styles.rolePillText,
+                { color: authUser?.role === Role.WORKER ? '#935CFF' : '#378ADD' },
+              ]}>
+                {authUser?.role === Role.WORKER ? 'Worker' : 'Salon Owner'}
+              </Text>
+            </View>
+          </View>
+
+          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
+
           <TouchableOpacity style={styles.menuRow} onPress={() => void Linking.openURL('https://salonin-production-77fc.up.railway.app/terms')} activeOpacity={0.7}>
             <View style={[styles.menuIcon, { backgroundColor: theme.bg.input }]}>
               <Ionicons name="document-text-outline" size={18} color={theme.text.secondary} />
@@ -436,6 +461,17 @@ const styles = StyleSheet.create({
   },
   menuLabel: { flex: 1, fontSize: 15, fontWeight: '500' },
   menuDivider: { height: StyleSheet.hairlineWidth, marginLeft: 62 },
+  rolePill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    flexShrink: 0,
+  },
+  rolePillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
   errorState: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, paddingHorizontal: 24 },
   errorText: { textAlign: 'center' },
 })

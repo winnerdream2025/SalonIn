@@ -17,7 +17,6 @@ import { Ionicons } from '@expo/vector-icons'
 import MapView, { Circle, Marker, PROVIDER_DEFAULT } from 'react-native-maps'
 import * as Haptics from 'expo-haptics'
 import { Text, useTheme } from '@salonin/ui'
-import { findNearestCity } from '@salonin/config'
 import { useLocationStore } from '../store/locationStore'
 import { useDeviceLocation } from '../hooks/useDeviceLocation'
 import { RadiusEditorScreen } from './RadiusEditorScreen'
@@ -45,7 +44,7 @@ export function LocationModal({ visible, onClose }: Props) {
 
   const lat = location.lat ?? 38.9072
   const lng = location.lng ?? -77.0369
-  const cityName = location.cityName ?? 'Washington DC'
+  const cityName = location.city ?? 'Washington DC'
 
   const { results: searchResults, isLoading: isSearching } = usePlaceSearch(showSearch ? search : '')
 
@@ -59,23 +58,20 @@ export function LocationModal({ visible, onClose }: Props) {
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
       setSelectingId(place.id)
       try {
-        // Fetch real lat/lng from Google Places Details
+        // Google Places Details is the source of truth — exact city/state/country/coords.
         const details = await fetchPlaceDetails(place.id)
         if (!details) return
 
-        // Map to nearest WorldCity for cityId (backend compat only — not displayed)
-        const city = findNearestCity(details.lat, details.lng)
-        const flag = details.countryCode
-          ? countryCodeToFlag(details.countryCode)
-          : city.flag
-
         setLocation({
-          cityId: city.id,
+          placeId: details.placeId,
           lat: details.lat,
           lng: details.lng,
-          cityName: place.shortName,
-          countryCode: details.countryCode ?? city.countryCode,
-          flag,
+          city: details.city || place.shortName,
+          state: details.state,
+          country: details.country,
+          countryCode: details.countryCode,
+          flag: details.countryCode ? countryCodeToFlag(details.countryCode) : undefined,
+          formattedAddress: details.formattedAddress,
         })
         setSearch('')
         setShowSearch(false)

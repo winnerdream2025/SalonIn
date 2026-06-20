@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useRef } from 'react'
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import {
   View,
   Modal,
@@ -21,8 +21,12 @@ import { Text, useTheme } from '@salonin/ui'
 import { useLocationStore, type RadiusMode } from '../store/locationStore'
 import { usePlaceSearch } from '../hooks/usePlaceSearch'
 import type { PlaceResult } from '../hooks/usePlaceSearch'
-import { fetchPlaceDetails, reverseGeocodeWithGoogle } from '../utils/googlePlaces'
-import { findNearestCity } from '@salonin/config'
+import {
+  fetchPlaceDetails,
+  reverseGeocodeWithGoogle,
+  formatPlaceLabel,
+  type ResolvedPlace,
+} from '../utils/googlePlaces'
 import { countryCodeToFlag } from '../utils/countryFlag'
 
 interface Props {
@@ -39,8 +43,15 @@ export function RadiusEditorScreen({ visible, onClose, onApply }: Props) {
 
   const [mode, setMode] = useState<RadiusMode>(location.radiusMode)
   const [miles, setMiles] = useState(location.radiusMiles)
-  const [searchQuery, setSearchQuery] = useState(location.cityName ?? '')
+  const [searchQuery, setSearchQuery] = useState(location.city ?? '')
   const [showDropdown, setShowDropdown] = useState(false)
+  // Live label for the current map center (reverse-geocoded as the user pans).
+  const [centerLabel, setCenterLabel] = useState(location.city ?? 'Selected area')
+  const [isResolvingLabel, setIsResolvingLabel] = useState(false)
+  // Pending coords to reverse-geocode (debounced) after a user pan.
+  const [geocodeTarget, setGeocodeTarget] = useState<{ lat: number; lng: number } | null>(null)
+  // Most recent reverse-geocoded place for the current center — applied on Apply.
+  const resolvedPlaceRef = useRef<ResolvedPlace | null>(null)
   const searchRef = useRef<TextInputType>(null)
   const [mapContainerHeight, setMapContainerHeight] = useState(300)
   const [currentLatDelta, setCurrentLatDelta] = useState(() => {
@@ -88,17 +99,17 @@ export function RadiusEditorScreen({ visible, onClose, onApply }: Props) {
       try {
         const details = await fetchPlaceDetails(place.id)
         if (!details) return
-        const city = findNearestCity(details.lat, details.lng)
-        const flag = details.countryCode
-          ? countryCodeToFlag(details.countryCode)
-          : city.flag
+        resolvedPlaceRef.current = details
         location.setLocation({
-          cityId: city.id,
+          placeId: details.placeId,
           lat: details.lat,
           lng: details.lng,
-          cityName: place.shortName,
-          countryCode: details.countryCode ?? city.countryCode,
-          flag,
+          city: details.city || place.shortName,
+          state: details.state,
+          country: details.country,
+          countryCode: details.countryCode,
+          flag: details.countryCode ? countryCodeToFlag(details.countryCode) : undefined,
+          formattedAddress: details.formattedAddress,
         })
         isProgrammaticPanRef.current = true
         mapRef.current?.animateToRegion({
@@ -108,7 +119,8 @@ export function RadiusEditorScreen({ visible, onClose, onApply }: Props) {
           longitudeDelta: currentLatDelta,
         }, 600)
         setCurrentCenter({ latitude: details.lat, longitude: details.lng })
-        setSearchQuery(place.shortName)
+        setSearchQuery(details.city || place.shortName)
+        setCenterLabel(formatPlaceLabel(details))
         setShowDropdown(false)
         Keyboard.dismiss()
       } finally {
@@ -141,10 +153,31 @@ export function RadiusEditorScreen({ visible, onClose, onApply }: Props) {
       return
     }
 
-    // User manually panned — show nearest known city as an immediate label
-    const nearestCity = findNearestCity(r.latitude, r.longitude)
-    setSearchQuery(nearestCity.name)
+    // User manually panned — show a loading label and queue reverse geocoding.
+    // Never snap to a static "nearest city".
+    resolvedPlaceRef.current = null
+    setIsResolvingLabel(true)
+    setCenterLabel('Loading location…')
+    setGeocodeTarget({ lat: r.latitude, lng: r.longitude })
   }, [])
+
+  // Debounced reverse geocoding for the current map center.
+  useEffect(() => {
+    if (!geocodeTarget) return
+    const timer = setTimeout(async () => {
+      const place = await reverseGeocodeWithGoogle(geocodeTarget.lat, geocodeTarget.lng)
+      if (place) {
+        resolvedPlaceRef.current = { ...place, lat: geocodeTarget.lat, lng: geocodeTarget.lng }
+        setCenterLabel(formatPlaceLabel(place))
+        setSearchQuery(place.city)
+      } else {
+        resolvedPlaceRef.current = null
+        setCenterLabel('Selected area')
+      }
+      setIsResolvingLabel(false)
+    }, 550)
+    return () => clearTimeout(timer)
+  }, [geocodeTarget])
 
   const handleApply = useCallback(async () => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
@@ -161,26 +194,32 @@ export function RadiusEditorScreen({ visible, onClose, onApply }: Props) {
       setIsApplying(true)
       try {
         const { latitude: lat, longitude: lng } = currentCenter
-        const city = findNearestCity(lat, lng)
-        let cityName = city.name
-        let countryCode = city.countryCode
-        let flag = city.flag
+        // Prefer the place already resolved while panning; otherwise resolve now.
+        const place =
+          resolvedPlaceRef.current ?? (await reverseGeocodeWithGoogle(lat, lng))
 
-        const geocoded = await reverseGeocodeWithGoogle(lat, lng)
-        if (geocoded) {
-          cityName = geocoded.name
-          countryCode = geocoded.countryCode
-          flag = countryCodeToFlag(geocoded.countryCode)
+        if (place) {
+          location.setLocation({
+            placeId: place.placeId,
+            lat,
+            lng,
+            city: place.city,
+            state: place.state,
+            country: place.country,
+            countryCode: place.countryCode,
+            flag: place.countryCode ? countryCodeToFlag(place.countryCode) : undefined,
+            formattedAddress: place.formattedAddress,
+          })
+        } else {
+          // Geocoding failed — persist coords with a neutral label, never a wrong city.
+          location.setLocation({
+            lat,
+            lng,
+            city: 'Selected area',
+            country: '',
+            formattedAddress: 'Selected area',
+          })
         }
-
-        location.setLocation({
-          cityId: city.id,
-          lat,
-          lng,
-          cityName,
-          countryCode,
-          flag,
-        })
       } finally {
         setIsApplying(false)
       }
@@ -244,6 +283,23 @@ export function RadiusEditorScreen({ visible, onClose, onApply }: Props) {
             {/* Center dot absolutely over center */}
             <View style={styles.dotContainer}>
               <View style={styles.centerDot} />
+            </View>
+          </View>
+
+          {/* Live center label — reflects exact reverse-geocoded location */}
+          <View style={styles.centerLabelWrap} pointerEvents="none">
+            <View style={[styles.centerLabelPill, { backgroundColor: theme.bg.surface }]}>
+              {isResolvingLabel ? (
+                <ActivityIndicator size="small" color="#D85A30" />
+              ) : (
+                <Ionicons name="location" size={14} color="#D85A30" />
+              )}
+              <Text
+                style={[styles.centerLabelText, { color: theme.text.primary }]}
+                numberOfLines={1}
+              >
+                {centerLabel}
+              </Text>
             </View>
           </View>
 
@@ -478,6 +534,29 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   searchInput: { flex: 1, fontSize: 15, paddingVertical: 0 },
+  centerLabelWrap: {
+    position: 'absolute',
+    bottom: 16,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 5,
+  },
+  centerLabelPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    maxWidth: '80%',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  centerLabelText: { fontSize: 14, fontWeight: '600', flexShrink: 1 },
   dropdown: {
     position: 'absolute',
     top: 66,

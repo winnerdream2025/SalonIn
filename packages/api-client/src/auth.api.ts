@@ -6,7 +6,6 @@ export interface RegisterPayload {
   password: string
   role: string
   name: string
-  cityId: string
   phone?: string | undefined
 }
 

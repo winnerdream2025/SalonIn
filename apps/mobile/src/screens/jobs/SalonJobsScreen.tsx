@@ -22,7 +22,7 @@ export default function SalonJobsScreen() {
 
     try {
       const salon = await salonsApi.getMe()
-      const result = await jobsApi.list({ cityId: salon.cityId, salonId: salon.id })
+      const result = await jobsApi.list({ salonId: salon.id })
       setJobs(result.data)
     } catch (e: unknown) {
       setError(e instanceof Error ? e : new Error('Failed to load jobs'))

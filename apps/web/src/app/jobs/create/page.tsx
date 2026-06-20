@@ -60,7 +60,14 @@ export default function CreateJobPage() {
   const router = useRouter()
   const user = useAuthStore((s) => s.user)
 
-  const [cityId, setCityId] = useState<string>('dmv')
+  // Web is a legacy/admin surface. The salon's exact coordinates are not exposed
+  // on the profile payload, so we default to the salon's market center (DC) and
+  // attach the salon's display city/state/country. Precise geo is set on mobile.
+  const [salonCity, setSalonCity] = useState<string | null>(null)
+  const [salonState, setSalonState] = useState<string | null>(null)
+  const [salonCountry, setSalonCountry] = useState<string | null>(null)
+  const DEFAULT_LAT = 38.9072
+  const DEFAULT_LNG = -77.0369
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [specialty, setSpecialty] = useState(SPECIALTIES[0]!)
@@ -75,8 +82,12 @@ export default function CreateJobPage() {
     if (!user) { router.replace('/login'); return }
     if (user.role !== 'SALON') { router.replace('/workers'); return }
     salonsApi.getMe()
-      .then((salon) => setCityId(salon.cityId))
-      .catch(() => { /* keep dmv fallback */ })
+      .then((salon) => {
+        setSalonCity(salon.city ?? null)
+        setSalonState(salon.state ?? null)
+        setSalonCountry(salon.country ?? null)
+      })
+      .catch(() => { /* keep defaults */ })
   }, [user, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -89,7 +100,20 @@ export default function CreateJobPage() {
     setIsSubmitting(true)
     const expiresAt = new Date(Date.now() + durationDays * 86_400_000).toISOString()
     try {
-      await jobsApi.create({ title, description, specialty, payStructure, type, isUrgent, cityId, expiresAt })
+      await jobsApi.create({
+        title,
+        description,
+        specialty,
+        payStructure,
+        type,
+        isUrgent,
+        lat: DEFAULT_LAT,
+        lng: DEFAULT_LNG,
+        ...(salonCity ? { city: salonCity } : {}),
+        ...(salonState ? { state: salonState } : {}),
+        ...(salonCountry ? { country: salonCountry } : {}),
+        expiresAt,
+      })
       router.push('/jobs')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create job post.')

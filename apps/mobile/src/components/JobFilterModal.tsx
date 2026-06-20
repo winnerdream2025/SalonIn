@@ -16,12 +16,14 @@ export interface JobFilters {
   employmentType: string | null
   payType: string | null
   distance: number | null
+  status: string | null
 }
 
 export const EMPTY_JOB_FILTERS: JobFilters = {
   employmentType: null,
   payType: null,
   distance: null,
+  status: null,
 }
 
 const EMPLOYMENT_TYPES = [
@@ -52,6 +54,13 @@ const DISTANCES = [
   { value: 50, label: '50 mi' },
 ] as const
 
+const STATUS_OPTIONS = [
+  { value: null, label: 'All' },
+  { value: 'URGENT', label: 'Urgent' },
+  { value: 'HOT', label: 'Hot' },
+  { value: 'NEW', label: 'New' },
+] as const
+
 interface Props {
   visible: boolean
   onClose: () => void
@@ -64,7 +73,7 @@ export function JobFilterModal({ visible, onClose, filters, onApply }: Props) {
   const { bottom } = useSafeAreaInsets()
   const [draft, setDraft] = useState<JobFilters>(filters)
 
-  const activeCount = [draft.employmentType, draft.payType, draft.distance].filter(Boolean).length
+  const activeCount = [draft.employmentType, draft.payType, draft.distance, draft.status].filter(Boolean).length
 
   const handleApply = useCallback(() => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
@@ -73,7 +82,7 @@ export function JobFilterModal({ visible, onClose, filters, onApply }: Props) {
   }, [draft, onApply, onClose])
 
   const handleClear = useCallback(() => {
-    setDraft({ employmentType: null, payType: null, distance: null })
+    setDraft({ employmentType: null, payType: null, distance: null, status: null })
   }, [])
 
   return (
@@ -153,6 +162,33 @@ export function JobFilterModal({ visible, onClose, filters, onApply }: Props) {
               })}
             </View>
 
+            <Text style={[s.sectionTitle, { color: theme.text.secondary }]}>Status</Text>
+            <View style={s.optionsRow}>
+              {STATUS_OPTIONS.map((o) => {
+                const active = draft.status === o.value
+                return (
+                  <TouchableOpacity
+                    key={o.label}
+                    onPress={() => {
+                      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                      setDraft((d) => ({ ...d, status: o.value }))
+                    }}
+                    style={[
+                      s.optionPill,
+                      {
+                        backgroundColor: active ? theme.brand.primary : theme.bg.elevated,
+                        borderColor: active ? theme.brand.primary : theme.border.default,
+                      },
+                    ]}
+                  >
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: active ? '#FFFFFF' : theme.text.secondary }}>
+                      {o.label}
+                    </Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+
             <Text style={[s.sectionTitle, { color: theme.text.secondary }]}>Distance</Text>
             <View style={s.optionsRow}>
               {DISTANCES.map((o) => {
@@ -199,7 +235,7 @@ export function JobFilterModal({ visible, onClose, filters, onApply }: Props) {
 }
 
 export function activeFilterCount(f: JobFilters): number {
-  return [f.employmentType, f.payType, f.distance].filter(Boolean).length
+  return [f.employmentType, f.payType, f.distance, f.status].filter(Boolean).length
 }
 
 const s = StyleSheet.create({

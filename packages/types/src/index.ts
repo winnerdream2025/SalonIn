@@ -45,8 +45,6 @@ export interface FindNearbyWorkersDto {
   lat: number
   lng: number
   radiusMiles: number
-  /** @deprecated Use lat/lng instead. Kept for backward compatibility. */
-  cityId?: string
   specialty?: string
   availability?: Availability
   cursor?: string
@@ -60,7 +58,14 @@ export interface CreateJobPostDto {
   type: EmploymentType
   listingType?: ListingType
   isUrgent?: boolean
-  cityId: string
+  // Normalized location — coordinates drive geo filtering, the rest are display.
+  lat: number
+  lng: number
+  placeId?: string
+  city?: string
+  state?: string
+  country?: string
+  formattedAddress?: string
   expiresAt: string
   spacePhotos?: string[]
   spaceSize?: string
@@ -106,7 +111,9 @@ export interface WorkerCardData {
   distanceMiles: number | null
   experienceYears: number
   isVerified: boolean
-  cityId: string
+  city: string | null
+  state?: string | null
+  country?: string | null
   rating?: number
   jobsDone?: number
   portfolioUrls?: string[]
@@ -134,7 +141,9 @@ export interface SalonCardData {
   isHiring: boolean
   isVerified: boolean
   distanceMiles: number | null
-  cityId: string
+  city: string | null
+  state?: string | null
+  country?: string | null
 }
 
 export interface JobPostCardData {
@@ -146,7 +155,9 @@ export interface JobPostCardData {
   type: EmploymentType
   listingType?: ListingType
   isUrgent: boolean
-  cityId: string
+  city: string | null
+  state?: string | null
+  country?: string | null
   expiresAt: string
   salonName: string
   salonPhotoUrl: string | null
@@ -215,7 +226,9 @@ export interface WorkerProfileFull {
   radiusMiles: number
   availability: Availability
   isVerified: boolean
-  cityId: string
+  city: string | null
+  state: string | null
+  country: string | null
   languages: string[]
   expectedPay: string | null
   rateRange: string | null
@@ -249,7 +262,9 @@ export interface SalonProfileFull {
   specialties: string[]
   isHiring: boolean
   isVerified: boolean
-  cityId: string
+  city: string | null
+  state: string | null
+  country: string | null
   rating: number
   reviewCount: number
   createdAt: string
@@ -262,7 +277,7 @@ export interface SalonProfileFull {
     type: EmploymentType
     listingType: ListingType
     isUrgent: boolean
-    cityId: string
+    city: string | null
     expiresAt: string
     isActive: boolean
     createdAt: string
@@ -282,7 +297,9 @@ export interface JobPostDetail {
   type: EmploymentType
   listingType: ListingType
   isUrgent: boolean
-  cityId: string
+  city: string | null
+  state: string | null
+  country: string | null
   expiresAt: Date
   isActive: boolean
   createdAt: Date
@@ -290,7 +307,7 @@ export interface JobPostDetail {
     name: string
     photoUrls: string[]
     description: string | null
-    cityId: string
+    city: string | null
     userId: string
     isVerified: boolean
     rating: number
@@ -325,7 +342,7 @@ export interface JobApplicationDetail {
     specialties: string[]
     availability: Availability
     isVerified: boolean
-    cityId: string
+    city: string | null
     experienceYears: number
   }
 }
@@ -343,7 +360,7 @@ export interface JobApplicationWithJob {
     payStructure: string
     type: EmploymentType
     isUrgent: boolean
-    cityId: string
+    city: string | null
     expiresAt: Date
     isActive: boolean
     salon: { name: string; photoUrls: string[] }

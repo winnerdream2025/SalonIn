@@ -8,7 +8,6 @@ import {
   MinLength,
 } from 'class-validator'
 import type { Role } from '@prisma/client'
-import { IsSupportedCity } from '../../../common/validators/city-id.validator'
 
 export class RegisterDto {
   @IsEmail()
@@ -26,11 +25,6 @@ export class RegisterDto {
   @IsNotEmpty()
   @MaxLength(100)
   name!: string
-
-  @IsString()
-  @IsNotEmpty()
-  @IsSupportedCity()
-  cityId!: string
 
   @IsOptional()
   @IsString()

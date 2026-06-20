@@ -9,7 +9,7 @@ import { router } from 'expo-router'
 import { Text, AvailabilityBadge, PortfolioGrid, Skeleton, useTheme } from '@salonin/ui'
 import type { Theme } from '@salonin/ui'
 import type { PortfolioItem } from '@salonin/types'
-import { Availability } from '@salonin/types'
+import { Availability, Role } from '@salonin/types'
 import { formatExperience } from '@salonin/utils'
 import { useMyWorkerProfile } from '../../hooks/useWorkerProfile'
 import { useMyApplications } from '../../hooks/useJobDetail'
@@ -34,6 +34,7 @@ export default function WorkerOwnProfileScreen() {
   ]
 
   const clearAuth  = useAuthStore((s) => s.clearAuth)
+  const authUser   = useAuthStore((s) => s.user)
   const { logout } = useAuth()
   const [showAvailSheet, setShowAvailSheet]   = useState(false)
   const [currentAvail,   setCurrentAvail]     = useState<Availability | null>(null)
@@ -146,7 +147,9 @@ export default function WorkerOwnProfileScreen() {
 
         {/* ── Page title bar ─────────────────────────────── */}
         <View style={styles.titleBar}>
-          <Text style={[styles.pageTitle, { color: theme.text.primary }]} numberOfLines={1}>Profile</Text>
+          <View style={styles.titleWrap}>
+            <Text style={[styles.pageTitle, { color: theme.text.primary }]} numberOfLines={1}>Profile</Text>
+          </View>
           <TouchableOpacity
             onPress={() => router.push('/worker/edit')}
             style={[styles.editPill, { backgroundColor: 'rgba(216,90,48,0.10)' }]}
@@ -342,6 +345,29 @@ export default function WorkerOwnProfileScreen() {
 
         {/* ── Account ─────────────────────────────────────── */}
         <View style={[styles.menuGroup, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
+          {/* Account type row — non-tappable info row */}
+          <View style={styles.menuRow}>
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(147,92,255,0.10)' }]}>
+              <Ionicons name="person-circle-outline" size={18} color="#935CFF" />
+            </View>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]} numberOfLines={1}>
+              {authUser?.email ?? ''}
+            </Text>
+            <View style={[
+              styles.rolePill,
+              { backgroundColor: authUser?.role === Role.SALON ? 'rgba(55,138,221,0.12)' : 'rgba(147,92,255,0.12)' },
+            ]}>
+              <Text style={[
+                styles.rolePillText,
+                { color: authUser?.role === Role.SALON ? '#378ADD' : '#935CFF' },
+              ]}>
+                {authUser?.role === Role.SALON ? 'Salon Owner' : 'Worker'}
+              </Text>
+            </View>
+          </View>
+
+          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
+
           <TouchableOpacity
             style={styles.menuRow}
             onPress={() => void Linking.openURL('https://salonin-production-77fc.up.railway.app/terms')}
@@ -472,18 +498,19 @@ const styles = StyleSheet.create({
   titleBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 12,
+  },
+  titleWrap: {
+    flex: 1,
+    minWidth: 0,
   },
   pageTitle: {
     fontSize: 28,
     fontWeight: '900',
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
     letterSpacing: -0.5,
-    flexShrink: 1,
-    minWidth: 0,
   },
   editPill: {
     flexDirection: 'row',
@@ -492,11 +519,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
+    flexShrink: 0,
   },
   editPillText: {
     fontSize: 13,
     fontWeight: '700',
     color: '#D85A30',
+  },
+  rolePill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    flexShrink: 0,
+  },
+  rolePillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
 
   // Cover strip

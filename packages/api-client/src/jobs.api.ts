@@ -10,18 +10,17 @@ import type {
 } from '@salonin/types'
 
 export interface ListJobsParams {
-  /** Latitude for geo-based search (preferred over cityId) */
+  /** Latitude for geo-based search (source of truth for location filtering) */
   lat?: number | undefined
-  /** Longitude for geo-based search (preferred over cityId) */
+  /** Longitude for geo-based search (source of truth for location filtering) */
   lng?: number | undefined
   /** Search radius in miles (default: 50) */
   radiusMiles?: number | undefined
-  /** @deprecated Use lat/lng instead. Kept for backward compatibility. */
-  cityId?: string | undefined
   salonId?: string | undefined
   specialty?: string | undefined
   type?: string | undefined
   listingType?: string | undefined
+  status?: string | undefined
   page?: number | undefined
   limit?: number | undefined
 }

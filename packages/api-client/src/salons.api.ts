@@ -22,6 +22,12 @@ export const salonsApi = {
   setHiringStatus: (isHiring: boolean): Promise<SalonProfile> =>
     api.patch<SalonProfile>('/salons/hiring-status', { isHiring }).then((r) => r.data),
 
-  updateLocation: (lat: number, lng: number): Promise<void> =>
-    api.post('/salons/location', { lat, lng }).then(() => undefined),
+  updateLocation: (
+    lat: number,
+    lng: number,
+    city?: string,
+    state?: string,
+    country?: string,
+  ): Promise<void> =>
+    api.post('/salons/location', { lat, lng, city, state, country }).then(() => undefined),
 }

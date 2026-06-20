@@ -124,7 +124,7 @@ export default async function WorkerProfilePage({ params }: { params: { id: stri
               {' · '}
               {expLabel}
               {' · '}
-              {worker.cityId.toUpperCase()}
+              {[worker.city, worker.state].filter(Boolean).join(', ') || 'Location on map'}
             </p>
 
             <span

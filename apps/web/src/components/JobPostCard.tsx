@@ -102,21 +102,6 @@ export function JobPostCard({ job, onClick }: { job: JobPostCardData; onClick: (
         </div>
       </div>
 
-      {job.isUrgent && !expired && (
-        <div
-          style={{
-            backgroundColor: 'rgba(239,159,39,0.15)',
-            borderRadius: 6,
-            padding: '3px 6px',
-            flexShrink: 0,
-            alignSelf: 'flex-start',
-          }}
-        >
-          <span style={{ color: '#EF9F27', fontSize: 8, fontWeight: 800, letterSpacing: '0.5px' }}>
-            URGENT
-          </span>
-        </div>
-      )}
     </button>
   )
 }

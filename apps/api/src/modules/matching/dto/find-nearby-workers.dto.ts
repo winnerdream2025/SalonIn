@@ -21,11 +21,6 @@ export class FindNearbyWorkersDto {
   @Max(100)
   radiusMiles!: number
 
-  /** @deprecated Use lat/lng instead. Kept for backward compatibility. */
-  @IsOptional()
-  @IsString()
-  cityId?: string
-
   @IsOptional()
   @IsString()
   specialty?: string

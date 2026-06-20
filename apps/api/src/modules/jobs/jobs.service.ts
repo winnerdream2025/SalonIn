@@ -7,7 +7,7 @@ import type { CreateJobPostDto } from './dto/create-job-post.dto'
 import type { UpdateJobPostDto } from './dto/update-job-post.dto'
 import type { ListJobsDto } from './dto/list-jobs.dto'
 import type { UpdateApplicationStatusDto } from './dto/update-application-status.dto'
-import { Availability } from '@prisma/client'
+import { Availability, EmploymentType } from '@prisma/client'
 
 @Injectable()
 export class JobsService {
@@ -35,7 +35,11 @@ export class JobsService {
         type: dto.type,
         listingType: dto.listingType ?? 'JOB',
         isUrgent: dto.isUrgent ?? false,
-        cityId: dto.cityId,
+        city: dto.city,
+        state: dto.state,
+        country: dto.country,
+        placeId: dto.placeId,
+        formattedAddress: dto.formattedAddress,
         expiresAt: new Date(dto.expiresAt),
         spacePhotos: dto.spacePhotos ?? [],
         spaceSize: dto.spaceSize,
@@ -51,14 +55,29 @@ export class JobsService {
       },
     })
 
-    const nearbyWorkers = await this.prisma.workerProfile.findMany({
-      where: {
-        cityId: dto.cityId,
-        user: { isActive: true },
-        availability: { not: Availability.NOT_AVAILABLE },
-      },
-      select: { userId: true },
-    })
+    // Persist exact search coordinates as a PostGIS geography point.
+    // Prisma cannot write Unsupported() columns via `data`, so use raw SQL.
+    await this.prisma.$executeRaw`
+      UPDATE "JobPost"
+      SET location = ST_SetSRID(ST_MakePoint(${dto.lng}, ${dto.lat}), 4326)::geography
+      WHERE id = ${post.id}
+    `
+
+    // Notify active, available workers within 50 miles of the job location.
+    const RADIUS_METERS = 50 * 1609.344
+    const nearbyWorkers = await this.prisma.$queryRaw<{ userId: string }[]>`
+      SELECT wp."userId"
+      FROM "WorkerProfile" wp
+      JOIN "User" u ON u.id = wp."userId"
+      WHERE u."isActive" = true
+        AND wp.availability <> ${Availability.NOT_AVAILABLE}::"Availability"
+        AND wp.location IS NOT NULL
+        AND ST_DWithin(
+          wp.location::geography,
+          ST_SetSRID(ST_MakePoint(${dto.lng}, ${dto.lat}), 4326)::geography,
+          ${RADIUS_METERS}
+        )
+    `
     const workerIds = nearbyWorkers.map((w) => w.userId)
     this.notificationsService.notifyNewJobPost(workerIds, dto.title, salon.name, post.id).catch(() => {})
 
@@ -94,14 +113,28 @@ export class JobsService {
     }
 
     // Fallback to non-geo query (backward compatibility or when geo returns 0)
+    const statusFilter = (() => {
+      if (dto.status === 'URGENT') {
+        return { OR: [{ isUrgent: true }, { type: EmploymentType.EMERGENCY }] }
+      }
+      if (dto.status === 'HOT') {
+        return { _count: { applications: { gte: 3 } } }
+      }
+      if (dto.status === 'NEW') {
+        const since = new Date(Date.now() - 24 * 60 * 60 * 1000)
+        return { AND: [{ createdAt: { gte: since } }, { _count: { applications: { equals: 0 } } }] }
+      }
+      return {}
+    })()
+
     const where = {
-      ...(dto.cityId ? { cityId: dto.cityId } : {}),
       isActive: true,
       expiresAt: { gt: new Date() },
       ...(dto.salonId ? { salonId: dto.salonId } : {}),
       ...(dto.specialty ? { specialty: dto.specialty } : {}),
       ...(dto.type ? { type: dto.type } : {}),
       ...(dto.listingType ? { listingType: dto.listingType } : {}),
+      ...statusFilter,
     }
 
     const [rows, total] = await this.prisma.$transaction([
@@ -113,7 +146,9 @@ export class JobsService {
               id: true,
               name: true,
               photoUrls: true,
-              cityId: true,
+              city: true,
+              state: true,
+              country: true,
               isVerified: true,
               rating: true,
               reviewCount: true,
@@ -171,6 +206,15 @@ export class JobsService {
       params.push(dto.salonId)
       filters.push(`AND jp."salonId" = $${params.length}`)
     }
+    if (dto.status === 'URGENT') {
+      filters.push(`AND (jp."isUrgent" = true OR jp.type = 'EMERGENCY')`)
+    }
+    if (dto.status === 'HOT') {
+      filters.push(`AND (SELECT COUNT(*) FROM "JobApplication" WHERE "jobId" = jp.id) >= 3`)
+    }
+    if (dto.status === 'NEW') {
+      filters.push(`AND (SELECT COUNT(*) FROM "JobApplication" WHERE "jobId" = jp.id) = 0 AND jp."createdAt" >= NOW() - INTERVAL '24 hours'`)
+    }
 
     const filterClause = filters.join('\n          ')
 
@@ -185,7 +229,9 @@ export class JobsService {
           jp.type,
           jp."listingType",
           jp."isUrgent",
-          jp."cityId",
+          jp.city,
+          jp.state,
+          jp.country,
           jp."expiresAt",
           jp."spaceSize",
           jp."spaceAmenities",
@@ -199,7 +245,7 @@ export class JobsService {
           sp.rating AS "salonRating",
           sp."reviewCount" AS "salonReviewCount",
           ROUND(ST_Distance(
-            sp.location::geography,
+            COALESCE(jp.location, sp.location)::geography,
             ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography
           ) / 1609.344)::integer AS "distanceMiles",
           (SELECT COUNT(*) FROM "JobPost" WHERE "salonId" = sp.id AND "isActive" = true) AS "salonHiringCount",
@@ -209,9 +255,9 @@ export class JobsService {
         WHERE
           jp."isActive" = true
           AND jp."expiresAt" > NOW()
-          AND sp.location IS NOT NULL
+          AND COALESCE(jp.location, sp.location) IS NOT NULL
           AND ST_DWithin(
-            sp.location::geography,
+            COALESCE(jp.location, sp.location)::geography,
             ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
             $3
           )
@@ -232,7 +278,9 @@ export class JobsService {
       type: string
       listingType: string
       isUrgent: boolean
-      cityId: string
+      city: string | null
+      state: string | null
+      country: string | null
       expiresAt: Date
       spaceSize: string | null
       spaceAmenities: string[]
@@ -265,7 +313,9 @@ export class JobsService {
         type: r.type as JobPostCardData['type'],
         listingType: r.listingType as JobPostCardData['listingType'],
         isUrgent: r.isUrgent,
-        cityId: r.cityId,
+        city: r.city ?? null,
+        state: r.state ?? undefined,
+        country: r.country ?? undefined,
         expiresAt: r.expiresAt.toISOString(),
         salonId: r.salonId,
         salonName: r.salonName,
@@ -300,7 +350,9 @@ export class JobsService {
     type: string
     listingType: string
     isUrgent: boolean
-    cityId: string
+    city: string | null
+    state: string | null
+    country: string | null
     expiresAt: Date
     spaceSize: string | null
     spaceAmenities: string[]
@@ -311,7 +363,9 @@ export class JobsService {
       id: string
       name: string
       photoUrls: string[]
-      cityId: string
+      city: string | null
+      state: string | null
+      country: string | null
       isVerified: boolean
       rating: number
       reviewCount: number
@@ -328,7 +382,9 @@ export class JobsService {
       type: r.type as JobPostCardData['type'],
       listingType: r.listingType as JobPostCardData['listingType'],
       isUrgent: r.isUrgent,
-      cityId: r.cityId,
+      city: r.city ?? r.salon.city ?? null,
+      state: r.state ?? r.salon.state ?? undefined,
+      country: r.country ?? r.salon.country ?? undefined,
       expiresAt: r.expiresAt.toISOString(),
       salonId: r.salon.id,
       salonName: r.salon.name,
@@ -357,7 +413,9 @@ export class JobsService {
             name: true,
             photoUrls: true,
             description: true,
-            cityId: true,
+            city: true,
+            state: true,
+            country: true,
             userId: true,
             rating: true,
             reviewCount: true,
@@ -375,7 +433,9 @@ export class JobsService {
         name: salon.name,
         photoUrls: salon.photoUrls,
         description: salon.description,
-        cityId: salon.cityId,
+        city: salon.city,
+        state: salon.state,
+        country: salon.country,
         userId: salon.userId,
         isVerified: salon.isVerified,
         rating: salon.rating,
@@ -427,7 +487,9 @@ export class JobsService {
             specialties: true,
             availability: true,
             isVerified: true,
-            cityId: true,
+            city: true,
+            state: true,
+            country: true,
             experienceYears: true,
           },
         },

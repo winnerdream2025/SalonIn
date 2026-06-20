@@ -41,8 +41,10 @@ const SKELETON_COUNT = 5
 export default function JobFeedScreen() {
   const { bottom } = useSafeAreaInsets()
   const { theme } = useTheme()
-  const cityId = useLocationStore((s) => s.cityId)
-  const cityName = useLocationStore((s) => s.cityName)
+  const lat = useLocationStore((s) => s.lat)
+  const lng = useLocationStore((s) => s.lng)
+  const city = useLocationStore((s) => s.city)
+  const hasLocation = lat != null && lng != null
   const user = useAuthStore((s) => s.user)
   const isSalon = user?.role === 'SALON'
 
@@ -54,11 +56,11 @@ export default function JobFeedScreen() {
   const [jobFilters, setJobFilters] = useState<JobFilters>(EMPTY_JOB_FILTERS)
   const filterCount = activeFilterCount(jobFilters)
 
-  const cityLabel = cityName ?? 'Set location'
+  const cityLabel = city ?? 'Set location'
   const specialtyFilter = selectedSpecialty === 'All' ? undefined : selectedSpecialty
 
   const { jobs, isLoading, isRefreshing, isLoadingMore, hasMore, error, refresh, loadMore } =
-    useJobFeed({ specialty: specialtyFilter, listingType: selectedListingType })
+    useJobFeed({ specialty: specialtyFilter, listingType: selectedListingType, status: jobFilters.status ?? undefined })
 
   const filteredJobs = useMemo(() => {
     let result = jobs
@@ -275,8 +277,8 @@ export default function JobFeedScreen() {
     </View>
   )
 
-  // ── No city state ─────────────────────────────────────────────────────────
-  if (!cityId) {
+  // ── No location state ─────────────────────────────────────────────────────
+  if (!hasLocation) {
     return (
       <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]} edges={['top']}>
         <View style={styles.pageHeader}>

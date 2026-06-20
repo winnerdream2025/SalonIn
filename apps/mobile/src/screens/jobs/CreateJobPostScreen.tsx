@@ -65,7 +65,13 @@ const DURATIONS: { days: number; label: string }[] = [
 export default function CreateJobPostScreen() {
   const { theme } = useTheme()
   const { top, bottom } = useSafeAreaInsets()
-  const cityId = useLocationStore((s) => s.cityId)
+  const lat = useLocationStore((s) => s.lat)
+  const lng = useLocationStore((s) => s.lng)
+  const city = useLocationStore((s) => s.city)
+  const state = useLocationStore((s) => s.state)
+  const country = useLocationStore((s) => s.country)
+  const placeId = useLocationStore((s) => s.placeId)
+  const formattedAddress = useLocationStore((s) => s.formattedAddress)
   const user = useAuthStore((s) => s.user)
 
   const [step, setStep] = useState(0)
@@ -120,11 +126,11 @@ export default function CreateJobPostScreen() {
     type: selectedType as JobPostCardData['type'],
     listingType: (listingType || 'JOB') as JobPostCardData['listingType'],
     isUrgent,
-    cityId: cityId ?? 'dmv',
+    city: city ?? null,
     expiresAt: new Date(Date.now() + durationDays * 86_400_000).toISOString(),
     salonName,
     salonPhotoUrl: null,
-  }), [title, description, specialty, resolvedPayStructure, selectedType, listingType, isUrgent, durationDays, cityId, salonName])
+  }), [title, description, specialty, resolvedPayStructure, selectedType, listingType, isUrgent, durationDays, city, salonName])
 
   const goNext = useCallback(async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
@@ -165,7 +171,7 @@ export default function CreateJobPostScreen() {
   }, [step])
 
   const handleSubmit = useCallback(async () => {
-    if (!cityId) { setError('Set your location first'); return }
+    if (lat == null || lng == null) { setError('Set your location first'); return }
     setIsSubmitting(true)
     setError(undefined)
     try {
@@ -178,7 +184,13 @@ export default function CreateJobPostScreen() {
         type: selectedType as CreateJobPostDto['type'],
         listingType: (listingType || 'JOB') as CreateJobPostDto['listingType'],
         isUrgent,
-        cityId,
+        lat,
+        lng,
+        ...(placeId ? { placeId } : {}),
+        ...(city ? { city } : {}),
+        ...(state ? { state } : {}),
+        ...(country ? { country } : {}),
+        ...(formattedAddress ? { formattedAddress } : {}),
         expiresAt,
         ...(listingType === 'JOB' ? {
           jobPayType,
@@ -209,7 +221,7 @@ export default function CreateJobPostScreen() {
     } finally {
       setIsSubmitting(false)
     }
-  }, [title, specialty, description, resolvedPayStructure, selectedType, listingType, isUrgent, durationDays, cityId, spaceSize, spaceAmenities, rentalDeposit])
+  }, [title, specialty, description, resolvedPayStructure, selectedType, listingType, isUrgent, durationDays, lat, lng, city, state, country, placeId, formattedAddress, spaceSize, spaceAmenities, rentalDeposit])
 
   return (
     <View style={[styles.screen, { backgroundColor: theme.bg.base, paddingTop: top }]}>

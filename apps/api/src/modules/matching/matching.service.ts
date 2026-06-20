@@ -21,7 +21,9 @@ interface RawWorker {
   availability: string
   experienceYears: number
   isVerified: boolean
-  cityId: string
+  city: string | null
+  state: string | null
+  country: string | null
   distanceMeters: number
   rateRange: string | null
   rateNote: string | null
@@ -80,7 +82,7 @@ export class MatchingService {
     let result: CursorResponse<WorkerCardData>
 
     if (rows.length === 0 && !params.cursor) {
-      const fallback = await this.getFallbackWorkers(params.cityId ?? undefined, params.specialty)
+      const fallback = await this.getFallbackWorkers(params.specialty)
       result = {
         data: fallback.map((w) => this.toWorkerCardDataFromProfile(w)),
         nextCursor: null,
@@ -123,7 +125,7 @@ export class MatchingService {
 
     const finalCacheKey = this.buildCacheKey(params, usedRadius)
     await this.redis.set(finalCacheKey, JSON.stringify(result), 'EX', CACHE_TTL)
-    this.metrics.gauge('active_workers_by_city', result.data.length, [`city:${params.cityId}`])
+    this.metrics.gauge('active_workers_by_geo', result.data.length, [`geo:${params.lat.toFixed(2)},${params.lng.toFixed(2)}`])
 
     return result
   }
@@ -164,7 +166,9 @@ export class MatchingService {
           wp.availability::text AS availability,
           wp."experienceYears",
           wp."isVerified",
-          wp."cityId",
+          wp.city,
+          wp.state,
+          wp.country,
           wp."rateRange",
           wp."rateNote",
           wp.rating,
@@ -208,10 +212,9 @@ export class MatchingService {
     return rows
   }
 
-  private async getFallbackWorkers(cityId: string | undefined, specialty?: string) {
+  private async getFallbackWorkers(specialty?: string) {
     return this.prisma.workerProfile.findMany({
       where: {
-        ...(cityId ? { cityId } : {}),
         user: { isActive: true },
         availability: { not: 'NOT_AVAILABLE' as Availability },
         ...(specialty ? { specialties: { has: specialty } } : {}),
@@ -233,7 +236,9 @@ export class MatchingService {
       distanceMiles: Math.round((raw.distanceMeters / 1609.344) * 100) / 100,
       experienceYears: Number(raw.experienceYears),
       isVerified: Boolean(raw.isVerified),
-      cityId: raw.cityId,
+      city: raw.city ?? null,
+      state: raw.state ?? undefined,
+      country: raw.country ?? undefined,
       rateRange: raw.rateRange ?? undefined,
       rateNote: raw.rateNote ?? undefined,
       rating: Number(raw.rating) > 0 ? Number(raw.rating) : undefined,
@@ -250,7 +255,9 @@ export class MatchingService {
     availability: Availability | string
     experienceYears: number
     isVerified: boolean
-    cityId: string
+    city?: string | null
+    state?: string | null
+    country?: string | null
     rateRange?: string | null
     rateNote?: string | null
     [key: string]: unknown
@@ -265,7 +272,9 @@ export class MatchingService {
       distanceMiles: null,
       experienceYears: Number(worker.experienceYears),
       isVerified: Boolean(worker.isVerified),
-      cityId: worker.cityId,
+      city: (worker.city as string | null | undefined) ?? null,
+      state: (worker.state as string | null | undefined) ?? undefined,
+      country: (worker.country as string | null | undefined) ?? undefined,
       rateRange: (worker.rateRange as string | null | undefined) ?? undefined,
       rateNote: (worker.rateNote as string | null | undefined) ?? undefined,
     }

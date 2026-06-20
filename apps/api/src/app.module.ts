@@ -22,6 +22,7 @@ import { HealthModule } from './health/health.module'
 import { ChatRequestsModule } from './modules/chat-requests/chat-requests.module'
 import { SpecialtiesModule } from './modules/specialties/specialties.module'
 import { ReviewsModule } from './modules/reviews/reviews.module'
+import { PlacesModule } from './modules/places/places.module'
 
 @Module({
   imports: [
@@ -75,6 +76,7 @@ import { ReviewsModule } from './modules/reviews/reviews.module'
     ChatRequestsModule,
     SpecialtiesModule,
     ReviewsModule,
+    PlacesModule,
   ],
   providers: [
     {

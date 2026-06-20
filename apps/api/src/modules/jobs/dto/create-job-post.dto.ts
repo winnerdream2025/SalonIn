@@ -1,6 +1,5 @@
 import { ArrayMaxSize, IsArray, IsBoolean, IsDateString, IsIn, IsNumber, IsOptional, IsString, IsUrl, Max, MaxLength, Min } from 'class-validator'
 import type { EmploymentType, ListingType } from '@prisma/client'
-import { IsSupportedCity } from '../../../common/validators/city-id.validator'
 import { IsInFuture } from '../../../common/validators/is-future.validator'
 
 export class CreateJobPostDto {
@@ -31,9 +30,40 @@ export class CreateJobPostDto {
   @IsBoolean()
   isUrgent?: boolean
 
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  lat!: number
+
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  lng!: number
+
+  @IsOptional()
   @IsString()
-  @IsSupportedCity()
-  cityId!: string
+  @MaxLength(200)
+  placeId?: string
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  city?: string
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  state?: string
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  country?: string
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  formattedAddress?: string
 
   @IsDateString()
   @IsInFuture()

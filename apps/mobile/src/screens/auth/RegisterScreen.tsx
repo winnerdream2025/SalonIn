@@ -5,8 +5,6 @@ import { router, useLocalSearchParams } from 'expo-router'
 import { Input, Button, Text, useTheme, Logo } from '@salonin/ui'
 import { useAuth } from '../../hooks/useAuth'
 import { parseApiError } from '@salonin/api-client'
-import { getCityById } from '@salonin/config'
-import { useLocationStore } from '../../store/locationStore'
 import type { Role } from '@salonin/types'
 
 export default function RegisterScreen() {
@@ -24,9 +22,7 @@ export default function RegisterScreen() {
   const handleRegister = useCallback(async () => {
     setError(undefined)
     try {
-      await register({ name, email: email.trim(), password, role, cityId: 'dmv' })
-      const dmv = getCityById('dmv')!
-      useLocationStore.getState().setLocation({ cityId: dmv.id, lat: dmv.lat, lng: dmv.lng, cityName: dmv.name, countryCode: dmv.countryCode, flag: dmv.flag })
+      await register({ name, email: email.trim(), password, role })
       if (role === 'WORKER') {
         router.replace('/onboarding')
       } else {

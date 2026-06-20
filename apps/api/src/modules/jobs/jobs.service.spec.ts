@@ -36,7 +36,11 @@ const BASE_DTO = {
   specialty: 'Haircut',
   payStructure: '$500/week',
   type: 'FULL_TIME' as const,
-  cityId: 'dmv',
+  lat: 38.9072,
+  lng: -77.0369,
+  city: 'Washington',
+  state: 'DC',
+  country: 'USA',
   expiresAt: new Date(Date.now() + 30 * 86400_000).toISOString(),
 }
 

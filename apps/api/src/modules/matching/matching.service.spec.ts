@@ -30,7 +30,9 @@ function makeRawWorker(overrides: Partial<{
   availability: string
   experienceYears: number
   isVerified: boolean
-  cityId: string
+  city: string | null
+  state: string | null
+  country: string | null
   distanceMeters: number
 }> = {}) {
   return {
@@ -41,7 +43,9 @@ function makeRawWorker(overrides: Partial<{
     availability: 'NOW',
     experienceYears: 3,
     isVerified: false,
-    cityId: 'dmv',
+    city: 'Washington',
+    state: 'DC',
+    country: 'USA',
     distanceMeters: 1000,
     ...overrides,
   }
@@ -51,7 +55,6 @@ const BASE_PARAMS = {
   lat: 38.9072,
   lng: -77.0369,
   radiusMiles: 10,
-  cityId: 'dmv',
 }
 
 describe('MatchingService', () => {

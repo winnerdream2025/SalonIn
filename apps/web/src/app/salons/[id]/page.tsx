@@ -35,13 +35,6 @@ const EMP_LABEL: Record<string, string> = {
   FREELANCE: 'Freelance',
 }
 
-const CITY_LABEL: Record<string, string> = {
-  dmv: 'Washington DC / DMV',
-  atlanta: 'Atlanta, GA',
-  houston: 'Houston, TX',
-  miami: 'Miami, FL',
-}
-
 export default async function SalonProfilePage({ params }: { params: { id: string } }) {
   const salon = await getSalon(params.id)
   if (!salon) notFound()
@@ -196,7 +189,7 @@ export default async function SalonProfilePage({ params }: { params: { id: strin
               )}
             </div>
             <p style={{ margin: '3px 0 0 0', color: 'var(--color-text-tertiary)', fontSize: 12 }}>
-              {CITY_LABEL[salon.cityId] ?? salon.cityId}
+              {[salon.city, salon.state].filter(Boolean).join(', ') || 'Location on map'}
             </p>
           </div>
         </div>

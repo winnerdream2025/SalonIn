@@ -1,12 +1,10 @@
 import React, { useEffect } from 'react'
-import { AppState, View, Text } from 'react-native'
+import { View, Text } from 'react-native'
 import { Stack, useRouter, useSegments } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import * as Linking from 'expo-linking'
 import { configureClient } from '@salonin/api-client'
-import { getCityById } from '@salonin/config'
 import { useNotifications } from '../src/hooks/useNotifications'
-import { useLocationStore } from '../src/store/locationStore'
 import { useAuthStore } from '../src/store/authStore'
 import { Logo } from '@salonin/ui'
 
@@ -54,26 +52,6 @@ function RootLayout() {
       baseURL: process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000',
     })
   }, [accessToken])
-
-  useEffect(() => {
-    const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') {
-        const { cityId, lat, lng } = useLocationStore.getState()
-        if (cityId && lat !== null && lng !== null) {
-          const city = getCityById(cityId)
-          useLocationStore.getState().setLocation({
-            cityId,
-            lat,
-            lng,
-            cityName: city?.name,
-            countryCode: city?.countryCode,
-            flag: city?.flag,
-          })
-        }
-      }
-    })
-    return () => sub.remove()
-  }, [])
 
   useEffect(() => {
     if (isLoading) return

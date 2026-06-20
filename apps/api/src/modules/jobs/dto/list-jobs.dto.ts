@@ -24,11 +24,6 @@ export class ListJobsDto {
   @Max(200)
   radiusMiles?: number
 
-  /** @deprecated Use lat/lng instead. Kept for backward compatibility. */
-  @IsOptional()
-  @IsString()
-  cityId?: string
-
   @IsOptional()
   @IsString()
   salonId?: string
@@ -44,6 +39,10 @@ export class ListJobsDto {
   @IsOptional()
   @IsIn(['JOB', 'RENTAL', 'SPACE'])
   listingType?: ListingType
+
+  @IsOptional()
+  @IsIn(['URGENT', 'HOT', 'NEW'])
+  status?: string
 
   @Transform(({ value }: { value: unknown }) =>
     value !== undefined ? parseInt(value as string, 10) : 1,

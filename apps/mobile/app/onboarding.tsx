@@ -14,7 +14,8 @@ import * as Location from 'expo-location'
 import { Avatar, Text, Button, useTheme } from '@salonin/ui'
 import { Availability } from '@salonin/types'
 import { workersApi, parseApiError } from '@salonin/api-client'
-import { findNearestCity, getCityLabel, BEAUTY_SPECIALTIES } from '@salonin/config'
+import { BEAUTY_SPECIALTIES } from '@salonin/config'
+import { reverseGeocodeWithGoogle } from '../src/utils/googlePlaces'
 import { useLocationStore } from '../src/store/locationStore'
 import { useMyWorkerProfile } from '../src/hooks/useWorkerProfile'
 import { useMediaUpload } from '../src/hooks/useMediaUpload'
@@ -45,6 +46,7 @@ export default function OnboardingScreen() {
     allowsEditing: true,
   })
   const setLocation = useLocationStore((s) => s.setLocation)
+  const storeCity = useLocationStore((s) => s.city)
 
   const [step, setStep] = useState(0)
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
@@ -85,9 +87,28 @@ export default function OnboardingScreen() {
       }
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
       const { latitude: lat, longitude: lng } = pos.coords
-      const city = findNearestCity(lat, lng)
-      setLocation({ cityId: city.id, lat, lng, cityName: city.name, countryCode: city.countryCode, flag: city.flag })
-      await workersApi.updateLocation(lat, lng)
+      const resolved = await reverseGeocodeWithGoogle(lat, lng)
+      if (resolved) {
+        setLocation({
+          lat,
+          lng,
+          city: resolved.city,
+          state: resolved.state,
+          country: resolved.country,
+          countryCode: resolved.countryCode,
+          placeId: resolved.placeId,
+          formattedAddress: resolved.formattedAddress,
+        })
+      } else {
+        setLocation({ lat, lng, city: 'Selected area', country: '', formattedAddress: 'Selected area' })
+      }
+      await workersApi.updateLocation(
+        lat,
+        lng,
+        resolved?.city,
+        resolved?.state,
+        resolved?.country,
+      )
       setLocationShared(true)
     } catch {
       Alert.alert('Could not get location', 'Please try again.')
@@ -114,7 +135,7 @@ export default function OnboardingScreen() {
   }, [selectedSpecialties, availability])
 
   const canAdvanceStep1 = selectedSpecialties.length > 0
-  const cityLabel = getCityLabel(profile?.cityId)
+  const cityLabel = profile?.city ?? storeCity ?? 'Not set yet'
 
   if (isLoading) {
     return (

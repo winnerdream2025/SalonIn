@@ -36,13 +36,6 @@ const EMP_LABEL: Record<string, string> = {
   FREELANCE: 'Freelance',
 }
 
-const CITY_LABEL: Record<string, string> = {
-  dmv: 'Washington DC / DMV',
-  atlanta: 'Atlanta, GA',
-  houston: 'Houston, TX',
-  miami: 'Miami, FL',
-}
-
 export default async function JobDetailPage({ params }: { params: { id: string } }) {
   const job = await getJob(params.id)
   if (!job) notFound()
@@ -57,7 +50,7 @@ export default async function JobDetailPage({ params }: { params: { id: string }
     : `Expires in ${daysLeft} days`
 
   const salonPhoto = job.salon.photoUrls[0] ?? null
-  const cityLabel = CITY_LABEL[job.cityId] ?? job.cityId
+  const cityLabel = [job.city, job.state].filter(Boolean).join(', ') || 'Location on map'
   const typeLabel = EMP_LABEL[job.type] ?? job.type
 
   return (
@@ -189,25 +182,6 @@ export default async function JobDetailPage({ params }: { params: { id: string }
             >
               {job.title}
             </h1>
-            {job.isUrgent && !isExpired && (
-              <span
-                style={{
-                  background: 'rgba(239,159,39,0.15)',
-                  color: 'var(--color-avail-weekend)',
-                  border: '1px solid rgba(239,159,39,0.3)',
-                  borderRadius: 8,
-                  padding: '4px 10px',
-                  fontSize: 10,
-                  fontWeight: 800,
-                  letterSpacing: '0.5px',
-                  flexShrink: 0,
-                  alignSelf: 'flex-start',
-                  marginTop: 4,
-                }}
-              >
-                URGENT
-              </span>
-            )}
           </div>
 
           <div className="jd-pills">

@@ -4,27 +4,11 @@ import { Alert, Linking } from 'react-native'
 import { useLocationStore } from '../store/locationStore'
 import { workersApi, salonsApi } from '@salonin/api-client'
 import { useAuthStore } from '../store/authStore'
-import { findNearestCity } from '@salonin/config'
 import { countryCodeToFlag } from '../utils/countryFlag'
 import { reverseGeocodeWithGoogle } from '../utils/googlePlaces'
+import type { SetLocationParams } from '../store/locationStore'
 
 export type LocationStatus = 'idle' | 'requesting' | 'granted' | 'denied' | 'error'
-
-/** Build a human-readable location label from reverse-geocoded address components */
-function buildLocationLabel(geo: Location.LocationGeocodedAddress): string {
-  const locality =
-    geo.city ??
-    geo.subregion ??
-    geo.district ??
-    null
-
-  const region = geo.region ?? geo.country ?? ''
-
-  if (locality && region && locality !== region) {
-    return `${locality}, ${region}`
-  }
-  return locality ?? region ?? ''
-}
 
 export const useDeviceLocation = () => {
   const setGPSLocation = useLocationStore((s) => s.setGPSLocation)
@@ -58,20 +42,32 @@ export const useDeviceLocation = () => {
 
       const { latitude: lat, longitude: lng } = position.coords
 
-      // Map to nearest WorldCity — used only as cityId for backend compat, never displayed
-      const city = findNearestCity(lat, lng)
+      // Build a normalized location — Google Geocoding is the source of truth.
+      // Neutral fallback used only if every geocoder fails (never a wrong city).
+      let resolved: SetLocationParams = {
+        lat,
+        lng,
+        city: 'Selected area',
+        country: '',
+        formattedAddress: 'Selected area',
+      }
 
-      // Defaults: fall back to WorldCity if all geocoding fails
-      let resolvedName = city.name
-      let countryCode = city.countryCode
-      let flag = city.flag
-
-      // 1️⃣ Try Google Geocoding API first (accurate, consistent)
+      // 1️⃣ Try Google Geocoding API first (accurate, consistent worldwide)
       const googleResult = await reverseGeocodeWithGoogle(lat, lng)
       if (googleResult) {
-        resolvedName = googleResult.name
-        countryCode = googleResult.countryCode
-        flag = countryCodeToFlag(googleResult.countryCode)
+        resolved = {
+          placeId: googleResult.placeId,
+          lat,
+          lng,
+          city: googleResult.city,
+          state: googleResult.state,
+          country: googleResult.country,
+          countryCode: googleResult.countryCode,
+          flag: googleResult.countryCode
+            ? countryCodeToFlag(googleResult.countryCode)
+            : undefined,
+          formattedAddress: googleResult.formattedAddress,
+        }
       } else {
         // 2️⃣ Fall back to system geocoder (Apple CLGeocoder / Android)
         try {
@@ -80,32 +76,43 @@ export const useDeviceLocation = () => {
             { useGoogleMaps: false },
           )
           if (geo) {
-            const label = buildLocationLabel(geo)
-            if (label.length > 0) resolvedName = label
-            if (geo.isoCountryCode) {
-              countryCode = geo.isoCountryCode
-              flag = countryCodeToFlag(geo.isoCountryCode)
+            const cityName = geo.city ?? geo.subregion ?? geo.district ?? ''
+            const region = geo.region ?? geo.country ?? ''
+            if (cityName || region) {
+              resolved = {
+                lat,
+                lng,
+                city: cityName || region,
+                state: geo.region ?? undefined,
+                country: geo.country ?? '',
+                countryCode: geo.isoCountryCode ?? undefined,
+                flag: geo.isoCountryCode
+                  ? countryCodeToFlag(geo.isoCountryCode)
+                  : undefined,
+                formattedAddress:
+                  cityName && region && cityName !== region
+                    ? `${cityName}, ${region}`
+                    : cityName || region,
+              }
             }
           }
         } catch {
-          // fall back to WorldCity name
+          // keep neutral fallback
         }
       }
 
-      setGPSLocation({
-        cityId: city.id,
-        lat,
-        lng,
-        cityName: resolvedName,
-        countryCode,
-        flag,
-      })
+      setGPSLocation(resolved)
 
-      // Sync location to backend for the user's profile
+      // Sync location to backend for the user's profile (geo + display fields)
+      const displayCity = resolved.city === 'Selected area' ? undefined : resolved.city
       if (user?.role === 'WORKER') {
-        workersApi.updateLocation(lat, lng).catch(() => {})
+        workersApi
+          .updateLocation(lat, lng, displayCity, resolved.state, resolved.country)
+          .catch(() => {})
       } else if (user?.role === 'SALON') {
-        salonsApi.updateLocation(lat, lng).catch(() => {})
+        salonsApi
+          .updateLocation(lat, lng, displayCity, resolved.state, resolved.country)
+          .catch(() => {})
       }
 
       setStatus('granted')

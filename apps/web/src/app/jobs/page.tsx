@@ -20,6 +20,13 @@ const SPECIALTIES = ALL_SPECIALTIES.slice(0, 20)
 
 const CITY_PRESETS = WORLD_CITIES.map((c) => ({ cityId: c.id, label: `${c.flag} ${c.name}`, lat: c.lat, lng: c.lng }))
 
+const STATUS_OPTIONS = [
+  { value: undefined, label: 'All' },
+  { value: 'URGENT', label: 'Urgent' },
+  { value: 'HOT', label: 'Hot' },
+  { value: 'NEW', label: 'New' },
+] as const
+
 const SKELETON_COUNT = 9
 
 export default function JobsPage() {
@@ -32,6 +39,7 @@ export default function JobsPage() {
   const isSalon = user?.role === 'SALON'
 
   const [selectedSpecialty, setSelectedSpecialty] = useState<string | undefined>()
+  const [selectedStatus, setSelectedStatus] = useState<string | undefined>()
   const [salonId, setSalonId] = useState<string | undefined>()
 
   useEffect(() => {
@@ -40,7 +48,7 @@ export default function JobsPage() {
       .then((salon) => {
         setSalonId(salon.id)
         if (!useLocationStore.getState().lat) {
-          const preset = CITY_PRESETS.find((c) => c.cityId === salon.cityId) ?? CITY_PRESETS[0]!
+          const preset = CITY_PRESETS.find((c) => c.label.includes(salon.city ?? '')) ?? CITY_PRESETS[0]!
           setLocation({ cityId: preset.cityId, lat: preset.lat, lng: preset.lng, cityName: preset.label })
         }
       })
@@ -48,7 +56,7 @@ export default function JobsPage() {
   }, [isSalon, setLocation])
 
   const { jobs, isLoading, isLoadingMore, hasMore, error, refresh, loadMore } =
-    useJobFeed({ specialty: selectedSpecialty, salonId })
+    useJobFeed({ specialty: selectedSpecialty, salonId, status: selectedStatus })
 
   const sentinelRef = useRef<HTMLDivElement>(null)
 
@@ -69,6 +77,10 @@ export default function JobsPage() {
 
   const handleToggleSpecialty = useCallback((s: string) => {
     setSelectedSpecialty((prev) => (prev === s ? undefined : s))
+  }, [])
+
+  const handleToggleStatus = useCallback((status: string) => {
+    setSelectedStatus((prev) => (prev === status ? undefined : status))
   }, [])
 
   const handleJobClick = useCallback(
@@ -182,6 +194,43 @@ export default function JobsPage() {
                       }}
                     >
                       {city.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 24 }}>
+              <p
+                style={{
+                  color: T.text.secondary,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  margin: '0 0 10px 0',
+                }}
+              >
+                Status
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {STATUS_OPTIONS.map((o) => {
+                  const active = selectedStatus === o.value
+                  return (
+                    <button
+                      key={o.label}
+                      onClick={() => handleToggleStatus(o.value as string)}
+                      style={{
+                        backgroundColor: active ? T.brand.primary : T.bg.elevated,
+                        border: `1px solid ${active ? T.brand.primary : T.border.default}`,
+                        color: active ? '#FFFFFF' : T.text.secondary,
+                        borderRadius: 99,
+                        padding: '5px 12px',
+                        fontSize: 12,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {o.label}
                     </button>
                   )
                 })}

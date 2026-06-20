@@ -32,7 +32,7 @@ export class WorkersService {
       data: { ...dto },
     })
     if (dto.availability != null) {
-      await this.redis.delByPattern(`nearby:${updated.cityId}:*`)
+      await this.redis.delByPattern(`nearby:*`)
     }
     return updated
   }
@@ -40,14 +40,14 @@ export class WorkersService {
   async updateAvailability(userId: string, dto: UpdateAvailabilityDto) {
     const profile = await this.prisma.workerProfile.findUnique({
       where: { userId },
-      select: { id: true, cityId: true },
+      select: { id: true },
     })
     if (!profile) throw new NotFoundException('Worker profile not found')
     const updated = await this.prisma.workerProfile.update({
       where: { userId },
       data: { availability: dto.availability },
     })
-    await this.redis.delByPattern(`nearby:${profile.cityId}:*`)
+    await this.redis.delByPattern(`nearby:*`)
     return updated
   }
 
@@ -55,16 +55,13 @@ export class WorkersService {
     await this.assertExists(userId)
     await this.prisma.$executeRaw`
       UPDATE "WorkerProfile"
-      SET location = ST_SetSRID(ST_MakePoint(${dto.lng}, ${dto.lat}), 4326)::geography
+      SET location = ST_SetSRID(ST_MakePoint(${dto.lng}, ${dto.lat}), 4326)::geography,
+          city = ${dto.city ?? null},
+          state = ${dto.state ?? null},
+          country = ${dto.country ?? null}
       WHERE "userId" = ${userId}
     `
-    const profile = await this.prisma.workerProfile.findUnique({
-      where: { userId },
-      select: { cityId: true },
-    })
-    if (profile?.cityId) {
-      await this.redis.delByPattern(`nearby:${profile.cityId}:*`)
-    }
+    await this.redis.delByPattern(`nearby:*`)
   }
 
   async getMyProfile(userId: string) {

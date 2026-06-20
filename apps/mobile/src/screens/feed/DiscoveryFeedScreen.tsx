@@ -37,10 +37,12 @@ const SKELETON_COUNT = 6
 export default function DiscoveryFeedScreen() {
   const { bottom } = useSafeAreaInsets()
   const { theme } = useTheme()
-  const cityId = useLocationStore((s) => s.cityId)
-  const cityName = useLocationStore((s) => s.cityName)
+  const lat = useLocationStore((s) => s.lat)
+  const lng = useLocationStore((s) => s.lng)
+  const city = useLocationStore((s) => s.city)
   const isGPSLocation = useLocationStore((s) => s.isGPSLocation)
   const radiusMiles = useLocationStore((s) => s.radiusMiles)
+  const hasLocation = lat != null && lng != null
 
   const { requestLocation, status } = useDeviceLocation()
 
@@ -95,14 +97,14 @@ export default function DiscoveryFeedScreen() {
   }, [])
 
   // Show real reverse-geocoded name (e.g. "Atlanta, GA") — fall back to generic label
-  const cityLabel = cityName ?? (isGPSLocation ? 'Near you' : 'Set location')
+  const cityLabel = city ?? (isGPSLocation ? 'Near you' : 'Set location')
 
   const openLocationModal = useCallback(() => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     setLocationModalVisible(true)
   }, [])
 
-  if (!cityId) {
+  if (!hasLocation) {
     return (
       <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]}>
         <View style={styles.headerSection}>
@@ -157,7 +159,9 @@ export default function DiscoveryFeedScreen() {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         {/* ── Compact title bar ── */}
         <View style={[styles.titleBar, { borderBottomColor: theme.border.subtle }]}>
-          <Text style={[styles.serifTitle, { color: theme.text.primary }]}>Discover</Text>
+          <View style={styles.titleWrap}>
+            <Text style={[styles.serifTitle, { color: theme.text.primary }]} numberOfLines={1}>Discover</Text>
+          </View>
           <View style={styles.headerRight}>
             <TouchableOpacity
               onPress={openLocationModal}
@@ -405,25 +409,27 @@ const styles = StyleSheet.create({
   titleBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  titleWrap: {
+    flex: 1,            // fills all space left after headerRight takes its natural size
+    minWidth: 0,
   },
   serifTitle: {
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
     fontSize: 34,
     fontWeight: '900',
     letterSpacing: -0.5,
-    flexShrink: 0,    // never compress — "Discover" must always be fully visible
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    flexShrink: 1,    // yield space to title if screen is narrow
-    minWidth: 0,
+    flexShrink: 0,    // right controls never compress — pill text shrinks instead
+    marginLeft: 8,
   },
   locationPill: {
     flexDirection: 'row',

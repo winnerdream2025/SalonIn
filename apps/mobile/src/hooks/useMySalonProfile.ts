@@ -32,7 +32,7 @@ export function useMySalonProfile(): MySalonProfileState {
         setSalon(data)
 
         const jobsResult = await jobsApi
-          .list({ cityId: data.cityId, salonId: data.id })
+          .list({ salonId: data.id })
           .catch(() => ({ data: [] as JobPostCardData[] }))
 
         if (!cancelled) setJobs(jobsResult.data)
