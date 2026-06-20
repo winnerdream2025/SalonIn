@@ -24,6 +24,16 @@ export interface UpdateWorkerPayload {
   rateNote?: string | undefined
   employmentTypes?: string[] | undefined
   licenseNumber?: string | undefined
+  workerPayType?: string | undefined
+  payMin?: number | undefined
+  payMax?: number | undefined
+  payPercentage?: number | undefined
+  seatRate?: number | undefined
+  availabilitySchedule?: {
+    days: string[]
+    startTime: string
+    endTime: string
+  } | undefined
 }
 
 export interface AddPortfolioItemInput {

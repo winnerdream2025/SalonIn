@@ -20,5 +20,11 @@ export {
   COMMISSION_SPLITS,
   RENTAL_FREQUENCIES,
   buildPayString,
+  WORKER_PAY_TYPES,
+  JOB_PAY_TYPES,
+  PERCENTAGE_PRESETS,
+  SEAT_RATE_PRESETS,
+  buildWorkerPayString,
+  buildJobPayString,
 } from './compensation'
-export type { PayType, RentalFrequency } from './compensation'
+export type { PayType, RentalFrequency, WorkerPayType, JobPayType } from './compensation'

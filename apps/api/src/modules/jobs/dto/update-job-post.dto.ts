@@ -65,4 +65,37 @@ export class UpdateJobPostDto {
   @IsOptional()
   @IsDateString()
   availableFrom?: string
+
+  @IsOptional()
+  @IsIn(['HOURLY', 'PERCENTAGE', 'SEAT', 'CUSTOM'])
+  jobPayType?: string
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(10000)
+  payMin?: number
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(10000)
+  payMax?: number
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  payPercentage?: number
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(10000)
+  seatRate?: number
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  payNote?: string
 }

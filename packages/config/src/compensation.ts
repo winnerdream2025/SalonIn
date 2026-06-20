@@ -1,3 +1,5 @@
+// ─── Legacy job-post pay types (kept for backward compat) ────────────────────
+
 export type PayType =
   | 'COMMISSION'
   | 'BOOTH_RENTAL'
@@ -68,6 +70,95 @@ export function buildPayString(opts: {
       return opts.rate ? `$${opts.rate}/day` : 'Daily Rate'
     case 'WEEKLY':
       return opts.rate ? `$${opts.rate}/wk` : 'Weekly Rate'
+    case 'CUSTOM':
+      return opts.customText?.trim() || 'Pay TBD'
+  }
+}
+
+// ─── Structured 4-type pay system ─────────────────────────────────────────────
+// Used by both worker profiles and job posts.
+// Values are stored as typed columns (payType, payMin, payMax, payPercentage,
+// seatRate) alongside the legacy display string for backward compatibility.
+
+export type WorkerPayType = 'HOURLY' | 'PERCENTAGE' | 'SEAT' | 'CUSTOM'
+export type JobPayType    = 'HOURLY' | 'PERCENTAGE' | 'SEAT' | 'CUSTOM'
+
+export const WORKER_PAY_TYPES: {
+  value: WorkerPayType
+  label: string
+  description: string
+  icon: string
+}[] = [
+  { value: 'HOURLY',     label: 'Hourly Rate', description: 'Min/max rate per hour',          icon: 'time-outline' },
+  { value: 'PERCENTAGE', label: 'Service %',   description: '% of service fee you keep',      icon: 'pie-chart-outline' },
+  { value: 'SEAT',       label: 'Seat Pay',    description: 'Fixed amount per client seated', icon: 'cut-outline' },
+  { value: 'CUSTOM',     label: 'Custom',      description: 'Describe your own arrangement',  icon: 'create-outline' },
+]
+
+export const JOB_PAY_TYPES: {
+  value: JobPayType
+  label: string
+  description: string
+}[] = [
+  { value: 'HOURLY',     label: 'Hourly Rate',   description: 'Rate per hour (range)' },
+  { value: 'PERCENTAGE', label: 'Commission %',  description: '% of service fee' },
+  { value: 'SEAT',       label: 'Seat Pay',      description: 'Fixed amount per client' },
+  { value: 'CUSTOM',     label: 'Custom',        description: 'Custom pay arrangement' },
+]
+
+export const PERCENTAGE_PRESETS: { value: number; label: string; sub: string }[] = [
+  { value: 50, label: '50%', sub: 'Half the fee' },
+  { value: 55, label: '55%', sub: '' },
+  { value: 60, label: '60%', sub: '' },
+  { value: 65, label: '65%', sub: '' },
+  { value: 70, label: '70%', sub: 'Most common' },
+  { value: 75, label: '75%', sub: '' },
+  { value: 80, label: '80%', sub: '' },
+]
+
+export const SEAT_RATE_PRESETS: number[] = [5, 10, 15, 20, 25, 30, 40, 50]
+
+export function buildWorkerPayString(opts: {
+  payType: WorkerPayType
+  payMin?: number | null
+  payMax?: number | null
+  payPercentage?: number | null
+  seatRate?: number | null
+  customText?: string | null
+}): string {
+  switch (opts.payType) {
+    case 'HOURLY':
+      if (opts.payMin && opts.payMax) return `$${opts.payMin} – $${opts.payMax}/hr`
+      if (opts.payMin) return `From $${opts.payMin}/hr`
+      if (opts.payMax) return `Up to $${opts.payMax}/hr`
+      return 'Hourly'
+    case 'PERCENTAGE':
+      return opts.payPercentage ? `${opts.payPercentage}% of service` : 'Service %'
+    case 'SEAT':
+      return opts.seatRate ? `$${opts.seatRate}/seat` : 'Seat Pay'
+    case 'CUSTOM':
+      return opts.customText?.trim() || 'Pay TBD'
+  }
+}
+
+export function buildJobPayString(opts: {
+  payType: JobPayType
+  payMin?: number | null
+  payMax?: number | null
+  payPercentage?: number | null
+  seatRate?: number | null
+  customText?: string | null
+}): string {
+  switch (opts.payType) {
+    case 'HOURLY':
+      if (opts.payMin && opts.payMax) return `$${opts.payMin} – $${opts.payMax}/hr`
+      if (opts.payMin) return `From $${opts.payMin}/hr`
+      if (opts.payMax) return `Up to $${opts.payMax}/hr`
+      return 'Hourly'
+    case 'PERCENTAGE':
+      return opts.payPercentage ? `${opts.payPercentage}% Commission` : 'Commission'
+    case 'SEAT':
+      return opts.seatRate ? `$${opts.seatRate}/seat` : 'Seat Pay'
     case 'CUSTOM':
       return opts.customText?.trim() || 'Pay TBD'
   }

@@ -42,6 +42,12 @@ export class JobsService {
         spaceAmenities: dto.spaceAmenities ?? [],
         rentalDeposit: dto.rentalDeposit,
         availableFrom: dto.availableFrom ? new Date(dto.availableFrom) : undefined,
+        jobPayType: dto.jobPayType,
+        payMin: dto.payMin,
+        payMax: dto.payMax,
+        payPercentage: dto.payPercentage,
+        seatRate: dto.seatRate,
+        payNote: dto.payNote,
       },
     })
 

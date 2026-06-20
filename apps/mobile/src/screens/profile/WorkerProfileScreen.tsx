@@ -13,13 +13,21 @@ import { router, useLocalSearchParams } from 'expo-router'
 import * as Haptics from 'expo-haptics'
 import { Ionicons } from '@expo/vector-icons'
 import { Avatar, Text, AvailabilityBadge, PortfolioGrid, Skeleton, useTheme } from '@salonin/ui'
-import type { PortfolioItem } from '@salonin/types'
+import type { PortfolioItem, AvailabilitySchedule } from '@salonin/types'
 import { formatExperience } from '@salonin/utils'
 import { getCityLabel } from '@salonin/config'
 import { useWorkerProfile } from '../../hooks/useWorkerProfile'
 import { useAuthStore } from '../../store/authStore'
 import { messagesApi } from '@salonin/api-client'
 import { useCanReview } from '../../hooks/useReviews'
+
+function formatTime12(t: string): string {
+  const [hStr = '0', mStr = '00'] = t.split(':')
+  const h = parseInt(hStr, 10)
+  const period = h < 12 ? 'AM' : 'PM'
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h
+  return `${h12}:${mStr} ${period}`
+}
 
 export default function WorkerProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
@@ -196,6 +204,28 @@ export default function WorkerProfileScreen() {
                   <Text style={[styles.specPillText, { color: theme.text.secondary }]}>{s}</Text>
                 </View>
               ))}
+            </View>
+          </View>
+        )}
+
+        {/* ── Schedule ── */}
+        {profile.availabilitySchedule && profile.availabilitySchedule.days.length > 0 && (
+          <View style={[styles.section, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
+            <Text style={[styles.sectionLabel, { color: theme.text.tertiary }]}>Schedule</Text>
+            <View style={styles.pillGrid}>
+              {profile.availabilitySchedule.days.map((day) => (
+                <View key={day} style={styles.schedDayChip}>
+                  <Text style={styles.schedDayText}>{day}</Text>
+                </View>
+              ))}
+            </View>
+            <View style={styles.schedTimeRow}>
+              <Ionicons name="time-outline" size={14} color="#D85A30" />
+              <Text style={[styles.schedTimeText, { color: theme.text.secondary }]}>
+                {formatTime12((profile.availabilitySchedule as AvailabilitySchedule).startTime)}
+                {' – '}
+                {formatTime12((profile.availabilitySchedule as AvailabilitySchedule).endTime)}
+              </Text>
             </View>
           </View>
         )}
@@ -469,6 +499,28 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  schedDayChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    backgroundColor: 'rgba(216,90,48,0.10)',
+    borderColor: 'rgba(216,90,48,0.3)',
+  },
+  schedDayText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#D85A30',
+  },
+  schedTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  schedTimeText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
   ctaBar: {
     position: 'absolute',
     bottom: 0,

@@ -3,6 +3,8 @@ import {
   IsArray,
   IsIn,
   IsInt,
+  IsNumber,
+  IsObject,
   IsOptional,
   IsString,
   IsUrl,
@@ -80,4 +82,40 @@ export class UpdateWorkerProfileDto {
   @IsString()
   @MaxLength(50)
   licenseNumber?: string
+
+  @IsOptional()
+  @IsObject()
+  availabilitySchedule?: {
+    days: string[]
+    startTime: string
+    endTime: string
+  }
+
+  @IsOptional()
+  @IsIn(['HOURLY', 'PERCENTAGE', 'SEAT', 'CUSTOM'])
+  workerPayType?: string
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(10000)
+  payMin?: number
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(10000)
+  payMax?: number
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  payPercentage?: number
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(10000)
+  seatRate?: number
 }

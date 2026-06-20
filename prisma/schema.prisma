@@ -130,10 +130,16 @@ model WorkerProfile {
   expectedPay     String?
   rateRange       String?
   rateNote        String?
+  workerPayType   String?
+  payMin          Float?
+  payMax          Float?
+  payPercentage   Float?
+  seatRate        Float?
   employmentTypes EmploymentType[]
   isVerified      Boolean          @default(false)
   stripeSessionId String?
-  licenseNumber   String?
+  licenseNumber        String?
+  availabilitySchedule Json?
   cityId          String
   rating          Float            @default(0)
   reviewCount     Int              @default(0)
@@ -184,6 +190,12 @@ model JobPost {
   spaceAmenities  String[]
   rentalDeposit   Float?
   availableFrom   DateTime?
+  jobPayType      String?
+  payMin          Float?
+  payMax          Float?
+  payPercentage   Float?
+  seatRate        Float?
+  payNote         String?
 
   applications JobApplication[]
   savedBy       SavedJob[]

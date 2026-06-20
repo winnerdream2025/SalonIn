@@ -3,6 +3,7 @@ import {
   View,
   ScrollView,
   TouchableOpacity,
+  Modal,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
@@ -18,8 +19,10 @@ import { router } from 'expo-router'
 import * as Haptics from 'expo-haptics'
 import { Text, Button, useTheme } from '@salonin/ui'
 import { Availability } from '@salonin/types'
+import type { AvailabilitySchedule } from '@salonin/types'
 import { workersApi, parseApiError } from '@salonin/api-client'
-import { BEAUTY_SPECIALTIES } from '@salonin/config'
+import { BEAUTY_SPECIALTIES, WORKER_PAY_TYPES, PERCENTAGE_PRESETS, SEAT_RATE_PRESETS, buildWorkerPayString } from '@salonin/config'
+import type { WorkerPayType } from '@salonin/config'
 import { useMyWorkerProfile } from '../../hooks/useWorkerProfile'
 import { useMediaUpload } from '../../hooks/useMediaUpload'
 
@@ -52,6 +55,27 @@ const AVAIL_OPTIONS: { value: Availability; label: string; sub: string; color: s
 ]
 
 const RADIUS_PRESETS = [5, 10, 15, 25, 50, 100]
+
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const
+
+const TIME_OPTIONS: string[] = (() => {
+  const opts: string[] = []
+  for (let h = 5; h <= 23; h++) {
+    for (const m of [0, 30]) {
+      if (h === 23 && m === 30) break
+      opts.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`)
+    }
+  }
+  return opts
+})()
+
+function formatTime(t: string): string {
+  const [hStr = '0', mStr = '00'] = t.split(':')
+  const h = parseInt(hStr, 10)
+  const period = h < 12 ? 'AM' : 'PM'
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h
+  return `${h12}:${mStr} ${period}`
+}
 
 const COMPLETION_STEPS = ['Photo', 'Bio', 'Skills', 'Exp.', 'Status']
 
@@ -259,11 +283,19 @@ export default function EditProfileScreen() {
   const [availability,     setAvailability]     = useState<Availability>(Availability.NOW)
   const [photoUrl,         setPhotoUrl]         = useState<string | null>(null)
   const [radiusMiles,      setRadiusMiles]      = useState(15)
-  const [rateMin,          setRateMin]          = useState('')
-  const [rateMax,          setRateMax]          = useState('')
+  const [workerPayType,    setWorkerPayType]    = useState<WorkerPayType>('HOURLY')
+  const [payMin,           setPayMin]           = useState('')
+  const [payMax,           setPayMax]           = useState('')
+  const [payPercentage,    setPayPercentage]    = useState<number | null>(null)
+  const [seatRate,         setSeatRate]         = useState('')
+  const [payCustomText,    setPayCustomText]    = useState('')
   const [rateNote,         setRateNote]         = useState('')
   const [isSaving,         setIsSaving]         = useState(false)
   const [openSection,      setOpenSection]      = useState<string | null>(null)
+  const [availScheduleDays, setAvailScheduleDays] = useState<string[]>([])
+  const [availStartTime,    setAvailStartTime]    = useState('09:00')
+  const [availEndTime,      setAvailEndTime]      = useState('17:00')
+  const [timePickerFor,     setTimePickerFor]     = useState<'start' | 'end' | null>(null)
 
   useEffect(() => {
     if (!profile) return
@@ -275,10 +307,25 @@ export default function EditProfileScreen() {
     setPhotoUrl(profile.photoUrl)
     setLicenseNumber((profile as { licenseNumber?: string }).licenseNumber ?? '')
     setRadiusMiles((profile as { radiusMiles?: number }).radiusMiles ?? 15)
-    const rr    = (profile as { rateRange?: string }).rateRange ?? ''
-    const match = rr.match(/\$(\d+)\s*[–-]\s*\$(\d+)/)
-    if (match) { setRateMin(match[1]!); setRateMax(match[2]!) }
-    setRateNote((profile as { rateNote?: string }).rateNote ?? '')
+    const p = profile as { workerPayType?: string; payMin?: number | null; payMax?: number | null; payPercentage?: number | null; seatRate?: number | null; rateRange?: string; rateNote?: string; expectedPay?: string }
+    if (p.workerPayType) {
+      setWorkerPayType(p.workerPayType as WorkerPayType)
+      setPayMin(p.payMin != null ? String(p.payMin) : '')
+      setPayMax(p.payMax != null ? String(p.payMax) : '')
+      setPayPercentage(p.payPercentage ?? null)
+      setSeatRate(p.seatRate != null ? String(p.seatRate) : '')
+    } else {
+      const rr    = p.rateRange ?? ''
+      const match = rr.match(/\$(\d+)\s*[–-]\s*\$(\d+)/)
+      if (match) { setPayMin(match[1]!); setPayMax(match[2]!) }
+    }
+    setRateNote(p.rateNote ?? '')
+    if (profile.availabilitySchedule) {
+      const sched = profile.availabilitySchedule as AvailabilitySchedule
+      setAvailScheduleDays(sched.days)
+      setAvailStartTime(sched.startTime)
+      setAvailEndTime(sched.endTime)
+    }
     const firstIncomplete =
       profile.specialties.length === 0 ? 'specialties'
       : profile.experienceYears === 0  ? 'experience'
@@ -304,6 +351,11 @@ export default function EditProfileScreen() {
     setOpenSection((s) => (s === id ? null : id))
   }, [])
 
+  const toggleDay = useCallback((day: string) => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    setAvailScheduleDays((prev) => prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day])
+  }, [])
+
   const toggleSpecialty = useCallback((sub: string) => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     setSpecialties((prev) => prev.includes(sub) ? prev.filter((s) => s !== sub) : [...prev, sub])
@@ -319,7 +371,17 @@ export default function EditProfileScreen() {
   const doSave = useCallback(async () => {
     setIsSaving(true)
     try {
-      const rateRange = rateMin && rateMax ? `$${rateMin} – $${rateMax} /hr` : undefined
+      const resolvedPayMin = payMin ? Number(payMin) : undefined
+      const resolvedPayMax = payMax ? Number(payMax) : undefined
+      const resolvedSeatRate = seatRate ? Number(seatRate) : undefined
+      const rateRange = buildWorkerPayString({
+        payType: workerPayType,
+        payMin: resolvedPayMin,
+        payMax: resolvedPayMax,
+        payPercentage,
+        seatRate: resolvedSeatRate,
+        customText: payCustomText.trim(),
+      })
       await workersApi.updateProfile({
         name: name.trim(),
         bio: bio.trim() || undefined,
@@ -330,6 +392,14 @@ export default function EditProfileScreen() {
         rateRange,
         rateNote: rateNote.trim() || undefined,
         availability,
+        workerPayType,
+        payMin: resolvedPayMin,
+        payMax: resolvedPayMax,
+        payPercentage: payPercentage ?? undefined,
+        seatRate: resolvedSeatRate,
+        availabilitySchedule: availScheduleDays.length > 0
+          ? { days: availScheduleDays, startTime: availStartTime, endTime: availEndTime }
+          : undefined,
       })
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
       router.back()
@@ -338,7 +408,7 @@ export default function EditProfileScreen() {
     } finally {
       setIsSaving(false)
     }
-  }, [name, bio, specialties, experienceYears, licenseNumber, radiusMiles, rateMin, rateMax, rateNote, availability])
+  }, [name, bio, specialties, experienceYears, licenseNumber, radiusMiles, workerPayType, payMin, payMax, payPercentage, seatRate, payCustomText, rateNote, availability, availScheduleDays, availStartTime, availEndTime])
 
   const handleSave = useCallback(async () => {
     if (!name.trim()) {
@@ -671,51 +741,215 @@ export default function EditProfileScreen() {
                 )
               })}
             </View>
+
+            {/* ── Weekly Schedule ── */}
+            <View style={[styles.subSection, { borderTopColor: theme.border.subtle }]}>
+              <Text style={[styles.subLabel, { color: theme.text.tertiary }]}>Weekly Schedule</Text>
+              <Text style={{ fontSize: 12, color: theme.text.tertiary, marginTop: -4 }}>
+                Optional — set your typical working days &amp; hours
+              </Text>
+              <View style={styles.dayGrid}>
+                {DAYS.map((day) => {
+                  const active = availScheduleDays.includes(day)
+                  return (
+                    <TouchableOpacity
+                      key={day}
+                      onPress={() => toggleDay(day)}
+                      style={[
+                        styles.dayChip,
+                        {
+                          backgroundColor: active ? '#D85A30' : theme.bg.elevated,
+                          borderColor: active ? '#D85A30' : theme.border.default,
+                        },
+                      ]}
+                    >
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: active ? '#FFFFFF' : theme.text.secondary }}>
+                        {day}
+                      </Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+              {availScheduleDays.length > 0 && (
+                <View style={styles.scheduleTimeRow}>
+                  <TouchableOpacity
+                    onPress={() => setTimePickerFor('start')}
+                    style={[styles.timePickerBtn, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}
+                  >
+                    <Ionicons name="time-outline" size={14} color={theme.text.tertiary} />
+                    <Text style={{ color: theme.text.primary, fontWeight: '600', fontSize: 14, flex: 1 }}>
+                      {formatTime(availStartTime)}
+                    </Text>
+                    <Ionicons name="chevron-down" size={13} color={theme.text.tertiary} />
+                  </TouchableOpacity>
+                  <Text style={{ color: theme.text.tertiary, fontSize: 16, paddingHorizontal: 4 }}>–</Text>
+                  <TouchableOpacity
+                    onPress={() => setTimePickerFor('end')}
+                    style={[styles.timePickerBtn, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}
+                  >
+                    <Ionicons name="time-outline" size={14} color={theme.text.tertiary} />
+                    <Text style={{ color: theme.text.primary, fontWeight: '600', fontSize: 14, flex: 1 }}>
+                      {formatTime(availEndTime)}
+                    </Text>
+                    <Ionicons name="chevron-down" size={13} color={theme.text.tertiary} />
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
           </AccordionSection>
 
           {/* ── Rate accordion ─────────────────────────────── */}
           <AccordionSection
             title="Rate"
-            subtitle={rateMin && rateMax ? `$${rateMin} – $${rateMax} /hr` : 'Set your hourly rate range'}
+            subtitle={buildWorkerPayString({ payType: workerPayType, payMin: payMin ? Number(payMin) : null, payMax: payMax ? Number(payMax) : null, payPercentage, seatRate: seatRate ? Number(seatRate) : null, customText: payCustomText })}
             icon="cash-outline"
-            isComplete={!!(rateMin && rateMax)}
+            isComplete={workerPayType === 'HOURLY' ? !!(payMin || payMax) : workerPayType === 'PERCENTAGE' ? payPercentage != null : workerPayType === 'SEAT' ? !!seatRate : !!payCustomText.trim()}
             isOpen={openSection === 'rate'}
             onPress={() => toggleSection('rate')}
           >
-            <Text style={[styles.sectionHint, { color: theme.text.secondary }]}>Hourly rate range</Text>
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.subLabel, { color: theme.text.tertiary, marginBottom: 6 }]}>Min</Text>
-                <View style={[styles.rateInputWrap, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}>
-                  <Text style={{ fontSize: 17, color: theme.text.tertiary, fontWeight: '600' }}>$</Text>
-                  <TextInput
-                    value={rateMin}
-                    onChangeText={(t) => setRateMin(t.replace(/[^0-9]/g, ''))}
-                    placeholder="60"
-                    placeholderTextColor={theme.text.tertiary}
-                    keyboardType="number-pad"
-                    style={{ flex: 1, fontSize: 17, fontWeight: '700', color: theme.text.primary, paddingVertical: 0 }}
-                  />
-                </View>
-              </View>
-              <View style={{ alignSelf: 'flex-end', paddingBottom: 14 }}>
-                <Text style={{ color: theme.text.tertiary, fontSize: 16 }}>–</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.subLabel, { color: theme.text.tertiary, marginBottom: 6 }]}>Max</Text>
-                <View style={[styles.rateInputWrap, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}>
-                  <Text style={{ fontSize: 17, color: theme.text.tertiary, fontWeight: '600' }}>$</Text>
-                  <TextInput
-                    value={rateMax}
-                    onChangeText={(t) => setRateMax(t.replace(/[^0-9]/g, ''))}
-                    placeholder="120"
-                    placeholderTextColor={theme.text.tertiary}
-                    keyboardType="number-pad"
-                    style={{ flex: 1, fontSize: 17, fontWeight: '700', color: theme.text.primary, paddingVertical: 0 }}
-                  />
-                </View>
-              </View>
+            {/* Pay type selector */}
+            <Text style={[styles.sectionHint, { color: theme.text.secondary }]}>Pay type</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+              {WORKER_PAY_TYPES.map(({ value, label, icon }) => {
+                const active = workerPayType === value
+                return (
+                  <TouchableOpacity
+                    key={value}
+                    onPress={() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setWorkerPayType(value) }}
+                    activeOpacity={0.8}
+                    style={{
+                      flexDirection: 'row', alignItems: 'center', gap: 6,
+                      paddingHorizontal: 14, paddingVertical: 8,
+                      borderRadius: 20, borderWidth: 1.5,
+                      backgroundColor: active ? 'rgba(216,90,48,0.08)' : theme.bg.elevated,
+                      borderColor: active ? '#D85A30' : theme.border.default,
+                    }}
+                  >
+                    <Ionicons name={icon as React.ComponentProps<typeof Ionicons>['name']} size={14} color={active ? '#D85A30' : theme.text.tertiary} />
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: active ? '#D85A30' : theme.text.primary }}>{label}</Text>
+                  </TouchableOpacity>
+                )
+              })}
             </View>
+
+            {/* HOURLY: min / max inputs */}
+            {workerPayType === 'HOURLY' && (
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.subLabel, { color: theme.text.tertiary, marginBottom: 6 }]}>Min /hr</Text>
+                  <View style={[styles.rateInputWrap, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}>
+                    <Text style={{ fontSize: 17, color: theme.text.tertiary, fontWeight: '600' }}>$</Text>
+                    <TextInput
+                      value={payMin}
+                      onChangeText={(t) => setPayMin(t.replace(/[^0-9]/g, ''))}
+                      placeholder="60"
+                      placeholderTextColor={theme.text.tertiary}
+                      keyboardType="number-pad"
+                      style={{ flex: 1, fontSize: 17, fontWeight: '700', color: theme.text.primary, paddingVertical: 0 }}
+                    />
+                  </View>
+                </View>
+                <View style={{ alignSelf: 'flex-end', paddingBottom: 14 }}>
+                  <Text style={{ color: theme.text.tertiary, fontSize: 16 }}>–</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.subLabel, { color: theme.text.tertiary, marginBottom: 6 }]}>Max /hr</Text>
+                  <View style={[styles.rateInputWrap, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}>
+                    <Text style={{ fontSize: 17, color: theme.text.tertiary, fontWeight: '600' }}>$</Text>
+                    <TextInput
+                      value={payMax}
+                      onChangeText={(t) => setPayMax(t.replace(/[^0-9]/g, ''))}
+                      placeholder="120"
+                      placeholderTextColor={theme.text.tertiary}
+                      keyboardType="number-pad"
+                      style={{ flex: 1, fontSize: 17, fontWeight: '700', color: theme.text.primary, paddingVertical: 0 }}
+                    />
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* PERCENTAGE: preset chips */}
+            {workerPayType === 'PERCENTAGE' && (
+              <View>
+                <Text style={[styles.sectionHint, { color: theme.text.secondary, marginBottom: 8 }]}>% of service fee you keep</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  {PERCENTAGE_PRESETS.map(({ value, label, sub }) => {
+                    const active = payPercentage === value
+                    return (
+                      <TouchableOpacity
+                        key={value}
+                        onPress={() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setPayPercentage(value) }}
+                        activeOpacity={0.8}
+                        style={{
+                          alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10,
+                          borderRadius: 12, borderWidth: 1.5,
+                          backgroundColor: active ? 'rgba(216,90,48,0.08)' : theme.bg.elevated,
+                          borderColor: active ? '#D85A30' : theme.border.default,
+                          minWidth: 64,
+                        }}
+                      >
+                        <Text style={{ fontSize: 15, fontWeight: '800', color: active ? '#D85A30' : theme.text.primary }}>{label}</Text>
+                        {!!sub && <Text style={{ fontSize: 10, color: theme.text.tertiary, marginTop: 1 }}>{sub}</Text>}
+                      </TouchableOpacity>
+                    )
+                  })}
+                </View>
+              </View>
+            )}
+
+            {/* SEAT: preset + manual input */}
+            {workerPayType === 'SEAT' && (
+              <View>
+                <Text style={[styles.sectionHint, { color: theme.text.secondary, marginBottom: 8 }]}>Amount per client seated ($)</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+                  {SEAT_RATE_PRESETS.map((val) => {
+                    const active = seatRate === String(val)
+                    return (
+                      <TouchableOpacity
+                        key={val}
+                        onPress={() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSeatRate(String(val)) }}
+                        activeOpacity={0.8}
+                        style={{
+                          paddingHorizontal: 14, paddingVertical: 8,
+                          borderRadius: 12, borderWidth: 1.5,
+                          backgroundColor: active ? 'rgba(216,90,48,0.08)' : theme.bg.elevated,
+                          borderColor: active ? '#D85A30' : theme.border.default,
+                        }}
+                      >
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: active ? '#D85A30' : theme.text.primary }}>${val}</Text>
+                      </TouchableOpacity>
+                    )
+                  })}
+                </View>
+                <View style={[styles.rateInputWrap, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}>
+                  <Text style={{ fontSize: 17, color: theme.text.tertiary, fontWeight: '600' }}>$</Text>
+                  <TextInput
+                    value={seatRate}
+                    onChangeText={(t) => setSeatRate(t.replace(/[^0-9.]/g, ''))}
+                    placeholder="Custom amount"
+                    placeholderTextColor={theme.text.tertiary}
+                    keyboardType="decimal-pad"
+                    style={{ flex: 1, fontSize: 17, fontWeight: '700', color: theme.text.primary, paddingVertical: 0 }}
+                  />
+                  <Text style={{ fontSize: 13, color: theme.text.tertiary }}>/seat</Text>
+                </View>
+              </View>
+            )}
+
+            {/* CUSTOM: free text */}
+            {workerPayType === 'CUSTOM' && (
+              <View>
+                <Text style={[styles.sectionHint, { color: theme.text.secondary, marginBottom: 8 }]}>Describe your arrangement</Text>
+                <TextInput
+                  value={payCustomText}
+                  onChangeText={setPayCustomText}
+                  placeholder="e.g. $300/week booth rent"
+                  placeholderTextColor={theme.text.tertiary}
+                  style={[styles.roundedInput, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default, color: theme.text.primary }]}
+                />
+              </View>
+            )}
 
             <View style={[styles.subSection, { borderTopColor: theme.border.subtle }]}>
               <Text style={[styles.sectionHint, { color: theme.text.secondary }]}>
@@ -790,6 +1024,61 @@ export default function EditProfileScreen() {
 
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* ── Time Picker Modal ── */}
+      <Modal
+        visible={timePickerFor !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setTimePickerFor(null)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setTimePickerFor(null)}
+        >
+          <View style={[styles.modalSheet, { backgroundColor: theme.bg.card }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: theme.border.subtle }]}>
+              <Text style={[styles.modalTitle, { color: theme.text.primary }]}>
+                {timePickerFor === 'start' ? 'Start Time' : 'End Time'}
+              </Text>
+              <TouchableOpacity onPress={() => setTimePickerFor(null)}>
+                <Ionicons name="close-circle" size={24} color={theme.text.tertiary} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 320 }}>
+              {TIME_OPTIONS.map((t) => {
+                const isSelected = timePickerFor === 'start' ? availStartTime === t : availEndTime === t
+                return (
+                  <TouchableOpacity
+                    key={t}
+                    onPress={() => {
+                      if (timePickerFor === 'start') setAvailStartTime(t)
+                      else setAvailEndTime(t)
+                      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                      setTimePickerFor(null)
+                    }}
+                    style={[
+                      styles.timeOption,
+                      { borderBottomColor: theme.border.subtle },
+                      isSelected && { backgroundColor: 'rgba(216,90,48,0.08)' },
+                    ]}
+                  >
+                    <Text style={{
+                      fontSize: 16,
+                      color: isSelected ? '#D85A30' : theme.text.primary,
+                      fontWeight: isSelected ? '700' : '400',
+                    }}>
+                      {formatTime(t)}
+                    </Text>
+                    {isSelected && <Ionicons name="checkmark" size={18} color="#D85A30" />}
+                  </TouchableOpacity>
+                )
+              })}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   )
 }
@@ -1083,5 +1372,68 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: 14,
     gap: 4,
+  },
+
+  // Weekly schedule
+  dayGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  dayChip: {
+    width: 44,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  scheduleTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  timePickerBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+
+  // Time picker modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingBottom: 32,
+    overflow: 'hidden',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  timeOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
 })

@@ -16,7 +16,8 @@ import * as Haptics from 'expo-haptics'
 import { JobPostCard, Text, useTheme } from '@salonin/ui'
 import type { CreateJobPostDto, JobPostCardData } from '@salonin/types'
 import { jobsApi, parseApiError } from '@salonin/api-client'
-import { ALL_SPECIALTIES, ALL_PROFESSIONALS } from '@salonin/config'
+import { ALL_SPECIALTIES, ALL_PROFESSIONALS, JOB_PAY_TYPES, PERCENTAGE_PRESETS, SEAT_RATE_PRESETS, buildJobPayString } from '@salonin/config'
+import type { JobPayType } from '@salonin/config'
 import { useLocationStore } from '../../store/locationStore'
 import { useAuthStore } from '../../store/authStore'
 
@@ -41,13 +42,6 @@ const EMPLOYMENT_TYPES: { value: string; label: string; sub: string }[] = [
   { value: 'FREELANCE',       label: 'Freelance',       sub: 'Independent contractor' },
 ]
 
-const PAY_TYPES: { value: string; label: string }[] = [
-  { value: 'Commission', label: 'Commission' },
-  { value: 'Hourly',     label: 'Hourly rate' },
-  { value: 'Daily',      label: 'Daily rate'  },
-  { value: 'Custom',     label: 'Custom'      },
-]
-
 const RENTAL_PAY_TYPES: { value: string; label: string }[] = [
   { value: 'Booth Rental',  label: 'Booth Rental' },
   { value: 'Chair Rental',  label: 'Chair Rental' },
@@ -59,15 +53,6 @@ const RENTAL_FREQ: { value: string; label: string }[] = [
   { value: 'day',   label: 'Per day' },
   { value: 'week',  label: 'Per week' },
   { value: 'month', label: 'Per month' },
-]
-
-const COMMISSION_SPLITS = [
-  { value: 50, label: '50/50', sub: 'Even split' },
-  { value: 55, label: '55/45', sub: 'You keep 55%' },
-  { value: 60, label: '60/40', sub: 'You keep 60%' },
-  { value: 65, label: '65/35', sub: 'You keep 65%' },
-  { value: 70, label: '70/30', sub: 'You keep 70%' },
-  { value: 75, label: '75/25', sub: 'You keep 75%' },
 ]
 
 const DURATIONS: { days: number; label: string }[] = [
@@ -88,11 +73,14 @@ export default function CreateJobPostScreen() {
   const [title, setTitle] = useState('')
   const [specialty, setSpecialty] = useState('')
   const [payStructure, setPayStructure] = useState('')
-  const [payType, setPayType] = useState('Commission')
+  const [jobPayType, setJobPayType] = useState<JobPayType>('HOURLY')
+  const [jobPayMin, setJobPayMin] = useState('')
+  const [jobPayMax, setJobPayMax] = useState('')
+  const [jobPayPercentage, setJobPayPercentage] = useState<number | null>(null)
+  const [jobSeatRate, setJobSeatRate] = useState('')
   const [rentalPayType, setRentalPayType] = useState('Booth Rental')
   const [rentalFreq, setRentalFreq] = useState('month')
   const [rateInput, setRateInput] = useState('')
-  const [commissionSplit, setCommissionSplit] = useState(60)
   const [selectedType, setSelectedType] = useState('FULL_TIME')
   const [isUrgent, setIsUrgent] = useState(false)
   const [description, setDescription] = useState('')
@@ -111,10 +99,15 @@ export default function CreateJobPostScreen() {
       if (rateInput.trim()) return `$${rateInput}/${rentalFreq} – ${rentalPayType}`
       return rentalPayType
     }
-    if (payType === 'Commission') return `${commissionSplit}/${100 - commissionSplit} Commission`
-    if (payType === 'Custom') return payStructure.trim() || 'Pay TBD'
-    return rateInput.trim() ? `$${rateInput}/${payType === 'Hourly' ? 'hr' : 'day'}` : 'Pay TBD'
-  }, [listingType, payType, rentalPayType, rateInput, rentalFreq, commissionSplit, payStructure])
+    return buildJobPayString({
+      payType: jobPayType,
+      payMin: jobPayMin ? Number(jobPayMin) : null,
+      payMax: jobPayMax ? Number(jobPayMax) : null,
+      payPercentage: jobPayPercentage,
+      seatRate: jobSeatRate ? Number(jobSeatRate) : null,
+      customText: payStructure,
+    })
+  }, [listingType, jobPayType, jobPayMin, jobPayMax, jobPayPercentage, jobSeatRate, rentalPayType, rateInput, rentalFreq, payStructure])
 
   const totalSteps = 3
 
@@ -144,8 +137,10 @@ export default function CreateJobPostScreen() {
     }
     if (step === 2) {
       if (listingType === 'JOB') {
-        if (payType === 'Custom' && !payStructure.trim()) { setError('Describe the pay arrangement'); return }
-        if ((payType === 'Hourly' || payType === 'Daily') && !rateInput.trim()) { setError('Enter a rate'); return }
+        if (jobPayType === 'CUSTOM' && !payStructure.trim()) { setError('Describe the pay arrangement'); return }
+        if (jobPayType === 'HOURLY' && !jobPayMin.trim() && !jobPayMax.trim()) { setError('Enter at least a min or max rate'); return }
+        if (jobPayType === 'PERCENTAGE' && jobPayPercentage == null) { setError('Select a commission %'); return }
+        if (jobPayType === 'SEAT' && !jobSeatRate.trim()) { setError('Enter a seat rate'); return }
       }
       if ((listingType === 'RENTAL' || listingType === 'SPACE') && rentalPayType !== 'Custom' && !rateInput.trim()) {
         setError('Enter the rental rate'); return
@@ -157,7 +152,7 @@ export default function CreateJobPostScreen() {
     } else {
       void handleSubmit()
     }
-  }, [step, listingType, title, specialty, payType, payStructure, rateInput, rentalPayType, totalSteps])
+  }, [step, listingType, title, specialty, jobPayType, jobPayMin, jobPayMax, jobPayPercentage, jobSeatRate, payStructure, rateInput, rentalPayType, totalSteps])
 
   const goBack = useCallback(async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
@@ -185,6 +180,13 @@ export default function CreateJobPostScreen() {
         isUrgent,
         cityId,
         expiresAt,
+        ...(listingType === 'JOB' ? {
+          jobPayType,
+          payMin: jobPayMin ? Number(jobPayMin) : undefined,
+          payMax: jobPayMax ? Number(jobPayMax) : undefined,
+          payPercentage: jobPayPercentage ?? undefined,
+          seatRate: jobSeatRate ? Number(jobSeatRate) : undefined,
+        } : {}),
         ...(listingType === 'SPACE' ? {
           spaceSize: spaceSize.trim() || undefined,
           spaceAmenities: spaceAmenities.split(',').map((s) => s.trim()).filter(Boolean),
@@ -379,12 +381,12 @@ export default function CreateJobPostScreen() {
                   <View style={styles.fieldGroup}>
                     <Text style={[styles.fieldLabel, { color: theme.text.secondary }]}>Pay Structure</Text>
                     <View style={styles.typeCardGrid}>
-                      {PAY_TYPES.map(({ value, label }) => {
-                        const active = payType === value
+                      {JOB_PAY_TYPES.map(({ value, label }) => {
+                        const active = jobPayType === value
                         return (
                           <TouchableOpacity
                             key={value}
-                            onPress={() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setPayType(value); setError(undefined) }}
+                            onPress={() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setJobPayType(value); setError(undefined) }}
                             style={[
                               styles.payCard,
                               {
@@ -401,16 +403,51 @@ export default function CreateJobPostScreen() {
                     </View>
                   </View>
 
-                  {payType === 'Commission' && (
+                  {/* HOURLY: min/max range */}
+                  {jobPayType === 'HOURLY' && (
                     <View style={styles.fieldGroup}>
-                      <Text style={[styles.fieldLabel, { color: theme.text.secondary }]}>Commission Split (worker / salon)</Text>
+                      <Text style={[styles.fieldLabel, { color: theme.text.secondary }]}>Hourly rate range</Text>
+                      <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+                        <View style={[styles.rateInputWrap, { flex: 1, backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}>
+                          <Text style={{ fontSize: 18, color: theme.text.secondary }}>$</Text>
+                          <TextInput
+                            value={jobPayMin}
+                            onChangeText={(v) => { setJobPayMin(v.replace(/[^0-9]/g, '')); setError(undefined) }}
+                            placeholder="Min"
+                            placeholderTextColor={theme.text.tertiary}
+                            keyboardType="number-pad"
+                            style={{ flex: 1, fontSize: 18, fontWeight: '700', color: theme.text.primary, paddingVertical: 0 }}
+                          />
+                          <Text style={{ fontSize: 12, color: theme.text.tertiary }}>/hr</Text>
+                        </View>
+                        <Text style={{ color: theme.text.tertiary, fontSize: 16 }}>–</Text>
+                        <View style={[styles.rateInputWrap, { flex: 1, backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}>
+                          <Text style={{ fontSize: 18, color: theme.text.secondary }}>$</Text>
+                          <TextInput
+                            value={jobPayMax}
+                            onChangeText={(v) => { setJobPayMax(v.replace(/[^0-9]/g, '')); setError(undefined) }}
+                            placeholder="Max"
+                            placeholderTextColor={theme.text.tertiary}
+                            keyboardType="number-pad"
+                            style={{ flex: 1, fontSize: 18, fontWeight: '700', color: theme.text.primary, paddingVertical: 0 }}
+                          />
+                          <Text style={{ fontSize: 12, color: theme.text.tertiary }}>/hr</Text>
+                        </View>
+                      </View>
+                    </View>
+                  )}
+
+                  {/* PERCENTAGE: preset chips */}
+                  {jobPayType === 'PERCENTAGE' && (
+                    <View style={styles.fieldGroup}>
+                      <Text style={[styles.fieldLabel, { color: theme.text.secondary }]}>Commission % (worker keeps)</Text>
                       <View style={styles.splitCards}>
-                        {COMMISSION_SPLITS.map(({ value, label, sub }) => {
-                          const active = commissionSplit === value
+                        {PERCENTAGE_PRESETS.map(({ value, label, sub }) => {
+                          const active = jobPayPercentage === value
                           return (
                             <TouchableOpacity
                               key={value}
-                              onPress={() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setCommissionSplit(value) }}
+                              onPress={() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setJobPayPercentage(value); setError(undefined) }}
                               style={[
                                 styles.splitCard,
                                 {
@@ -420,8 +457,8 @@ export default function CreateJobPostScreen() {
                               ]}
                               activeOpacity={0.8}
                             >
-                              <Text style={{ fontSize: 18, fontWeight: '800', color: active ? '#D85A30' : theme.text.primary }}>{label}</Text>
-                              <Text style={{ fontSize: 11, color: theme.text.tertiary, marginTop: 2 }}>{sub}</Text>
+                              <Text style={{ fontSize: 16, fontWeight: '800', color: active ? '#D85A30' : theme.text.primary }}>{label}</Text>
+                              {!!sub && <Text style={{ fontSize: 10, color: theme.text.tertiary, marginTop: 2 }}>{sub}</Text>}
                             </TouchableOpacity>
                           )
                         })}
@@ -429,31 +466,54 @@ export default function CreateJobPostScreen() {
                     </View>
                   )}
 
-                  {(payType === 'Hourly' || payType === 'Daily') && (
+                  {/* SEAT: preset + manual input */}
+                  {jobPayType === 'SEAT' && (
                     <View style={styles.fieldGroup}>
-                      <Text style={[styles.fieldLabel, { color: theme.text.secondary }]}>Rate ({payType === 'Hourly' ? 'per hour' : 'per day'})</Text>
+                      <Text style={[styles.fieldLabel, { color: theme.text.secondary }]}>Seat pay (per client)</Text>
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+                        {SEAT_RATE_PRESETS.map((val) => {
+                          const active = jobSeatRate === String(val)
+                          return (
+                            <TouchableOpacity
+                              key={val}
+                              onPress={() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setJobSeatRate(String(val)); setError(undefined) }}
+                              style={[
+                                styles.payCard,
+                                {
+                                  backgroundColor: active ? 'rgba(216,90,48,0.08)' : theme.bg.elevated,
+                                  borderColor: active ? '#D85A30' : theme.border.default,
+                                },
+                              ]}
+                              activeOpacity={0.8}
+                            >
+                              <Text style={{ fontSize: 13, fontWeight: '700', color: active ? '#D85A30' : theme.text.primary }}>${val}</Text>
+                            </TouchableOpacity>
+                          )
+                        })}
+                      </View>
                       <View style={[styles.rateInputWrap, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}>
                         <Text style={{ fontSize: 20, color: theme.text.secondary }}>$</Text>
                         <TextInput
-                          value={rateInput}
-                          onChangeText={(v) => { setRateInput(v); setError(undefined) }}
-                          placeholder="0"
+                          value={jobSeatRate}
+                          onChangeText={(v) => { setJobSeatRate(v.replace(/[^0-9.]/g, '')); setError(undefined) }}
+                          placeholder="Custom amount"
                           placeholderTextColor={theme.text.tertiary}
                           keyboardType="decimal-pad"
-                          style={{ flex: 1, fontSize: 22, fontWeight: '700', color: theme.text.primary, paddingVertical: 0 }}
+                          style={{ flex: 1, fontSize: 20, fontWeight: '700', color: theme.text.primary, paddingVertical: 0 }}
                         />
-                        <Text style={{ fontSize: 14, color: theme.text.tertiary }}>/{payType === 'Hourly' ? 'hr' : 'day'}</Text>
+                        <Text style={{ fontSize: 13, color: theme.text.tertiary }}>/seat</Text>
                       </View>
                     </View>
                   )}
 
-                  {payType === 'Custom' && (
+                  {/* CUSTOM: free text */}
+                  {jobPayType === 'CUSTOM' && (
                     <View style={styles.fieldGroup}>
                       <Text style={[styles.fieldLabel, { color: theme.text.secondary }]}>Describe the pay arrangement</Text>
                       <TextInput
                         value={payStructure}
                         onChangeText={(v) => { setPayStructure(v); setError(undefined) }}
-                        placeholder="e.g. Booth rent $300/week"
+                        placeholder="e.g. $400/week booth rent"
                         placeholderTextColor={theme.text.tertiary}
                         style={[styles.textInput, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default, color: theme.text.primary }]}
                       />

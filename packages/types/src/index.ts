@@ -1,4 +1,5 @@
 import type { Availability, EmploymentType, ListingType, Role, PortfolioItem, ReportType, AppStatus, ChatRequestStatus } from '@prisma/client'
+import type { WorkerPayType, JobPayType } from '@salonin/config'
 
 // ─── Prisma model re-exports ──────────────────────────────────────────────────
 
@@ -19,6 +20,22 @@ export type {
 // ─── Enum re-exports (runtime values) ────────────────────────────────────────
 
 export { Role, Availability, EmploymentType, ListingType, MediaType, AppStatus, ReportType, ReportStatus, Platform, ChatRequestStatus } from '@prisma/client'
+export type { WorkerPayType, JobPayType } from '@salonin/config'
+
+export interface AvailabilitySchedule {
+  days: string[]
+  startTime: string
+  endTime: string
+}
+
+export interface PayStructure {
+  payType: WorkerPayType | JobPayType
+  payMin?: number | null
+  payMax?: number | null
+  payPercentage?: number | null
+  seatRate?: number | null
+  payNote?: string | null
+}
 
 export type { UserDevice } from '@prisma/client'
 
@@ -50,6 +67,12 @@ export interface CreateJobPostDto {
   spaceAmenities?: string[]
   rentalDeposit?: number
   availableFrom?: string
+  jobPayType?: JobPayType
+  payMin?: number
+  payMax?: number
+  payPercentage?: number
+  seatRate?: number
+  payNote?: string
 }
 
 export interface UpdateAvailabilityDto {
@@ -94,6 +117,11 @@ export interface WorkerCardData {
   replyTimeMinutes?: number
   rateRange?: string
   rateNote?: string
+  workerPayType?: WorkerPayType | null
+  payMin?: number | null
+  payMax?: number | null
+  payPercentage?: number | null
+  seatRate?: number | null
   isSaved?: boolean
   bio: string | null
 }
@@ -144,6 +172,13 @@ export interface JobPostCardData {
   rentalDeposit?: number
   availableFrom?: string
   isSaved?: boolean
+  // Structured pay (optional)
+  jobPayType?: string | null
+  payMin?: number | null
+  payMax?: number | null
+  payPercentage?: number | null
+  seatRate?: number | null
+  payNote?: string | null
   // Geo (optional — only present when queried by lat/lng)
   distanceMiles?: number
 }
@@ -185,10 +220,16 @@ export interface WorkerProfileFull {
   expectedPay: string | null
   rateRange: string | null
   rateNote: string | null
+  workerPayType: string | null
+  payMin: number | null
+  payMax: number | null
+  payPercentage: number | null
+  seatRate: number | null
   rating: number
   reviewCount: number
   employmentTypes: EmploymentType[]
   licenseNumber: string | null
+  availabilitySchedule: AvailabilitySchedule | null
   portfolioItems: PortfolioItem[]
   user: {
     email: string
@@ -261,6 +302,12 @@ export interface JobPostDetail {
   spacePhotos: string[]
   rentalDeposit?: number | null
   availableFrom?: Date | null
+  jobPayType?: string | null
+  payMin?: number | null
+  payMax?: number | null
+  payPercentage?: number | null
+  seatRate?: number | null
+  payNote?: string | null
 }
 
 // ─── Application types ────────────────────────────────────────────────────────

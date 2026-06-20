@@ -21,7 +21,7 @@ import { Text, useTheme } from '@salonin/ui'
 import { useLocationStore, type RadiusMode } from '../store/locationStore'
 import { usePlaceSearch } from '../hooks/usePlaceSearch'
 import type { PlaceResult } from '../hooks/usePlaceSearch'
-import { fetchPlaceDetails } from '../utils/googlePlaces'
+import { fetchPlaceDetails, reverseGeocodeWithGoogle } from '../utils/googlePlaces'
 import { findNearestCity } from '@salonin/config'
 import { countryCodeToFlag } from '../utils/countryFlag'
 
@@ -49,6 +49,15 @@ export function RadiusEditorScreen({ visible, onClose, onApply }: Props) {
   })
 
   const [selectingId, setSelectingId] = useState<string | null>(null)
+  const [isApplying, setIsApplying] = useState(false)
+  const [currentCenter, setCurrentCenter] = useState({
+    latitude: location.lat ?? 38.9072,
+    longitude: location.lng ?? -77.0369,
+  })
+  // Tracks whether the next onRegionChangeComplete is from code (not user gesture)
+  const isProgrammaticPanRef = useRef(false)
+  const isFirstRegionChangeRef = useRef(true)
+
   const { results: searchResults, isLoading: isSearching } = usePlaceSearch(showDropdown ? searchQuery : '')
 
   const initialRegion = useMemo(() => {
@@ -91,12 +100,14 @@ export function RadiusEditorScreen({ visible, onClose, onApply }: Props) {
           countryCode: details.countryCode ?? city.countryCode,
           flag,
         })
+        isProgrammaticPanRef.current = true
         mapRef.current?.animateToRegion({
           latitude: details.lat,
           longitude: details.lng,
           latitudeDelta: currentLatDelta,
           longitudeDelta: currentLatDelta,
         }, 600)
+        setCurrentCenter({ latitude: details.lat, longitude: details.lng })
         setSearchQuery(place.shortName)
         setShowDropdown(false)
         Keyboard.dismiss()
@@ -116,11 +127,68 @@ export function RadiusEditorScreen({ visible, onClose, onApply }: Props) {
     onClose()
   }, [showDropdown, onClose])
 
-  const handleApply = useCallback(() => {
+  const handleRegionChangeComplete = useCallback((r: Region) => {
+    setCurrentLatDelta(r.latitudeDelta)
+    setCurrentCenter({ latitude: r.latitude, longitude: r.longitude })
+
+    // Skip the very first fire (initial map render) and programmatic pans
+    if (isFirstRegionChangeRef.current) {
+      isFirstRegionChangeRef.current = false
+      return
+    }
+    if (isProgrammaticPanRef.current) {
+      isProgrammaticPanRef.current = false
+      return
+    }
+
+    // User manually panned — show nearest known city as an immediate label
+    const nearestCity = findNearestCity(r.latitude, r.longitude)
+    setSearchQuery(nearestCity.name)
+  }, [])
+
+  const handleApply = useCallback(async () => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+
+    // If the map center moved from the stored location, resolve the new address
+    // and persist it so feeds re-query with the correct coordinates.
+    const storeLat = location.lat ?? 38.9072
+    const storeLng = location.lng ?? -77.0369
+    const movedLat = Math.abs(currentCenter.latitude - storeLat)
+    const movedLng = Math.abs(currentCenter.longitude - storeLng)
+    const didMove = movedLat > 0.0001 || movedLng > 0.0001
+
+    if (didMove) {
+      setIsApplying(true)
+      try {
+        const { latitude: lat, longitude: lng } = currentCenter
+        const city = findNearestCity(lat, lng)
+        let cityName = city.name
+        let countryCode = city.countryCode
+        let flag = city.flag
+
+        const geocoded = await reverseGeocodeWithGoogle(lat, lng)
+        if (geocoded) {
+          cityName = geocoded.name
+          countryCode = geocoded.countryCode
+          flag = countryCodeToFlag(geocoded.countryCode)
+        }
+
+        location.setLocation({
+          cityId: city.id,
+          lat,
+          lng,
+          cityName,
+          countryCode,
+          flag,
+        })
+      } finally {
+        setIsApplying(false)
+      }
+    }
+
     location.setRadius(miles, mode)
-    onApply(miles, mode) // parent (LocationModal) calls setRadius + onClose
-  }, [miles, mode, location, onApply])
+    onApply(miles, mode)
+  }, [currentCenter, miles, mode, location, onApply])
 
   const handleModeChange = useCallback((newMode: RadiusMode) => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
@@ -153,9 +221,7 @@ export function RadiusEditorScreen({ visible, onClose, onApply }: Props) {
             style={StyleSheet.absoluteFillObject}
             provider={PROVIDER_DEFAULT}
             initialRegion={initialRegion}
-            onRegionChangeComplete={(r: Region) => {
-              setCurrentLatDelta(r.latitudeDelta)
-            }}
+            onRegionChangeComplete={handleRegionChangeComplete}
             showsUserLocation
             scrollEnabled
             zoomEnabled
@@ -330,11 +396,15 @@ export function RadiusEditorScreen({ visible, onClose, onApply }: Props) {
             </Text>
 
             <TouchableOpacity
-              style={[styles.applyBtn, { marginBottom: Math.max(insets.bottom, 16) }]}
-              onPress={handleApply}
+              style={[styles.applyBtn, { marginBottom: Math.max(insets.bottom, 16), opacity: isApplying ? 0.7 : 1 }]}
+              onPress={() => { void handleApply() }}
               activeOpacity={0.85}
+              disabled={isApplying}
             >
-              <Text style={styles.applyBtnText}>Apply</Text>
+              {isApplying
+                ? <ActivityIndicator size="small" color="#FFFFFF" />
+                : <Text style={styles.applyBtnText}>Apply</Text>
+              }
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
