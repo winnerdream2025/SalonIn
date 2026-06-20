@@ -1,4 +1,4 @@
-import { IsArray, IsBoolean, IsDateString, IsIn, IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator'
+import { ArrayMaxSize, IsArray, IsBoolean, IsDateString, IsIn, IsNumber, IsOptional, IsString, IsUrl, Max, MaxLength, Min } from 'class-validator'
 import type { EmploymentType, ListingType } from '@prisma/client'
 
 export class UpdateJobPostDto {
@@ -40,7 +40,8 @@ export class UpdateJobPostDto {
 
   @IsOptional()
   @IsArray()
-  @IsString({ each: true })
+  @ArrayMaxSize(10)
+  @IsUrl({}, { each: true })
   spacePhotos?: string[]
 
   @IsOptional()
@@ -50,12 +51,15 @@ export class UpdateJobPostDto {
 
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(20)
   @IsString({ each: true })
+  @MaxLength(50, { each: true })
   spaceAmenities?: string[]
 
   @IsOptional()
   @IsNumber()
   @Min(0)
+  @Max(100000)
   rentalDeposit?: number
 
   @IsOptional()

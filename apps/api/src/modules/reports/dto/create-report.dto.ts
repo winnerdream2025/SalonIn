@@ -1,4 +1,4 @@
-import { IsIn, IsOptional, IsString, IsUUID } from 'class-validator'
+import { IsIn, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator'
 import type { ReportType } from '@prisma/client'
 
 export class CreateReportDto {
@@ -10,5 +10,6 @@ export class CreateReportDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(1000)
   reason?: string
 }

@@ -29,6 +29,10 @@ const EMP_LABEL: Record<string, string> = {
   TEMPORARY: 'Temporary',
   WEEKEND: 'Weekend',
   EMERGENCY: 'Emergency',
+  CONTRACT: 'Contract',
+  SEASONAL: 'Seasonal',
+  APPRENTICESHIP: 'Apprenticeship',
+  FREELANCE: 'Freelance',
 }
 
 const CITY_LABEL: Record<string, string> = {

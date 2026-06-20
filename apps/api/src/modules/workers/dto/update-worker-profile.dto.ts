@@ -1,4 +1,5 @@
 import {
+  ArrayMaxSize,
   IsArray,
   IsIn,
   IsInt,
@@ -14,6 +15,7 @@ import type { Availability, EmploymentType } from '@prisma/client'
 export class UpdateWorkerProfileDto {
   @IsOptional()
   @IsString()
+  @MaxLength(100)
   name?: string
 
   @IsOptional()
@@ -27,7 +29,9 @@ export class UpdateWorkerProfileDto {
 
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(20)
   @IsString({ each: true })
+  @MaxLength(50, { each: true })
   specialties?: string[]
 
   @IsOptional()
@@ -47,7 +51,9 @@ export class UpdateWorkerProfileDto {
 
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(10)
   @IsString({ each: true })
+  @MaxLength(30, { each: true })
   languages?: string[]
 
   @IsOptional()
@@ -66,10 +72,12 @@ export class UpdateWorkerProfileDto {
 
   @IsOptional()
   @IsArray()
-  @IsIn(['FULL_TIME', 'PART_TIME', 'TEMPORARY', 'WEEKEND', 'EMERGENCY'], { each: true })
+  @ArrayMaxSize(9)
+  @IsIn(['FULL_TIME', 'PART_TIME', 'TEMPORARY', 'WEEKEND', 'EMERGENCY', 'CONTRACT', 'SEASONAL', 'APPRENTICESHIP', 'FREELANCE'], { each: true })
   employmentTypes?: EmploymentType[]
 
   @IsOptional()
   @IsString()
+  @MaxLength(50)
   licenseNumber?: string
 }

@@ -1,8 +1,9 @@
-import { IsArray, IsBoolean, IsOptional, IsString, MaxLength } from 'class-validator'
+import { ArrayMaxSize, IsArray, IsBoolean, IsOptional, IsString, IsUrl, MaxLength } from 'class-validator'
 
 export class UpdateSalonProfileDto {
   @IsOptional()
   @IsString()
+  @MaxLength(100)
   name?: string
 
   @IsOptional()
@@ -12,12 +13,15 @@ export class UpdateSalonProfileDto {
 
   @IsOptional()
   @IsArray()
-  @IsString({ each: true })
+  @ArrayMaxSize(10)
+  @IsUrl({}, { each: true })
   photoUrls?: string[]
 
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(20)
   @IsString({ each: true })
+  @MaxLength(50, { each: true })
   specialties?: string[]
 
   @IsOptional()

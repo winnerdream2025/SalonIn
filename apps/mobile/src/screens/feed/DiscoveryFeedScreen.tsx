@@ -20,6 +20,7 @@ import { WorkerCard, WorkerCardSkeleton, Text, Button, useTheme, ReportModal } f
 import type { WorkerCardData } from '@salonin/types'
 import { Availability } from '@salonin/types'
 import { reportsApi, messagesApi, parseApiError } from '@salonin/api-client'
+import { SPECIALTY_CATEGORIES } from '@salonin/config'
 import { useAuthStore } from '../../store/authStore'
 import { useNearbyWorkers } from '../../hooks/useNearbyWorkers'
 import { useLocationStore } from '../../store/locationStore'
@@ -29,7 +30,7 @@ import { LocationModal } from '../../components/LocationModal'
 import { WorkerFilterModal, activeWorkerFilterCount, EMPTY_WORKER_FILTERS } from '../../components/WorkerFilterModal'
 import type { WorkerFilters } from '../../components/WorkerFilterModal'
 
-const SPECIALTIES = ['All', 'Braiders', 'Nail Techs', 'Lash', 'Makeup', 'Barbers']
+const SPECIALTIES = ['All', ...SPECIALTY_CATEGORIES]
 
 const SKELETON_COUNT = 6
 

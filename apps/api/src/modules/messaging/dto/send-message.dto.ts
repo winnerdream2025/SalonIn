@@ -1,4 +1,4 @@
-import { IsOptional, IsString, MaxLength } from 'class-validator'
+import { IsOptional, IsString, IsUrl, MaxLength } from 'class-validator'
 
 export class SendMessageDto {
   @IsOptional()
@@ -7,6 +7,6 @@ export class SendMessageDto {
   content?: string
 
   @IsOptional()
-  @IsString()
+  @IsUrl()
   mediaUrl?: string
 }

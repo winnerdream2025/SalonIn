@@ -9,6 +9,10 @@ const TYPE_LABEL: Record<string, string> = {
   TEMPORARY: 'Temporary',
   WEEKEND: 'Weekend',
   EMERGENCY: 'Emergency',
+  CONTRACT: 'Contract',
+  SEASONAL: 'Seasonal',
+  APPRENTICESHIP: 'Apprenticeship',
+  FREELANCE: 'Freelance',
 }
 
 export function JobPostCard({ job, onClick }: { job: JobPostCardData; onClick: () => void }) {

@@ -6,7 +6,7 @@ export interface MediaFile {
   name: string
 }
 
-export type MediaFolder = 'avatars' | 'portfolio' | 'uploads'
+export type MediaFolder = 'avatars' | 'portfolio' | 'uploads' | 'spaces'
 
 async function uploadMedia(file: MediaFile, folder: MediaFolder = 'uploads'): Promise<{ url: string }> {
   const form = new FormData()

@@ -1,4 +1,4 @@
-import { IsIn, IsOptional, IsString, IsUrl } from 'class-validator'
+import { IsIn, IsOptional, IsString, IsUrl, MaxLength } from 'class-validator'
 import type { MediaType } from '@prisma/client'
 
 export class AddPortfolioItemDto {
@@ -10,5 +10,6 @@ export class AddPortfolioItemDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(500)
   caption?: string
 }

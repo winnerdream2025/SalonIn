@@ -143,11 +143,30 @@ export class JobsService {
     const radiusMeters = radiusMiles * 1609.344
     const offset = (page - 1) * limit
 
-    // Build dynamic SQL filters
-    const specialtyFilter = dto.specialty ? `AND jp.specialty = '${dto.specialty}'` : ''
-    const typeFilter = dto.type ? `AND jp.type = '${dto.type}'` : ''
-    const listingTypeFilter = dto.listingType ? `AND jp."listingType" = '${dto.listingType}'` : ''
-    const salonIdFilter = dto.salonId ? `AND jp."salonId" = '${dto.salonId}'` : ''
+    // Build parameterized query with dynamic filters
+    // Parameters: $1=lng, $2=lat, $3=radius, $4=limit, $5=offset
+    // Optional filters start at $6
+    const params: (string | number)[] = [lng, lat, radiusMeters, limit, offset]
+    const filters: string[] = []
+    
+    if (dto.specialty) {
+      params.push(dto.specialty)
+      filters.push(`AND jp.specialty = $${params.length}`)
+    }
+    if (dto.type) {
+      params.push(dto.type)
+      filters.push(`AND jp.type = $${params.length}`)
+    }
+    if (dto.listingType) {
+      params.push(dto.listingType)
+      filters.push(`AND jp."listingType" = $${params.length}`)
+    }
+    if (dto.salonId) {
+      params.push(dto.salonId)
+      filters.push(`AND jp."salonId" = $${params.length}`)
+    }
+
+    const filterClause = filters.join('\n          ')
 
     const query = `
       WITH nearby_jobs AS (
@@ -190,10 +209,7 @@ export class JobsService {
             ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
             $3
           )
-          ${specialtyFilter}
-          ${typeFilter}
-          ${listingTypeFilter}
-          ${salonIdFilter}
+          ${filterClause}
       )
       SELECT *, (SELECT COUNT(*) FROM nearby_jobs) AS total_count
       FROM nearby_jobs
@@ -229,14 +245,7 @@ export class JobsService {
       total_count: string
     }
 
-    const rows = await this.prisma.$queryRawUnsafe<RawJobRow[]>(
-      query,
-      lng,
-      lat,
-      radiusMeters,
-      limit,
-      offset,
-    )
+    const rows = await this.prisma.$queryRawUnsafe<RawJobRow[]>(query, ...params)
 
     const total = rows.length > 0 ? parseInt(rows[0]!.total_count, 10) : 0
 

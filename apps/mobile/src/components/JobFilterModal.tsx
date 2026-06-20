@@ -25,15 +25,16 @@ export const EMPTY_JOB_FILTERS: JobFilters = {
 }
 
 const EMPLOYMENT_TYPES = [
-  { value: null, label: 'All' },
-  { value: 'FULL_TIME', label: 'Full-time' },
-  { value: 'PART_TIME', label: 'Part-time' },
-  { value: 'WEEKEND', label: 'Weekend' },
-  { value: 'EMERGENCY', label: 'Emergency' },
-  { value: 'CONTRACT', label: 'Contract' },
-  { value: 'SEASONAL', label: 'Seasonal' },
+  { value: null,            label: 'All'           },
+  { value: 'FULL_TIME',    label: 'Full-time'      },
+  { value: 'PART_TIME',    label: 'Part-time'      },
+  { value: 'TEMPORARY',    label: 'Temporary'      },
+  { value: 'WEEKEND',      label: 'Weekend'        },
+  { value: 'EMERGENCY',    label: 'Emergency'      },
+  { value: 'CONTRACT',     label: 'Contract'       },
+  { value: 'SEASONAL',     label: 'Seasonal'       },
   { value: 'APPRENTICESHIP', label: 'Apprenticeship' },
-  { value: 'FREELANCE', label: 'Freelance' },
+  { value: 'FREELANCE',    label: 'Freelance'      },
 ] as const
 
 const PAY_TYPES = [

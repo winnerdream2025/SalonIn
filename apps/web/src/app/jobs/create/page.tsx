@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { jobsApi, salonsApi } from '@salonin/api-client'
 import { useAuthStore } from '../../../store/authStore'
 import type { EmploymentType } from '@salonin/types'
+import { ALL_SPECIALTIES } from '@salonin/config'
 
 const T = {
   bg: { base: '#0A0A0A', surface: '#111111', elevated: '#1A1A1A' },
@@ -13,17 +14,18 @@ const T = {
   brand: { primary: '#D85A30' },
 } as const
 
-const SPECIALTIES = [
-  'Haircut', 'Color', 'Balayage', 'Locs', 'Braids', 'Natural', 'Extensions', 'Weave',
-  'Makeup', 'Nails', 'Skincare', 'Waxing', 'Eyebrows', 'Lashes',
-]
+const SPECIALTIES = ALL_SPECIALTIES
 
 const EMPLOYMENT_TYPES: { value: EmploymentType; label: string }[] = [
-  { value: 'FULL_TIME',  label: 'Full-time'  },
-  { value: 'PART_TIME',  label: 'Part-time'  },
-  { value: 'TEMPORARY',  label: 'Temporary'  },
-  { value: 'WEEKEND',    label: 'Weekends'   },
-  { value: 'EMERGENCY',  label: 'Emergency'  },
+  { value: 'FULL_TIME',       label: 'Full-time'       },
+  { value: 'PART_TIME',       label: 'Part-time'       },
+  { value: 'TEMPORARY',       label: 'Temporary'       },
+  { value: 'WEEKEND',         label: 'Weekends'        },
+  { value: 'EMERGENCY',       label: 'Emergency'       },
+  { value: 'CONTRACT',        label: 'Contract'        },
+  { value: 'SEASONAL',        label: 'Seasonal'        },
+  { value: 'APPRENTICESHIP',  label: 'Apprenticeship'  },
+  { value: 'FREELANCE',       label: 'Freelance'       },
 ]
 
 const DURATIONS = [

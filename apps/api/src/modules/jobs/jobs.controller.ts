@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -41,14 +42,14 @@ export class JobsController {
   }
 
   @Get(':id')
-  getById(@Param('id') id: string) {
+  getById(@Param('id', ParseUUIDPipe) id: string) {
     return this.jobsService.getById(id)
   }
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard)
   update(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: User,
     @Body() dto: UpdateJobPostDto,
   ) {
@@ -58,7 +59,7 @@ export class JobsController {
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id') id: string, @CurrentUser() user: User): Promise<void> {
+  async remove(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User): Promise<void> {
     await this.jobsService.remove(id, user.id)
   }
 
@@ -66,14 +67,14 @@ export class JobsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('WORKER')
   @HttpCode(HttpStatus.CREATED)
-  applyToJob(@Param('id') id: string, @CurrentUser() user: User) {
+  applyToJob(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
     return this.jobsService.applyToJob(id, user.id)
   }
 
   @Post(':id/save')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
-  toggleSave(@Param('id') id: string, @CurrentUser() user: User) {
+  toggleSave(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
     return this.jobsService.toggleSave(id, user.id)
   }
 
@@ -86,7 +87,7 @@ export class JobsController {
   @Get(':id/applicants')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('SALON')
-  getApplicants(@Param('id') id: string, @CurrentUser() user: User) {
+  getApplicants(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
     return this.jobsService.getApplicants(id, user.id)
   }
 
@@ -94,8 +95,8 @@ export class JobsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('SALON')
   updateApplicationStatus(
-    @Param('id') id: string,
-    @Param('applicationId') applicationId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('applicationId', ParseUUIDPipe) applicationId: string,
     @CurrentUser() user: User,
     @Body() dto: UpdateApplicationStatusDto,
   ) {

@@ -233,6 +233,7 @@ function ChatPanel({ conversation }: { conversation: ConversationPreview }) {
           }}
           onKeyDown={handleKeyDown}
           placeholder="Type a message…"
+          maxLength={2000}
           rows={1}
           style={{
             flex: 1,

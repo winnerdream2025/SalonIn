@@ -23,6 +23,7 @@ import { LocationModal } from '../../components/LocationModal'
 import { useAuthStore } from '../../store/authStore'
 import { NotificationBell } from '../../components/NotificationBell'
 import { jobsApi, messagesApi, parseApiError } from '@salonin/api-client'
+import { SPECIALTY_CATEGORIES } from '@salonin/config'
 import { JobFilterModal, activeFilterCount, EMPTY_JOB_FILTERS } from '../../components/JobFilterModal'
 import type { JobFilters } from '../../components/JobFilterModal'
 
@@ -33,7 +34,7 @@ const LISTING_TYPES = [
   { value: 'SPACE',  label: 'Spaces' },
 ] as const
 
-const SPECIALTIES = ['All', 'Knotless', 'Braids', 'Color', 'Locs', 'Wigs', 'Nails', 'Lashes']
+const SPECIALTIES = ['All', ...SPECIALTY_CATEGORIES]
 
 const SKELETON_COUNT = 5
 

@@ -11,6 +11,7 @@ import {
 import * as Haptics from 'expo-haptics'
 import { useTheme } from '@salonin/ui'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { SPECIALTY_CATEGORIES } from '@salonin/config'
 
 export interface WorkerFilters {
   availability: string | null
@@ -33,13 +34,8 @@ const AVAILABILITIES = [
 
 const CATEGORIES = [
   { value: null, label: 'All' },
-  { value: 'Hair', label: 'Hair' },
-  { value: 'Nails', label: 'Nails' },
-  { value: 'Lashes', label: 'Lashes' },
-  { value: 'Makeup', label: 'Makeup' },
-  { value: 'Barber', label: 'Barber' },
-  { value: 'Skincare', label: 'Skincare' },
-] as const
+  ...SPECIALTY_CATEGORIES.map((cat) => ({ value: cat, label: cat })),
+]
 
 const DISTANCES = [
   { value: null, label: 'Any' },

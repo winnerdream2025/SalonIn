@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -43,7 +44,7 @@ export class MessagingController {
 
   @Get(':id/messages')
   async getMessages(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: User,
     @Query() query: GetMessagesDto,
   ) {
@@ -53,7 +54,7 @@ export class MessagingController {
   @Post(':id/messages')
   @Throttle({ short: { limit: 30, ttl: 60000 } })
   async sendMessage(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: User,
     @Body() dto: SendMessageDto,
   ) {
@@ -63,7 +64,7 @@ export class MessagingController {
   }
 
   @Patch(':id/read')
-  async markAsRead(@Param('id') id: string, @CurrentUser() user: User) {
+  async markAsRead(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
     await this.messagingService.markAsRead(id, user.id)
     return { success: true }
   }

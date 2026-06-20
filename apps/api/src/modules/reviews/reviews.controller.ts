@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -16,6 +17,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator'
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
 import { ReviewsService } from './reviews.service'
 import { CreateReviewDto } from './dto/create-review.dto'
+import { ReplyReviewDto } from './dto/reply-review.dto'
 
 @Controller('reviews')
 export class ReviewsController {
@@ -29,18 +31,20 @@ export class ReviewsController {
 
   @Get('user/:userId')
   getForUser(
-    @Param('userId') userId: string,
+    @Param('userId', ParseUUIDPipe) userId: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
-    return this.reviews.getForUser(userId, Number(page ?? 1), Number(limit ?? 20))
+    const p = Math.max(1, parseInt(page ?? '1', 10) || 1)
+    const l = Math.min(100, Math.max(1, parseInt(limit ?? '20', 10) || 20))
+    return this.reviews.getForUser(userId, p, l)
   }
 
   @Get('can-review/:subjectId')
   @UseGuards(JwtAuthGuard)
   canReview(
     @CurrentUser() user: User,
-    @Param('subjectId') subjectId: string,
+    @Param('subjectId', ParseUUIDPipe) subjectId: string,
   ) {
     return this.reviews.canReview(user.id, subjectId)
   }
@@ -48,7 +52,7 @@ export class ReviewsController {
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
-  deleteReview(@CurrentUser() user: User, @Param('id') id: string) {
+  deleteReview(@CurrentUser() user: User, @Param('id', ParseUUIDPipe) id: string) {
     return this.reviews.deleteReview(id, user.id, user.role)
   }
 
@@ -56,9 +60,9 @@ export class ReviewsController {
   @UseGuards(JwtAuthGuard)
   replyToReview(
     @CurrentUser() user: User,
-    @Param('id') id: string,
-    @Body('text') text: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ReplyReviewDto,
   ) {
-    return this.reviews.replyToReview(id, user.id, text)
+    return this.reviews.replyToReview(id, user.id, dto.text)
   }
 }

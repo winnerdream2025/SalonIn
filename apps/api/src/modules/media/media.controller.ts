@@ -15,6 +15,7 @@ import { memoryStorage } from 'multer'
 import { Throttle } from '@nestjs/throttler'
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
 import { MediaService } from './media.service'
+import { UploadMediaDto } from './dto/upload-media.dto'
 
 const ALLOWED_TYPES = [
   'image/jpeg',
@@ -53,8 +54,8 @@ export class MediaController {
   upload(
     @UploadedFile(new ParseFilePipe({ fileIsRequired: true }))
     file: Express.Multer.File,
-    @Query('folder') folder?: string,
+    @Query() query: UploadMediaDto,
   ): Promise<{ url: string }> {
-    return this.mediaService.uploadFile(file, folder)
+    return this.mediaService.uploadFile(file, query.folder)
   }
 }

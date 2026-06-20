@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   UseGuards,
@@ -29,7 +30,7 @@ export class SalonsController {
   }
 
   @Get(':id')
-  getProfile(@Param('id') id: string) {
+  getProfile(@Param('id', ParseUUIDPipe) id: string) {
     return this.salonsService.getProfile(id)
   }
 

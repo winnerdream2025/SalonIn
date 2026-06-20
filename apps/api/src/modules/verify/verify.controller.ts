@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Req,
@@ -53,7 +54,7 @@ export class VerifyController {
   @Patch('admin/salons/:id/verify')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
-  async verifySalon(@Param('id') id: string) {
+  async verifySalon(@Param('id', ParseUUIDPipe) id: string) {
     await this.verifyService.verifySalon(id)
     return { success: true }
   }

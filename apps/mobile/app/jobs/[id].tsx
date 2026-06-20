@@ -24,6 +24,10 @@ const EMP_LABELS: Record<string, string> = {
   TEMPORARY: 'Temporary',
   WEEKEND: 'Weekend',
   EMERGENCY: 'Emergency',
+  CONTRACT: 'Contract',
+  SEASONAL: 'Seasonal',
+  APPRENTICESHIP: 'Apprenticeship',
+  FREELANCE: 'Freelance',
 }
 
 const STATUS_COLORS: Record<string, string> = {

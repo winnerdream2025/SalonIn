@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -50,7 +51,7 @@ export class WorkersController {
   }
 
   @Get(':id')
-  getProfile(@Param('id') id: string) {
+  getProfile(@Param('id', ParseUUIDPipe) id: string) {
     return this.workersService.getProfile(id)
   }
 
