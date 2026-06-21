@@ -19,6 +19,8 @@ import { useAuthStore } from '../../src/store/authStore'
 import { messagesApi } from '@salonin/api-client'
 import { Role } from '@salonin/types'
 import { useCanReview } from '../../src/hooks/useReviews'
+import { useFollow } from '../../src/hooks/useFollow'
+import { Ionicons } from '@expo/vector-icons'
 
 export default function SalonProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
@@ -34,6 +36,9 @@ export default function SalonProfileScreen() {
   )
 
   const [isMessaging, setIsMessaging] = useState(false)
+  const { isFollowing, isLoading: followLoading, toggle: toggleFollow } = useFollow(
+    !isOwner && salon ? salon.userId : undefined
+  )
   const { canReview, existingReview } = useCanReview(
     !isOwner && currentUser ? salon?.userId : undefined
   )
@@ -158,6 +163,46 @@ export default function SalonProfileScreen() {
               </View>
             )}
           </View>
+          {/* Followers/Following stats */}
+          <View style={styles.statsRow}>
+            <TouchableOpacity
+              style={styles.statItem}
+              onPress={() => router.push(`/follow/followers?userId=${salon.userId}&name=${encodeURIComponent(salon.name)}` as never)}
+            >
+              <Text style={[styles.statValue, { color: theme.text.primary }]}>{salon.followersCount ?? 0}</Text>
+              <Text style={[styles.statLabel, { color: theme.text.secondary }]}>Followers</Text>
+            </TouchableOpacity>
+            <View style={[styles.statDivider, { backgroundColor: theme.border.subtle }]} />
+            <TouchableOpacity
+              style={styles.statItem}
+              onPress={() => router.push(`/follow/following?userId=${salon.userId}&name=${encodeURIComponent(salon.name)}` as never)}
+            >
+              <Text style={[styles.statValue, { color: theme.text.primary }]}>{salon.followingCount ?? 0}</Text>
+              <Text style={[styles.statLabel, { color: theme.text.secondary }]}>Following</Text>
+            </TouchableOpacity>
+          </View>
+          {/* Follow button for non-owners */}
+          {!isOwner && currentUser && (
+            <TouchableOpacity
+              onPress={() => void toggleFollow()}
+              disabled={followLoading}
+              style={[
+                styles.followBtn,
+                isFollowing
+                  ? { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }
+                  : { backgroundColor: '#D85A30', borderColor: '#D85A30' },
+              ]}
+            >
+              <Ionicons
+                name={isFollowing ? 'checkmark' : 'person-add-outline'}
+                size={15}
+                color={isFollowing ? theme.text.secondary : '#fff'}
+              />
+              <Text style={[styles.followBtnText, { color: isFollowing ? theme.text.secondary : '#fff' }]}>
+                {isFollowing ? 'Following' : 'Follow'}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Specialties */}
@@ -312,6 +357,28 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 20,
   },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    paddingVertical: 8,
+  },
+  statItem: { alignItems: 'center', gap: 2 },
+  statValue: { fontSize: 16, fontWeight: '700' },
+  statLabel: { fontSize: 11 },
+  statDivider: { width: 0.5, height: 24 },
+  followBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderRadius: 22,
+    borderWidth: 1,
+    height: 38,
+    paddingHorizontal: 20,
+    alignSelf: 'flex-start',
+  },
+  followBtnText: { fontSize: 14, fontWeight: '700' },
   card: {
     marginHorizontal: 16,
     marginBottom: 12,
