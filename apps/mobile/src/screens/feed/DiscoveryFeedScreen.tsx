@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import * as Haptics from 'expo-haptics'
-import { WorkerCard, WorkerCardSkeleton, Text, Button, useTheme, ReportModal } from '@salonin/ui'
+import { WorkerCard, WorkerCardSkeleton, Text, Button, useTheme, ReportModal, Avatar } from '@salonin/ui'
 import type { WorkerCardData } from '@salonin/types'
 import { Availability } from '@salonin/types'
 import { reportsApi, messagesApi, parseApiError } from '@salonin/api-client'
@@ -581,38 +581,50 @@ function SuggestedCard({
   isFollowed: boolean
   onFollow: (id: string) => void
 }) {
+  const specialty = user.specialties[0] ?? null
+
   return (
     <TouchableOpacity
-      style={[suggestStyles.card, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}
+      style={[suggestStyles.card, { backgroundColor: theme.bg.card, borderColor: theme.border.default }]}
       onPress={() => router.push(`/worker/${user.id}` as never)}
       activeOpacity={0.85}
     >
-      <View style={[suggestStyles.avatar, { backgroundColor: theme.bg.elevated }]}>
-        {user.photoUrl ? (
-          // eslint-disable-next-line @typescript-eslint/no-require-imports
-          <View style={suggestStyles.avatarImg}>
-            <Text style={{ fontSize: 22 }}>{user.name[0]?.toUpperCase() ?? '?'}</Text>
-          </View>
-        ) : (
-          <Text style={{ fontSize: 22, color: theme.text.secondary }}>{user.name[0]?.toUpperCase() ?? '?'}</Text>
-        )}
-      </View>
-      <Text style={[suggestStyles.name, { color: theme.text.primary }]} numberOfLines={1}>{user.name}</Text>
-      {user.specialties[0] && (
-        <Text style={[suggestStyles.specialty, { color: theme.text.secondary }]} numberOfLines={1}>{user.specialties[0]}</Text>
-      )}
+      <Avatar uri={user.photoUrl} name={user.name} size="lg" isVerified={user.isVerified} />
+
       {user.reason === 'mutual' && (
-        <Text style={[suggestStyles.reason, { color: '#D85A30' }]}>Mutual follow</Text>
+        <View style={[suggestStyles.badge, { backgroundColor: 'rgba(29,158,117,0.12)', borderColor: 'rgba(29,158,117,0.3)' }]}>
+          <Text style={[suggestStyles.badgeText, { color: '#1D9E75' }]}>Follows you</Text>
+        </View>
       )}
+
+      <Text style={[suggestStyles.name, { color: theme.text.primary }]} numberOfLines={1}>
+        {user.name}
+      </Text>
+
+      {specialty && (
+        <Text style={[suggestStyles.specialty, { color: theme.text.tertiary }]} numberOfLines={1}>
+          {specialty}
+        </Text>
+      )}
+
       {user.rating > 0 && (
-        <Text style={[suggestStyles.reason, { color: theme.text.tertiary }]}>⭐ {user.rating.toFixed(1)}</Text>
+        <Text style={[suggestStyles.rating, { color: theme.text.tertiary }]}>
+          ★ {user.rating.toFixed(1)}
+        </Text>
       )}
+
       <TouchableOpacity
         onPress={() => onFollow(user.id)}
         disabled={isFollowed}
-        style={[suggestStyles.followBtn, isFollowed ? { backgroundColor: theme.bg.elevated, borderColor: theme.border.default } : { backgroundColor: '#D85A30', borderColor: '#D85A30' }]}
+        activeOpacity={0.8}
+        style={[
+          suggestStyles.followBtn,
+          isFollowed
+            ? { backgroundColor: 'transparent', borderWidth: 1, borderColor: theme.border.default }
+            : { backgroundColor: theme.brand.primary, borderWidth: 0 },
+        ]}
       >
-        <Text style={{ fontSize: 12, fontWeight: '700', color: isFollowed ? theme.text.secondary : '#fff' }}>
+        <Text style={[suggestStyles.followBtnText, { color: isFollowed ? theme.text.secondary : '#FFFFFF' }]}>
           {isFollowed ? 'Following' : 'Follow'}
         </Text>
       </TouchableOpacity>
@@ -622,15 +634,43 @@ function SuggestedCard({
 
 const suggestStyles = StyleSheet.create({
   section: { paddingTop: 8, paddingBottom: 4 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 10 },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginBottom: 10,
+  },
   title: { fontSize: 16, fontWeight: '700' },
   seeAll: { fontSize: 13, fontWeight: '600' },
-  list: { paddingHorizontal: 16, gap: 10 },
-  card: { width: 120, borderRadius: 16, borderWidth: 0.5, padding: 12, alignItems: 'center', gap: 4 },
-  avatar: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
-  avatarImg: { alignItems: 'center', justifyContent: 'center' },
-  name: { fontSize: 13, fontWeight: '700', textAlign: 'center' },
-  specialty: { fontSize: 11, textAlign: 'center' },
-  reason: { fontSize: 10, textAlign: 'center' },
-  followBtn: { marginTop: 6, borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 5 },
+  list: { paddingHorizontal: 12, gap: 10 },
+  card: {
+    width: 104,
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingVertical: 14,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    gap: 5,
+  },
+  badge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 99,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginTop: -2,
+  },
+  badgeText: { fontSize: 9, fontWeight: '600' },
+  name: { fontSize: 12, fontWeight: '700', textAlign: 'center', lineHeight: 16 },
+  specialty: { fontSize: 10, textAlign: 'center', lineHeight: 14, marginTop: -2 },
+  rating: { fontSize: 10, textAlign: 'center' },
+  followBtn: {
+    marginTop: 2,
+    borderRadius: 99,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    width: '100%',
+    alignItems: 'center',
+  },
+  followBtnText: { fontSize: 12, fontWeight: '700' },
 })

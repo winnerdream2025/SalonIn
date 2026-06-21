@@ -65,6 +65,7 @@ describe('MatchingService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks()
+    mockPrisma.portfolioItem.findMany.mockResolvedValue([])
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
