@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
@@ -18,6 +19,12 @@ import { MessagingGateway } from './messaging.gateway'
 import { CreateConversationDto } from './dto/create-conversation.dto'
 import { SendMessageDto } from './dto/send-message.dto'
 import { GetMessagesDto } from './dto/get-messages.dto'
+import { SearchConversationsDto } from './dto/search-conversations.dto'
+import {
+  PinConversationDto,
+  ArchiveConversationDto,
+  MuteConversationDto,
+} from './dto/conversation-preference.dto'
 
 @Controller('conversations')
 @UseGuards(JwtAuthGuard)
@@ -38,8 +45,11 @@ export class MessagingController {
 
   @Get()
   @Throttle({ short: { limit: 60, ttl: 60000 } })
-  async getConversations(@CurrentUser() user: User) {
-    return this.messagingService.getConversations(user.id)
+  async getConversations(
+    @CurrentUser() user: User,
+    @Query() query: SearchConversationsDto,
+  ) {
+    return this.messagingService.getConversations(user.id, query.search)
   }
 
   @Get(':id/messages')
@@ -66,6 +76,42 @@ export class MessagingController {
   @Patch(':id/read')
   async markAsRead(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
     await this.messagingService.markAsRead(id, user.id)
+    return { success: true }
+  }
+
+  @Patch(':id/pin')
+  async pinConversation(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: User,
+    @Body() dto: PinConversationDto,
+  ) {
+    await this.messagingService.pinConversation(id, user.id, dto.isPinned)
+    return { success: true }
+  }
+
+  @Patch(':id/archive')
+  async archiveConversation(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: User,
+    @Body() dto: ArchiveConversationDto,
+  ) {
+    await this.messagingService.archiveConversation(id, user.id, dto.isArchived)
+    return { success: true }
+  }
+
+  @Patch(':id/mute')
+  async muteConversation(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: User,
+    @Body() dto: MuteConversationDto,
+  ) {
+    await this.messagingService.muteConversation(id, user.id, dto.isMuted)
+    return { success: true }
+  }
+
+  @Delete(':id')
+  async deleteConversation(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
+    await this.messagingService.deleteConversation(id, user.id)
     return { success: true }
   }
 }

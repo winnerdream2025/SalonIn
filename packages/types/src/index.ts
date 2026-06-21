@@ -212,7 +212,11 @@ export interface ConversationPreview {
     senderId: string
   } | null
   unreadCount: number
+  isArchived: boolean
+  isPinned: boolean
+  isMuted: boolean
   createdAt: string
+  updatedAt: string
 }
 
 // ─── Full profile types (with relations) ─────────────────────────────────────

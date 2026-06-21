@@ -252,6 +252,7 @@ model PortfolioItem {
 
 model Conversation {
   id           String                    @id @default(uuid())
+  updatedAt    DateTime                  @updatedAt
   participants ConversationParticipant[]
   messages     Message[]
   chatRequest  ChatRequest?
@@ -261,11 +262,19 @@ model Conversation {
 model ConversationParticipant {
   conversationId String
   userId         String
-  conversation   Conversation @relation(fields: [conversationId], references: [id])
-  user           User         @relation(fields: [userId], references: [id])
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  isArchived Boolean  @default(false)
+  isPinned   Boolean  @default(false)
+  isMuted    Boolean  @default(false)
+  pinnedAt   DateTime?
+  archivedAt DateTime?
 
   @@id([conversationId, userId])
   @@index([userId])
+  @@index([userId, isArchived])
+  @@index([userId, isPinned, pinnedAt])
 }
 
 model Message {

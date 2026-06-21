@@ -19,7 +19,7 @@ interface ConversationReadPayload {
   userId: string
 }
 
-export function useConversations() {
+export function useConversations(search?: string) {
   const accessToken = useAuthStore((s) => s.accessToken)
   const currentUserId = useAuthStore((s) => s.user?.id)
   const [conversations, setConversations] = useState<ConversationPreview[]>([])
@@ -36,7 +36,7 @@ export function useConversations() {
     }
     setError(null)
     try {
-      const data = await messagesApi.getConversations()
+      const data = await messagesApi.getConversations(search)
       setConversations(data)
     } catch (e: unknown) {
       setError(e instanceof Error ? e : new Error('Failed to load conversations'))
@@ -44,13 +44,80 @@ export function useConversations() {
       setIsLoading(false)
       setIsRefreshing(false)
     }
-  }, [])
+  }, [search])
 
   const refresh = useCallback(() => load(true), [load])
 
   useEffect(() => {
     void load()
   }, [load])
+
+  const updateConversation = useCallback(
+    (id: string, patch: Partial<ConversationPreview>) => {
+      setConversations((prev) =>
+        prev
+          .map((conv) => (conv.id === id ? { ...conv, ...patch } : conv))
+          .sort((a, b) => {
+            if (a.isPinned && !b.isPinned) return -1
+            if (!a.isPinned && b.isPinned) return 1
+            return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+          }),
+      )
+    },
+    [],
+  )
+
+  const removeConversation = useCallback((id: string) => {
+    setConversations((prev) => prev.filter((conv) => conv.id !== id))
+  }, [])
+
+  const pinConversation = useCallback(
+    async (id: string, isPinned: boolean) => {
+      updateConversation(id, { isPinned })
+      try {
+        await messagesApi.pinConversation(id, isPinned)
+      } catch {
+        updateConversation(id, { isPinned: !isPinned })
+      }
+    },
+    [updateConversation],
+  )
+
+  const archiveConversation = useCallback(
+    async (id: string, isArchived: boolean) => {
+      updateConversation(id, { isArchived })
+      try {
+        await messagesApi.archiveConversation(id, isArchived)
+      } catch {
+        updateConversation(id, { isArchived: !isArchived })
+      }
+    },
+    [updateConversation],
+  )
+
+  const muteConversation = useCallback(
+    async (id: string, isMuted: boolean) => {
+      updateConversation(id, { isMuted })
+      try {
+        await messagesApi.muteConversation(id, isMuted)
+      } catch {
+        updateConversation(id, { isMuted: !isMuted })
+      }
+    },
+    [updateConversation],
+  )
+
+  const deleteConversation = useCallback(
+    async (id: string) => {
+      removeConversation(id)
+      try {
+        await messagesApi.deleteConversation(id)
+      } catch {
+        // Cannot roll back without refetch; user can pull to refresh
+      }
+    },
+    [removeConversation],
+  )
 
   useEffect(() => {
     if (!accessToken) return
@@ -63,23 +130,35 @@ export function useConversations() {
     socket.on('message:new', (payload: MessageNewPayload) => {
       if (payload.senderId === currentUserId) return
 
-      setConversations((prev) =>
-        prev.map((conv) =>
-          conv.id === payload.conversationId
-            ? {
-                ...conv,
-                unreadCount: conv.unreadCount + 1,
-                lastMessage: {
-                  content: payload.content ?? null,
-                  mediaUrl: null,
-                  createdAt: payload.createdAt ?? new Date().toISOString(),
-                  isRead: false,
-                  senderId: payload.senderId,
-                },
-              }
-            : conv,
-        ),
-      )
+      setConversations((prev) => {
+        const exists = prev.some((conv) => conv.id === payload.conversationId)
+        if (!exists) {
+          // New conversation will be fetched on next refresh
+          return prev
+        }
+        return prev
+          .map((conv) =>
+            conv.id === payload.conversationId
+              ? {
+                  ...conv,
+                  unreadCount: conv.unreadCount + 1,
+                  lastMessage: {
+                    content: payload.content ?? null,
+                    mediaUrl: null,
+                    createdAt: payload.createdAt ?? new Date().toISOString(),
+                    isRead: false,
+                    senderId: payload.senderId,
+                  },
+                  updatedAt: payload.createdAt ?? new Date().toISOString(),
+                }
+              : conv,
+          )
+          .sort((a, b) => {
+            if (a.isPinned && !b.isPinned) return -1
+            if (!a.isPinned && b.isPinned) return 1
+            return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+          })
+      })
     })
 
     socket.on('conversation:read', (payload: ConversationReadPayload) => {
@@ -100,5 +179,15 @@ export function useConversations() {
     }
   }, [accessToken, currentUserId])
 
-  return { conversations, isLoading, isRefreshing, error, refresh }
+  return {
+    conversations,
+    isLoading,
+    isRefreshing,
+    error,
+    refresh,
+    pinConversation,
+    archiveConversation,
+    muteConversation,
+    deleteConversation,
+  }
 }

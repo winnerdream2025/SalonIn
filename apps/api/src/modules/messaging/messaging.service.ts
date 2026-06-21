@@ -44,12 +44,33 @@ export class MessagingService {
     return this.buildPreview(conv.id, requesterId)
   }
 
-  async getConversations(userId: string): Promise<ConversationPreview[]> {
+  async getConversations(userId: string, search?: string): Promise<ConversationPreview[]> {
+    const searchFilter = search
+      ? {
+          OR: [
+            {
+              participants: {
+                some: {
+                  user: { workerProfile: { name: { contains: search, mode: 'insensitive' as const } } },
+                },
+              },
+            },
+            {
+              participants: {
+                some: {
+                  user: { salonProfile: { name: { contains: search, mode: 'insensitive' as const } } },
+                },
+              },
+            },
+            { messages: { some: { content: { contains: search, mode: 'insensitive' as const } } } },
+          ],
+        }
+      : undefined
+
     const convs = await this.prisma.conversation.findMany({
-      where: { participants: { some: { userId } } },
+      where: { participants: { some: { userId } }, ...searchFilter },
       include: {
         participants: {
-          where: { userId: { not: userId } },
           include: {
             user: {
               select: {
@@ -63,7 +84,7 @@ export class MessagingService {
         },
         messages: { orderBy: { createdAt: 'desc' }, take: 1 },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { updatedAt: 'desc' },
     })
 
     const unreadCounts = await this.prisma.message.groupBy({
@@ -76,14 +97,16 @@ export class MessagingService {
       _count: { _all: true },
     })
 
-    return convs.map((conv) => {
+    const previews = convs.map((conv) => {
+      const myParticipant = conv.participants.find((p) => p.userId === userId)
+      const otherParticipant = conv.participants.find((p) => p.userId !== userId)
       const unread = unreadCounts.find((u) => u.conversationId === conv.id)?._count._all ?? 0
-      const otherUser = conv.participants[0]?.user
+      const otherUser = otherParticipant?.user
       const lastMsg = conv.messages[0]
       return {
         id: conv.id,
         otherParticipant: {
-          userId: conv.participants[0]?.userId ?? '',
+          userId: otherParticipant?.userId ?? '',
           name: otherUser?.workerProfile?.name ?? otherUser?.salonProfile?.name ?? 'Unknown',
           photoUrl:
             otherUser?.workerProfile?.photoUrl ?? otherUser?.salonProfile?.photoUrls[0] ?? null,
@@ -100,8 +123,18 @@ export class MessagingService {
               }
             : null,
         unreadCount: unread,
+        isArchived: myParticipant?.isArchived ?? false,
+        isPinned: myParticipant?.isPinned ?? false,
+        isMuted: myParticipant?.isMuted ?? false,
         createdAt: conv.createdAt.toISOString(),
+        updatedAt: conv.updatedAt.toISOString(),
       }
+    })
+
+    return previews.sort((a, b) => {
+      if (a.isPinned && !b.isPinned) return -1
+      if (!a.isPinned && b.isPinned) return 1
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
     })
   }
 
@@ -153,6 +186,11 @@ export class MessagingService {
       data: { conversationId, senderId, content, mediaUrl },
     })
 
+    await this.prisma.conversation.update({
+      where: { id: conversationId },
+      data: { updatedAt: new Date() },
+    })
+
     void this.notifyRecipient(conversationId, senderId, content)
 
     return message as Message
@@ -163,8 +201,13 @@ export class MessagingService {
     receiverId: string,
     conversationId: string,
   ): Promise<void> {
-    let req = await this.prisma.chatRequest.findUnique({
-      where: { conversationId },
+    let req = await this.prisma.chatRequest.findFirst({
+      where: {
+        OR: [
+          { senderId, receiverId },
+          { senderId: receiverId, receiverId: senderId },
+        ],
+      },
     })
 
     if (!req) {
@@ -211,7 +254,7 @@ export class MessagingService {
       const other = await this.prisma.conversationParticipant.findFirst({
         where: { conversationId, userId: { not: senderId } },
       })
-      if (!other) return
+      if (!other || other.isMuted) return
 
       const sender = await this.prisma.user.findUnique({
         where: { id: senderId },
@@ -238,6 +281,47 @@ export class MessagingService {
     })
   }
 
+  async pinConversation(conversationId: string, userId: string, isPinned: boolean): Promise<void> {
+    await this.assertParticipant(conversationId, userId)
+    await this.prisma.conversationParticipant.update({
+      where: { conversationId_userId: { conversationId, userId } },
+      data: {
+        isPinned,
+        pinnedAt: isPinned ? new Date() : null,
+      },
+    })
+  }
+
+  async archiveConversation(
+    conversationId: string,
+    userId: string,
+    isArchived: boolean,
+  ): Promise<void> {
+    await this.assertParticipant(conversationId, userId)
+    await this.prisma.conversationParticipant.update({
+      where: { conversationId_userId: { conversationId, userId } },
+      data: {
+        isArchived,
+        archivedAt: isArchived ? new Date() : null,
+      },
+    })
+  }
+
+  async muteConversation(conversationId: string, userId: string, isMuted: boolean): Promise<void> {
+    await this.assertParticipant(conversationId, userId)
+    await this.prisma.conversationParticipant.update({
+      where: { conversationId_userId: { conversationId, userId } },
+      data: { isMuted },
+    })
+  }
+
+  async deleteConversation(conversationId: string, userId: string): Promise<void> {
+    await this.assertParticipant(conversationId, userId)
+    await this.prisma.conversationParticipant.delete({
+      where: { conversationId_userId: { conversationId, userId } },
+    })
+  }
+
   private async assertParticipant(conversationId: string, userId: string): Promise<void> {
     const participant = await this.prisma.conversationParticipant.findUnique({
       where: { conversationId_userId: { conversationId, userId } },
@@ -250,7 +334,6 @@ export class MessagingService {
       where: { id: conversationId },
       include: {
         participants: {
-          where: { userId: { not: userId } },
           include: {
             user: {
               select: {
@@ -267,17 +350,19 @@ export class MessagingService {
     })
     if (!conv) throw new NotFoundException('Conversation not found')
 
+    const myParticipant = conv.participants.find((p) => p.userId === userId)
+    const otherParticipant = conv.participants.find((p) => p.userId !== userId)
     const unread = await this.prisma.message.count({
       where: { conversationId, isRead: false, senderId: { not: userId } },
     })
 
-    const otherUser = conv.participants[0]?.user
+    const otherUser = otherParticipant?.user
     const lastMsg = conv.messages[0]
 
     return {
       id: conv.id,
       otherParticipant: {
-        userId: conv.participants[0]?.userId ?? '',
+        userId: otherParticipant?.userId ?? '',
         name: otherUser?.workerProfile?.name ?? otherUser?.salonProfile?.name ?? 'Unknown',
         photoUrl:
           otherUser?.workerProfile?.photoUrl ?? otherUser?.salonProfile?.photoUrls[0] ?? null,
@@ -294,7 +379,11 @@ export class MessagingService {
             }
           : null,
       unreadCount: unread,
+      isArchived: myParticipant?.isArchived ?? false,
+      isPinned: myParticipant?.isPinned ?? false,
+      isMuted: myParticipant?.isMuted ?? false,
       createdAt: conv.createdAt.toISOString(),
+      updatedAt: conv.updatedAt.toISOString(),
     }
   }
 }
