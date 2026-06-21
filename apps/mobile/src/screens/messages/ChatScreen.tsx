@@ -465,7 +465,13 @@ export default function ChatScreen() {
                 {editingMessage ? 'Editing' : 'Replying to'} {replyingTo?.senderId === currentUserId ? 'yourself' : name ?? 'User'}
               </Text>
               <Text style={[styles.composerBannerText, { color: theme.text.secondary }]} numberOfLines={1}>
-                {editingMessage ? editingMessage.content : replyingTo?.content ?? 'Media'}
+                {editingMessage
+                  ? editingMessage.content
+                  : replyingTo?.type === 'VOICE'
+                  ? '🎤 Voice message'
+                  : replyingTo?.audioUrl
+                  ? '🎤 Voice message'
+                  : replyingTo?.content ?? 'Media'}
               </Text>
             </View>
             <TouchableOpacity
@@ -609,7 +615,7 @@ export default function ChatScreen() {
               <Ionicons name="happy-outline" size={22} color={theme.text.primary} />
               <Text style={[styles.actionText, { color: theme.text.primary }]}>React</Text>
             </TouchableOpacity>
-            {selectedMessage && selectedMessage.senderId === currentUserId && !selectedMessage.isDeletedForAll && (
+            {selectedMessage && selectedMessage.senderId === currentUserId && !selectedMessage.isDeletedForAll && selectedMessage.type !== 'VOICE' && (
               <TouchableOpacity
                 onPress={() => {
                   setEditingMessage(selectedMessage)

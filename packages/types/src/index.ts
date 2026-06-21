@@ -198,6 +198,7 @@ export interface CreateReportDto {
 
 export interface WorkerCardData {
   id: string
+  userId?: string
   name: string
   photoUrl: string | null
   specialties: string[]
@@ -260,6 +261,7 @@ export interface JobPostCardData {
   expiresAt: string
   salonName: string
   salonPhotoUrl: string | null
+  salonUserId?: string
   // Salon enrichment (optional)
   salonId?: string
   salonCoverUrl?: string | null

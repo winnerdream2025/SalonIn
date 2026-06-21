@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
   waveContainer: {
     flex: 1,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     gap: 2,
     height: BAR_MAX_HEIGHT + 4,
   },
