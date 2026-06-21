@@ -9,6 +9,9 @@ const mockPrisma = {
   workerProfile: {
     findMany: jest.fn(),
   },
+  portfolioItem: {
+    findMany: jest.fn().mockResolvedValue([]),
+  },
 }
 
 const mockRedis = {
