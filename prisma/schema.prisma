@@ -84,6 +84,8 @@ enum NotificationType {
   CHAT_REQUEST_ACCEPTED
   NEW_JOB_MATCH
   REVIEW_RECEIVED
+  STORY_REPLY
+  STORY_LIKE
   SYSTEM
 }
 
@@ -115,6 +117,10 @@ model User {
   reviewsReceived  Review[]      @relation("ReviewsReceived")
   notifications    Notification[]
   savedJobs        SavedJob[]
+  stories          Story[]
+  storyViews       StoryView[]
+  storyLikes       StoryLike[]
+  storyReplies     StoryReply[]
 }
 
 model WorkerProfile {
@@ -427,4 +433,59 @@ model Notification {
 
   @@index([userId, isRead])
   @@index([userId, createdAt])
+}
+
+model Story {
+  id        String      @id @default(uuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mediaUrl  String
+  type      MediaType
+  caption   String?
+  createdAt DateTime    @default(now())
+  expiresAt DateTime
+
+  views     StoryView[]
+  likes     StoryLike[]
+  replies   StoryReply[]
+
+  @@index([userId, expiresAt])
+  @@index([expiresAt])
+}
+
+model StoryView {
+  id       String   @id @default(uuid())
+  storyId  String
+  story    Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  viewerId String
+  viewer   User     @relation(fields: [viewerId], references: [id], onDelete: Cascade)
+  viewedAt DateTime @default(now())
+
+  @@unique([storyId, viewerId])
+  @@index([storyId])
+  @@index([viewerId])
+}
+
+model StoryLike {
+  id        String   @id @default(uuid())
+  storyId   String
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([storyId, userId])
+  @@index([storyId])
+}
+
+model StoryReply {
+  id        String   @id @default(uuid())
+  storyId   String
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String
+  createdAt DateTime @default(now())
+
+  @@index([storyId])
 }

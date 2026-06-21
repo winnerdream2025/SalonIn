@@ -37,3 +37,6 @@ export { reviewsApi } from './reviews.api'
 
 export { notificationsApi } from './notifications.api'
 export type { NotificationItem, NotificationsListResponse } from './notifications.api'
+
+export { storiesApi } from './stories.api'
+export type { Story, StoryGroup, StoriesFeed, StoryUser } from './stories.api'

@@ -23,6 +23,7 @@ import { ChatRequestsModule } from './modules/chat-requests/chat-requests.module
 import { SpecialtiesModule } from './modules/specialties/specialties.module'
 import { ReviewsModule } from './modules/reviews/reviews.module'
 import { PlacesModule } from './modules/places/places.module'
+import { StoriesModule } from './modules/stories/stories.module'
 
 @Module({
   imports: [
@@ -77,6 +78,7 @@ import { PlacesModule } from './modules/places/places.module'
     SpecialtiesModule,
     ReviewsModule,
     PlacesModule,
+    StoriesModule,
   ],
   providers: [
     {

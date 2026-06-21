@@ -15,6 +15,11 @@ import { useTheme, ConversationItem, ConversationItemSkeleton, Text } from '@sal
 import type { ConversationPreview } from '@salonin/types'
 import { useConversations } from '../../hooks/useConversations'
 import { useChatRequests } from '../../hooks/useChatRequests'
+import { useStories } from '../../hooks/useStories'
+import { StoriesBar } from '../../components/StoriesBar'
+import { StoryViewer } from '../../components/StoryViewer'
+import { StoryCreator } from '../../components/StoryCreator'
+import type { StoryGroup } from '@salonin/api-client'
 
 const SKELETON_COUNT = 6
 const TABS = ['All', 'Unread', 'Archived'] as const
@@ -38,6 +43,22 @@ export default function ConversationsListScreen() {
     deleteConversation,
   } = useConversations(search.trim())
   const { pendingCount } = useChatRequests()
+  const { groups: storyGroups, myStories, isLoading: storiesLoading, refresh: refreshStories, markViewed } = useStories()
+  const [viewerVisible, setViewerVisible] = useState(false)
+  const [viewerGroupIdx, setViewerGroupIdx] = useState(0)
+  const [viewerGroups, setViewerGroups] = useState<StoryGroup[]>([])
+  const [creatorVisible, setCreatorVisible] = useState(false)
+
+  const allGroupsForViewer = useMemo(() => {
+    return myStories ? [myStories, ...storyGroups] : storyGroups
+  }, [myStories, storyGroups])
+
+  const openViewer = useCallback((group: StoryGroup) => {
+    const idx = allGroupsForViewer.findIndex((g) => g.userId === group.userId)
+    setViewerGroups(allGroupsForViewer)
+    setViewerGroupIdx(idx >= 0 ? idx : 0)
+    setViewerVisible(true)
+  }, [allGroupsForViewer])
 
   const filtered = useMemo(() => {
     if (activeTab === 'All') return conversations.filter((c) => !c.isArchived)
@@ -202,7 +223,30 @@ export default function ConversationsListScreen() {
 
       <View style={[styles.divider, { backgroundColor: theme.border.subtle }]} />
 
+      <StoryViewer
+        visible={viewerVisible}
+        groups={viewerGroups}
+        startGroupIndex={viewerGroupIdx}
+        onClose={() => setViewerVisible(false)}
+        onViewed={markViewed}
+      />
+
+      <StoryCreator
+        visible={creatorVisible}
+        onClose={() => setCreatorVisible(false)}
+        onCreated={() => void refreshStories()}
+      />
+
       <FlatList
+        ListHeaderComponent={
+          <StoriesBar
+            groups={storyGroups}
+            myStories={myStories}
+            isLoading={storiesLoading}
+            onPressGroup={openViewer}
+            onPressAddStory={() => setCreatorVisible(true)}
+          />
+        }
         data={isLoading ? [] : filtered}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
