@@ -21,7 +21,7 @@ export class SalonsService {
     const profile = await this.prisma.salonProfile.findUnique({
       where: { userId },
       include: {
-        user: { select: { email: true, role: true, createdAt: true } },
+        user: { select: { email: true, role: true, createdAt: true, followersCount: true, followingCount: true } },
         jobPosts: {
           where: { isActive: true },
           orderBy: { createdAt: 'desc' },
@@ -29,14 +29,18 @@ export class SalonsService {
       },
     })
     if (!profile) throw new NotFoundException('Salon profile not found')
-    return profile
+    return {
+      ...profile,
+      followersCount: profile.user.followersCount,
+      followingCount: profile.user.followingCount,
+    }
   }
 
   async getProfile(id: string) {
     const profile = await this.prisma.salonProfile.findUnique({
       where: { id },
       include: {
-        user: { select: { id: true, role: true, createdAt: true } },
+        user: { select: { id: true, role: true, createdAt: true, followersCount: true, followingCount: true } },
         jobPosts: {
           where: { isActive: true },
           orderBy: { createdAt: 'desc' },
@@ -44,7 +48,11 @@ export class SalonsService {
       },
     })
     if (!profile) throw new NotFoundException('Salon not found')
-    return profile
+    return {
+      ...profile,
+      followersCount: profile.user.followersCount,
+      followingCount: profile.user.followingCount,
+    }
   }
 
   async updateProfile(userId: string, dto: UpdateSalonProfileDto) {

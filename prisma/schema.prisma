@@ -86,6 +86,7 @@ enum NotificationType {
   REVIEW_RECEIVED
   STORY_REPLY
   STORY_LIKE
+  NEW_FOLLOWER
   SYSTEM
 }
 
@@ -121,6 +122,10 @@ model User {
   storyViews       StoryView[]
   storyLikes       StoryLike[]
   storyReplies     StoryReply[]
+  followersCount   Int      @default(0)
+  followingCount   Int      @default(0)
+  followers        Follow[] @relation("FollowTarget")
+  following        Follow[] @relation("FollowSource")
 }
 
 model WorkerProfile {
@@ -488,4 +493,17 @@ model StoryReply {
   createdAt DateTime @default(now())
 
   @@index([storyId])
+}
+
+model Follow {
+  id          String   @id @default(uuid())
+  followerId  String
+  followingId String
+  follower    User     @relation("FollowSource", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User     @relation("FollowTarget", fields: [followingId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
 }

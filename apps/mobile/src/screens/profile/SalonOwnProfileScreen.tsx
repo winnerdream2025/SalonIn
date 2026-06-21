@@ -181,6 +181,25 @@ export default function SalonOwnProfileScreen() {
               </Text>
             </Pressable>
           </View>
+
+          {/* Follower stats */}
+          <View style={styles.statsRow}>
+            <TouchableOpacity
+              style={styles.statCell}
+              onPress={() => authUser && router.push(`/follow/followers?userId=${authUser.id}&name=${encodeURIComponent(salon.name)}` as never)}
+            >
+              <Text style={[styles.statValue, { color: theme.text.primary }]}>{salon.followersCount ?? 0}</Text>
+              <Text style={[styles.statLabel, { color: theme.text.tertiary }]}>Followers</Text>
+            </TouchableOpacity>
+            <View style={[styles.statDivider, { backgroundColor: theme.border.subtle }]} />
+            <TouchableOpacity
+              style={styles.statCell}
+              onPress={() => authUser && router.push(`/follow/following?userId=${authUser.id}&name=${encodeURIComponent(salon.name)}` as never)}
+            >
+              <Text style={[styles.statValue, { color: theme.text.primary }]}>{salon.followingCount ?? 0}</Text>
+              <Text style={[styles.statLabel, { color: theme.text.tertiary }]}>Following</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* ── Specialties ── */}
@@ -420,6 +439,11 @@ const styles = StyleSheet.create({
   salonName: { fontSize: 22, fontWeight: '800', letterSpacing: -0.4, textAlign: 'center' },
   pillsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center' },
   badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+  statsRow: { flexDirection: 'row', alignItems: 'center', gap: 24, paddingVertical: 4 },
+  statCell: { alignItems: 'center', gap: 2 },
+  statValue: { fontSize: 18, fontWeight: '800' },
+  statLabel: { fontSize: 11 },
+  statDivider: { width: 0.5, height: 28 },
 
   section: { marginHorizontal: 16, marginBottom: 10, borderRadius: 16, padding: 16, gap: 8 },
   sectionLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.8 },

@@ -231,6 +231,7 @@ export interface WorkerCardData {
 
 export interface SalonCardData {
   id: string
+  userId?: string
   name: string
   photoUrls: string[]
   specialties: string[]
@@ -240,6 +241,8 @@ export interface SalonCardData {
   city: string | null
   state?: string | null
   country?: string | null
+  followersCount?: number
+  followingCount?: number
 }
 
 export interface JobPostCardData {
@@ -343,6 +346,8 @@ export interface WorkerProfileFull {
   seatRate: number | null
   rating: number
   reviewCount: number
+  followersCount: number
+  followingCount: number
   employmentTypes: EmploymentType[]
   licenseNumber: string | null
   availabilitySchedule: AvailabilitySchedule | null
@@ -370,6 +375,8 @@ export interface SalonProfileFull {
   country: string | null
   rating: number
   reviewCount: number
+  followersCount: number
+  followingCount: number
   createdAt: string
   updatedAt: string
   jobPosts: Array<{

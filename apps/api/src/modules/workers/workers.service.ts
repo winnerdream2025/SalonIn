@@ -17,12 +17,16 @@ export class WorkersService {
     const profile = await this.prisma.workerProfile.findUnique({
       where: { id },
       include: {
-        user: { select: { role: true, createdAt: true } },
+        user: { select: { role: true, createdAt: true, followersCount: true, followingCount: true } },
         portfolioItems: { orderBy: { createdAt: 'desc' } },
       },
     })
     if (!profile) throw new NotFoundException('Worker not found')
-    return profile
+    return {
+      ...profile,
+      followersCount: profile.user.followersCount,
+      followingCount: profile.user.followingCount,
+    }
   }
 
   async updateProfile(userId: string, dto: UpdateWorkerProfileDto) {
@@ -68,12 +72,16 @@ export class WorkersService {
     const profile = await this.prisma.workerProfile.findUnique({
       where: { userId },
       include: {
-        user: { select: { email: true, role: true, createdAt: true } },
+        user: { select: { email: true, role: true, createdAt: true, followersCount: true, followingCount: true } },
         portfolioItems: { orderBy: { createdAt: 'desc' } },
       },
     })
     if (!profile) throw new NotFoundException('Worker profile not found')
-    return profile
+    return {
+      ...profile,
+      followersCount: profile.user.followersCount,
+      followingCount: profile.user.followingCount,
+    }
   }
 
   async getMyApplications(userId: string) {

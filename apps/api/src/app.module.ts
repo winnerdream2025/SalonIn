@@ -24,6 +24,7 @@ import { SpecialtiesModule } from './modules/specialties/specialties.module'
 import { ReviewsModule } from './modules/reviews/reviews.module'
 import { PlacesModule } from './modules/places/places.module'
 import { StoriesModule } from './modules/stories/stories.module'
+import { FollowsModule } from './modules/follows/follows.module'
 
 @Module({
   imports: [
@@ -79,6 +80,7 @@ import { StoriesModule } from './modules/stories/stories.module'
     ReviewsModule,
     PlacesModule,
     StoriesModule,
+    FollowsModule,
   ],
   providers: [
     {

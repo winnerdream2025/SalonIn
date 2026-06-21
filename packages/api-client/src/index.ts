@@ -40,3 +40,6 @@ export type { NotificationItem, NotificationsListResponse } from './notification
 
 export { storiesApi } from './stories.api'
 export type { Story, StoryGroup, StoriesFeed, StoryUser } from './stories.api'
+
+export { followsApi } from './follows.api'
+export type { FollowUser, FollowListResponse, SuggestedUser } from './follows.api'

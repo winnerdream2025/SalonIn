@@ -19,6 +19,7 @@ import { useWorkerProfile } from '../../hooks/useWorkerProfile'
 import { useAuthStore } from '../../store/authStore'
 import { messagesApi } from '@salonin/api-client'
 import { useCanReview } from '../../hooks/useReviews'
+import { useFollow } from '../../hooks/useFollow'
 
 function formatTime12(t: string): string {
   const [hStr = '0', mStr = '00'] = t.split(':')
@@ -37,6 +38,9 @@ export default function WorkerProfileScreen() {
 
   const isOwner = Boolean(currentUser && profile && currentUser.id === profile.userId)
   const [isMessaging, setIsMessaging] = useState(false)
+  const { isFollowing, isLoading: followLoading, toggle: toggleFollow } = useFollow(
+    !isOwner && profile ? profile.userId : undefined
+  )
   const { canReview, existingReview } = useCanReview(
     !isOwner && currentUser ? profile?.userId : undefined
   )
@@ -148,6 +152,26 @@ export default function WorkerProfileScreen() {
 
           {/* Stats row */}
           <View style={[styles.statsRow, { borderColor: theme.border.subtle }]}>
+            <TouchableOpacity
+              style={styles.statItem}
+              onPress={() => router.push(`/follow/followers?userId=${profile.userId}&name=${encodeURIComponent(profile.name)}` as never)}
+            >
+              <Text style={[styles.statValue, { color: theme.text.primary }]}>
+                {profile.followersCount ?? 0}
+              </Text>
+              <Text style={[styles.statLabel, { color: theme.text.tertiary }]}>Followers</Text>
+            </TouchableOpacity>
+            <View style={[styles.statDivider, { backgroundColor: theme.border.subtle }]} />
+            <TouchableOpacity
+              style={styles.statItem}
+              onPress={() => router.push(`/follow/following?userId=${profile.userId}&name=${encodeURIComponent(profile.name)}` as never)}
+            >
+              <Text style={[styles.statValue, { color: theme.text.primary }]}>
+                {profile.followingCount ?? 0}
+              </Text>
+              <Text style={[styles.statLabel, { color: theme.text.tertiary }]}>Following</Text>
+            </TouchableOpacity>
+            <View style={[styles.statDivider, { backgroundColor: theme.border.subtle }]} />
             <View style={styles.statItem}>
               <Text style={[styles.statValue, { color: theme.text.primary }]}>
                 {profile.portfolioItems.length}
@@ -159,17 +183,8 @@ export default function WorkerProfileScreen() {
               <Text style={[styles.statValue, { color: theme.text.primary }]}>
                 {formatExperience(profile.experienceYears)}
               </Text>
-              <Text style={[styles.statLabel, { color: theme.text.tertiary }]}>Experience</Text>
+              <Text style={[styles.statLabel, { color: theme.text.tertiary }]}>Exp</Text>
             </View>
-            {profile.isVerified && (
-              <>
-                <View style={[styles.statDivider, { backgroundColor: theme.border.subtle }]} />
-                <View style={styles.statItem}>
-                  <Text style={[styles.statValue, { color: '#1D9E75' }]}>✓</Text>
-                  <Text style={[styles.statLabel, { color: theme.text.tertiary }]}>Verified</Text>
-                </View>
-              </>
-            )}
           </View>
         </View>
 
@@ -312,14 +327,24 @@ export default function WorkerProfileScreen() {
               </Pressable>
             )}
             <Pressable
+              onPress={() => void toggleFollow()}
+              disabled={followLoading}
               style={({ pressed }) => [
                 styles.ctaBtnSecondary,
-                { borderColor: theme.border.default },
+                isFollowing
+                  ? { borderColor: theme.border.default, backgroundColor: theme.bg.elevated }
+                  : { borderColor: theme.brand.primary },
                 pressed && { opacity: 0.85 },
               ]}
             >
-              <Ionicons name="bookmark-outline" size={15} color={theme.text.secondary} />
-              <Text style={[styles.ctaBtnSecondaryText, { color: theme.text.secondary }]}>Save</Text>
+              <Ionicons
+                name={isFollowing ? 'checkmark' : 'person-add-outline'}
+                size={15}
+                color={isFollowing ? theme.text.secondary : theme.brand.primary}
+              />
+              <Text style={[styles.ctaBtnSecondaryText, { color: isFollowing ? theme.text.secondary : theme.brand.primary }]}>
+                {isFollowing ? 'Following' : 'Follow'}
+              </Text>
             </Pressable>
           </View>
         </View>

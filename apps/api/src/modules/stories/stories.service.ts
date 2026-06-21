@@ -61,6 +61,14 @@ export class StoriesService {
 
   async getFeed(userId: string) {
     const now = new Date()
+
+    // Fetch followed user IDs for priority sorting
+    const followRecords = await this.prisma.follow.findMany({
+      where: { followerId: userId },
+      select: { followingId: true },
+    })
+    const followedIds = new Set(followRecords.map((f) => f.followingId))
+
     const stories = await this.prisma.story.findMany({
       where: { expiresAt: { gt: now } },
       orderBy: { createdAt: 'desc' },
@@ -68,13 +76,13 @@ export class StoriesService {
     })
 
     // Group by userId and annotate with hasUnseenStory
-    const map = new Map<string, { userId: string; name: string; photoUrl: string | null; hasUnseen: boolean; stories: typeof stories }>()
+    const map = new Map<string, { userId: string; name: string; photoUrl: string | null; hasUnseen: boolean; isFollowed: boolean; stories: typeof stories }>()
     for (const s of stories) {
       const name = s.user.workerProfile?.name ?? s.user.salonProfile?.name ?? 'Unknown'
       const photoUrl = s.user.workerProfile?.photoUrl ?? s.user.salonProfile?.photoUrls[0] ?? null
       const seen = s.views.length > 0
       if (!map.has(s.userId)) {
-        map.set(s.userId, { userId: s.userId, name, photoUrl, hasUnseen: !seen, stories: [s] })
+        map.set(s.userId, { userId: s.userId, name, photoUrl, hasUnseen: !seen, isFollowed: followedIds.has(s.userId), stories: [s] })
       } else {
         const entry = map.get(s.userId)!
         if (!seen) entry.hasUnseen = true
@@ -82,10 +90,15 @@ export class StoriesService {
       }
     }
 
-    // Own stories first, then others sorted by unseen
+    // Own stories first, then followed users with unseen, then others
     const own = map.get(userId)
     const others = [...map.values()].filter((g) => g.userId !== userId)
-    others.sort((a, b) => (b.hasUnseen ? 1 : 0) - (a.hasUnseen ? 1 : 0))
+    others.sort((a, b) => {
+      // Followed users with unseen first
+      const aScore = (a.isFollowed ? 2 : 0) + (a.hasUnseen ? 1 : 0)
+      const bScore = (b.isFollowed ? 2 : 0) + (b.hasUnseen ? 1 : 0)
+      return bScore - aScore
+    })
 
     return { groups: own ? [own, ...others] : others }
   }

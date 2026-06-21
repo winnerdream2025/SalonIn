@@ -10,7 +10,6 @@ import { Text, AvailabilityBadge, PortfolioGrid, Skeleton, useTheme } from '@sal
 import type { Theme } from '@salonin/ui'
 import type { PortfolioItem } from '@salonin/types'
 import { Availability, Role } from '@salonin/types'
-import { formatExperience } from '@salonin/utils'
 import { useMyWorkerProfile } from '../../hooks/useWorkerProfile'
 import { useMyApplications } from '../../hooks/useJobDetail'
 import { authApi, workersApi, verifyApi } from '@salonin/api-client'
@@ -223,14 +222,25 @@ export default function WorkerOwnProfileScreen() {
         {/* ── Stats card ─────────────────────────────────── */}
         <View style={[styles.card, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
           <View style={styles.statsRow}>
+            <TouchableOpacity
+              style={styles.statCell}
+              onPress={() => authUser && router.push(`/follow/followers?userId=${authUser.id}&name=${encodeURIComponent(profile.name)}` as never)}
+            >
+              <Text style={[styles.statValue, { color: theme.text.primary }]}>{profile.followersCount ?? 0}</Text>
+              <Text style={[styles.statLabel, { color: theme.text.tertiary }]}>Followers</Text>
+            </TouchableOpacity>
+            <View style={[styles.statDivider, { backgroundColor: theme.border.subtle }]} />
+            <TouchableOpacity
+              style={styles.statCell}
+              onPress={() => authUser && router.push(`/follow/following?userId=${authUser.id}&name=${encodeURIComponent(profile.name)}` as never)}
+            >
+              <Text style={[styles.statValue, { color: theme.text.primary }]}>{profile.followingCount ?? 0}</Text>
+              <Text style={[styles.statLabel, { color: theme.text.tertiary }]}>Following</Text>
+            </TouchableOpacity>
+            <View style={[styles.statDivider, { backgroundColor: theme.border.subtle }]} />
             <View style={styles.statCell}>
               <Text style={[styles.statValue, { color: theme.text.primary }]}>{applications.length}</Text>
               <Text style={[styles.statLabel, { color: theme.text.tertiary }]}>Applied</Text>
-            </View>
-            <View style={[styles.statDivider, { backgroundColor: theme.border.subtle }]} />
-            <View style={styles.statCell}>
-              <Text style={[styles.statValue, { color: theme.text.primary }]}>{formatExperience(profile.experienceYears)}</Text>
-              <Text style={[styles.statLabel, { color: theme.text.tertiary }]}>Experience</Text>
             </View>
             <View style={[styles.statDivider, { backgroundColor: theme.border.subtle }]} />
             <View style={styles.statCell}>

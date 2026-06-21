@@ -29,6 +29,9 @@ import { NotificationBell } from '../../components/NotificationBell'
 import { LocationModal } from '../../components/LocationModal'
 import { WorkerFilterModal, activeWorkerFilterCount, EMPTY_WORKER_FILTERS } from '../../components/WorkerFilterModal'
 import type { WorkerFilters } from '../../components/WorkerFilterModal'
+import { useSuggestedUsers } from '../../hooks/useFollow'
+import { followsApi } from '@salonin/api-client'
+import type { SuggestedUser } from '@salonin/api-client'
 
 const SPECIALTIES = ['All', ...SPECIALTY_CATEGORIES]
 
@@ -286,11 +289,14 @@ export default function DiscoveryFeedScreen() {
           )}
           contentContainerStyle={[styles.listContent, { paddingBottom: 56 + bottom + 16 }]}
           ListHeaderComponent={
-            isExpanded ? (
-              <Text style={[styles.expandedNote, { color: theme.text.tertiary }]}>
-                Showing results within {usedRadius} miles
-              </Text>
-            ) : null
+            <>
+              {currentUser && <SuggestedStylists theme={theme} />}
+              {isExpanded ? (
+                <Text style={[styles.expandedNote, { color: theme.text.tertiary }]}>
+                  Showing results within {usedRadius} miles
+                </Text>
+              ) : null}
+            </>
           }
           ListEmptyComponent={
             isLoading ? (
@@ -530,4 +536,101 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     width: '100%',
   },
+})
+
+// ─── Suggested Stylists ───────────────────────────────────────────────────────
+
+function SuggestedStylists({ theme }: { theme: ReturnType<typeof useTheme>['theme'] }) {
+  const { suggestions, isLoading } = useSuggestedUsers()
+  const [followed, setFollowed] = React.useState<Set<string>>(new Set())
+
+  if (isLoading || suggestions.length === 0) return null
+
+  const handleFollow = async (userId: string) => {
+    setFollowed((prev) => new Set([...prev, userId]))
+    await followsApi.follow(userId).catch(() => {
+      setFollowed((prev) => { const next = new Set(prev); next.delete(userId); return next })
+    })
+  }
+
+  return (
+    <View style={suggestStyles.section}>
+      <View style={suggestStyles.header}>
+        <Text style={[suggestStyles.title, { color: theme.text.primary }]}>Suggested Stylists</Text>
+        <TouchableOpacity onPress={() => router.push('/search' as never)}>
+          <Text style={[suggestStyles.seeAll, { color: '#D85A30' }]}>See all</Text>
+        </TouchableOpacity>
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={suggestStyles.list}>
+        {suggestions.map((s) => (
+          <SuggestedCard key={s.id} user={s} theme={theme} isFollowed={followed.has(s.id)} onFollow={handleFollow} />
+        ))}
+      </ScrollView>
+    </View>
+  )
+}
+
+function SuggestedCard({
+  user,
+  theme,
+  isFollowed,
+  onFollow,
+}: {
+  user: SuggestedUser
+  theme: ReturnType<typeof useTheme>['theme']
+  isFollowed: boolean
+  onFollow: (id: string) => void
+}) {
+  return (
+    <TouchableOpacity
+      style={[suggestStyles.card, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}
+      onPress={() => router.push(`/worker/${user.id}` as never)}
+      activeOpacity={0.85}
+    >
+      <View style={[suggestStyles.avatar, { backgroundColor: theme.bg.elevated }]}>
+        {user.photoUrl ? (
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          <View style={suggestStyles.avatarImg}>
+            <Text style={{ fontSize: 22 }}>{user.name[0]?.toUpperCase() ?? '?'}</Text>
+          </View>
+        ) : (
+          <Text style={{ fontSize: 22, color: theme.text.secondary }}>{user.name[0]?.toUpperCase() ?? '?'}</Text>
+        )}
+      </View>
+      <Text style={[suggestStyles.name, { color: theme.text.primary }]} numberOfLines={1}>{user.name}</Text>
+      {user.specialties[0] && (
+        <Text style={[suggestStyles.specialty, { color: theme.text.secondary }]} numberOfLines={1}>{user.specialties[0]}</Text>
+      )}
+      {user.reason === 'mutual' && (
+        <Text style={[suggestStyles.reason, { color: '#D85A30' }]}>Mutual follow</Text>
+      )}
+      {user.rating > 0 && (
+        <Text style={[suggestStyles.reason, { color: theme.text.tertiary }]}>⭐ {user.rating.toFixed(1)}</Text>
+      )}
+      <TouchableOpacity
+        onPress={() => onFollow(user.id)}
+        disabled={isFollowed}
+        style={[suggestStyles.followBtn, isFollowed ? { backgroundColor: theme.bg.elevated, borderColor: theme.border.default } : { backgroundColor: '#D85A30', borderColor: '#D85A30' }]}
+      >
+        <Text style={{ fontSize: 12, fontWeight: '700', color: isFollowed ? theme.text.secondary : '#fff' }}>
+          {isFollowed ? 'Following' : 'Follow'}
+        </Text>
+      </TouchableOpacity>
+    </TouchableOpacity>
+  )
+}
+
+const suggestStyles = StyleSheet.create({
+  section: { paddingTop: 8, paddingBottom: 4 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 10 },
+  title: { fontSize: 16, fontWeight: '700' },
+  seeAll: { fontSize: 13, fontWeight: '600' },
+  list: { paddingHorizontal: 16, gap: 10 },
+  card: { width: 120, borderRadius: 16, borderWidth: 0.5, padding: 12, alignItems: 'center', gap: 4 },
+  avatar: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  avatarImg: { alignItems: 'center', justifyContent: 'center' },
+  name: { fontSize: 13, fontWeight: '700', textAlign: 'center' },
+  specialty: { fontSize: 11, textAlign: 'center' },
+  reason: { fontSize: 10, textAlign: 'center' },
+  followBtn: { marginTop: 6, borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 5 },
 })
