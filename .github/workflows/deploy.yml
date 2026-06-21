@@ -22,18 +22,16 @@ jobs:
     name: Deploy API (Railway)
     runs-on: ubuntu-latest
     if: github.event.workflow_run.conclusion == 'success'
+    container: ghcr.io/railwayapp/cli:latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
     steps:
       - uses: actions/checkout@v4.2.2
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
 
-      - uses: railwayapp/cli-action@v3
-        with:
-          command: railway up --service mysalonin-api --detach
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      - run: railway up --service mysalonin-api --detach
 
   # ------------------------------------------------------------------
   # Job 2 — Deploy Web to Railway
@@ -42,18 +40,16 @@ jobs:
     name: Deploy Web (Railway)
     runs-on: ubuntu-latest
     if: github.event.workflow_run.conclusion == 'success'
+    container: ghcr.io/railwayapp/cli:latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
     steps:
       - uses: actions/checkout@v4.2.2
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
 
-      - uses: railwayapp/cli-action@v3
-        with:
-          command: railway up --service mysalonin-web --detach
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      - run: railway up --service mysalonin-web --detach
 
   # ------------------------------------------------------------------
   # Job 3 — Expo EAS OTA update (only when apps/mobile/** changed)
