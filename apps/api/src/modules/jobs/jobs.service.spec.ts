@@ -5,6 +5,10 @@ import { PrismaService } from '../../prisma/prisma.service'
 import { NotificationsService } from '../notifications/notifications.service'
 
 const mockPrisma = {
+  $queryRaw: jest.fn().mockResolvedValue([]),
+  $queryRawUnsafe: jest.fn().mockResolvedValue([]),
+  $executeRaw: jest.fn().mockResolvedValue(0),
+  $transaction: jest.fn(),
   salonProfile: { findUnique: jest.fn() },
   jobPost: {
     create: jest.fn(),
@@ -22,12 +26,12 @@ const mockPrisma = {
     findUnique: jest.fn(),
     findMany: jest.fn(),
   },
-  $transaction: jest.fn(),
 }
 
 const mockNotifications = {
   sendPush: jest.fn().mockResolvedValue(undefined),
   notifyNewJobPost: jest.fn().mockResolvedValue(undefined),
+  notifyNewApplication: jest.fn().mockResolvedValue(undefined),
 }
 
 const BASE_DTO = {
