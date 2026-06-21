@@ -18,6 +18,15 @@ export type {
 
 export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read' | 'failed'
 
+export const SUPPORTED_REACTIONS = ['❤️', '👍', '😂', '😮', '😢', '🔥'] as const
+
+export type ReactionEmoji = (typeof SUPPORTED_REACTIONS)[number]
+
+export interface Reaction {
+  userId: string
+  emoji: ReactionEmoji
+}
+
 export interface Message {
   id: string
   senderId: string
@@ -31,6 +40,14 @@ export interface Message {
   readAt?: Date | string | null
   isRead?: boolean
   isSystem?: boolean
+  replyToId?: string | null
+  replyTo?: Partial<Message> | null
+  reactions?: Reaction[]
+  isEdited?: boolean
+  editedAt?: Date | string | null
+  isDeletedForAll?: boolean
+  deletedAt?: Date | string | null
+  deletedForUserIds?: string[]
 }
 
 export interface UserPresence {

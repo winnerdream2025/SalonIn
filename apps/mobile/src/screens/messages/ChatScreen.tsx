@@ -4,6 +4,7 @@ import {
   Alert,
   FlatList,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   StyleSheet,
   Text,
@@ -40,6 +41,9 @@ export default function ChatScreen() {
     isLoading,
     isLoadingMore,
     sendMessage,
+    editMessage,
+    deleteMessage,
+    reactToMessage,
     loadMore,
     typingUsers,
     setTyping,
@@ -53,6 +57,11 @@ export default function ChatScreen() {
   const [showReport, setShowReport] = useState(false)
   const [isRespondingRequest, setIsRespondingRequest] = useState(false)
   const [typingVisible, setTypingVisible] = useState(false)
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null)
+  const [editingMessage, setEditingMessage] = useState<Message | null>(null)
+  const [selectedMessage, setSelectedMessage] = useState<Message | null>(null)
+  const [showActionMenu, setShowActionMenu] = useState(false)
+  const [showReactionPicker, setShowReactionPicker] = useState(false)
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const inputRef = useRef<TextInput>(null)
 
@@ -87,14 +96,20 @@ export default function ChatScreen() {
     setDraft('')
     setTyping(false)
     try {
-      await sendMessage(text)
+      if (editingMessage) {
+        await editMessage(editingMessage.id, text)
+        setEditingMessage(null)
+      } else {
+        await sendMessage(text, undefined, replyingTo?.id)
+        setReplyingTo(null)
+      }
     } catch (e: unknown) {
       setDraft(text)
       Alert.alert('Message not sent', parseApiError(e))
     } finally {
       setIsSending(false)
     }
-  }, [draft, sendMessage, setTyping, inputDisabled, isSending, name])
+  }, [draft, sendMessage, editMessage, setTyping, inputDisabled, isSending, replyingTo, editingMessage])
 
   const handleChangeText = useCallback(
     (text: string) => {
@@ -146,10 +161,19 @@ export default function ChatScreen() {
           showAvatar={showAvatar}
           senderPhotoUrl={isSelf ? null : (otherPhotoUrl ?? null)}
           senderName={isSelf ? undefined : (name ?? undefined)}
+          currentUserId={currentUserId}
+          onLongPress={(msg) => {
+            setSelectedMessage(msg)
+            setShowActionMenu(true)
+          }}
+          onPressReaction={(emoji) => {
+            if (item.isDeletedForAll) return
+            void reactToMessage(item.id, emoji)
+          }}
         />
       )
     },
-    [currentUserId, messages, otherPhotoUrl, name, theme],
+    [currentUserId, messages, otherPhotoUrl, name, theme, reactToMessage],
   )
 
   return (
@@ -264,6 +288,29 @@ export default function ChatScreen() {
           </View>
         )}
 
+        {(replyingTo || editingMessage) && (
+          <View style={[styles.composerBanner, { borderTopColor: theme.border.default, backgroundColor: theme.bg.card }]}>
+            <View style={styles.flex}>
+              <Text style={[styles.composerBannerLabel, { color: theme.brand.primary }]}>
+                {editingMessage ? 'Editing' : 'Replying to'} {replyingTo?.senderId === currentUserId ? 'yourself' : name ?? 'User'}
+              </Text>
+              <Text style={[styles.composerBannerText, { color: theme.text.secondary }]} numberOfLines={1}>
+                {editingMessage ? editingMessage.content : replyingTo?.content ?? 'Media'}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => {
+                setReplyingTo(null)
+                setEditingMessage(null)
+              }}
+              style={styles.composerBannerClose}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="close" size={20} color={theme.text.secondary} />
+            </TouchableOpacity>
+          </View>
+        )}
+
         <View style={[styles.inputRow, { borderTopColor: theme.border.default, backgroundColor: theme.bg.card, paddingBottom: Math.max(bottom, 12) }]}>
           <TextInput
             ref={inputRef}
@@ -309,6 +356,126 @@ export default function ChatScreen() {
           }}
         />
       )}
+
+      <Modal
+        visible={showActionMenu}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowActionMenu(false)}
+      >
+        <TouchableOpacity
+          style={styles.overlay}
+          activeOpacity={1}
+          onPress={() => setShowActionMenu(false)}
+        >
+          <View style={[styles.actionSheet, { backgroundColor: theme.bg.card }]}
+            pointerEvents="box-none"
+          >
+            <View style={[styles.actionSheetHeader, { borderBottomColor: theme.border.default }]}>
+              <Text style={[styles.actionSheetTitle, { color: theme.text.primary }]}>
+                Message options
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => {
+                if (selectedMessage) {
+                  setReplyingTo(selectedMessage)
+                  setShowActionMenu(false)
+                }
+              }}
+              style={styles.actionRow}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="arrow-undo-outline" size={22} color={theme.text.primary} />
+              <Text style={[styles.actionText, { color: theme.text.primary }]}>Reply</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                setShowActionMenu(false)
+                setShowReactionPicker(true)
+              }}
+              style={styles.actionRow}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="happy-outline" size={22} color={theme.text.primary} />
+              <Text style={[styles.actionText, { color: theme.text.primary }]}>React</Text>
+            </TouchableOpacity>
+            {selectedMessage && selectedMessage.senderId === currentUserId && !selectedMessage.isDeletedForAll && (
+              <TouchableOpacity
+                onPress={() => {
+                  setEditingMessage(selectedMessage)
+                  setDraft(selectedMessage.content ?? '')
+                  setShowActionMenu(false)
+                  inputRef.current?.focus()
+                }}
+                style={styles.actionRow}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="pencil-outline" size={22} color={theme.text.primary} />
+                <Text style={[styles.actionText, { color: theme.text.primary }]}>Edit</Text>
+              </TouchableOpacity>
+            )}
+            {selectedMessage && !selectedMessage.isDeletedForAll && (
+              <TouchableOpacity
+                onPress={() => {
+                  setShowActionMenu(false)
+                  const isOwn = selectedMessage.senderId === currentUserId
+                  Alert.alert(
+                    'Delete message',
+                    isOwn ? 'Delete this message for everyone or just for you?' : 'Delete this message for you?',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Delete for me', style: 'destructive', onPress: () => void deleteMessage(selectedMessage.id, 'me') },
+                      ...(isOwn
+                        ? [{ text: 'Delete for all', style: 'destructive', onPress: () => void deleteMessage(selectedMessage.id, 'all') } as const]
+                        : []),
+                    ],
+                  )
+                }}
+                style={styles.actionRow}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="trash-outline" size={22} color={theme.semantic.error.text} />
+                <Text style={[styles.actionText, { color: theme.semantic.error.text }]}>Delete</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <Modal
+        visible={showReactionPicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowReactionPicker(false)}
+      >
+        <TouchableOpacity
+          style={styles.overlay}
+          activeOpacity={1}
+          onPress={() => setShowReactionPicker(false)}
+        >
+          <View style={[styles.reactionPicker, { backgroundColor: theme.bg.card }]}>
+            <View style={styles.reactionRow}>
+              {['❤️', '👍', '😂', '😮', '😢', '🔥'].map((emoji) => (
+                <TouchableOpacity
+                  key={emoji}
+                  onPress={() => {
+                    if (selectedMessage) {
+                      void reactToMessage(selectedMessage.id, emoji)
+                    }
+                    setShowReactionPicker(false)
+                    setSelectedMessage(null)
+                  }}
+                  style={styles.reactionOption}
+                  activeOpacity={0.6}
+                >
+                  <Text style={styles.reactionOptionText}>{emoji}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   )
 }
@@ -362,6 +529,18 @@ const styles = StyleSheet.create({
   typingRow: { paddingHorizontal: 20, paddingBottom: 4 },
   typingText: { fontSize: 13, fontStyle: 'italic' },
 
+  composerBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: 8,
+  },
+  composerBannerLabel: { fontSize: 12, fontWeight: '700' },
+  composerBannerText: { fontSize: 13, marginTop: 1 },
+  composerBannerClose: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
+
   inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -391,4 +570,36 @@ const styles = StyleSheet.create({
   systemMsgRow: { alignItems: 'center', paddingVertical: 8, paddingHorizontal: 24 },
   systemBubble: { borderRadius: 12, paddingHorizontal: 14, paddingVertical: 6 },
   systemText: { fontSize: 12, textAlign: 'center' },
+
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  actionSheet: {
+    margin: 16,
+    borderRadius: 18,
+    paddingBottom: 16,
+    overflow: 'hidden',
+  },
+  actionSheetHeader: {
+    paddingVertical: 14,
+    alignItems: 'center',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  actionSheetTitle: { fontSize: 14, fontWeight: '600' },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 12,
+  },
+  actionText: { fontSize: 16 },
+
+  reactionPicker: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 24,
+    padding: 12,
+  },
+  reactionRow: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' },
+  reactionOption: { padding: 10 },
+  reactionOptionText: { fontSize: 28 },
 })

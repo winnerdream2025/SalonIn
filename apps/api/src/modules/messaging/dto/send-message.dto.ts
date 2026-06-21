@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsUrl, MaxLength } from 'class-validator'
+import { IsOptional, IsString, IsUrl, IsUUID, MaxLength } from 'class-validator'
 
 export class SendMessageDto {
   @IsOptional()
@@ -9,4 +9,8 @@ export class SendMessageDto {
   @IsOptional()
   @IsUrl()
   mediaUrl?: string
+
+  @IsOptional()
+  @IsUUID()
+  replyToId?: string
 }

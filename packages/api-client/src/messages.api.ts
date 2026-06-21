@@ -1,5 +1,5 @@
 import { api } from './client'
-import type { ConversationPreview, CursorResponse, Message, UserPresence } from '@salonin/types'
+import type { ConversationPreview, CursorResponse, Message, ReactionEmoji, UserPresence } from '@salonin/types'
 
 export const messagesApi = {
   createConversation: (otherUserId: string): Promise<ConversationPreview> =>
@@ -23,9 +23,25 @@ export const messagesApi = {
     conversationId: string,
     content?: string,
     mediaUrl?: string,
+    replyToId?: string,
   ): Promise<Message> =>
     api
-      .post<Message>(`/conversations/${conversationId}/messages`, { content, mediaUrl })
+      .post<Message>(`/conversations/${conversationId}/messages`, { content, mediaUrl, replyToId })
+      .then((r) => r.data),
+
+  editMessage: (conversationId: string, messageId: string, content: string): Promise<Message> =>
+    api
+      .patch<Message>(`/conversations/${conversationId}/messages/${messageId}`, { content })
+      .then((r) => r.data),
+
+  deleteMessage: (conversationId: string, messageId: string, mode: 'me' | 'all'): Promise<void> =>
+    api
+      .delete(`/conversations/${conversationId}/messages/${messageId}`, { data: { mode } })
+      .then(() => undefined),
+
+  reactToMessage: (conversationId: string, messageId: string, emoji: ReactionEmoji): Promise<Message> =>
+    api
+      .post<Message>(`/conversations/${conversationId}/messages/${messageId}/reactions`, { emoji })
       .then((r) => r.data),
 
   markAsRead: (conversationId: string): Promise<void> =>

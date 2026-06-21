@@ -19,6 +19,9 @@ import { MessagingGateway } from './messaging.gateway'
 import { PresenceService } from './presence.service'
 import { CreateConversationDto } from './dto/create-conversation.dto'
 import { SendMessageDto } from './dto/send-message.dto'
+import { UpdateMessageDto } from './dto/update-message.dto'
+import { ReactMessageDto } from './dto/react-message.dto'
+import { DeleteMessageDto } from './dto/delete-message.dto'
 import { GetMessagesDto } from './dto/get-messages.dto'
 import { SearchConversationsDto } from './dto/search-conversations.dto'
 import {
@@ -75,8 +78,52 @@ export class MessagingController {
     @CurrentUser() user: User,
     @Body() dto: SendMessageDto,
   ) {
-    const message = await this.messagingService.sendMessage(id, user.id, dto.content, dto.mediaUrl)
+    const message = await this.messagingService.sendMessage(
+      id,
+      user.id,
+      dto.content,
+      dto.mediaUrl,
+      dto.replyToId,
+    )
     await this.messagingGateway.broadcastNewMessage(id, user.id, message)
+    return message
+  }
+
+  @Patch(':id/messages/:messageId')
+  @Throttle({ short: { limit: 30, ttl: 60000 } })
+  async updateMessage(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('messageId', ParseUUIDPipe) messageId: string,
+    @CurrentUser() user: User,
+    @Body() dto: UpdateMessageDto,
+  ) {
+    const message = await this.messagingService.updateMessage(messageId, id, user.id, dto.content)
+    this.messagingGateway.broadcastMessageUpdate(id, message)
+    return message
+  }
+
+  @Delete(':id/messages/:messageId')
+  async deleteMessage(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('messageId', ParseUUIDPipe) messageId: string,
+    @CurrentUser() user: User,
+    @Body() dto: DeleteMessageDto,
+  ) {
+    const result = await this.messagingService.deleteMessage(messageId, id, user.id, dto.mode)
+    this.messagingGateway.broadcastMessageDeleted(id, messageId, user.id, dto.mode)
+    return result
+  }
+
+  @Post(':id/messages/:messageId/reactions')
+  @Throttle({ short: { limit: 60, ttl: 60000 } })
+  async reactToMessage(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('messageId', ParseUUIDPipe) messageId: string,
+    @CurrentUser() user: User,
+    @Body() dto: ReactMessageDto,
+  ) {
+    const message = await this.messagingService.reactToMessage(messageId, id, user.id, dto.emoji)
+    this.messagingGateway.broadcastMessageReaction(id, message)
     return message
   }
 

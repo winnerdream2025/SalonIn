@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { io } from 'socket.io-client'
 import type { Socket } from 'socket.io-client'
 import { messagesApi, chatRequestsApi } from '@salonin/api-client'
-import type { Message, MessageStatus, ChatRequestPreview, UserPresence, TypingEvent } from '@salonin/types'
+import type { Message, MessageStatus, ChatRequestPreview, UserPresence, TypingEvent, ReactionEmoji } from '@salonin/types'
 import { useAuthStore } from '../store/authStore'
 
 function dedupeById(msgs: Message[]): Message[] {
@@ -100,6 +100,26 @@ export function useMessages(conversationId: string, otherUserId?: string) {
       setChatRequest(updated)
     })
 
+    socket.on('message:updated', (msg: Message) => {
+      setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, ...msg, isEdited: true } : m)))
+    })
+
+    socket.on('message:deleted', (payload: { messageId: string; userId: string; mode: 'me' | 'all' }) => {
+      setMessages((prev) => {
+        if (payload.mode === 'all') {
+          return prev.filter((m) => m.id !== payload.messageId)
+        }
+        if (payload.userId === userId) {
+          return prev.filter((m) => m.id !== payload.messageId)
+        }
+        return prev
+      })
+    })
+
+    socket.on('message:reaction', (msg: Message) => {
+      setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, reactions: msg.reactions } : m)))
+    })
+
     socketRef.current = socket
 
     heartbeatRef.current = setInterval(() => {
@@ -159,7 +179,7 @@ export function useMessages(conversationId: string, otherUserId?: string) {
   }, [messages, conversationId, userId])
 
   const sendMessage = useCallback(
-    async (content: string, mediaUrl?: string) => {
+    async (content: string, mediaUrl?: string, replyToId?: string) => {
       const tempId = `optimistic-${Date.now()}`
       const optimistic: Message = {
         id: tempId,
@@ -172,12 +192,13 @@ export function useMessages(conversationId: string, otherUserId?: string) {
         createdAt: new Date().toISOString(),
         isRead: false,
         isSystem: false,
+        replyToId: replyToId ?? null,
       }
 
       setMessages((prev) => dedupeById([optimistic, ...prev]))
 
       try {
-        const msg = await messagesApi.sendMessage(conversationId, content, mediaUrl)
+        const msg = await messagesApi.sendMessage(conversationId, content, mediaUrl, replyToId)
         const serverMsg = msg as Message
         setMessages((prev) => {
           const filtered = prev.filter((m) => m.id !== tempId)
@@ -201,6 +222,68 @@ export function useMessages(conversationId: string, otherUserId?: string) {
       }
     },
     [conversationId, userId],
+  )
+
+  const editMessage = useCallback(
+    async (messageId: string, content: string) => {
+      const previous = messages.find((m) => m.id === messageId)
+      setMessages((prev) =>
+        prev.map((m) => (m.id === messageId ? { ...m, content, isEdited: true } : m)),
+      )
+      try {
+        const msg = await messagesApi.editMessage(conversationId, messageId, content)
+        setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, ...msg } : m)))
+        return msg
+      } catch (e) {
+        if (previous) {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === messageId ? { ...m, content: previous.content, isEdited: previous.isEdited } : m,
+            ),
+          )
+        }
+        throw e
+      }
+    },
+    [conversationId, messages],
+  )
+
+  const deleteMessage = useCallback(
+    async (messageId: string, mode: 'me' | 'all') => {
+      setMessages((prev) => prev.filter((m) => m.id !== messageId))
+      try {
+        await messagesApi.deleteMessage(conversationId, messageId, mode)
+      } catch (e) {
+        void messagesApi.getMessages(conversationId).then((res) => {
+          setMessages(dedupeById(res.data as Message[]))
+        })
+        throw e
+      }
+    },
+    [conversationId],
+  )
+
+  const reactToMessage = useCallback(
+    async (messageId: string, emoji: string) => {
+      const previous = messages.find((m) => m.id === messageId)?.reactions ?? []
+      const typedEmoji = emoji as ReactionEmoji
+      const next = (() => {
+        const own = previous.find((r) => r.userId === userId)
+        if (own?.emoji === typedEmoji) return previous.filter((r) => r.userId !== userId)
+        if (own) return previous.map((r) => (r.userId === userId ? { ...r, emoji: typedEmoji } : r))
+        return [...previous, { userId: userId ?? '', emoji: typedEmoji }]
+      })()
+      setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, reactions: next } : m)))
+      try {
+        const msg = await messagesApi.reactToMessage(conversationId, messageId, typedEmoji)
+        setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, reactions: msg.reactions } : m)))
+        return msg
+      } catch (e) {
+        setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, reactions: previous } : m)))
+        throw e
+      }
+    },
+    [conversationId, messages, userId],
   )
 
   const loadMore = useCallback(async () => {
@@ -255,6 +338,9 @@ export function useMessages(conversationId: string, otherUserId?: string) {
     setChatRequest,
     presence,
     sendMessage,
+    editMessage,
+    deleteMessage,
+    reactToMessage,
     loadMore,
     setTyping,
   }

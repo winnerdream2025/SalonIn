@@ -3,8 +3,23 @@ import { ChatRequestStatus } from '@prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
 import { NotificationsService } from '../notifications/notifications.service'
 import { PresenceService } from './presence.service'
-import type { ConversationPreview, CursorResponse } from '@salonin/types'
+import type { ConversationPreview, CursorResponse, Reaction } from '@salonin/types'
 import type { Message } from '@salonin/types'
+import type { Prisma } from '@prisma/client'
+
+type MessageWithReactions = Prisma.MessageGetPayload<{
+  include: {
+    replyTo: {
+      select: {
+        id: true
+        senderId: true
+        content: true
+        mediaUrl: true
+        isDeletedForAll: true
+      }
+    }
+  }
+}> & { reactions: Prisma.JsonValue | null }
 
 const MESSAGES_LIMIT = 30
 const MAX_PENDING_MESSAGES = 3
@@ -155,13 +170,31 @@ export class MessagingService {
   ): Promise<CursorResponse<Message>> {
     await this.assertParticipant(conversationId, userId)
 
+    const deletedMessageIds = await this.prisma.deletedMessage.findMany({
+      where: { userId, message: { conversationId } },
+      select: { messageId: true },
+    })
+    const deletedIds = new Set(deletedMessageIds.map((d) => d.messageId))
+
     const msgs = await this.prisma.message.findMany({
       where: {
         conversationId,
+        isDeletedForAll: false,
         ...(cursor != null ? { createdAt: { lt: new Date(cursor) } } : {}),
       },
       orderBy: { createdAt: 'desc' },
       take: MESSAGES_LIMIT + 1,
+      include: {
+        replyTo: {
+          select: {
+            id: true,
+            senderId: true,
+            content: true,
+            mediaUrl: true,
+            isDeletedForAll: true,
+          },
+        },
+      },
     })
 
     const hasMore = msgs.length > MESSAGES_LIMIT
@@ -171,7 +204,8 @@ export class MessagingService {
         ? (data[data.length - 1]?.createdAt.toISOString() ?? null)
         : null
 
-    return { data: data as Message[], nextCursor, hasMore }
+    const filtered = data.filter((m) => !deletedIds.has(m.id))
+    return { data: filtered.map((m) => this.serializeMessage(m as MessageWithReactions)), nextCursor, hasMore }
   }
 
   async sendMessage(
@@ -179,11 +213,19 @@ export class MessagingService {
     senderId: string,
     content?: string,
     mediaUrl?: string,
+    replyToId?: string,
   ): Promise<Message> {
     if (!content && !mediaUrl) {
       throw new BadRequestException('Message must have content or media')
     }
     await this.assertParticipant(conversationId, senderId)
+
+    if (replyToId) {
+      const parent = await this.prisma.message.findFirst({
+        where: { id: replyToId, conversationId },
+      })
+      if (!parent) throw new BadRequestException('Reply message not found in this conversation')
+    }
 
     const other = await this.prisma.conversationParticipant.findFirst({
       where: { conversationId, userId: { not: senderId } },
@@ -200,6 +242,18 @@ export class MessagingService {
         mediaUrl,
         type: mediaUrl ? 'MEDIA' : 'TEXT',
         status: 'sent',
+        replyToId,
+      },
+      include: {
+        replyTo: {
+          select: {
+            id: true,
+            senderId: true,
+            content: true,
+            mediaUrl: true,
+            isDeletedForAll: true,
+          },
+        },
       },
     })
 
@@ -210,7 +264,7 @@ export class MessagingService {
 
     void this.notifyRecipient(conversationId, senderId, content)
 
-    return message as Message
+    return this.serializeMessage(message as MessageWithReactions)
   }
 
   private async enforceChatRequest(
@@ -439,5 +493,139 @@ export class MessagingService {
       createdAt: conv.createdAt.toISOString(),
       updatedAt: conv.updatedAt.toISOString(),
     }
+  }
+
+  async updateMessage(
+    messageId: string,
+    conversationId: string,
+    userId: string,
+    content: string,
+  ): Promise<Message> {
+    await this.assertParticipant(conversationId, userId)
+    const message = await this.prisma.message.findFirst({
+      where: { id: messageId, conversationId, senderId: userId, isDeletedForAll: false },
+    })
+    if (!message) throw new NotFoundException('Message not found')
+
+    const updated = await this.prisma.message.update({
+      where: { id: messageId },
+      data: {
+        content,
+        isEdited: true,
+        editedAt: new Date(),
+      },
+      include: {
+        replyTo: {
+          select: {
+            id: true,
+            senderId: true,
+            content: true,
+            mediaUrl: true,
+            isDeletedForAll: true,
+          },
+        },
+      },
+    })
+    return this.serializeMessage(updated as MessageWithReactions)
+  }
+
+  async reactToMessage(
+    messageId: string,
+    conversationId: string,
+    userId: string,
+    emoji: string,
+  ): Promise<Message> {
+    await this.assertParticipant(conversationId, userId)
+    const message = await this.prisma.message.findFirst({
+      where: { id: messageId, conversationId, isDeletedForAll: false },
+    })
+    if (!message) throw new NotFoundException('Message not found')
+
+    const current = ((message.reactions as Prisma.JsonValue) as unknown as Reaction[] | undefined) ?? []
+    const existing = current.find((r) => r.userId === userId)
+    const typedEmoji = emoji as Reaction['emoji']
+    let next: Reaction[]
+    if (existing) {
+      if (existing.emoji === typedEmoji) {
+        next = current.filter((r) => r.userId !== userId)
+      } else {
+        next = current.map((r) => (r.userId === userId ? { userId, emoji: typedEmoji } : r))
+      }
+    } else {
+      next = [...current, { userId, emoji: typedEmoji }]
+    }
+
+    const updated = await this.prisma.message.update({
+      where: { id: messageId },
+      data: { reactions: next as unknown as Prisma.InputJsonValue },
+      include: {
+        replyTo: {
+          select: {
+            id: true,
+            senderId: true,
+            content: true,
+            mediaUrl: true,
+            isDeletedForAll: true,
+          },
+        },
+      },
+    })
+    return this.serializeMessage(updated as MessageWithReactions)
+  }
+
+  async deleteMessage(
+    messageId: string,
+    conversationId: string,
+    userId: string,
+    mode: 'me' | 'all',
+  ): Promise<{ success: true; deletedForAll: boolean }> {
+    await this.assertParticipant(conversationId, userId)
+    const message = await this.prisma.message.findFirst({
+      where: { id: messageId, conversationId },
+    })
+    if (!message) throw new NotFoundException('Message not found')
+
+    if (mode === 'all') {
+      if (message.senderId !== userId) {
+        throw new ForbiddenException('Only the sender can delete for everyone')
+      }
+      await this.prisma.message.update({
+        where: { id: messageId },
+        data: { isDeletedForAll: true, deletedAt: new Date(), content: null, mediaUrl: null },
+      })
+      return { success: true, deletedForAll: true }
+    }
+
+    await this.prisma.deletedMessage.upsert({
+      where: { userId_messageId: { userId, messageId } },
+      create: { userId, messageId },
+      update: {},
+    })
+    return { success: true, deletedForAll: false }
+  }
+
+  private serializeMessage(raw: MessageWithReactions): Message {
+    const reactions = ((raw.reactions as Prisma.JsonValue) as unknown as Reaction[] | undefined) ?? []
+    return {
+      ...raw,
+      createdAt: raw.createdAt.toISOString(),
+      deliveredAt: raw.deliveredAt?.toISOString() ?? null,
+      readAt: raw.readAt?.toISOString() ?? null,
+      reactions,
+      isEdited: raw.isEdited ?? false,
+      editedAt: raw.editedAt?.toISOString() ?? null,
+      isDeletedForAll: raw.isDeletedForAll ?? false,
+      deletedAt: raw.deletedAt?.toISOString() ?? null,
+      deletedForUserIds: undefined,
+      replyTo: raw.replyTo
+        ? {
+            id: raw.replyTo.id,
+            senderId: raw.replyTo.senderId,
+            content: raw.replyTo.isDeletedForAll ? 'Deleted message' : raw.replyTo.content,
+            mediaUrl: raw.replyTo.isDeletedForAll ? null : raw.replyTo.mediaUrl,
+            isDeletedForAll: raw.replyTo.isDeletedForAll,
+          }
+        : null,
+    } as Message
   }
 }

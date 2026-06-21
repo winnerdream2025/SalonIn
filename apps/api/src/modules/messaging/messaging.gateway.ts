@@ -233,6 +233,28 @@ export class MessagingGateway implements OnGatewayInit, OnGatewayConnection, OnG
     })
   }
 
+  broadcastMessageUpdate(conversationId: string, message: unknown): void {
+    this.server.to(`conv:${conversationId}`).emit('message:updated', message)
+  }
+
+  broadcastMessageDeleted(
+    conversationId: string,
+    messageId: string,
+    userId: string,
+    mode: 'me' | 'all',
+  ): void {
+    this.server.to(`conv:${conversationId}`).emit('message:deleted', {
+      conversationId,
+      messageId,
+      userId,
+      mode,
+    })
+  }
+
+  broadcastMessageReaction(conversationId: string, message: unknown): void {
+    this.server.to(`conv:${conversationId}`).emit('message:reaction', message)
+  }
+
   @SubscribeMessage('message:delivered')
   async handleDelivered(
     @MessageBody() data: { conversationId: string; messageIds: string[] },

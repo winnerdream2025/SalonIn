@@ -103,6 +103,7 @@ model User {
   salonProfile  SalonProfile?
   isActive      Boolean  @default(true)
   sentMessages  Message[]                @relation("SentMessages")
+  deletedMessages DeletedMessage[]
   conversations ConversationParticipant[]
   reportsGiven    Report[] @relation("ReportGiver")
   reportsReceived Report[] @relation("ReportReceiver")
@@ -294,11 +295,34 @@ model Message {
   readAt         DateTime?
   isRead         Boolean      @default(false)
   isSystem       Boolean      @default(false)
+  replyToId      String?
+  replyTo        Message?     @relation("ReplyTo", fields: [replyToId], references: [id])
+  replies        Message[]    @relation("ReplyTo")
+  reactions      Json?
+  isEdited       Boolean      @default(false)
+  editedAt       DateTime?
+  isDeletedForAll Boolean   @default(false)
+  deletedAt      DateTime?
+  deletedFor     DeletedMessage[]
 
   @@index([conversationId, createdAt])
   @@index([conversationId, status])
   @@index([senderId, status])
   @@index([senderId, isRead])
+  @@index([replyToId])
+}
+
+model DeletedMessage {
+  id        String   @id @default(uuid())
+  userId    String
+  messageId String
+  deletedAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, messageId])
+  @@index([userId])
+  @@index([messageId])
 }
 
 model UserDevice {
