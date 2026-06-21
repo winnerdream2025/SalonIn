@@ -6,6 +6,10 @@ import { Skeleton } from '../primitives/Skeleton'
 import { useTheme } from '../hooks/useTheme'
 import { MessageStatusIcon } from './MessageStatusIcon'
 import { VoiceMessageBubble } from './VoiceMessageBubble'
+import { VideoMessageBubble } from './VideoMessageBubble'
+import { DocumentMessageBubble } from './DocumentMessageBubble'
+import { ContactMessageBubble } from './ContactMessageBubble'
+import { LocationMessageBubble } from './LocationMessageBubble'
 
 type MessageWithStringDate = Omit<Message, 'createdAt'> & { createdAt: Date | string }
 
@@ -19,6 +23,7 @@ export interface MessageBubbleProps {
   onLongPress?: (message: MessageWithStringDate) => void
   onPressReply?: (message: MessageWithStringDate) => void
   onPressReaction?: (emoji: string) => void
+  onPressImage?: (images: string[], index: number) => void
 }
 
 export function MessageBubble({
@@ -31,6 +36,7 @@ export function MessageBubble({
   onLongPress,
   onPressReply,
   onPressReaction,
+  onPressImage,
 }: MessageBubbleProps) {
   const { theme } = useTheme()
   const time = new Date(message.createdAt).toLocaleTimeString('en-US', {
@@ -94,7 +100,14 @@ export function MessageBubble({
             style={[styles.replyText, { color: isSelf ? 'rgba(255,255,255,0.75)' : theme.text.secondary }]}
             numberOfLines={2}
           >
-            {replyTo?.isDeletedForAll ? 'Deleted message' : replyTo?.content ?? ((replyTo as Message | undefined)?.audioUrl ? '🎤 Voice message' : 'Media')}
+            {replyTo?.isDeletedForAll ? 'Deleted message'
+              : replyTo?.content
+              ?? ((replyTo as Message | undefined)?.audioUrl ? '🎤 Voice message'
+                : (replyTo as Message | undefined)?.type === 'VIDEO' ? '🎥 Video'
+                : (replyTo as Message | undefined)?.type === 'DOCUMENT' ? `📎 ${(replyTo as Message | undefined)?.fileName ?? 'Document'}`
+                : (replyTo as Message | undefined)?.type === 'CONTACT' ? `👤 ${(replyTo as Message | undefined)?.contactName}`
+                : (replyTo as Message | undefined)?.type === 'LOCATION' ? '📍 Location'
+                : '🖼 Image')}
           </Text>
         </Pressable>
       )}
@@ -106,8 +119,78 @@ export function MessageBubble({
           isSelf={isSelf}
         />
       )}
-      {message.mediaUrl != null && !isDeleted && (
-        <Image source={{ uri: message.mediaUrl }} style={styles.media} resizeMode="cover" />
+      {message.type === 'VIDEO' && message.mediaUrl != null && !isDeleted && (
+        <VideoMessageBubble
+          videoUrl={message.mediaUrl}
+          thumbnailUrl={message.thumbnailUrl}
+          duration={message.duration}
+          isSelf={isSelf}
+        />
+      )}
+      {message.type === 'DOCUMENT' && message.mediaUrl != null && !isDeleted && (
+        <DocumentMessageBubble
+          fileUrl={message.mediaUrl}
+          fileName={message.fileName}
+          fileSize={message.fileSize}
+          mimeType={message.mimeType}
+          isSelf={isSelf}
+        />
+      )}
+      {message.type === 'CONTACT' && message.contactName != null && !isDeleted && (
+        <ContactMessageBubble
+          contactName={message.contactName}
+          contactPhone={message.contactPhone}
+          isSelf={isSelf}
+        />
+      )}
+      {message.type === 'LOCATION' && message.latitude != null && message.longitude != null && !isDeleted && (
+        <LocationMessageBubble
+          latitude={message.latitude}
+          longitude={message.longitude}
+          locationName={message.locationName}
+          isSelf={isSelf}
+        />
+      )}
+      {message.type === 'IMAGE' && !isDeleted && (() => {
+        const imgs = message.mediaUrls ?? (message.mediaUrl ? [message.mediaUrl] : [])
+        if (imgs.length === 0) return null
+        if (imgs.length === 1) {
+          return (
+            <Pressable onPress={() => onPressImage?.(imgs, 0)}>
+              <Image source={{ uri: imgs[0] }} style={styles.media} resizeMode="cover" />
+            </Pressable>
+          )
+        }
+        // Grid: 2 columns
+        const pairs: string[][] = []
+        for (let i = 0; i < imgs.length; i += 2) pairs.push(imgs.slice(i, i + 2))
+        return (
+          <View style={styles.imageGrid}>
+            {pairs.map((pair, pi) => (
+              <View key={pi} style={styles.imageRow}>
+                {pair.map((uri, qi) => {
+                  const globalIdx = pi * 2 + qi
+                  const isLast = globalIdx === imgs.length - 1 && imgs.length > 4 && globalIdx === 3
+                  return (
+                    <Pressable key={qi} onPress={() => onPressImage?.(imgs, globalIdx)} style={styles.imageCell}>
+                      <Image source={{ uri }} style={styles.gridImage} resizeMode="cover" />
+                      {isLast && imgs.length > 4 && (
+                        <View style={styles.moreOverlay}>
+                          <Text style={styles.moreText}>+{imgs.length - 4}</Text>
+                        </View>
+                      )}
+                    </Pressable>
+                  )
+                })}
+              </View>
+            ))}
+          </View>
+        )
+      })()}
+      {(message.type === 'MEDIA' || message.type == null) && message.mediaUrl != null && !isDeleted && (
+        <Pressable onPress={() => onPressImage?.([message.mediaUrl!], 0)}>
+          <Image source={{ uri: message.mediaUrl }} style={styles.media} resizeMode="cover" />
+        </Pressable>
       )}
       {isDeleted ? (
         <Text style={[styles.content, { color: isSelf ? 'rgba(255,255,255,0.65)' : theme.text.secondary, fontStyle: 'italic' }]}>
@@ -264,6 +347,17 @@ const styles = StyleSheet.create({
   replyText: { fontSize: 13, lineHeight: 18 },
 
   media: { width: 200, height: 160, maxWidth: '100%', borderRadius: 10, marginBottom: 4 },
+  imageGrid: { gap: 2, marginBottom: 4 },
+  imageRow: { flexDirection: 'row', gap: 2 },
+  imageCell: { flex: 1, overflow: 'hidden', borderRadius: 6 },
+  gridImage: { width: '100%', height: 100 },
+  moreOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  moreText: { color: '#fff', fontSize: 20, fontWeight: '700' },
 
   content: { fontSize: 15, lineHeight: 21 },
 

@@ -308,6 +308,18 @@ model Message {
   deletedAt      DateTime?
   deletedFor     DeletedMessage[]
 
+  // Rich media fields
+  mediaUrls      Json?        // string[] – multiple images (IMAGE type)
+  thumbnailUrl   String?      // video thumbnail URL
+  fileName       String?      // document filename
+  fileSize       Int?         // file size in bytes
+  mimeType       String?      // file MIME type
+  contactName    String?      // CONTACT type
+  contactPhone   String?
+  latitude       Float?       // LOCATION type
+  longitude      Float?
+  locationName   String?
+
   @@index([conversationId, createdAt])
   @@index([conversationId, status])
   @@index([senderId, status])

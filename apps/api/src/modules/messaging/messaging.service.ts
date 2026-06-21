@@ -1,11 +1,10 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
-import { ChatRequestStatus } from '@prisma/client'
+import { ChatRequestStatus, Prisma } from '@prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
 import { NotificationsService } from '../notifications/notifications.service'
 import { PresenceService } from './presence.service'
 import type { ConversationPreview, CursorResponse, Reaction } from '@salonin/types'
 import type { Message } from '@salonin/types'
-import type { Prisma } from '@prisma/client'
 
 type MessageWithReactions = Prisma.MessageGetPayload<{
   include: {
@@ -211,22 +210,49 @@ export class MessagingService {
   async sendMessage(
     conversationId: string,
     senderId: string,
-    content?: string,
-    mediaUrl?: string,
-    replyToId?: string,
-    audioUrl?: string,
-    duration?: number,
-    waveformData?: number[],
+    opts: {
+      content?: string
+      mediaUrl?: string
+      mediaUrls?: string[]
+      thumbnailUrl?: string
+      replyToId?: string
+      audioUrl?: string
+      duration?: number
+      waveformData?: number[]
+      fileName?: string
+      fileSize?: number
+      mimeType?: string
+      contactName?: string
+      contactPhone?: string
+      latitude?: number
+      longitude?: number
+      locationName?: string
+      type?: string
+    } = {},
   ): Promise<Message> {
-    if (!content && !mediaUrl && !audioUrl) {
-      throw new BadRequestException('Message must have content, media, or audio')
+    const {
+      content, mediaUrl, mediaUrls, thumbnailUrl, replyToId,
+      audioUrl, duration, waveformData,
+      fileName, fileSize, mimeType,
+      contactName, contactPhone,
+      latitude, longitude, locationName,
+      type: explicitType,
+    } = opts
+
+    const hasContent = content != null && content.length > 0
+    const hasMedia = mediaUrl != null || (mediaUrls != null && mediaUrls.length > 0)
+    const hasAudio = audioUrl != null
+    const hasContact = contactName != null
+    const hasLocation = latitude != null && longitude != null
+
+    if (!hasContent && !hasMedia && !hasAudio && !hasContact && !hasLocation && fileName == null) {
+      throw new BadRequestException('Message must have content, media, audio, contact, or location')
     }
+
     await this.assertParticipant(conversationId, senderId)
 
     if (replyToId) {
-      const parent = await this.prisma.message.findFirst({
-        where: { id: replyToId, conversationId },
-      })
+      const parent = await this.prisma.message.findFirst({ where: { id: replyToId, conversationId } })
       if (!parent) throw new BadRequestException('Reply message not found in this conversation')
     }
 
@@ -237,16 +263,35 @@ export class MessagingService {
       await this.enforceChatRequest(senderId, other.userId, conversationId)
     }
 
-    const messageType = audioUrl ? 'VOICE' : mediaUrl ? 'MEDIA' : 'TEXT'
+    const messageType =
+      explicitType ??
+      (hasAudio ? 'VOICE'
+        : hasContact ? 'CONTACT'
+        : hasLocation ? 'LOCATION'
+        : fileName != null ? 'DOCUMENT'
+        : mediaUrls != null && mediaUrls.length > 0 ? 'IMAGE'
+        : mediaUrl != null ? 'MEDIA'
+        : 'TEXT')
+
     const message = await this.prisma.message.create({
       data: {
         conversationId,
         senderId,
         content,
-        mediaUrl,
+        mediaUrl: mediaUrl ?? (mediaUrls?.[0] ?? null),
+        mediaUrls: mediaUrls ? (mediaUrls as unknown as import('@prisma/client').Prisma.InputJsonValue) : undefined,
+        thumbnailUrl,
         audioUrl,
         duration,
         waveformData: waveformData ? (waveformData as unknown as import('@prisma/client').Prisma.InputJsonValue) : undefined,
+        fileName,
+        fileSize,
+        mimeType,
+        contactName,
+        contactPhone,
+        latitude,
+        longitude,
+        locationName,
         type: messageType,
         status: 'sent',
         replyToId,
@@ -269,7 +314,16 @@ export class MessagingService {
       data: { updatedAt: new Date() },
     })
 
-    void this.notifyRecipient(conversationId, senderId, content, audioUrl ? '🎤 Voice message' : undefined)
+    const notifyPreview =
+      hasAudio ? '🎤 Voice message'
+        : messageType === 'IMAGE' ? '🖼 Image'
+        : messageType === 'VIDEO' ? '🎥 Video'
+        : messageType === 'DOCUMENT' ? `📎 ${fileName ?? 'Document'}`
+        : messageType === 'CONTACT' ? `👤 ${contactName}`
+        : messageType === 'LOCATION' ? `📍 ${locationName ?? 'Location'}`
+        : undefined
+
+    void this.notifyRecipient(conversationId, senderId, content, notifyPreview)
 
     return this.serializeMessage(message as MessageWithReactions)
   }
@@ -599,7 +653,21 @@ export class MessagingService {
       }
       await this.prisma.message.update({
         where: { id: messageId },
-        data: { isDeletedForAll: true, deletedAt: new Date(), content: null, mediaUrl: null },
+        data: {
+          isDeletedForAll: true,
+          deletedAt: new Date(),
+          content: null,
+          mediaUrl: null,
+          mediaUrls: Prisma.JsonNull,
+          thumbnailUrl: null,
+          audioUrl: null,
+          fileName: null,
+          contactName: null,
+          contactPhone: null,
+          latitude: null,
+          longitude: null,
+          locationName: null,
+        },
       })
       return { success: true, deletedForAll: true }
     }
@@ -615,9 +683,13 @@ export class MessagingService {
   private serializeMessage(raw: MessageWithReactions): Message {
     const reactions = ((raw.reactions as Prisma.JsonValue) as unknown as Reaction[] | undefined) ?? []
     const waveform = raw.waveformData ? (raw.waveformData as unknown as number[]) : null
+    const mediaUrls = (raw as unknown as Record<string, unknown>).mediaUrls
+      ? ((raw as unknown as Record<string, unknown>).mediaUrls as string[])
+      : null
     return {
       ...raw,
       waveformData: waveform,
+      mediaUrls,
       createdAt: raw.createdAt.toISOString(),
       deliveredAt: raw.deliveredAt?.toISOString() ?? null,
       readAt: raw.readAt?.toISOString() ?? null,

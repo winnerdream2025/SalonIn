@@ -18,17 +18,30 @@ import { MediaService } from './media.service'
 import { UploadMediaDto } from './dto/upload-media.dto'
 
 const ALLOWED_TYPES = [
+  // Images
   'image/jpeg',
   'image/png',
   'image/webp',
+  // Videos
   'video/mp4',
   'video/quicktime',
+  'video/mpeg',
+  'video/webm',
+  // Audio
   'audio/m4a',
   'audio/aac',
   'audio/mp4',
   'audio/mpeg',
   'audio/webm',
   'audio/ogg',
+  // Documents
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/plain',
+  'text/csv',
 ]
 
 @Controller('media')
@@ -42,14 +55,14 @@ export class MediaController {
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
-      limits: { fileSize: 50 * 1024 * 1024 },
+      limits: { fileSize: 100 * 1024 * 1024 },
       fileFilter: (_req, file, cb) => {
         if (ALLOWED_TYPES.includes(file.mimetype)) {
           cb(null, true)
         } else {
           cb(
             new BadRequestException(
-              `File type "${file.mimetype}" is not allowed. Accepted: jpg, png, webp, mp4, mov, m4a, aac, mp3`,
+              `File type "${file.mimetype}" is not allowed. Accepted: jpg, png, webp, mp4, mov, m4a, aac, mp3, pdf, doc, docx, xls, xlsx, txt, csv`,
             ),
             false,
           )

@@ -12,14 +12,21 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
+import * as ImagePicker from 'expo-image-picker'
+import * as Location from 'expo-location'
 import { VoiceRecorder } from '../../components/VoiceRecorder'
+import { AttachmentPicker } from '../../components/AttachmentPicker'
+import { MediaPreviewSheet } from '../../components/MediaPreviewSheet'
+import { ContactFormSheet } from '../../components/ContactFormSheet'
+import { ImageGalleryViewer } from '../../components/ImageGalleryViewer'
+import type { MediaPreviewItem } from '../../components/MediaPreviewSheet'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useTheme, MessageBubble, MessageBubbleSkeleton, ReportModal, Avatar } from '@salonin/ui'
 import type { Message } from '@salonin/types'
 import { formatLastSeen } from '@salonin/utils'
-import { reportsApi, chatRequestsApi, parseApiError } from '@salonin/api-client'
+import { mediaApi, reportsApi, chatRequestsApi, parseApiError } from '@salonin/api-client'
 import { useMessages } from '../../hooks/useMessages'
 import { useAuthStore } from '../../store/authStore'
 
@@ -42,6 +49,7 @@ export default function ChatScreen() {
     isLoading,
     isLoadingMore,
     sendMessage,
+    retrySend,
     editMessage,
     deleteMessage,
     reactToMessage,
@@ -64,6 +72,17 @@ export default function ChatScreen() {
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null)
   const [showActionMenu, setShowActionMenu] = useState(false)
   const [showReactionPicker, setShowReactionPicker] = useState(false)
+  // Attachment
+  const [showAttachmentPicker, setShowAttachmentPicker] = useState(false)
+  const [previewItems, setPreviewItems] = useState<MediaPreviewItem[]>([])
+  const [showPreview, setShowPreview] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false)
+  const [showContactForm, setShowContactForm] = useState(false)
+  // Gallery viewer
+  const [galleryImages, setGalleryImages] = useState<string[]>([])
+  const [galleryIndex, setGalleryIndex] = useState(0)
+  const [showGallery, setShowGallery] = useState(false)
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const inputRef = useRef<TextInput>(null)
 
@@ -102,7 +121,7 @@ export default function ChatScreen() {
         await editMessage(editingMessage.id, text)
         setEditingMessage(null)
       } else {
-        await sendMessage(text, undefined, replyingTo?.id)
+        await sendMessage({ content: text, replyToId: replyingTo?.id })
         setReplyingTo(null)
       }
     } catch (e: unknown) {
@@ -112,6 +131,142 @@ export default function ChatScreen() {
       setIsSending(false)
     }
   }, [draft, sendMessage, editMessage, setTyping, inputDisabled, isSending, replyingTo, editingMessage])
+
+  const handleAttachmentSelect = useCallback(async (type: import('../../components/AttachmentPicker').AttachmentType) => {
+    if (type === 'contact') {
+      setShowContactForm(true)
+      return
+    }
+
+    if (type === 'location') {
+      const { status } = await Location.requestForegroundPermissionsAsync()
+      if (status !== 'granted') {
+        Alert.alert('Location access required', 'Please enable location in settings.')
+        return
+      }
+      setIsSending(true)
+      try {
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
+        const [geo] = await Location.reverseGeocodeAsync({ latitude: loc.coords.latitude, longitude: loc.coords.longitude })
+        const locationName = geo
+          ? [geo.name, geo.street, geo.city, geo.region].filter(Boolean).join(', ')
+          : undefined
+        await sendMessage({
+          latitude: loc.coords.latitude,
+          longitude: loc.coords.longitude,
+          locationName,
+          replyToId: replyingTo?.id,
+        })
+        setReplyingTo(null)
+      } catch (e: unknown) {
+        Alert.alert('Could not get location', parseApiError(e))
+      } finally {
+        setIsSending(false)
+      }
+      return
+    }
+
+    const mediaTypes =
+      type === 'video'
+        ? ImagePicker.MediaTypeOptions.Videos
+        : ImagePicker.MediaTypeOptions.Images
+
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (status !== 'granted') {
+      Alert.alert('Photo library access required', 'Please enable it in Settings.')
+      return
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes,
+      allowsMultipleSelection: type === 'image',
+      selectionLimit: 10,
+      quality: 0.75,
+      videoExportPreset: ImagePicker.VideoExportPreset.MediumQuality,
+    })
+
+    if (result.canceled || result.assets.length === 0) return
+
+    const items: MediaPreviewItem[] = result.assets.map((a) => ({
+      uri: a.uri,
+      type: a.type === 'video' ? 'video' : 'image',
+      mimeType: a.mimeType ?? (a.type === 'video' ? 'video/mp4' : 'image/jpeg'),
+      name: a.fileName ?? `upload_${Date.now()}`,
+      fileSize: a.fileSize,
+    }))
+    setPreviewItems(items)
+    setShowPreview(true)
+  }, [sendMessage, replyingTo])
+
+  const handlePreviewSend = useCallback(async (caption: string) => {
+    setIsUploadingMedia(true)
+    setUploadProgress(0)
+    try {
+      const isVideo = previewItems[0]?.type === 'video'
+      const folder = isVideo ? 'videos' : 'uploads'
+
+      if (isVideo && previewItems[0]) {
+        const item = previewItems[0]
+        const { url } = await mediaApi.uploadMedia(
+          { uri: item.uri, mimeType: item.mimeType, name: item.name },
+          folder,
+          { onProgress: (p) => setUploadProgress(p) },
+        )
+        setShowPreview(false)
+        await sendMessage({
+          mediaUrl: url,
+          type: 'VIDEO',
+          mimeType: item.mimeType,
+          fileSize: item.fileSize,
+          content: caption || undefined,
+          replyToId: replyingTo?.id,
+        })
+      } else {
+        // Upload images in sequence with per-file progress
+        const urls = await mediaApi.uploadMultiple(
+          previewItems.map((i) => ({ uri: i.uri, mimeType: i.mimeType, name: i.name })),
+          folder,
+          {
+            onProgress: (fileIdx, pct) =>
+              setUploadProgress(Math.round(((fileIdx * 100 + pct) / (previewItems.length * 100)) * 100)),
+          },
+        )
+        setShowPreview(false)
+        await sendMessage({
+          mediaUrls: urls,
+          mediaUrl: urls[0],
+          type: 'IMAGE',
+          content: caption || undefined,
+          replyToId: replyingTo?.id,
+        })
+      }
+      setReplyingTo(null)
+      setPreviewItems([])
+    } catch (e: unknown) {
+      Alert.alert('Upload failed', parseApiError(e))
+    } finally {
+      setIsUploadingMedia(false)
+      setUploadProgress(0)
+    }
+  }, [previewItems, sendMessage, replyingTo])
+
+  const handleSendContact = useCallback(async (contactName: string, contactPhone: string) => {
+    setIsSending(true)
+    try {
+      await sendMessage({ contactName, contactPhone: contactPhone || undefined, replyToId: replyingTo?.id })
+      setReplyingTo(null)
+    } catch (e: unknown) {
+      Alert.alert('Could not send contact', parseApiError(e))
+    } finally {
+      setIsSending(false)
+    }
+  }, [sendMessage, replyingTo])
+
+  const openGallery = useCallback((images: string[], idx: number) => {
+    setGalleryImages(images)
+    setGalleryIndex(idx)
+    setShowGallery(true)
+  }, [])
 
   const handleChangeText = useCallback(
     (text: string) => {
@@ -157,22 +312,35 @@ export default function ChatScreen() {
       const isSelf = item.senderId === currentUserId
       const showAvatar = !isSelf && (index === 0 || messages[index - 1]?.senderId !== item.senderId)
       return (
-        <MessageBubble
-          message={item}
-          isSelf={isSelf}
-          showAvatar={showAvatar}
-          senderPhotoUrl={isSelf ? null : (otherPhotoUrl ?? null)}
-          senderName={isSelf ? undefined : (name ?? undefined)}
-          currentUserId={currentUserId}
-          onLongPress={(msg) => {
-            setSelectedMessage(msg)
-            setShowActionMenu(true)
-          }}
-          onPressReaction={(emoji) => {
-            if (item.isDeletedForAll) return
-            void reactToMessage(item.id, emoji)
-          }}
-        />
+        <View>
+          <MessageBubble
+            message={item}
+            isSelf={isSelf}
+            showAvatar={showAvatar}
+            senderPhotoUrl={isSelf ? null : (otherPhotoUrl ?? null)}
+            senderName={isSelf ? undefined : (name ?? undefined)}
+            currentUserId={currentUserId}
+            onLongPress={(msg) => {
+              setSelectedMessage(msg)
+              setShowActionMenu(true)
+            }}
+            onPressReaction={(emoji) => {
+              if (item.isDeletedForAll) return
+              void reactToMessage(item.id, emoji)
+            }}
+            onPressImage={openGallery}
+          />
+          {item.status === 'failed' && isSelf && (
+            <TouchableOpacity
+              style={[styles.retryBtn, { alignSelf: 'flex-end' }]}
+              onPress={() => void retrySend(item.id)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="refresh-outline" size={13} color="#E0724A" />
+              <Text style={styles.retryText}>Tap to retry</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       )
     },
     [currentUserId, messages, otherPhotoUrl, name, theme, reactToMessage],
@@ -319,7 +487,7 @@ export default function ChatScreen() {
               setShowVoiceRecorder(false)
               setIsSending(true)
               try {
-                await sendMessage('', undefined, replyingTo?.id, audioUrl, duration, waveformData)
+                await sendMessage({ audioUrl, duration, waveformData, replyToId: replyingTo?.id })
                 setReplyingTo(null)
               } catch (e: unknown) {
                 Alert.alert('Voice message not sent', 'Please try again.')
@@ -331,6 +499,14 @@ export default function ChatScreen() {
           />
         ) : (
           <View style={[styles.inputRow, { borderTopColor: theme.border.default, backgroundColor: theme.bg.card, paddingBottom: Math.max(bottom, 12) }]}>
+            <TouchableOpacity
+              style={[styles.attachBtn, { opacity: inputDisabled ? 0.4 : 1 }]}
+              onPress={() => { if (!inputDisabled) setShowAttachmentPicker(true) }}
+              activeOpacity={0.7}
+              disabled={inputDisabled}
+            >
+              <Ionicons name="add-circle-outline" size={24} color={theme.brand.primary} />
+            </TouchableOpacity>
             <TextInput
               ref={inputRef}
               style={[
@@ -476,6 +652,35 @@ export default function ChatScreen() {
         </TouchableOpacity>
       </Modal>
 
+      <AttachmentPicker
+        visible={showAttachmentPicker}
+        onClose={() => setShowAttachmentPicker(false)}
+        onSelect={(t) => void handleAttachmentSelect(t)}
+      />
+
+      <MediaPreviewSheet
+        visible={showPreview}
+        items={previewItems}
+        isUploading={isUploadingMedia}
+        uploadProgress={uploadProgress}
+        onClose={() => { setShowPreview(false); setPreviewItems([]) }}
+        onSend={(caption) => void handlePreviewSend(caption)}
+        onRemove={(i) => setPreviewItems((prev) => prev.filter((_, idx) => idx !== i))}
+      />
+
+      <ContactFormSheet
+        visible={showContactForm}
+        onClose={() => setShowContactForm(false)}
+        onSend={(n, p) => void handleSendContact(n, p)}
+      />
+
+      <ImageGalleryViewer
+        visible={showGallery}
+        images={galleryImages}
+        initialIndex={galleryIndex}
+        onClose={() => setShowGallery(false)}
+      />
+
       <Modal
         visible={showReactionPicker}
         transparent
@@ -577,11 +782,26 @@ const styles = StyleSheet.create({
   inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     paddingVertical: 8,
-    gap: 8,
+    gap: 6,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
+  attachBtn: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 2,
+  },
+  retryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 14,
+    paddingBottom: 6,
+  },
+  retryText: { fontSize: 12, color: '#E0724A' },
   input: {
     flex: 1,
     borderRadius: 24,

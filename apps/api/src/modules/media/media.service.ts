@@ -6,11 +6,21 @@ import { randomUUID } from 'crypto'
 import { extname } from 'path'
 
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
-const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/quicktime']
+const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/mpeg', 'video/webm']
 const ALLOWED_AUDIO_TYPES = ['audio/m4a', 'audio/aac', 'audio/mp4', 'audio/mpeg', 'audio/webm', 'audio/ogg']
+const ALLOWED_DOCUMENT_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/plain',
+  'text/csv',
+]
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024
-const MAX_VIDEO_BYTES = 50 * 1024 * 1024
+const MAX_VIDEO_BYTES = 100 * 1024 * 1024
 const MAX_AUDIO_BYTES = 5 * 1024 * 1024
+const MAX_DOCUMENT_BYTES = 25 * 1024 * 1024
 
 @Injectable()
 export class MediaService {
@@ -68,10 +78,21 @@ export class MediaService {
       throw new BadRequestException('Image exceeds the 10 MB limit')
     }
     if (this.isVideo(file.mimetype) && file.size > MAX_VIDEO_BYTES) {
-      throw new BadRequestException('Video exceeds the 50 MB limit')
+      throw new BadRequestException('Video exceeds the 100 MB limit')
     }
     if (this.isAudio(file.mimetype) && file.size > MAX_AUDIO_BYTES) {
       throw new BadRequestException('Audio exceeds the 5 MB limit')
+    }
+    if (this.isDocument(file.mimetype) && file.size > MAX_DOCUMENT_BYTES) {
+      throw new BadRequestException('Document exceeds the 25 MB limit')
+    }
+    if (
+      !this.isImage(file.mimetype) &&
+      !this.isVideo(file.mimetype) &&
+      !this.isAudio(file.mimetype) &&
+      !this.isDocument(file.mimetype)
+    ) {
+      throw new BadRequestException('Unsupported file type')
     }
   }
 
@@ -103,6 +124,10 @@ export class MediaService {
 
   private isAudio(mimetype: string): boolean {
     return ALLOWED_AUDIO_TYPES.includes(mimetype)
+  }
+
+  private isDocument(mimetype: string): boolean {
+    return ALLOWED_DOCUMENT_TYPES.includes(mimetype)
   }
 
   private buildUrl(key: string): string {

@@ -27,16 +27,30 @@ export interface Reaction {
   emoji: ReactionEmoji
 }
 
+export type MessageType =
+  | 'TEXT'
+  | 'IMAGE'    // one or more images; uses mediaUrls[]
+  | 'VIDEO'    // video; uses mediaUrl + thumbnailUrl
+  | 'DOCUMENT' // file; uses mediaUrl + fileName + fileSize + mimeType
+  | 'CONTACT'  // contact card; uses contactName + contactPhone
+  | 'LOCATION' // location pin; uses latitude + longitude + locationName
+  | 'VOICE'    // voice note; uses audioUrl + duration + waveformData
+  | 'MEDIA'    // legacy single-image via mediaUrl
+  | 'SYSTEM'
+  | string
+
 export interface Message {
   id: string
   senderId: string
   conversationId: string
   content: string | null
   mediaUrl: string | null
+  mediaUrls?: string[] | null
+  thumbnailUrl?: string | null
   audioUrl?: string | null
   duration?: number | null
   waveformData?: number[] | null
-  type?: string | null
+  type?: MessageType | null
   status: MessageStatus
   createdAt: Date | string
   deliveredAt?: Date | string | null
@@ -51,6 +65,17 @@ export interface Message {
   isDeletedForAll?: boolean
   deletedAt?: Date | string | null
   deletedForUserIds?: string[]
+  // Document
+  fileName?: string | null
+  fileSize?: number | null
+  mimeType?: string | null
+  // Contact
+  contactName?: string | null
+  contactPhone?: string | null
+  // Location
+  latitude?: number | null
+  longitude?: number | null
+  locationName?: string | null
 }
 
 export interface UserPresence {
@@ -139,11 +164,28 @@ export interface UpdateAvailabilityDto {
 export interface SendMessageDto {
   conversationId: string
   content?: string
+  // Legacy single image
   mediaUrl?: string
+  // Rich media
+  mediaUrls?: string[]
+  thumbnailUrl?: string
+  // Voice
   audioUrl?: string
   duration?: number
   waveformData?: number[]
-  type?: 'TEXT' | 'MEDIA' | 'VOICE' | 'SYSTEM' | string
+  // File
+  fileName?: string
+  fileSize?: number
+  mimeType?: string
+  // Contact
+  contactName?: string
+  contactPhone?: string
+  // Location
+  latitude?: number
+  longitude?: number
+  locationName?: string
+  type?: MessageType
+  replyToId?: string
 }
 
 export interface CreateReportDto {

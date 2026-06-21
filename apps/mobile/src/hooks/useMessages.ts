@@ -180,35 +180,95 @@ export function useMessages(conversationId: string, otherUserId?: string) {
 
   const sendMessage = useCallback(
     async (
-      content: string,
-      mediaUrl?: string,
-      replyToId?: string,
-      audioUrl?: string,
-      duration?: number,
-      waveformData?: number[],
+      opts: {
+        content?: string
+        mediaUrl?: string
+        mediaUrls?: string[]
+        thumbnailUrl?: string
+        replyToId?: string
+        audioUrl?: string
+        duration?: number
+        waveformData?: number[]
+        fileName?: string
+        fileSize?: number
+        mimeType?: string
+        contactName?: string
+        contactPhone?: string
+        latitude?: number
+        longitude?: number
+        locationName?: string
+        type?: string
+      },
     ) => {
+      const {
+        content = '', audioUrl, mediaUrl, mediaUrls, thumbnailUrl,
+        replyToId, duration, waveformData,
+        fileName, fileSize, mimeType,
+        contactName, contactPhone,
+        latitude, longitude, locationName,
+        type: explicitType,
+      } = opts
+
+      const messageType =
+        explicitType ??
+        (audioUrl ? 'VOICE'
+          : contactName ? 'CONTACT'
+          : latitude != null ? 'LOCATION'
+          : fileName ? 'DOCUMENT'
+          : mediaUrls?.length ? 'IMAGE'
+          : mediaUrl ? 'MEDIA'
+          : 'TEXT')
+
       const tempId = `optimistic-${Date.now()}`
       const optimistic: Message = {
         id: tempId,
         senderId: userId ?? '',
         conversationId,
-        content,
-        mediaUrl: mediaUrl ?? null,
+        content: content || null,
+        mediaUrl: mediaUrl ?? mediaUrls?.[0] ?? null,
+        mediaUrls: mediaUrls ?? null,
+        thumbnailUrl: thumbnailUrl ?? null,
         audioUrl: audioUrl ?? null,
         duration: duration ?? null,
         waveformData: waveformData ?? null,
-        type: audioUrl ? 'VOICE' : mediaUrl ? 'MEDIA' : 'TEXT',
+        type: messageType,
         status: 'sending',
         createdAt: new Date().toISOString(),
         isRead: false,
         isSystem: false,
         replyToId: replyToId ?? null,
+        fileName: fileName ?? null,
+        fileSize: fileSize ?? null,
+        mimeType: mimeType ?? null,
+        contactName: contactName ?? null,
+        contactPhone: contactPhone ?? null,
+        latitude: latitude ?? null,
+        longitude: longitude ?? null,
+        locationName: locationName ?? null,
       }
 
       setMessages((prev) => dedupeById([optimistic, ...prev]))
 
       try {
-        const msg = await messagesApi.sendMessage(conversationId, content, mediaUrl, replyToId, audioUrl, duration, waveformData)
+        const msg = await messagesApi.sendMessage(conversationId, {
+          content,
+          mediaUrl,
+          mediaUrls,
+          thumbnailUrl,
+          replyToId,
+          audioUrl,
+          duration,
+          waveformData,
+          fileName,
+          fileSize,
+          mimeType,
+          contactName,
+          contactPhone,
+          latitude,
+          longitude,
+          locationName,
+          type: messageType,
+        })
         const serverMsg = msg as Message
         setMessages((prev) => {
           const filtered = prev.filter((m) => m.id !== tempId)
@@ -232,6 +292,35 @@ export function useMessages(conversationId: string, otherUserId?: string) {
       }
     },
     [conversationId, userId],
+  )
+
+  const retrySend = useCallback(
+    async (messageId: string) => {
+      const msg = messages.find((m) => m.id === messageId && m.status === 'failed')
+      if (!msg) return
+      // Remove the failed optimistic message and re-send with same content
+      setMessages((prev) => prev.filter((m) => m.id !== messageId))
+      return sendMessage({
+        content: msg.content ?? undefined,
+        mediaUrl: msg.mediaUrl ?? undefined,
+        mediaUrls: msg.mediaUrls ?? undefined,
+        thumbnailUrl: msg.thumbnailUrl ?? undefined,
+        audioUrl: msg.audioUrl ?? undefined,
+        duration: msg.duration ?? undefined,
+        waveformData: msg.waveformData ?? undefined,
+        fileName: msg.fileName ?? undefined,
+        fileSize: msg.fileSize ?? undefined,
+        mimeType: msg.mimeType ?? undefined,
+        contactName: msg.contactName ?? undefined,
+        contactPhone: msg.contactPhone ?? undefined,
+        latitude: msg.latitude ?? undefined,
+        longitude: msg.longitude ?? undefined,
+        locationName: msg.locationName ?? undefined,
+        type: msg.type ?? undefined,
+        replyToId: msg.replyToId ?? undefined,
+      })
+    },
+    [messages, sendMessage],
   )
 
   const editMessage = useCallback(
@@ -348,6 +437,7 @@ export function useMessages(conversationId: string, otherUserId?: string) {
     setChatRequest,
     presence,
     sendMessage,
+    retrySend,
     editMessage,
     deleteMessage,
     reactToMessage,

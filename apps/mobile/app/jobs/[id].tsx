@@ -131,10 +131,9 @@ export default function JobDetailScreen() {
       await jobsApi.apply(id)
       setApplied(true)
       const conv = await messagesApi.createConversation(job.salon.userId)
-      await messagesApi.sendMessage(
-        conv.id,
-        `Hi! I applied to your "${job.title}" position. I'd love to discuss the opportunity.`,
-      )
+      await messagesApi.sendMessage(conv.id, {
+        content: `Hi! I applied to your "${job.title}" position. I'd love to discuss the opportunity.`,
+      })
       router.push(
         `/chat/${conv.id}?name=${encodeURIComponent(job.salon.name)}` as never,
       )

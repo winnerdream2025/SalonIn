@@ -21,15 +21,28 @@ export const messagesApi = {
 
   sendMessage: (
     conversationId: string,
-    content?: string,
-    mediaUrl?: string,
-    replyToId?: string,
-    audioUrl?: string,
-    duration?: number,
-    waveformData?: number[],
+    opts: {
+      content?: string
+      mediaUrl?: string
+      mediaUrls?: string[]
+      thumbnailUrl?: string
+      replyToId?: string
+      audioUrl?: string
+      duration?: number
+      waveformData?: number[]
+      fileName?: string
+      fileSize?: number
+      mimeType?: string
+      contactName?: string
+      contactPhone?: string
+      latitude?: number
+      longitude?: number
+      locationName?: string
+      type?: string
+    },
   ): Promise<Message> =>
     api
-      .post<Message>(`/conversations/${conversationId}/messages`, { content, mediaUrl, replyToId, audioUrl, duration, waveformData })
+      .post<Message>(`/conversations/${conversationId}/messages`, opts)
       .then((r) => r.data),
 
   uploadAudio: async (uri: string, mimeType = 'audio/m4a'): Promise<{ url: string }> => {

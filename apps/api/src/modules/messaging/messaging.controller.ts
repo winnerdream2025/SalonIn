@@ -78,16 +78,25 @@ export class MessagingController {
     @CurrentUser() user: User,
     @Body() dto: SendMessageDto,
   ) {
-    const message = await this.messagingService.sendMessage(
-      id,
-      user.id,
-      dto.content,
-      dto.mediaUrl,
-      dto.replyToId,
-      dto.audioUrl,
-      dto.duration,
-      dto.waveformData,
-    )
+    const message = await this.messagingService.sendMessage(id, user.id, {
+      content: dto.content,
+      mediaUrl: dto.mediaUrl,
+      mediaUrls: dto.mediaUrls,
+      thumbnailUrl: dto.thumbnailUrl,
+      replyToId: dto.replyToId,
+      audioUrl: dto.audioUrl,
+      duration: dto.duration,
+      waveformData: dto.waveformData,
+      fileName: dto.fileName,
+      fileSize: dto.fileSize,
+      mimeType: dto.mimeType,
+      contactName: dto.contactName,
+      contactPhone: dto.contactPhone,
+      latitude: dto.latitude,
+      longitude: dto.longitude,
+      locationName: dto.locationName,
+      type: dto.type,
+    })
     await this.messagingGateway.broadcastNewMessage(id, user.id, message)
     return message
   }

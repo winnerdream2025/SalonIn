@@ -105,10 +105,9 @@ export default function JobFeedScreen() {
       await jobsApi.apply(job.id)
       const detail = await jobsApi.getById(job.id)
       const conv = await messagesApi.createConversation(detail.salon.userId)
-      await messagesApi.sendMessage(
-        conv.id,
-        `Hi! I applied to your "${job.title}" position. I'd love to discuss the opportunity.`,
-      )
+      await messagesApi.sendMessage(conv.id, {
+        content: `Hi! I applied to your "${job.title}" position. I'd love to discuss the opportunity.`,
+      })
       router.push(`/chat/${conv.id}?name=${encodeURIComponent(job.salonName)}` as never)
     } catch (e: unknown) {
       const msg = parseApiError(e)
