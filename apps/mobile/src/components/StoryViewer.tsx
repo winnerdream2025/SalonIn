@@ -1,4 +1,20 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+/**
+ * StoryViewer — full-screen WhatsApp/Instagram-style story viewer.
+ *
+ * Features:
+ * - Animated progress bars per story in the group
+ * - Tap left/right to navigate stories, swipe-group auto-advances
+ * - Long-press to pause
+ * - Heart like (toggle) with count
+ * - Reply text input
+ * - Video support via expo-av
+ */
+import React, {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react'
 import {
   Animated,
   Dimensions,
@@ -21,15 +37,9 @@ import type { Story, StoryGroup } from '@salonin/api-client'
 import { useAuthStore } from '../store/authStore'
 
 const { width: SW, height: SH } = Dimensions.get('window')
-const STORY_DURATION = 5000
+const IMAGE_DURATION = 5000
 
-interface Props {
-  visible: boolean
-  groups: StoryGroup[]
-  startGroupIndex: number
-  onClose: () => void
-  onViewed?: (storyId: string) => void
-}
+// ─── Progress bar row ─────────────────────────────────────────────────────────
 
 function ProgressBars({
   count,
@@ -43,12 +53,11 @@ function ProgressBars({
   return (
     <View style={styles.progressRow}>
       {Array.from({ length: count }).map((_, i) => (
-        <View key={i} style={[styles.progressTrack, { backgroundColor: 'rgba(255,255,255,0.35)' }]}>
+        <View key={i} style={styles.progressTrack}>
           <Animated.View
             style={[
               styles.progressFill,
               {
-                backgroundColor: '#fff',
                 width:
                   i < current
                     ? '100%'
@@ -64,6 +73,19 @@ function ProgressBars({
   )
 }
 
+// ─── Props ────────────────────────────────────────────────────────────────────
+
+interface Props {
+  visible: boolean
+  groups: StoryGroup[]
+  startGroupIndex: number
+  onClose: () => void
+  /** Called after viewing so the context can update the map */
+  onViewed?: (storyId: string, userId: string) => void
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export function StoryViewer({ visible, groups, startGroupIndex, onClose, onViewed }: Props) {
   const insets = useSafeAreaInsets()
   const { user } = useAuthStore()
@@ -78,83 +100,127 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose, onViewe
 
   const progress = useRef(new Animated.Value(0)).current
   const animRef = useRef<Animated.CompositeAnimation | null>(null)
+  const groupIdxRef = useRef(groupIdx)
+  const storyIdxRef = useRef(storyIdx)
 
-  const group = groups[groupIdx]
-  const story: Story | undefined = group?.stories[storyIdx]
+  // Keep refs in sync
+  useEffect(() => { groupIdxRef.current = groupIdx }, [groupIdx])
+  useEffect(() => { storyIdxRef.current = storyIdx }, [storyIdx])
 
-  // Sync initial state when viewer opens or group/story changes
+  // Reset when viewer opens
   useEffect(() => {
     if (visible) {
       setGroupIdx(startGroupIndex)
       setStoryIdx(0)
+      setReplyText('')
+      setShowReply(false)
+      setPaused(false)
     }
   }, [visible, startGroupIndex])
 
-  const startProgress = useCallback((duration = STORY_DURATION) => {
-    progress.setValue(0)
-    animRef.current?.stop()
-    animRef.current = Animated.timing(progress, {
-      toValue: 1,
-      duration,
-      useNativeDriver: false,
-    })
-    animRef.current.start(({ finished }) => {
-      if (finished) advance()
-    })
-  }, [progress])
+  // ── Navigation helpers ─────────────────────────────────────────────────────
 
-  const advance = useCallback(() => {
-    const g = groups[groupIdx]
+  const goToNext = useCallback(() => {
+    const gi = groupIdxRef.current
+    const si = storyIdxRef.current
+    const g = groups[gi]
     if (!g) return
-    if (storyIdx < g.stories.length - 1) {
-      setStoryIdx((i) => i + 1)
-    } else if (groupIdx < groups.length - 1) {
+    animRef.current?.stop()
+    if (si < g.stories.length - 1) {
+      setStoryIdx((s) => s + 1)
+    } else if (gi < groups.length - 1) {
       setGroupIdx((i) => i + 1)
       setStoryIdx(0)
     } else {
       onClose()
     }
-  }, [groups, groupIdx, storyIdx, onClose])
+  }, [groups, onClose])
 
-  const goBack = useCallback(() => {
-    if (storyIdx > 0) {
-      setStoryIdx((i) => i - 1)
-    } else if (groupIdx > 0) {
+  const goToPrev = useCallback(() => {
+    const gi = groupIdxRef.current
+    const si = storyIdxRef.current
+    animRef.current?.stop()
+    if (si > 0) {
+      setStoryIdx((s) => s - 1)
+    } else if (gi > 0) {
+      const prevGroup = groups[gi - 1]
       setGroupIdx((i) => i - 1)
-      const prevGroup = groups[groupIdx - 1]
       setStoryIdx(prevGroup ? prevGroup.stories.length - 1 : 0)
     }
-  }, [groups, groupIdx, storyIdx])
+  }, [groups])
 
-  // Start timer when story changes
+  // ── Progress animation ─────────────────────────────────────────────────────
+
+  const startProgress = useCallback(
+    (duration: number) => {
+      progress.setValue(0)
+      animRef.current?.stop()
+      animRef.current = Animated.timing(progress, {
+        toValue: 1,
+        duration,
+        useNativeDriver: false,
+      })
+      animRef.current.start(({ finished }) => {
+        if (finished) goToNext()
+      })
+    },
+    // goToNext is stable (only refs + onClose); progress ref never changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [goToNext],
+  )
+
+  const pauseProgress = useCallback(() => {
+    animRef.current?.stop()
+    setPaused(true)
+  }, [])
+
+  const resumeProgress = useCallback(() => {
+    setPaused(false)
+    // Restart from current value — simple but effective
+    animRef.current?.start(({ finished }) => {
+      if (finished) goToNext()
+    })
+  }, [goToNext])
+
+  // ── Story change effect ────────────────────────────────────────────────────
+
+  const group = groups[groupIdx]
+  const story: Story | undefined = group?.stories[storyIdx]
+
   useEffect(() => {
-    if (!visible || !story) return
-    const isVideo = story.type === 'VIDEO'
-    if (!isVideo) startProgress(STORY_DURATION)
+    if (!visible || !story || !group) return
 
-    // Mark viewed
-    const alreadySeen = story.views.length > 0
-    if (!alreadySeen) {
-      void storiesApi.viewStory(story.id).catch(() => {})
-      onViewed?.(story.id)
-    }
-
-    // Sync liked state
+    // Update like state
     setLiked(story.likes.length > 0)
     setLikeCount(story._count.likes)
 
-    return () => {
-      animRef.current?.stop()
+    // Mark as viewed
+    onViewed?.(story.id, group.userId)
+
+    // Start timer for images; videos drive their own onLoad
+    if (story.type === 'IMAGE') {
+      startProgress(IMAGE_DURATION)
+    } else {
+      progress.setValue(0)
     }
+
+    return () => { animRef.current?.stop() }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, story?.id, groupIdx, storyIdx])
+
+  // ── Actions ───────────────────────────────────────────────────────────────
 
   const handleLike = async () => {
     if (!story) return
+    const prev = liked
+    setLiked(!prev)
+    setLikeCount((c) => c + (prev ? -1 : 1))
     try {
-      const { liked: newLiked } = await storiesApi.toggleLike(story.id)
-      setLiked(newLiked)
-      setLikeCount((c) => c + (newLiked ? 1 : -1))
-    } catch {}
+      await storiesApi.toggleLike(story.id)
+    } catch {
+      setLiked(prev)
+      setLikeCount((c) => c + (prev ? 1 : -1))
+    }
   }
 
   const handleReply = async () => {
@@ -166,15 +232,7 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose, onViewe
     } catch {}
   }
 
-  const handlePauseResume = (pause: boolean) => {
-    setPaused(pause)
-    if (pause) {
-      animRef.current?.stop()
-    } else {
-      // Resume — we don't track elapsed precisely so just restart
-      animRef.current?.start(({ finished }) => { if (finished) advance() })
-    }
-  }
+  // ── Guard ──────────────────────────────────────────────────────────────────
 
   if (!visible || !group || !story) return null
 
@@ -186,20 +244,21 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose, onViewe
     const diff = Date.now() - new Date(story.createdAt).getTime()
     const h = Math.floor(diff / 3600000)
     const m = Math.floor((diff % 3600000) / 60000)
-    if (h > 0) return `${h}h`
-    return `${m}m`
+    return h > 0 ? `${h}h` : `${m}m`
   })()
 
   return (
-    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+      onRequestClose={onClose}
+    >
       <View style={styles.container}>
-        {/* Media */}
+        {/* ── Media ───────────────────────────────────────────────────────── */}
         {story.type === 'IMAGE' ? (
-          <Image
-            source={{ uri: story.mediaUrl }}
-            style={styles.media}
-            resizeMode="cover"
-          />
+          <Image source={{ uri: story.mediaUrl }} style={styles.media} resizeMode="cover" />
         ) : (
           <Video
             source={{ uri: story.mediaUrl }}
@@ -208,85 +267,83 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose, onViewe
             shouldPlay={!paused}
             isLooping={false}
             onPlaybackStatusUpdate={(s) => {
-              if ('didJustFinish' in s && s.didJustFinish) advance()
-              if ('durationMillis' in s && s.durationMillis && s.positionMillis != null) {
+              if ('didJustFinish' in s && s.didJustFinish) goToNext()
+              if ('durationMillis' in s && s.durationMillis && 'positionMillis' in s && s.positionMillis != null) {
                 progress.setValue(s.positionMillis / s.durationMillis)
               }
             }}
             onLoad={(s) => {
-              startProgress('durationMillis' in s ? (s.durationMillis ?? STORY_DURATION) : STORY_DURATION)
+              if ('durationMillis' in s) startProgress(s.durationMillis ?? IMAGE_DURATION)
             }}
           />
         )}
 
-        {/* Gradient overlay top */}
-        <View style={styles.overlayTop} pointerEvents="none" />
-        {/* Gradient overlay bottom */}
-        <View style={styles.overlayBottom} pointerEvents="none" />
+        {/* ── Top gradient (semi-transparent overlay for legibility) ───────── */}
+        <View style={styles.topGradient} pointerEvents="none" />
+        <View style={styles.bottomGradient} pointerEvents="none" />
 
-        {/* Progress bars */}
-        <View style={[styles.progressWrap, { paddingTop: insets.top + 8 }]}>
-          <ProgressBars
-            count={group.stories.length}
-            current={storyIdx}
-            progress={progress}
-          />
+        {/* ── Progress bars ────────────────────────────────────────────────── */}
+        <View style={[styles.progressWrap, { paddingTop: insets.top + 10 }]}>
+          <ProgressBars count={group.stories.length} current={storyIdx} progress={progress} />
         </View>
 
-        {/* Header */}
-        <View style={[styles.header, { paddingTop: insets.top + 24 }]}>
+        {/* ── Header ───────────────────────────────────────────────────────── */}
+        <View style={[styles.header, { paddingTop: insets.top + 26 }]}>
           <View style={styles.authorRow}>
             {photoUrl ? (
               <Image source={{ uri: photoUrl }} style={styles.authorAvatar} />
             ) : (
               <View style={[styles.authorAvatar, styles.authorFallback]}>
-                <Text style={{ color: '#fff', fontSize: 16 }}>{authorName.charAt(0)}</Text>
+                <Text style={{ color: '#fff', fontSize: 15 }}>{authorName.charAt(0)}</Text>
               </View>
             )}
-            <View>
+            <View style={{ gap: 1 }}>
               <Text style={styles.authorName}>{authorName}</Text>
               <Text style={styles.timeSince}>{timeSince}</Text>
             </View>
           </View>
-          <TouchableOpacity onPress={onClose} style={styles.closeBtn} hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}>
+          <TouchableOpacity
+            onPress={onClose}
+            hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}
+          >
             <Ionicons name="close" size={26} color="#fff" />
           </TouchableOpacity>
         </View>
 
-        {/* Tap zones */}
+        {/* ── Tap zones ─────────────────────────────────────────────────────── */}
         <View style={styles.tapZones} pointerEvents="box-none">
           <Pressable
             style={styles.tapLeft}
-            onPress={goBack}
-            onLongPress={() => handlePauseResume(true)}
-            onPressOut={() => handlePauseResume(false)}
+            onPress={goToPrev}
+            onLongPress={pauseProgress}
+            onPressOut={paused ? resumeProgress : undefined}
           />
           <Pressable
             style={styles.tapRight}
-            onPress={advance}
-            onLongPress={() => handlePauseResume(true)}
-            onPressOut={() => handlePauseResume(false)}
+            onPress={goToNext}
+            onLongPress={pauseProgress}
+            onPressOut={paused ? resumeProgress : undefined}
           />
         </View>
 
-        {/* Caption */}
-        {story.caption && (
+        {/* ── Caption ───────────────────────────────────────────────────────── */}
+        {story.caption != null && story.caption.length > 0 && (
           <View style={[styles.captionWrap, { bottom: insets.bottom + 100 }]}>
             <Text style={styles.caption}>{story.caption}</Text>
           </View>
         )}
 
-        {/* Bottom actions */}
+        {/* ── Bottom actions ─────────────────────────────────────────────────── */}
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={[styles.bottomActions, { paddingBottom: insets.bottom + 12 }]}
+          style={[styles.bottomActions, { paddingBottom: insets.bottom + 14 }]}
         >
           {showReply ? (
             <View style={styles.replyRow}>
               <TextInput
                 style={styles.replyInput}
                 placeholder="Reply…"
-                placeholderTextColor="rgba(255,255,255,0.5)"
+                placeholderTextColor="rgba(255,255,255,0.45)"
                 value={replyText}
                 onChangeText={setReplyText}
                 autoFocus
@@ -294,8 +351,16 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose, onViewe
                 returnKeyType="send"
                 onSubmitEditing={() => void handleReply()}
               />
-              <TouchableOpacity onPress={() => void handleReply()} style={styles.sendBtn} disabled={!replyText.trim()}>
-                <Ionicons name="send" size={20} color={replyText.trim() ? '#fff' : 'rgba(255,255,255,0.4)'} />
+              <TouchableOpacity
+                onPress={() => void handleReply()}
+                disabled={!replyText.trim()}
+                style={{ padding: 8 }}
+              >
+                <Ionicons
+                  name="send"
+                  size={20}
+                  color={replyText.trim() ? '#fff' : 'rgba(255,255,255,0.35)'}
+                />
               </TouchableOpacity>
             </View>
           ) : (
@@ -303,16 +368,16 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose, onViewe
               {!isMine && (
                 <TouchableOpacity
                   style={styles.replyTrigger}
-                  onPress={() => setShowReply(true)}
+                  onPress={() => { setPaused(true); setShowReply(true) }}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.replyTriggerText}>Reply…</Text>
+                  <Text style={styles.replyPlaceholder}>Reply…</Text>
                 </TouchableOpacity>
               )}
-              <TouchableOpacity onPress={() => void handleLike()} style={styles.likeBtn} activeOpacity={0.8}>
+              <TouchableOpacity onPress={() => void handleLike()} style={styles.likeBtn}>
                 <Ionicons
                   name={liked ? 'heart' : 'heart-outline'}
-                  size={28}
+                  size={30}
                   color={liked ? '#FF3B6F' : '#fff'}
                 />
                 {likeCount > 0 && (
@@ -327,11 +392,12 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose, onViewe
   )
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000',
-    position: 'relative',
   },
   media: {
     width: SW,
@@ -340,28 +406,28 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
   },
-  overlayTop: {
+  topGradient: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: 160,
-    backgroundColor: 'transparent',
+    height: 140,
+    backgroundColor: 'rgba(0,0,0,0.35)',
   },
-  overlayBottom: {
+  bottomGradient: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: 200,
-    backgroundColor: 'transparent',
+    height: 180,
+    backgroundColor: 'rgba(0,0,0,0.35)',
   },
   progressWrap: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
   },
   progressRow: {
     flexDirection: 'row',
@@ -371,10 +437,12 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 2.5,
     borderRadius: 1.5,
+    backgroundColor: 'rgba(255,255,255,0.35)',
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
+    backgroundColor: '#fff',
     borderRadius: 1.5,
   },
   header: {
@@ -386,7 +454,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingBottom: 10,
   },
   authorRow: {
     flexDirection: 'row',
@@ -394,14 +462,14 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   authorAvatar: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.6)',
+    borderColor: 'rgba(255,255,255,0.55)',
   },
   authorFallback: {
-    backgroundColor: '#555',
+    backgroundColor: '#444',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -409,41 +477,34 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '700',
-    textShadowColor: 'rgba(0,0,0,0.4)',
+    textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
   timeSince: {
-    color: 'rgba(255,255,255,0.7)',
+    color: 'rgba(255,255,255,0.65)',
     fontSize: 12,
-  },
-  closeBtn: {
-    padding: 4,
   },
   tapZones: {
     position: 'absolute',
     top: 100,
     left: 0,
     right: 0,
-    bottom: 120,
+    bottom: 130,
     flexDirection: 'row',
   },
-  tapLeft: {
-    flex: 2,
-  },
-  tapRight: {
-    flex: 3,
-  },
+  tapLeft: { flex: 2 },
+  tapRight: { flex: 3 },
   captionWrap: {
     position: 'absolute',
     left: 16,
-    right: 80,
+    right: 72,
   },
   caption: {
     color: '#fff',
     fontSize: 15,
     fontWeight: '500',
-    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowColor: 'rgba(0,0,0,0.7)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
     lineHeight: 22,
@@ -457,19 +518,19 @@ const styles = StyleSheet.create({
   actionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    gap: 12,
+    paddingHorizontal: 14,
+    gap: 10,
   },
   replyTrigger: {
     flex: 1,
     borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.4)',
-    borderRadius: 22,
-    paddingHorizontal: 18,
+    borderColor: 'rgba(255,255,255,0.35)',
+    borderRadius: 24,
+    paddingHorizontal: 16,
     paddingVertical: 11,
   },
-  replyTriggerText: {
-    color: 'rgba(255,255,255,0.6)',
+  replyPlaceholder: {
+    color: 'rgba(255,255,255,0.55)',
     fontSize: 15,
   },
   likeBtn: {
@@ -480,25 +541,22 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 11,
     fontWeight: '700',
-    marginTop: 2,
+    marginTop: 1,
   },
   replyRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    gap: 10,
+    paddingHorizontal: 14,
+    gap: 8,
   },
   replyInput: {
     flex: 1,
     borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.4)',
-    borderRadius: 22,
-    paddingHorizontal: 18,
+    borderColor: 'rgba(255,255,255,0.35)',
+    borderRadius: 24,
+    paddingHorizontal: 16,
     paddingVertical: 11,
     color: '#fff',
     fontSize: 15,
-  },
-  sendBtn: {
-    padding: 8,
   },
 })

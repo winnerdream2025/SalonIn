@@ -11,6 +11,10 @@ export interface ConversationItemProps {
   onPress: () => void
   onLongPress?: () => void
   isSelected?: boolean
+  /** Story ring state for the other participant's avatar */
+  storyState?: 'unseen' | 'seen' | 'none'
+  /** Called when the user taps the avatar ring */
+  onStoryPress?: () => void
 }
 
 function formatTime(iso: string): string {
@@ -51,11 +55,18 @@ function MuteIcon({ color }: { color: string }) {
   )
 }
 
+const RING = 2
+const GAP = 2
+const AVATAR_D = 50
+const RING_D = AVATAR_D + (RING + GAP) * 2
+
 export function ConversationItem({
   conversation,
   onPress,
   onLongPress,
   isSelected,
+  storyState = 'none',
+  onStoryPress,
 }: ConversationItemProps) {
   const { theme } = useTheme()
   const { otherParticipant, lastMessage, unreadCount, isPinned, isMuted } = conversation
@@ -66,6 +77,20 @@ export function ConversationItem({
   const lastText =
     lastMessage?.content ??
     (lastMessage?.mediaUrl != null ? 'Photo' : 'Start the conversation')
+
+  const hasRing = storyState !== 'none'
+  const ringColor = storyState === 'unseen' ? '#D85A30' : '#666'
+
+  const avatarInner = (
+    <View style={[styles.avatar, { backgroundColor: avatarBg }]}>
+      {otherParticipant.photoUrl != null ? (
+        <Image source={{ uri: otherParticipant.photoUrl }} style={styles.avatarImg} />
+      ) : (
+        <Text style={styles.avatarText}>{initial}</Text>
+      )}
+      {isOnline && <View style={[styles.onlineDot, { borderColor: theme.bg.surface }]} />}
+    </View>
+  )
 
   return (
     <TouchableOpacity
@@ -80,14 +105,20 @@ export function ConversationItem({
       onLongPress={onLongPress}
       activeOpacity={0.8}
     >
-      <View style={[styles.avatar, { backgroundColor: avatarBg }]}>
-        {otherParticipant.photoUrl != null ? (
-          <Image source={{ uri: otherParticipant.photoUrl }} style={styles.avatarImg} />
-        ) : (
-          <Text style={styles.avatarText}>{initial}</Text>
-        )}
-        {isOnline && <View style={styles.onlineDot} />}
-      </View>
+      {hasRing ? (
+        <TouchableOpacity
+          onPress={onStoryPress}
+          activeOpacity={0.8}
+          style={[
+            styles.ring,
+            { borderColor: ringColor, width: RING_D, height: RING_D, borderRadius: RING_D / 2 },
+          ]}
+        >
+          {avatarInner}
+        </TouchableOpacity>
+      ) : (
+        avatarInner
+      )}
 
       <View style={styles.info}>
         <View style={styles.nameRow}>
@@ -160,16 +191,22 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderLeftWidth: 3,
   },
+  ring: {
+    borderWidth: RING,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
   avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: AVATAR_D,
+    height: AVATAR_D,
+    borderRadius: AVATAR_D / 2,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
     flexShrink: 0,
   },
-  avatarImg: { width: 50, height: 50 },
+  avatarImg: { width: AVATAR_D, height: AVATAR_D },
   avatarText: { color: '#fff', fontSize: 18, fontWeight: '700' },
   onlineDot: {
     position: 'absolute',

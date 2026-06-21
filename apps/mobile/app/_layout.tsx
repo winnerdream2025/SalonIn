@@ -7,6 +7,7 @@ import { configureClient } from '@salonin/api-client'
 import { useNotifications } from '../src/hooks/useNotifications'
 import { useAuthStore } from '../src/store/authStore'
 import { Logo } from '@salonin/ui'
+import { StoriesProvider } from '../src/contexts/StoriesContext'
 
 // Sentry temporarily disabled due to iOS 26.5 SDK compatibility issues
 // import * as Sentry from '@sentry/react-native'
@@ -64,7 +65,7 @@ function RootLayout() {
   }, [user, isLoading, segments, router])
 
   return (
-    <>
+    <StoriesProvider>
       <StatusBar style="auto" />
       <Stack screenOptions={{ headerShown: false }} />
       {isLoading && (
@@ -74,7 +75,7 @@ function RootLayout() {
           <Text style={{ color: '#555555', fontSize: 13, letterSpacing: 0.2 }}>Beauty workforce marketplace</Text>
         </View>
       )}
-    </>
+    </StoriesProvider>
   )
 }
 

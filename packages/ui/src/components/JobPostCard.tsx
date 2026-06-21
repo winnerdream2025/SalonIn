@@ -15,6 +15,8 @@ export interface JobPostCardProps {
   onMessage?: () => void
   onSave?: () => void
   isSaved?: boolean
+  salonStoryState?: 'unseen' | 'seen' | 'none'
+  onSalonStoryPress?: () => void
 }
 
 // ── Employment type ───────────────────────────────────────────────────────────
@@ -107,6 +109,9 @@ function ChatIcon({ color, size }: { color: string; size: number }) {
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
+const UNSEEN_COLOR = '#D85A30'
+const SEEN_COLOR = '#888'
+
 export function JobPostCard({
   job,
   onPress,
@@ -115,6 +120,8 @@ export function JobPostCard({
   onMessage,
   onSave,
   isSaved = false,
+  salonStoryState = 'none',
+  onSalonStoryPress,
 }: JobPostCardProps) {
   const { theme } = useTheme()
   const scale = useRef(new Animated.Value(1)).current
@@ -157,7 +164,16 @@ export function JobPostCard({
       >
         {/* ── HEADER ────────────────────────────────────────────────────────── */}
         <View style={styles.headerRow}>
-          <Avatar uri={job.salonPhotoUrl} name={job.salonName} size="md" />
+          {salonStoryState !== 'none' ? (
+            <Pressable
+              onPress={onSalonStoryPress}
+              style={[styles.salonStoryRing, { borderColor: salonStoryState === 'unseen' ? UNSEEN_COLOR : SEEN_COLOR }]}
+            >
+              <Avatar uri={job.salonPhotoUrl} name={job.salonName} size="sm" />
+            </Pressable>
+          ) : (
+            <Avatar uri={job.salonPhotoUrl} name={job.salonName} size="md" />
+          )}
 
           <View style={styles.headerInfo}>
             {/* Name + verified */}
@@ -450,6 +466,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 10,
     elevation: 4,
+  },
+
+  salonStoryRing: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    borderWidth: 2.5,
+    padding: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
   },
 
   // ── Header ──────────────────────────────────────────────────────────────────

@@ -22,6 +22,7 @@ import { useMySalonProfile } from '../../hooks/useMySalonProfile'
 import { authApi, salonsApi } from '@salonin/api-client'
 import { useAuthStore } from '../../store/authStore'
 import { useAuth } from '../../hooks/useAuth'
+import { useStories } from '../../contexts/StoriesContext'
 import * as Haptics from 'expo-haptics'
 
 export default function SalonOwnProfileScreen() {
@@ -30,6 +31,7 @@ export default function SalonOwnProfileScreen() {
   const { bottom } = useSafeAreaInsets()
   const clearAuth = useAuthStore((s) => s.clearAuth)
   const authUser  = useAuthStore((s) => s.user)
+  const { myGroup, openCreator, openViewerForUser } = useStories()
   const { logout } = useAuth()
   const [hiringOverride, setHiringOverride] = useState<boolean | null>(null)
 
@@ -134,26 +136,45 @@ export default function SalonOwnProfileScreen() {
 
         </View>
 
-        {/* Logo circle overlapping cover */}
+        {/* Logo circle overlapping cover — tap ring to view/add story, tap camera badge to edit */}
         <View style={styles.logoArea}>
-          <TouchableOpacity
-            style={styles.logoWrap}
-            onPress={() => router.push('/salon/edit' as never)}
-            activeOpacity={0.85}
-          >
-            <View style={[styles.logoCircle, { borderColor: firstPhoto ? 'rgba(255,255,255,0.7)' : theme.border.default, backgroundColor: theme.bg.elevated }]}>
-              {firstPhoto ? (
-                <Image source={{ uri: firstPhoto }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
-              ) : (
-                <Text style={[styles.logoInitial, { color: theme.text.secondary }]}>
-                  {salon.name[0]?.toUpperCase() ?? 'S'}
-                </Text>
-              )}
-            </View>
-            <View style={[styles.cameraBadge, { backgroundColor: theme.brand.primary }]}>
-              <Text style={styles.cameraBadgeText}>+</Text>
-            </View>
-          </TouchableOpacity>
+          <View style={{ position: 'relative', alignItems: 'center', justifyContent: 'center' }}>
+            {/* Story ring — tappable */}
+            <TouchableOpacity
+              onPress={myGroup ? () => openViewerForUser(authUser?.id ?? '') : openCreator}
+              activeOpacity={0.85}
+              style={[
+                styles.storyRing,
+                { borderColor: myGroup ? '#D85A30' : theme.border.default, borderStyle: myGroup ? 'solid' : 'dashed' },
+              ]}
+            >
+              <View style={[styles.logoCircle, { borderColor: firstPhoto ? 'rgba(255,255,255,0.7)' : theme.border.default, backgroundColor: theme.bg.elevated }]}>
+                {firstPhoto ? (
+                  <Image source={{ uri: firstPhoto }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+                ) : (
+                  <Text style={[styles.logoInitial, { color: theme.text.secondary }]}>
+                    {salon.name[0]?.toUpperCase() ?? 'S'}
+                  </Text>
+                )}
+              </View>
+            </TouchableOpacity>
+
+            {/* Story badge — top right */}
+            <TouchableOpacity
+              onPress={myGroup ? () => openViewerForUser(authUser?.id ?? '') : openCreator}
+              style={[styles.storyBadge, { backgroundColor: myGroup ? '#D85A30' : '#555' }]}
+            >
+              <Ionicons name={myGroup ? 'play' : 'add'} size={10} color="#fff" />
+            </TouchableOpacity>
+
+            {/* Edit / camera badge — bottom right */}
+            <TouchableOpacity
+              onPress={() => router.push('/salon/edit' as never)}
+              style={[styles.cameraBadge, { backgroundColor: theme.brand.primary }]}
+            >
+              <Ionicons name="camera" size={12} color="#fff" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* ── Identity ── */}
@@ -412,7 +433,24 @@ const styles = StyleSheet.create({
   heroEditText: { fontSize: 15, fontWeight: '600' },
 
   logoArea: { alignItems: 'center', marginTop: -40, marginBottom: 4 },
-  logoWrap: { alignItems: 'center', justifyContent: 'center' },
+  storyRing: {
+    width: 92,
+    height: 92,
+    borderRadius: 46,
+    borderWidth: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  storyBadge: {
+    position: 'absolute',
+    top: 2,
+    right: -2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   logoCircle: {
     width: 80,
     height: 80,
@@ -433,7 +471,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cameraBadgeText: { color: '#fff', fontSize: 16, fontWeight: '700', lineHeight: 20 },
 
   identity: { alignItems: 'center', paddingTop: 10, paddingBottom: 16, paddingHorizontal: 24, gap: 8 },
   salonName: { fontSize: 22, fontWeight: '800', letterSpacing: -0.4, textAlign: 'center' },

@@ -17,21 +17,22 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import * as Haptics from 'expo-haptics'
 import { WorkerCard, WorkerCardSkeleton, Text, Button, useTheme, ReportModal, Avatar } from '@salonin/ui'
+import { useStories } from '../../contexts/StoriesContext'
+import type { Theme } from '@salonin/ui'
 import type { WorkerCardData } from '@salonin/types'
 import { Availability } from '@salonin/types'
 import { reportsApi, messagesApi, parseApiError } from '@salonin/api-client'
+import type { SuggestedUser } from '@salonin/api-client'
 import { SPECIALTY_CATEGORIES } from '@salonin/config'
 import { useAuthStore } from '../../store/authStore'
 import { useNearbyWorkers } from '../../hooks/useNearbyWorkers'
 import { useLocationStore } from '../../store/locationStore'
 import { useDeviceLocation } from '../../hooks/useDeviceLocation'
 import { NotificationBell } from '../../components/NotificationBell'
+import { useSuggestedUsers } from '../../hooks/useFollow'
 import { LocationModal } from '../../components/LocationModal'
 import { WorkerFilterModal, activeWorkerFilterCount, EMPTY_WORKER_FILTERS } from '../../components/WorkerFilterModal'
 import type { WorkerFilters } from '../../components/WorkerFilterModal'
-import { useSuggestedUsers } from '../../hooks/useFollow'
-import { followsApi } from '@salonin/api-client'
-import type { SuggestedUser } from '@salonin/api-client'
 
 const SPECIALTIES = ['All', ...SPECIALTY_CATEGORIES]
 
@@ -57,6 +58,7 @@ export default function DiscoveryFeedScreen() {
   const [workerFilters, setWorkerFilters] = useState<WorkerFilters>(EMPTY_WORKER_FILTERS)
   const filterCount = activeWorkerFilterCount(workerFilters)
   const currentUser = useAuthStore((s) => s.user)
+  const { storyMap, openViewerForUser } = useStories()
 
   const handleMessage = useCallback(async (worker: WorkerCardData) => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
@@ -279,23 +281,30 @@ export default function DiscoveryFeedScreen() {
         <FlatList
           data={filteredWorkers}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <WorkerCard
-              worker={item}
-              onPress={() => handlePressWorker(item)}
-              onLongPress={() => setReportTarget(item)}
-              onMessage={() => void handleMessage(item)}
-            />
-          )}
+          renderItem={({ item }) => {
+            const uid = item.userId
+            const ss = uid ? storyMap.get(uid) : undefined
+            const storyState = ss?.hasStory ? (ss.hasUnseen ? 'unseen' : 'seen') : 'none'
+            return (
+              <WorkerCard
+                worker={item}
+                onPress={() => handlePressWorker(item)}
+                onLongPress={() => setReportTarget(item)}
+                onMessage={() => void handleMessage(item)}
+                storyState={storyState}
+                onStoryPress={uid && ss?.hasStory ? () => openViewerForUser(uid) : undefined}
+              />
+            )
+          }}
           contentContainerStyle={[styles.listContent, { paddingBottom: 56 + bottom + 16 }]}
           ListHeaderComponent={
             <>
-              {currentUser && <SuggestedStylists theme={theme} />}
-              {isExpanded ? (
+              <SuggestedStylists theme={theme} />
+              {isExpanded && (
                 <Text style={[styles.expandedNote, { color: theme.text.tertiary }]}>
                   Showing results within {usedRadius} miles
                 </Text>
-              ) : null}
+              )}
             </>
           }
           ListEmptyComponent={
@@ -538,33 +547,41 @@ const styles = StyleSheet.create({
   },
 })
 
-// ─── Suggested Stylists ───────────────────────────────────────────────────────
+// ── Suggested Stylists ────────────────────────────────────────────────────────
 
-function SuggestedStylists({ theme }: { theme: ReturnType<typeof useTheme>['theme'] }) {
-  const { suggestions, isLoading } = useSuggestedUsers()
-  const [followed, setFollowed] = React.useState<Set<string>>(new Set())
+function SuggestedStylists({ theme }: { theme: Theme }) {
+  const { users, loading, followedIds, toggleFollow } = useSuggestedUsers(10)
 
-  if (isLoading || suggestions.length === 0) return null
-
-  const handleFollow = async (userId: string) => {
-    setFollowed((prev) => new Set([...prev, userId]))
-    await followsApi.follow(userId).catch(() => {
-      setFollowed((prev) => { const next = new Set(prev); next.delete(userId); return next })
-    })
-  }
+  if (!loading && users.length === 0) return null
 
   return (
     <View style={suggestStyles.section}>
       <View style={suggestStyles.header}>
-        <Text style={[suggestStyles.title, { color: theme.text.primary }]}>Suggested Stylists</Text>
-        <TouchableOpacity onPress={() => router.push('/search' as never)}>
-          <Text style={[suggestStyles.seeAll, { color: '#D85A30' }]}>See all</Text>
+        <Text style={[suggestStyles.title, { color: theme.text.primary }]}>People to follow</Text>
+        <TouchableOpacity onPress={() => router.push('/follow/suggested' as never)} activeOpacity={0.7}>
+          <Text style={[suggestStyles.seeAll, { color: theme.brand.primary }]}>See all</Text>
         </TouchableOpacity>
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={suggestStyles.list}>
-        {suggestions.map((s) => (
-          <SuggestedCard key={s.id} user={s} theme={theme} isFollowed={followed.has(s.id)} onFollow={handleFollow} />
-        ))}
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={suggestStyles.row}
+      >
+        {loading
+          ? Array.from({ length: 5 }).map((_, i) => (
+              <SuggestedCardSkeleton key={i} theme={theme} />
+            ))
+          : users.map(user => (
+              <SuggestedCard
+                key={user.id}
+                user={user}
+                theme={theme}
+                isFollowed={followedIds.has(user.id)}
+                onFollow={() => void toggleFollow(user.id)}
+              />
+            ))
+        }
       </ScrollView>
     </View>
   )
@@ -577,23 +594,23 @@ function SuggestedCard({
   onFollow,
 }: {
   user: SuggestedUser
-  theme: ReturnType<typeof useTheme>['theme']
+  theme: Theme
   isFollowed: boolean
-  onFollow: (id: string) => void
+  onFollow: () => void
 }) {
   const specialty = user.specialties[0] ?? null
 
   return (
     <TouchableOpacity
       style={[suggestStyles.card, { backgroundColor: theme.bg.card, borderColor: theme.border.default }]}
-      onPress={() => router.push(`/worker/${user.id}` as never)}
       activeOpacity={0.85}
+      onPress={() => router.push(`/worker/${user.id}` as never)}
     >
-      <Avatar uri={user.photoUrl} name={user.name} size="lg" isVerified={user.isVerified} />
+      <Avatar uri={user.photoUrl} name={user.name} size="lg" />
 
-      {user.reason === 'mutual' && (
-        <View style={[suggestStyles.badge, { backgroundColor: 'rgba(29,158,117,0.12)', borderColor: 'rgba(29,158,117,0.3)' }]}>
-          <Text style={[suggestStyles.badgeText, { color: '#1D9E75' }]}>Follows you</Text>
+      {user.followsMe && (
+        <View style={[suggestStyles.followsBadge, { backgroundColor: theme.bg.base, borderColor: theme.border.default }]}>
+          <Text style={[suggestStyles.followsBadgeText, { color: theme.text.tertiary }]}>Follows you</Text>
         </View>
       )}
 
@@ -607,22 +624,15 @@ function SuggestedCard({
         </Text>
       )}
 
-      {user.rating > 0 && (
-        <Text style={[suggestStyles.rating, { color: theme.text.tertiary }]}>
-          ★ {user.rating.toFixed(1)}
-        </Text>
-      )}
-
       <TouchableOpacity
-        onPress={() => onFollow(user.id)}
-        disabled={isFollowed}
-        activeOpacity={0.8}
         style={[
           suggestStyles.followBtn,
           isFollowed
             ? { backgroundColor: 'transparent', borderWidth: 1, borderColor: theme.border.default }
-            : { backgroundColor: theme.brand.primary, borderWidth: 0 },
+            : { backgroundColor: theme.brand.primary },
         ]}
+        onPress={onFollow}
+        activeOpacity={0.8}
       >
         <Text style={[suggestStyles.followBtnText, { color: isFollowed ? theme.text.secondary : '#FFFFFF' }]}>
           {isFollowed ? 'Following' : 'Follow'}
@@ -632,45 +642,58 @@ function SuggestedCard({
   )
 }
 
+function SuggestedCardSkeleton({ theme }: { theme: Theme }) {
+  return (
+    <View style={[suggestStyles.card, { backgroundColor: theme.bg.card, borderColor: theme.border.default }]}>
+      <View style={[suggestStyles.skeletonAvatar, { backgroundColor: theme.border.default }]} />
+      <View style={[suggestStyles.skeletonName, { backgroundColor: theme.border.default }]} />
+      <View style={[suggestStyles.skeletonSpecialty, { backgroundColor: theme.border.default }]} />
+      <View style={[suggestStyles.skeletonBtn, { backgroundColor: theme.border.default }]} />
+    </View>
+  )
+}
+
 const suggestStyles = StyleSheet.create({
   section: { paddingTop: 8, paddingBottom: 4 },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    marginBottom: 10,
+    paddingBottom: 10,
   },
   title: { fontSize: 16, fontWeight: '700' },
   seeAll: { fontSize: 13, fontWeight: '600' },
-  list: { paddingHorizontal: 12, gap: 10 },
+  row: { paddingHorizontal: 12, gap: 10, paddingBottom: 4 },
   card: {
-    width: 104,
+    width: 108,
     borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth,
-    paddingVertical: 14,
-    paddingHorizontal: 10,
+    padding: 12,
     alignItems: 'center',
-    gap: 5,
+    gap: 6,
   },
-  badge: {
+  followsBadge: {
     paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: 99,
     borderWidth: StyleSheet.hairlineWidth,
     marginTop: -2,
   },
-  badgeText: { fontSize: 9, fontWeight: '600' },
+  followsBadgeText: { fontSize: 9, fontWeight: '600' },
   name: { fontSize: 12, fontWeight: '700', textAlign: 'center', lineHeight: 16 },
   specialty: { fontSize: 10, textAlign: 'center', lineHeight: 14, marginTop: -2 },
-  rating: { fontSize: 10, textAlign: 'center' },
   followBtn: {
     marginTop: 2,
-    borderRadius: 99,
     paddingHorizontal: 16,
     paddingVertical: 6,
+    borderRadius: 99,
     width: '100%',
     alignItems: 'center',
   },
   followBtnText: { fontSize: 12, fontWeight: '700' },
+  skeletonAvatar: { width: 56, height: 56, borderRadius: 28 },
+  skeletonName: { width: 70, height: 11, borderRadius: 6, marginTop: 2 },
+  skeletonSpecialty: { width: 50, height: 9, borderRadius: 5 },
+  skeletonBtn: { width: 76, height: 28, borderRadius: 99, marginTop: 2 },
 })

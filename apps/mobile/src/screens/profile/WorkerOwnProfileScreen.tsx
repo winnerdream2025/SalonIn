@@ -17,6 +17,7 @@ import { useAuthStore } from '../../store/authStore'
 import { useAuth } from '../../hooks/useAuth'
 import * as Haptics from 'expo-haptics'
 import { useMediaUpload } from '../../hooks/useMediaUpload'
+import { useStories } from '../../contexts/StoriesContext'
 
 export default function WorkerOwnProfileScreen() {
   const { profile, isLoading, refetch } = useMyWorkerProfile()
@@ -34,6 +35,7 @@ export default function WorkerOwnProfileScreen() {
 
   const clearAuth  = useAuthStore((s) => s.clearAuth)
   const authUser   = useAuthStore((s) => s.user)
+  const { myGroup, openCreator, openViewerForUser } = useStories()
   const { logout } = useAuth()
   const [showAvailSheet, setShowAvailSheet]   = useState(false)
   const [currentAvail,   setCurrentAvail]     = useState<Availability | null>(null)
@@ -164,25 +166,47 @@ export default function WorkerOwnProfileScreen() {
 
         {/* ── Hero section ───────────────────────────────── */}
         <View style={styles.heroSection}>
-          <TouchableOpacity
-            onPress={() => void handlePickPhoto()}
-            disabled={isUploading}
-            activeOpacity={0.85}
-            style={styles.avatarWrap}
-          >
-            <View style={[styles.avatarCircle, { borderColor: '#D85A30', backgroundColor: theme.bg.elevated }]}>
-              {isUploading ? (
-                <ActivityIndicator color="#D85A30" />
-              ) : photoUrl ? (
-                <Image source={{ uri: photoUrl }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
-              ) : (
-                <Text style={styles.avatarInitial}>{firstInitial}</Text>
-              )}
-            </View>
-            <View style={styles.cameraBadge}>
+          {/* Avatar with story ring */}
+          <View style={styles.avatarWrap}>
+            {/* Story ring — tap to view or add story */}
+            <TouchableOpacity
+              onPress={myGroup ? () => openViewerForUser(authUser?.id ?? '') : openCreator}
+              activeOpacity={0.85}
+              style={[
+                styles.avatarRing,
+                { borderColor: myGroup ? '#D85A30' : theme.border.default, borderStyle: myGroup ? 'solid' : 'dashed' },
+              ]}
+            >
+              <View style={[styles.avatarCircle, { backgroundColor: theme.bg.elevated }]}>
+                {isUploading ? (
+                  <ActivityIndicator color="#D85A30" />
+                ) : photoUrl ? (
+                  <Image source={{ uri: photoUrl }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+                ) : (
+                  <Text style={styles.avatarInitial}>{firstInitial}</Text>
+                )}
+              </View>
+            </TouchableOpacity>
+
+            {/* Camera badge — change photo */}
+            <TouchableOpacity
+              onPress={() => void handlePickPhoto()}
+              disabled={isUploading}
+              style={styles.cameraBadge}
+              hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+            >
               <Ionicons name="camera-outline" size={12} color="#FFFFFF" />
-            </View>
-          </TouchableOpacity>
+            </TouchableOpacity>
+
+            {/* Story add/indicator badge */}
+            <TouchableOpacity
+              onPress={myGroup ? () => openViewerForUser(authUser?.id ?? '') : openCreator}
+              style={[styles.storyBadge, { backgroundColor: myGroup ? '#D85A30' : '#555' }]}
+              hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+            >
+              <Ionicons name={myGroup ? 'play' : 'add'} size={10} color="#fff" />
+            </TouchableOpacity>
+          </View>
 
           <Text style={[styles.profileName, { color: theme.text.primary }]} numberOfLines={1}>
             {profile.name}
@@ -563,12 +587,16 @@ const styles = StyleSheet.create({
   },
 
   // Avatar
-  avatarWrap:   { position: 'relative', flexShrink: 0, marginBottom: 6 },
+  avatarWrap:   { position: 'relative', flexShrink: 0, marginBottom: 6, alignItems: 'center', justifyContent: 'center' },
+  avatarRing: {
+    borderWidth: 3,
+    borderRadius: 52,
+    padding: 3,
+  },
   avatarCircle: {
     width: 92,
     height: 92,
     borderRadius: 46,
-    borderWidth: 3,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
@@ -578,10 +606,20 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#D85A30',
   },
+  storyBadge: {
+    position: 'absolute',
+    top: 2,
+    right: 0,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   cameraBadge: {
     position: 'absolute',
     bottom: 2,
-    right: 2,
+    right: 0,
     width: 26,
     height: 26,
     borderRadius: 13,

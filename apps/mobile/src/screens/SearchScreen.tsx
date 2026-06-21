@@ -23,6 +23,7 @@ import {
 import type { WorkerCardData, JobPostCardData } from '@salonin/types'
 import { messagesApi, jobsApi, parseApiError } from '@salonin/api-client'
 import { useNearbyWorkers } from '../hooks/useNearbyWorkers'
+import { useStories } from '../contexts/StoriesContext'
 import { useJobFeed } from '../hooks/useJobFeed'
 import { useAuthStore } from '../store/authStore'
 
@@ -34,6 +35,7 @@ export default function SearchScreen() {
   const { top, bottom } = useSafeAreaInsets()
   const { theme } = useTheme()
   const user = useAuthStore((s) => s.user)
+  const { storyMap, openViewerForUser } = useStories()
   const isSalon = user?.role === 'SALON'
 
   const [query, setQuery] = useState('')
@@ -201,13 +203,20 @@ export default function SearchScreen() {
         <FlatList<WorkerCardData>
           data={filteredWorkers}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <WorkerCard
-              worker={item}
-              onPress={() => router.push(`/worker/${item.id}`)}
-              onMessage={() => void handleMessageWorker(item)}
-            />
-          )}
+          renderItem={({ item }) => {
+            const uid = item.userId
+            const ss = uid ? storyMap.get(uid) : undefined
+            const storyState = ss?.hasStory ? (ss.hasUnseen ? 'unseen' : 'seen') : 'none'
+            return (
+              <WorkerCard
+                worker={item}
+                onPress={() => router.push(`/worker/${item.id}`)}
+                onMessage={() => void handleMessageWorker(item)}
+                storyState={storyState as 'unseen' | 'seen' | 'none'}
+                onStoryPress={uid && ss?.hasStory ? () => openViewerForUser(uid) : undefined}
+              />
+            )
+          }}
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={[styles.list, { paddingBottom: bottom + 80 }]}
           ListEmptyComponent={
@@ -225,14 +234,21 @@ export default function SearchScreen() {
         <FlatList<JobPostCardData>
           data={filteredJobs}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <JobPostCard
-              job={item}
-              onPress={() => router.push(`/jobs/${item.id}`)}
-              onApply={!isSalon && applyingId !== item.id ? () => void handleApplyJob(item) : undefined}
-              onMessage={messagingId !== item.id ? () => void handleMessageJob(item) : undefined}
-            />
-          )}
+          renderItem={({ item }) => {
+            const salonUid = item.salonUserId
+            const ss = salonUid ? storyMap.get(salonUid) : undefined
+            const salonStoryState = ss?.hasStory ? (ss.hasUnseen ? 'unseen' : 'seen') : 'none'
+            return (
+              <JobPostCard
+                job={item}
+                onPress={() => router.push(`/jobs/${item.id}`)}
+                onApply={!isSalon && applyingId !== item.id ? () => void handleApplyJob(item) : undefined}
+                onMessage={messagingId !== item.id ? () => void handleMessageJob(item) : undefined}
+                salonStoryState={salonStoryState as 'unseen' | 'seen' | 'none'}
+                onSalonStoryPress={salonUid && ss?.hasStory ? () => openViewerForUser(salonUid) : undefined}
+              />
+            )
+          }}
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={[styles.list, { paddingBottom: bottom + 80 }]}
           ListEmptyComponent={

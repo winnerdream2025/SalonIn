@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
+import * as DocumentPicker from 'expo-document-picker'
 import * as Location from 'expo-location'
 import { VoiceRecorder } from '../../components/VoiceRecorder'
 import { AttachmentPicker } from '../../components/AttachmentPicker'
@@ -162,6 +163,45 @@ export default function ChatScreen() {
         Alert.alert('Could not get location', parseApiError(e))
       } finally {
         setIsSending(false)
+      }
+      return
+    }
+
+    // ── Document picker ──────────────────────────────────────────────────────
+    if (type === 'document') {
+      try {
+        const result = await DocumentPicker.getDocumentAsync({
+          type: '*/*',
+          copyToCacheDirectory: true,
+          multiple: false,
+        })
+        if (result.canceled || result.assets.length === 0) return
+        const asset = result.assets[0]!
+        setIsUploadingMedia(true)
+        setUploadProgress(0)
+        try {
+          const { url } = await mediaApi.uploadMedia(
+            { uri: asset.uri, mimeType: asset.mimeType ?? 'application/octet-stream', name: asset.name },
+            'documents',
+            { onProgress: (p) => setUploadProgress(p) },
+          )
+          await sendMessage({
+            mediaUrl: url,
+            type: 'DOCUMENT',
+            fileName: asset.name,
+            fileSize: asset.size,
+            mimeType: asset.mimeType ?? undefined,
+            replyToId: replyingTo?.id,
+          })
+          setReplyingTo(null)
+        } catch (e: unknown) {
+          Alert.alert('Upload failed', parseApiError(e))
+        } finally {
+          setIsUploadingMedia(false)
+          setUploadProgress(0)
+        }
+      } catch (e: unknown) {
+        Alert.alert('Could not open document picker', parseApiError(e))
       }
       return
     }

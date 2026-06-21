@@ -9,6 +9,7 @@ export interface DocumentMessageBubbleProps {
   fileSize?: number | null
   mimeType?: string | null
   isSelf: boolean
+  onLongPress?: () => void
 }
 
 function formatBytes(bytes: number): string {
@@ -26,7 +27,7 @@ function getDocIcon(mimeType?: string | null): string {
   return 'attach-outline'
 }
 
-export function DocumentMessageBubble({ fileUrl, fileName, fileSize, mimeType, isSelf }: DocumentMessageBubbleProps) {
+export function DocumentMessageBubble({ fileUrl, fileName, fileSize, mimeType, isSelf, onLongPress }: DocumentMessageBubbleProps) {
   const { theme } = useTheme()
   const textColor = isSelf ? '#FFFFFF' : theme.text.primary
   const subColor = isSelf ? 'rgba(255,255,255,0.7)' : theme.text.secondary
@@ -36,6 +37,8 @@ export function DocumentMessageBubble({ fileUrl, fileName, fileSize, mimeType, i
     <Pressable
       style={styles.row}
       onPress={() => void Linking.openURL(fileUrl)}
+      onLongPress={onLongPress}
+      delayLongPress={350}
       android_ripple={{ color: 'rgba(0,0,0,0.06)' }}
     >
       <View style={[styles.iconWrap, { backgroundColor: iconBg }]}>

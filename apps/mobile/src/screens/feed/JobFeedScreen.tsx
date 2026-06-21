@@ -23,6 +23,7 @@ import { LocationModal } from '../../components/LocationModal'
 import { useAuthStore } from '../../store/authStore'
 import { NotificationBell } from '../../components/NotificationBell'
 import { jobsApi, messagesApi, parseApiError } from '@salonin/api-client'
+import { useStories } from '../../contexts/StoriesContext'
 import { SPECIALTY_CATEGORIES } from '@salonin/config'
 import { JobFilterModal, activeFilterCount, EMPTY_JOB_FILTERS } from '../../components/JobFilterModal'
 import type { JobFilters } from '../../components/JobFilterModal'
@@ -41,6 +42,7 @@ const SKELETON_COUNT = 5
 export default function JobFeedScreen() {
   const { bottom } = useSafeAreaInsets()
   const { theme } = useTheme()
+  const { storyMap, openViewerForUser } = useStories()
   const lat = useLocationStore((s) => s.lat)
   const lng = useLocationStore((s) => s.lng)
   const city = useLocationStore((s) => s.city)
@@ -362,16 +364,23 @@ export default function JobFeedScreen() {
               {SearchAndFilters}
             </View>
           }
-          renderItem={({ item }) => (
-            <JobPostCard
-              job={item}
-              onPress={() => handlePressJob(item)}
-              onApply={!isSalon && applyingId !== item.id ? () => void handleApplyJob(item) : undefined}
-              onMessage={messagingId !== item.id ? () => void handleMessageSalon(item) : undefined}
-              onSave={() => handleToggleSave(item)}
-              isSaved={savedJobIds.has(item.id)}
-            />
-          )}
+          renderItem={({ item }) => {
+            const salonUid = item.salonUserId
+            const ss = salonUid ? storyMap.get(salonUid) : undefined
+            const salonStoryState = ss?.hasStory ? (ss.hasUnseen ? 'unseen' : 'seen') : 'none'
+            return (
+              <JobPostCard
+                job={item}
+                onPress={() => handlePressJob(item)}
+                onApply={!isSalon && applyingId !== item.id ? () => void handleApplyJob(item) : undefined}
+                onMessage={messagingId !== item.id ? () => void handleMessageSalon(item) : undefined}
+                onSave={() => handleToggleSave(item)}
+                isSaved={savedJobIds.has(item.id)}
+                salonStoryState={salonStoryState as 'unseen' | 'seen' | 'none'}
+                onSalonStoryPress={ss?.hasStory && salonUid ? () => openViewerForUser(salonUid) : undefined}
+              />
+            )
+          }}
           contentContainerStyle={[styles.listContent, { paddingBottom: 56 + bottom + 16 }]}
           ListEmptyComponent={
             isLoading ? (

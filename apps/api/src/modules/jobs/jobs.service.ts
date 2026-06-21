@@ -144,6 +144,7 @@ export class JobsService {
           salon: {
             select: {
               id: true,
+              userId: true,
               name: true,
               photoUrls: true,
               city: true,
@@ -361,6 +362,7 @@ export class JobsService {
     availableFrom: Date | null
     salon: {
       id: string
+      userId: string
       name: string
       photoUrls: string[]
       city: string | null
@@ -387,6 +389,7 @@ export class JobsService {
       country: r.country ?? r.salon.country ?? undefined,
       expiresAt: r.expiresAt.toISOString(),
       salonId: r.salon.id,
+      salonUserId: r.salon.userId,
       salonName: r.salon.name,
       salonPhotoUrl: r.salon.photoUrls[0] ?? null,
       salonCoverUrl: r.salon.photoUrls[1] ?? r.salon.photoUrls[0] ?? null,

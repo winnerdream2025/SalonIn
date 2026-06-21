@@ -1,3 +1,7 @@
+/**
+ * StoriesBar — horizontal scroll row of story avatars, WhatsApp-style.
+ * Reads from StoriesContext — no local data fetching.
+ */
 import React, { memo } from 'react'
 import {
   ScrollView,
@@ -9,62 +13,68 @@ import {
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useTheme, Text } from '@salonin/ui'
-import type { StoryGroup } from '@salonin/api-client'
+import { useStories } from '../contexts/StoriesContext'
 import { useAuthStore } from '../store/authStore'
+import type { StoryGroup } from '@salonin/api-client'
 
-interface Props {
-  groups: StoryGroup[]
-  myStories: StoryGroup | null
-  isLoading: boolean
-  onPressGroup: (group: StoryGroup, initialIndex?: number) => void
-  onPressAddStory: () => void
-}
+const AVATAR_SIZE = 58
+const RING = 2.5
+const GAP = 2.5
+const OUTER = AVATAR_SIZE + (RING + GAP) * 2
 
-const AVATAR_SIZE = 62
-const RING_WIDTH = 2.5
-const RING_GAP = 2
+// ─── Single avatar bubble ──────────────────────────────────────────────────
 
-function StoryAvatar({
+function StoryBubble({
   group,
-  onPress,
-  isMine = false,
-  showAdd = false,
+  label,
+  isOwn,
+  noStory,
   theme,
+  onPress,
 }: {
-  group: StoryGroup
-  onPress: () => void
-  isMine?: boolean
-  showAdd?: boolean
+  group: StoryGroup | null
+  label: string
+  isOwn: boolean
+  noStory: boolean
   theme: ReturnType<typeof useTheme>['theme']
+  onPress: () => void
 }) {
-  const allSeen = !group.hasUnseen
-  const ringColor = allSeen ? theme.border.default : '#D85A30'
-  const name = isMine ? 'My Story' : group.name.split(' ')[0]
+  const allSeen = !group?.hasUnseen
+  const ringColor = noStory
+    ? theme.border.default
+    : allSeen
+    ? '#666'
+    : '#D85A30'
+
+  const photoUrl = group?.photoUrl ?? null
+  const initial = label.charAt(0).toUpperCase()
 
   return (
-    <TouchableOpacity style={styles.avatarWrap} onPress={onPress} activeOpacity={0.8}>
+    <TouchableOpacity style={styles.bubble} onPress={onPress} activeOpacity={0.75}>
+      {/* Ring */}
       <View
         style={[
           styles.ring,
           {
-            width: AVATAR_SIZE + (RING_WIDTH + RING_GAP) * 2,
-            height: AVATAR_SIZE + (RING_WIDTH + RING_GAP) * 2,
-            borderRadius: (AVATAR_SIZE + (RING_WIDTH + RING_GAP) * 2) / 2,
-            borderWidth: RING_WIDTH,
-            borderColor: showAdd ? theme.border.default : ringColor,
+            width: OUTER,
+            height: OUTER,
+            borderRadius: OUTER / 2,
+            borderColor: ringColor,
+            borderWidth: noStory ? 1 : RING,
+            borderStyle: noStory ? 'dashed' : 'solid',
           },
         ]}
       >
-        {group.photoUrl ? (
+        {/* Avatar */}
+        {photoUrl ? (
           <Image
-            source={{ uri: group.photoUrl }}
-            style={[styles.avatar, { width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2 }]}
+            source={{ uri: photoUrl }}
+            style={{ width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2 }}
           />
         ) : (
           <View
             style={[
-              styles.avatar,
-              styles.avatarFallback,
+              styles.fallback,
               {
                 width: AVATAR_SIZE,
                 height: AVATAR_SIZE,
@@ -73,47 +83,41 @@ function StoryAvatar({
               },
             ]}
           >
-            <Text style={{ fontSize: 22, color: theme.text.secondary }}>
-              {group.name.charAt(0).toUpperCase()}
-            </Text>
+            <Text style={{ color: theme.text.secondary, fontSize: 22 }}>{initial}</Text>
           </View>
         )}
-        {showAdd && (
-          <View style={[styles.addBadge, { backgroundColor: '#D85A30' }]}>
-            <Ionicons name="add" size={12} color="#fff" />
+
+        {/* "+" badge for own with no story */}
+        {isOwn && noStory && (
+          <View style={[styles.addBadge, { backgroundColor: '#D85A30', borderColor: theme.bg.base }]}>
+            <Ionicons name="add" size={11} color="#fff" />
           </View>
         )}
       </View>
-      <Text
-        style={[styles.label, { color: theme.text.secondary }]}
-        numberOfLines={1}
-      >
-        {name}
+
+      <Text style={[styles.label, { color: theme.text.secondary }]} numberOfLines={1}>
+        {label}
       </Text>
     </TouchableOpacity>
   )
 }
 
-export const StoriesBar = memo(function StoriesBar({
-  groups,
-  myStories,
-  isLoading,
-  onPressGroup,
-  onPressAddStory,
-}: Props) {
+// ─── Bar ──────────────────────────────────────────────────────────────────────
+
+export const StoriesBar = memo(function StoriesBar() {
   const { theme } = useTheme()
   const { user } = useAuthStore()
+  const { allGroups, myGroup, isLoading, openViewerForUser, openViewerAtIndex, openCreator } =
+    useStories()
 
   if (!user) return null
-  if (!isLoading && groups.length === 0 && !myStories) return null
 
-  const myGroup: StoryGroup = myStories ?? {
-    userId: user.id,
-    name: 'My Story',
-    photoUrl: null,
-    hasUnseen: false,
-    stories: [],
-  }
+  const others = allGroups.filter((g) => g.userId !== user.id)
+  const showBar = isLoading || myGroup !== null || others.length > 0
+
+  if (!showBar) return null
+
+  const myLabel = 'My Story'
 
   return (
     <View style={[styles.container, { borderBottomColor: theme.border.subtle }]}>
@@ -122,27 +126,37 @@ export const StoriesBar = memo(function StoriesBar({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
       >
-        {/* My Story */}
-        <StoryAvatar
+        {/* Own story bubble always first */}
+        <StoryBubble
           group={myGroup}
-          isMine
-          showAdd={!myStories}
-          onPress={() => myStories ? onPressGroup(myStories) : onPressAddStory()}
+          label={myLabel}
+          isOwn
+          noStory={myGroup === null}
           theme={theme}
+          onPress={() => {
+            if (myGroup) openViewerForUser(user.id)
+            else openCreator()
+          }}
         />
 
-        {isLoading && (
+        {isLoading && !myGroup && others.length === 0 && (
           <View style={styles.loaderWrap}>
             <ActivityIndicator size="small" color={theme.text.tertiary} />
           </View>
         )}
 
-        {groups.map((g) => (
-          <StoryAvatar
+        {others.map((g, i) => (
+          <StoryBubble
             key={g.userId}
             group={g}
-            onPress={() => onPressGroup(g)}
+            label={g.name.split(' ')[0] ?? g.name}
+            isOwn={false}
+            noStory={false}
             theme={theme}
+            onPress={() => {
+              const idx = allGroups.findIndex((ag) => ag.userId === g.userId)
+              openViewerAtIndex(idx >= 0 ? idx : i)
+            }}
           />
         ))}
       </ScrollView>
@@ -158,20 +172,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     gap: 6,
+    flexDirection: 'row',
   },
-  avatarWrap: {
+  bubble: {
     alignItems: 'center',
-    width: 76,
+    width: OUTER + 8,
     gap: 5,
   },
   ring: {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatar: {
-    backgroundColor: '#eee',
-  },
-  avatarFallback: {
+  fallback: {
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -179,23 +191,22 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: 0,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#fff',
   },
   label: {
     fontSize: 11,
     fontWeight: '500',
     textAlign: 'center',
-    width: 70,
+    width: OUTER + 8,
   },
   loaderWrap: {
-    width: 76,
-    height: 76 + 16 + 5,
+    width: OUTER + 8,
+    height: OUTER + 30,
     alignItems: 'center',
     justifyContent: 'center',
   },

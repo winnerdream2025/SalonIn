@@ -8,6 +8,7 @@ export interface VideoMessageBubbleProps {
   thumbnailUrl?: string | null
   duration?: number | null
   isSelf: boolean
+  onLongPress?: () => void
 }
 
 function formatDuration(ms: number): string {
@@ -17,7 +18,7 @@ function formatDuration(ms: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
-export function VideoMessageBubble({ videoUrl, thumbnailUrl, duration, isSelf }: VideoMessageBubbleProps) {
+export function VideoMessageBubble({ videoUrl, thumbnailUrl, duration, isSelf, onLongPress }: VideoMessageBubbleProps) {
   const { theme } = useTheme()
   const [playerOpen, setPlayerOpen] = useState(false)
   const [videoLoading, setVideoLoading] = useState(false)
@@ -29,7 +30,7 @@ export function VideoMessageBubble({ videoUrl, thumbnailUrl, duration, isSelf }:
 
   return (
     <>
-      <Pressable onPress={openPlayer} style={styles.container}>
+      <Pressable onPress={openPlayer} onLongPress={onLongPress} delayLongPress={350} style={styles.container}>
         {thumbnailUrl ? (
           <Image source={{ uri: thumbnailUrl }} style={styles.thumbnail} resizeMode="cover" />
         ) : (

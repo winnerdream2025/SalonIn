@@ -125,6 +125,7 @@ export function MessageBubble({
           thumbnailUrl={message.thumbnailUrl}
           duration={message.duration}
           isSelf={isSelf}
+          onLongPress={() => onLongPress?.(message)}
         />
       )}
       {message.type === 'DOCUMENT' && message.mediaUrl != null && !isDeleted && (
@@ -134,6 +135,7 @@ export function MessageBubble({
           fileSize={message.fileSize}
           mimeType={message.mimeType}
           isSelf={isSelf}
+          onLongPress={() => onLongPress?.(message)}
         />
       )}
       {message.type === 'CONTACT' && message.contactName != null && !isDeleted && (
@@ -141,6 +143,7 @@ export function MessageBubble({
           contactName={message.contactName}
           contactPhone={message.contactPhone}
           isSelf={isSelf}
+          onLongPress={() => onLongPress?.(message)}
         />
       )}
       {message.type === 'LOCATION' && message.latitude != null && message.longitude != null && !isDeleted && (
@@ -149,6 +152,7 @@ export function MessageBubble({
           longitude={message.longitude}
           locationName={message.locationName}
           isSelf={isSelf}
+          onLongPress={() => onLongPress?.(message)}
         />
       )}
       {message.type === 'IMAGE' && !isDeleted && (() => {

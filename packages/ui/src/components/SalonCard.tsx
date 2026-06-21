@@ -6,14 +6,19 @@ import { formatDistance, getAvatarGradient } from '@salonin/utils'
 import { Skeleton } from '../primitives/Skeleton'
 import { useTheme } from '../hooks/useTheme'
 
+const UNSEEN_COLOR = '#D85A30'
+const SEEN_COLOR = '#888'
+
 export interface SalonCardProps {
   salon: SalonCardData
   onPress: () => void
   isLoading?: boolean
   onLongPress?: () => void
+  storyState?: 'unseen' | 'seen' | 'none'
+  onStoryPress?: () => void
 }
 
-export function SalonCard({ salon, onPress, isLoading = false, onLongPress }: SalonCardProps) {
+export function SalonCard({ salon, onPress, isLoading = false, onLongPress, storyState = 'none', onStoryPress }: SalonCardProps) {
   const { theme } = useTheme()
   if (isLoading) return <SalonCardSkeleton />
 
@@ -28,6 +33,17 @@ export function SalonCard({ salon, onPress, isLoading = false, onLongPress }: Sa
 
   const firstPhoto = salon.photoUrls[0] ?? null
   const specialty = salon.specialties[0] ?? ''
+  const hasRing = storyState !== 'none'
+  const ringColor = storyState === 'unseen' ? UNSEEN_COLOR : SEEN_COLOR
+
+  const photoInner = (
+    <View style={[styles.photoWrap, { backgroundColor: bgColor }, hasRing && { width: 40, height: 40, borderRadius: 12 }]}>
+      {firstPhoto
+        ? <Image source={{ uri: firstPhoto }} style={[styles.photoImg, hasRing && { width: 40, height: 40 }] as ImageStyle[]} resizeMode="cover" />
+        : <Text style={styles.photoInitials}>{initials}</Text>
+      }
+    </View>
+  )
 
   return (
     <TouchableOpacity
@@ -36,13 +52,18 @@ export function SalonCard({ salon, onPress, isLoading = false, onLongPress }: Sa
       onLongPress={onLongPress}
       activeOpacity={0.8}
     >
-      {/* Photo — 44×44, borderRadius 14 */}
-      <View style={[styles.photoWrap, { backgroundColor: bgColor }]}>
-        {firstPhoto
-          ? <Image source={{ uri: firstPhoto }} style={styles.photoImg as ImageStyle} resizeMode="cover" />
-          : <Text style={styles.photoInitials}>{initials}</Text>
-        }
-      </View>
+      {/* Photo — 44×44, borderRadius 14, with optional story ring */}
+      {hasRing ? (
+        <TouchableOpacity
+          onPress={onStoryPress ?? onPress}
+          activeOpacity={0.85}
+          style={[styles.storyRing, { borderColor: ringColor }]}
+        >
+          {photoInner}
+        </TouchableOpacity>
+      ) : (
+        photoInner
+      )}
 
       {/* Info */}
       <View style={styles.info}>
@@ -107,6 +128,16 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 4,
     elevation: 2,
+  },
+  storyRing: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    borderWidth: 2.5,
+    padding: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
   },
   photoWrap: {
     width: 44,

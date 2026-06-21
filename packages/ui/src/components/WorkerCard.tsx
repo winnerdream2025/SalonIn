@@ -67,6 +67,9 @@ export interface WorkerCardProps {
   onLongPress?: () => void
   onMessage?: () => void
   onSave?: () => void
+  /** Story ring state for this worker's avatar */
+  storyState?: 'unseen' | 'seen' | 'none'
+  onStoryPress?: () => void
 }
 
 const STRIP_VISIBLE = 3   // photos shown as squares
@@ -80,6 +83,8 @@ export function WorkerCard({
   onLongPress,
   onMessage,
   onSave,
+  storyState = 'none',
+  onStoryPress,
 }: WorkerCardProps) {
   const { theme } = useTheme()
   const scale = useRef(new Animated.Value(1)).current
@@ -130,13 +135,21 @@ export function WorkerCard({
           <View style={styles.headerRow}>
 
             <View style={styles.avatarWrap}>
-              {worker.photoUrl ? (
-                <Image source={{ uri: worker.photoUrl }} style={styles.avatar} resizeMode="cover" />
-              ) : (
-                <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: theme.bg.elevated }]}>
-                  <Text style={styles.avatarInitial}>{firstInitial}</Text>
-                </View>
-              )}
+              <Pressable
+                onPress={storyState !== 'none' ? onStoryPress : undefined}
+                style={storyState !== 'none' ? [
+                  styles.storyRing,
+                  { borderColor: storyState === 'unseen' ? '#D85A30' : '#666' },
+                ] : undefined}
+              >
+                {worker.photoUrl ? (
+                  <Image source={{ uri: worker.photoUrl }} style={styles.avatar} resizeMode="cover" />
+                ) : (
+                  <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: theme.bg.elevated }]}>
+                    <Text style={styles.avatarInitial}>{firstInitial}</Text>
+                  </View>
+                )}
+              </Pressable>
               <View style={[styles.availDot, { backgroundColor: avail.dotColor, borderColor: theme.bg.card }]} />
             </View>
 
@@ -332,10 +345,17 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   avatarWrap: {
-    width: 44,
-    height: 44,
+    width: 50,
+    height: 50,
     flexShrink: 0,
     position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  storyRing: {
+    borderWidth: 2.5,
+    borderRadius: 26,
+    padding: 2,
   },
   avatar: {
     width: 44,

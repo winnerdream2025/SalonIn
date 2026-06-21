@@ -14,6 +14,7 @@ const GEO_QUERY_TIMEOUT_MS = 5000
 
 interface RawWorker {
   id: string
+  userId: string
   name: string
   photoUrl: string | null
   bio: string | null
@@ -162,6 +163,7 @@ export class MatchingService {
       WITH distances AS (
         SELECT
           wp.id,
+          wp."userId",
           wp.name,
           wp."photoUrl",
           wp.bio,
@@ -259,6 +261,7 @@ export class MatchingService {
     return this.prisma.$queryRaw<RawWorker[]>(Prisma.sql`
       SELECT
         wp.id,
+        wp."userId",
         wp.name,
         wp."photoUrl",
         wp.bio,
@@ -297,6 +300,7 @@ export class MatchingService {
   private toWorkerCardData(raw: RawWorker): WorkerCardData {
     return {
       id: raw.id,
+      userId: raw.userId,
       name: raw.name,
       photoUrl: raw.photoUrl,
       bio: raw.bio,

@@ -7,9 +7,10 @@ export interface ContactMessageBubbleProps {
   contactName: string
   contactPhone?: string | null
   isSelf: boolean
+  onLongPress?: () => void
 }
 
-export function ContactMessageBubble({ contactName, contactPhone, isSelf }: ContactMessageBubbleProps) {
+export function ContactMessageBubble({ contactName, contactPhone, isSelf, onLongPress }: ContactMessageBubbleProps) {
   const { theme } = useTheme()
   const textColor = isSelf ? '#FFFFFF' : theme.text.primary
   const subColor = isSelf ? 'rgba(255,255,255,0.7)' : theme.text.secondary
@@ -20,7 +21,7 @@ export function ContactMessageBubble({ contactName, contactPhone, isSelf }: Cont
   }
 
   return (
-    <Pressable style={styles.row} onPress={handleCall}>
+    <Pressable style={styles.row} onPress={handleCall} onLongPress={onLongPress} delayLongPress={350}>
       <View style={[styles.avatar, { backgroundColor: iconBg }]}>
         <Ionicons name="person" size={22} color={textColor} />
       </View>

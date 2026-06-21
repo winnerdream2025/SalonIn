@@ -1,5 +1,5 @@
 import React from 'react'
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useTheme } from '../hooks/useTheme'
 
@@ -8,9 +8,10 @@ export interface LocationMessageBubbleProps {
   longitude: number
   locationName?: string | null
   isSelf: boolean
+  onLongPress?: () => void
 }
 
-export function LocationMessageBubble({ latitude, longitude, locationName, isSelf }: LocationMessageBubbleProps) {
+export function LocationMessageBubble({ latitude, longitude, locationName, isSelf, onLongPress }: LocationMessageBubbleProps) {
   const { theme } = useTheme()
   const textColor = isSelf ? '#FFFFFF' : theme.text.primary
   const subColor = isSelf ? 'rgba(255,255,255,0.7)' : theme.text.secondary
@@ -18,14 +19,29 @@ export function LocationMessageBubble({ latitude, longitude, locationName, isSel
 
   const openMap = () => {
     const label = encodeURIComponent(locationName ?? 'Location')
-    const url = `https://maps.google.com/?q=${latitude},${longitude}&label=${label}`
-    void Linking.openURL(url)
+    // Platform-native deep links: Apple Maps on iOS, Google Maps geo: on Android
+    const url = Platform.OS === 'ios'
+      ? `maps://maps.apple.com/?q=${label}&ll=${latitude},${longitude}`
+      : `geo:${latitude},${longitude}?q=${latitude},${longitude}(${label})`
+    Linking.canOpenURL(url).then((supported) => {
+      if (supported) {
+        void Linking.openURL(url)
+      } else {
+        // Fallback to Google Maps web
+        void Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`)
+      }
+    })
   }
 
   const coordStr = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`
 
   return (
-    <Pressable onPress={openMap} style={styles.container}>
+    <Pressable
+      onPress={openMap}
+      onLongPress={onLongPress}
+      delayLongPress={350}
+      style={styles.container}
+    >
       {/* Static map preview area */}
       <View style={[styles.mapPreview, { backgroundColor: mapBg }]}>
         <Ionicons name="map-outline" size={28} color={isSelf ? 'rgba(255,255,255,0.6)' : theme.text.secondary} />
@@ -41,6 +57,7 @@ export function LocationMessageBubble({ latitude, longitude, locationName, isSel
           </Text>
           <Text style={[styles.coords, { color: subColor }]}>{coordStr}</Text>
         </View>
+        <Ionicons name="chevron-forward" size={12} color={subColor} />
       </View>
     </Pressable>
   )
