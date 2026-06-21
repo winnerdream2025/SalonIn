@@ -5,6 +5,7 @@ import { getAvatarGradient } from '@salonin/utils'
 import { Skeleton } from '../primitives/Skeleton'
 import { useTheme } from '../hooks/useTheme'
 import { MessageStatusIcon } from './MessageStatusIcon'
+import { VoiceMessageBubble } from './VoiceMessageBubble'
 
 type MessageWithStringDate = Omit<Message, 'createdAt'> & { createdAt: Date | string }
 
@@ -93,9 +94,17 @@ export function MessageBubble({
             style={[styles.replyText, { color: isSelf ? 'rgba(255,255,255,0.75)' : theme.text.secondary }]}
             numberOfLines={2}
           >
-            {replyTo?.isDeletedForAll ? 'Deleted message' : replyTo?.content ?? 'Media'}
+            {replyTo?.isDeletedForAll ? 'Deleted message' : replyTo?.content ?? ((replyTo as Message | undefined)?.audioUrl ? '🎤 Voice message' : 'Media')}
           </Text>
         </Pressable>
+      )}
+      {message.audioUrl != null && !isDeleted && (
+        <VoiceMessageBubble
+          audioUrl={message.audioUrl}
+          duration={message.duration}
+          waveformData={message.waveformData}
+          isSelf={isSelf}
+        />
       )}
       {message.mediaUrl != null && !isDeleted && (
         <Image source={{ uri: message.mediaUrl }} style={styles.media} resizeMode="cover" />

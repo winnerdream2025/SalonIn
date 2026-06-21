@@ -288,6 +288,9 @@ model Message {
   sender         User         @relation("SentMessages", fields: [senderId], references: [id])
   content        String?
   mediaUrl       String?
+  audioUrl       String?
+  duration       Int?
+  waveformData   Json?
   type           String       @default("TEXT")
   status         String       @default("sent")
   createdAt      DateTime     @default(now())

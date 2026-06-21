@@ -23,6 +23,12 @@ const ALLOWED_TYPES = [
   'image/webp',
   'video/mp4',
   'video/quicktime',
+  'audio/m4a',
+  'audio/aac',
+  'audio/mp4',
+  'audio/mpeg',
+  'audio/webm',
+  'audio/ogg',
 ]
 
 @Controller('media')
@@ -43,7 +49,7 @@ export class MediaController {
         } else {
           cb(
             new BadRequestException(
-              `File type "${file.mimetype}" is not allowed. Accepted: jpg, png, webp, mp4, mov`,
+              `File type "${file.mimetype}" is not allowed. Accepted: jpg, png, webp, mp4, mov, m4a, aac, mp3`,
             ),
             false,
           )

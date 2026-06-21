@@ -33,6 +33,9 @@ export interface Message {
   conversationId: string
   content: string | null
   mediaUrl: string | null
+  audioUrl?: string | null
+  duration?: number | null
+  waveformData?: number[] | null
   type?: string | null
   status: MessageStatus
   createdAt: Date | string
@@ -137,6 +140,10 @@ export interface SendMessageDto {
   conversationId: string
   content?: string
   mediaUrl?: string
+  audioUrl?: string
+  duration?: number
+  waveformData?: number[]
+  type?: 'TEXT' | 'MEDIA' | 'VOICE' | 'SYSTEM' | string
 }
 
 export interface CreateReportDto {

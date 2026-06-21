@@ -84,6 +84,9 @@ export class MessagingController {
       dto.content,
       dto.mediaUrl,
       dto.replyToId,
+      dto.audioUrl,
+      dto.duration,
+      dto.waveformData,
     )
     await this.messagingGateway.broadcastNewMessage(id, user.id, message)
     return message

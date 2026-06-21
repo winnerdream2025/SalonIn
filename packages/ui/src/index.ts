@@ -46,3 +46,4 @@ export type { ReportModalProps } from './components/ReportModal'
 
 export { Logo } from './components/Logo'
 export type { LogoProps } from './components/Logo'
+export { VoiceMessageBubble } from './components/VoiceMessageBubble'

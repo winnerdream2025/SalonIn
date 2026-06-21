@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsUrl, IsUUID, MaxLength } from 'class-validator'
+import { IsArray, IsIn, IsInt, IsOptional, IsString, IsUrl, IsUUID, MaxLength, Min } from 'class-validator'
 
 export class SendMessageDto {
   @IsOptional()
@@ -9,6 +9,23 @@ export class SendMessageDto {
   @IsOptional()
   @IsUrl()
   mediaUrl?: string
+
+  @IsOptional()
+  @IsUrl()
+  audioUrl?: string
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  duration?: number
+
+  @IsOptional()
+  @IsArray()
+  waveformData?: number[]
+
+  @IsOptional()
+  @IsIn(['TEXT', 'MEDIA', 'VOICE', 'SYSTEM'])
+  type?: string
 
   @IsOptional()
   @IsUUID()

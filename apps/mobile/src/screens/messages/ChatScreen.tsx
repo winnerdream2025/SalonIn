@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
+import { VoiceRecorder } from '../../components/VoiceRecorder'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { router, useLocalSearchParams } from 'expo-router'
@@ -59,6 +60,7 @@ export default function ChatScreen() {
   const [typingVisible, setTypingVisible] = useState(false)
   const [replyingTo, setReplyingTo] = useState<Message | null>(null)
   const [editingMessage, setEditingMessage] = useState<Message | null>(null)
+  const [showVoiceRecorder, setShowVoiceRecorder] = useState(false)
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null)
   const [showActionMenu, setShowActionMenu] = useState(false)
   const [showReactionPicker, setShowReactionPicker] = useState(false)
@@ -311,39 +313,70 @@ export default function ChatScreen() {
           </View>
         )}
 
-        <View style={[styles.inputRow, { borderTopColor: theme.border.default, backgroundColor: theme.bg.card, paddingBottom: Math.max(bottom, 12) }]}>
-          <TextInput
-            ref={inputRef}
-            style={[
-              styles.input,
-              { backgroundColor: theme.bg.elevated, color: theme.text.primary },
-              inputDisabled && { opacity: 0.4 },
-            ]}
-            value={draft}
-            onChangeText={handleChangeText}
-            onBlur={() => setTyping(false)}
-            placeholder={
-              isReceiverPending
-                ? 'Accept the request to reply'
-                : isBlocked
-                  ? `Waiting for ${name ?? 'them'} to accept…`
-                  : 'Type a message…'
-            }
-            placeholderTextColor={theme.text.secondary}
-            multiline
-            maxLength={2000}
-            keyboardAppearance="light"
-            editable={!inputDisabled}
+        {showVoiceRecorder ? (
+          <VoiceRecorder
+            onSend={async (audioUrl, duration, waveformData) => {
+              setShowVoiceRecorder(false)
+              setIsSending(true)
+              try {
+                await sendMessage('', undefined, replyingTo?.id, audioUrl, duration, waveformData)
+                setReplyingTo(null)
+              } catch (e: unknown) {
+                Alert.alert('Voice message not sent', 'Please try again.')
+              } finally {
+                setIsSending(false)
+              }
+            }}
+            onCancel={() => setShowVoiceRecorder(false)}
           />
-          <TouchableOpacity
-            style={[styles.sendBtn, { backgroundColor: draft.trim() && !inputDisabled ? theme.brand.primary : theme.bg.elevated }]}
-            onPress={() => void handleSend()}
-            activeOpacity={0.8}
-            disabled={!draft.trim() || inputDisabled || isSending}
-          >
-            <Ionicons name="send" size={16} color={draft.trim() && !inputDisabled ? '#FFFFFF' : theme.text.tertiary} />
-          </TouchableOpacity>
-        </View>
+        ) : (
+          <View style={[styles.inputRow, { borderTopColor: theme.border.default, backgroundColor: theme.bg.card, paddingBottom: Math.max(bottom, 12) }]}>
+            <TextInput
+              ref={inputRef}
+              style={[
+                styles.input,
+                { backgroundColor: theme.bg.elevated, color: theme.text.primary },
+                inputDisabled && { opacity: 0.4 },
+              ]}
+              value={draft}
+              onChangeText={handleChangeText}
+              onBlur={() => setTyping(false)}
+              placeholder={
+                isReceiverPending
+                  ? 'Accept the request to reply'
+                  : isBlocked
+                    ? `Waiting for ${name ?? 'them'} to accept…`
+                    : 'Type a message…'
+              }
+              placeholderTextColor={theme.text.secondary}
+              multiline
+              maxLength={2000}
+              keyboardAppearance="light"
+              editable={!inputDisabled}
+            />
+            {draft.trim() ? (
+              <TouchableOpacity
+                style={[styles.sendBtn, { backgroundColor: !inputDisabled ? theme.brand.primary : theme.bg.elevated }]}
+                onPress={() => void handleSend()}
+                activeOpacity={0.8}
+                disabled={inputDisabled || isSending}
+              >
+                <Ionicons name="send" size={16} color={!inputDisabled ? '#FFFFFF' : theme.text.tertiary} />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[styles.sendBtn, { backgroundColor: !inputDisabled ? theme.bg.elevated : theme.bg.elevated }]}
+                onPress={() => {
+                  if (!inputDisabled) setShowVoiceRecorder(true)
+                }}
+                activeOpacity={0.8}
+                disabled={inputDisabled}
+              >
+                <Ionicons name="mic" size={18} color={!inputDisabled ? theme.brand.primary : theme.text.tertiary} />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
       </KeyboardAvoidingView>
       {otherUserId != null && (
         <ReportModal

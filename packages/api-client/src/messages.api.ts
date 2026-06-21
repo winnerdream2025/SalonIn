@@ -24,10 +24,23 @@ export const messagesApi = {
     content?: string,
     mediaUrl?: string,
     replyToId?: string,
+    audioUrl?: string,
+    duration?: number,
+    waveformData?: number[],
   ): Promise<Message> =>
     api
-      .post<Message>(`/conversations/${conversationId}/messages`, { content, mediaUrl, replyToId })
+      .post<Message>(`/conversations/${conversationId}/messages`, { content, mediaUrl, replyToId, audioUrl, duration, waveformData })
       .then((r) => r.data),
+
+  uploadAudio: async (uri: string, mimeType = 'audio/m4a'): Promise<{ url: string }> => {
+    const formData = new FormData()
+    formData.append('file', { uri, name: 'voice.m4a', type: mimeType } as unknown as Blob)
+    return api
+      .post<{ url: string }>('/media/upload?folder=voice', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      .then((r) => r.data)
+  },
 
   editMessage: (conversationId: string, messageId: string, content: string): Promise<Message> =>
     api

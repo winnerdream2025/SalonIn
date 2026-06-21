@@ -179,7 +179,14 @@ export function useMessages(conversationId: string, otherUserId?: string) {
   }, [messages, conversationId, userId])
 
   const sendMessage = useCallback(
-    async (content: string, mediaUrl?: string, replyToId?: string) => {
+    async (
+      content: string,
+      mediaUrl?: string,
+      replyToId?: string,
+      audioUrl?: string,
+      duration?: number,
+      waveformData?: number[],
+    ) => {
       const tempId = `optimistic-${Date.now()}`
       const optimistic: Message = {
         id: tempId,
@@ -187,7 +194,10 @@ export function useMessages(conversationId: string, otherUserId?: string) {
         conversationId,
         content,
         mediaUrl: mediaUrl ?? null,
-        type: mediaUrl ? 'MEDIA' : 'TEXT',
+        audioUrl: audioUrl ?? null,
+        duration: duration ?? null,
+        waveformData: waveformData ?? null,
+        type: audioUrl ? 'VOICE' : mediaUrl ? 'MEDIA' : 'TEXT',
         status: 'sending',
         createdAt: new Date().toISOString(),
         isRead: false,
@@ -198,7 +208,7 @@ export function useMessages(conversationId: string, otherUserId?: string) {
       setMessages((prev) => dedupeById([optimistic, ...prev]))
 
       try {
-        const msg = await messagesApi.sendMessage(conversationId, content, mediaUrl, replyToId)
+        const msg = await messagesApi.sendMessage(conversationId, content, mediaUrl, replyToId, audioUrl, duration, waveformData)
         const serverMsg = msg as Message
         setMessages((prev) => {
           const filtered = prev.filter((m) => m.id !== tempId)

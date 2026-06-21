@@ -214,9 +214,12 @@ export class MessagingService {
     content?: string,
     mediaUrl?: string,
     replyToId?: string,
+    audioUrl?: string,
+    duration?: number,
+    waveformData?: number[],
   ): Promise<Message> {
-    if (!content && !mediaUrl) {
-      throw new BadRequestException('Message must have content or media')
+    if (!content && !mediaUrl && !audioUrl) {
+      throw new BadRequestException('Message must have content, media, or audio')
     }
     await this.assertParticipant(conversationId, senderId)
 
@@ -234,13 +237,17 @@ export class MessagingService {
       await this.enforceChatRequest(senderId, other.userId, conversationId)
     }
 
+    const messageType = audioUrl ? 'VOICE' : mediaUrl ? 'MEDIA' : 'TEXT'
     const message = await this.prisma.message.create({
       data: {
         conversationId,
         senderId,
         content,
         mediaUrl,
-        type: mediaUrl ? 'MEDIA' : 'TEXT',
+        audioUrl,
+        duration,
+        waveformData: waveformData ? (waveformData as unknown as import('@prisma/client').Prisma.InputJsonValue) : undefined,
+        type: messageType,
         status: 'sent',
         replyToId,
       },
@@ -262,7 +269,7 @@ export class MessagingService {
       data: { updatedAt: new Date() },
     })
 
-    void this.notifyRecipient(conversationId, senderId, content)
+    void this.notifyRecipient(conversationId, senderId, content, audioUrl ? '🎤 Voice message' : undefined)
 
     return this.serializeMessage(message as MessageWithReactions)
   }
@@ -320,6 +327,7 @@ export class MessagingService {
     conversationId: string,
     senderId: string,
     content?: string,
+    voicePreview?: string,
   ): Promise<void> {
     try {
       const other = await this.prisma.conversationParticipant.findFirst({
@@ -336,7 +344,7 @@ export class MessagingService {
       })
       const senderName =
         sender?.workerProfile?.name ?? sender?.salonProfile?.name ?? 'Someone'
-      const preview = content ?? '📷 Media'
+      const preview = voicePreview ?? content ?? '📷 Media'
 
       await this.notificationsService.notifyNewMessage(other.userId, senderName, preview, conversationId)
     } catch {
@@ -606,8 +614,10 @@ export class MessagingService {
 
   private serializeMessage(raw: MessageWithReactions): Message {
     const reactions = ((raw.reactions as Prisma.JsonValue) as unknown as Reaction[] | undefined) ?? []
+    const waveform = raw.waveformData ? (raw.waveformData as unknown as number[]) : null
     return {
       ...raw,
+      waveformData: waveform,
       createdAt: raw.createdAt.toISOString(),
       deliveredAt: raw.deliveredAt?.toISOString() ?? null,
       readAt: raw.readAt?.toISOString() ?? null,
