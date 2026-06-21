@@ -31,7 +31,7 @@ jobs:
 
       - uses: railwayapp/cli-action@v3
         with:
-          command: railway up --service salonin-api --detach
+          command: railway up --service mysalonin-api --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
@@ -51,7 +51,7 @@ jobs:
 
       - uses: railwayapp/cli-action@v3
         with:
-          command: railway up --service salonin-web --detach
+          command: railway up --service mysalonin-web --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
