@@ -33,6 +33,18 @@ export interface Message {
   isSystem?: boolean
 }
 
+export interface UserPresence {
+  userId: string
+  isOnline: boolean
+  lastSeenAt: string | null
+}
+
+export interface TypingEvent {
+  userId: string
+  name: string
+  isTyping: boolean
+}
+
 // ─── Enum re-exports (runtime values) ────────────────────────────────────────
 
 export { Role, Availability, EmploymentType, ListingType, MediaType, AppStatus, ReportType, ReportStatus, Platform, ChatRequestStatus } from '@prisma/client'
@@ -219,6 +231,7 @@ export interface ConversationPreview {
     name: string
     photoUrl: string | null
     role: Role
+    presence?: UserPresence
   }
   lastMessage: {
     content: string | null

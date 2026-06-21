@@ -16,12 +16,13 @@ import { Ionicons } from '@expo/vector-icons'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useTheme, MessageBubble, MessageBubbleSkeleton, ReportModal, Avatar } from '@salonin/ui'
 import type { Message } from '@salonin/types'
+import { formatLastSeen } from '@salonin/utils'
 import { reportsApi, chatRequestsApi, parseApiError } from '@salonin/api-client'
 import { useMessages } from '../../hooks/useMessages'
 import { useAuthStore } from '../../store/authStore'
 
 const SKELETON_COUNT = 8
-const TYPING_TIMEOUT_MS = 3000
+const TYPING_TIMEOUT_MS = 2000
 
 export default function ChatScreen() {
   const { bottom } = useSafeAreaInsets()
@@ -44,7 +45,8 @@ export default function ChatScreen() {
     setTyping,
     chatRequest,
     setChatRequest,
-  } = useMessages(id)
+    presence,
+  } = useMessages(id, otherUserId)
 
   const [draft, setDraft] = useState('')
   const [isSending, setIsSending] = useState(false)
@@ -158,9 +160,14 @@ export default function ChatScreen() {
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Avatar uri={otherPhotoUrl ?? null} name={name ?? '?'} size="sm" />
-          <Text style={[styles.headerTitle, { color: theme.text.primary }]} numberOfLines={1}>
-            {name ?? 'Chat'}
-          </Text>
+          <View style={styles.headerText}>
+            <Text style={[styles.headerTitle, { color: theme.text.primary }]} numberOfLines={1}>
+              {name ?? 'Chat'}
+            </Text>
+            <Text style={[styles.headerSubtitle, { color: theme.text.secondary }]} numberOfLines={1}>
+              {presence?.isOnline ? 'Online' : formatLastSeen(presence?.lastSeenAt)}
+            </Text>
+          </View>
         </View>
         {otherUserId != null ? (
           <TouchableOpacity onPress={() => setShowReport(true)} style={styles.backBtn} activeOpacity={0.7}>
@@ -318,7 +325,9 @@ const styles = StyleSheet.create({
   },
   backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   headerCenter: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  headerText: { flexDirection: 'column', alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: 17, fontWeight: '700', flexShrink: 1 },
+  headerSubtitle: { fontSize: 12, marginTop: 2 },
 
   requestBanner: {
     paddingHorizontal: 16,

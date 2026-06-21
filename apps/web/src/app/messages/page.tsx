@@ -6,6 +6,7 @@ import { useMessages } from '../../hooks/useMessages'
 import { ConversationItem } from '../../components/ConversationItem'
 import { MessageBubble } from '../../components/MessageBubble'
 import { useAuthStore } from '../../store/authStore'
+import { formatLastSeen } from '@salonin/utils'
 import type { ConversationPreview } from '@salonin/types'
 
 const TABS = ['All', 'Unread', 'Archived'] as const
@@ -223,8 +224,9 @@ function ChatPanel({
   onDelete?: () => void
 }) {
   const currentUserId = useAuthStore((s) => s.user?.id)
-  const { messages, isLoading, sendMessage, typingUsers, setTyping } = useMessages(
+  const { messages, isLoading, sendMessage, typingUsers, setTyping, presence } = useMessages(
     conversation.id,
+    conversation.otherParticipant.userId,
   )
   const [draft, setDraft] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
@@ -288,9 +290,16 @@ function ChatPanel({
         >
           {conversation.otherParticipant.name[0]?.toUpperCase() ?? '?'}
         </div>
-        <span style={{ color: '#fff', fontSize: 15, fontWeight: 600 }}>
-          {conversation.otherParticipant.name}
-        </span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+          <span style={{ color: '#fff', fontSize: 15, fontWeight: 600 }}>
+            {conversation.otherParticipant.name}
+          </span>
+          <span style={{ color: '#888', fontSize: 12, lineHeight: 1.3 }}>
+            {presence?.isOnline
+              ? 'Online'
+              : formatLastSeen(presence?.lastSeenAt ?? conversation.otherParticipant.presence?.lastSeenAt)}
+          </span>
+        </div>
         <div style={{ marginLeft: 'auto', position: 'relative' }}>
           <button
             onClick={() => setMenuOpen((o) => !o)}
@@ -392,7 +401,7 @@ function ChatPanel({
 
       {othersTyping.length > 0 && (
         <div style={{ padding: '4px 20px', color: '#888', fontSize: 12, fontStyle: 'italic' }}>
-          typing…
+          {conversation.otherParticipant.name} is typing…
         </div>
       )}
 

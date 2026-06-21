@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import type { ConversationPreview } from '@salonin/types'
-import { getAvatarGradient } from '@salonin/utils'
+import { getAvatarGradient, formatLastSeen } from '@salonin/utils'
 
 interface ConversationItemProps {
   conversation: ConversationPreview
@@ -59,6 +59,7 @@ export function ConversationItem({
   const lastText =
     lastMessage?.content ??
     (lastMessage?.mediaUrl != null ? 'Photo' : 'Start the conversation')
+  const isOnline = otherParticipant.presence?.isOnline ?? false
 
   return (
     <div
@@ -102,6 +103,7 @@ export function ConversationItem({
           justifyContent: 'center',
           flexShrink: 0,
           overflow: 'hidden',
+          position: 'relative',
         }}
       >
         {otherParticipant.photoUrl != null ? (
@@ -112,6 +114,20 @@ export function ConversationItem({
           />
         ) : (
           <span style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>{initial}</span>
+        )}
+        {isOnline && (
+          <span
+            style={{
+              position: 'absolute',
+              bottom: 1,
+              right: 1,
+              width: 12,
+              height: 12,
+              borderRadius: 6,
+              backgroundColor: '#2ECC71',
+              border: '2px solid #0A0A0A',
+            }}
+          />
         )}
       </div>
 
@@ -229,6 +245,11 @@ export function ConversationItem({
             </span>
           )}
         </div>
+        {!isOnline && otherParticipant.presence?.lastSeenAt != null && (
+          <span style={{ color: '#555', fontSize: 11, marginTop: 2 }}>
+            {formatLastSeen(otherParticipant.presence.lastSeenAt)}
+          </span>
+        )}
       </div>
 
       {menuOpen && (

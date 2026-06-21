@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { ChatRequestStatus } from '@prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
 import { NotificationsService } from '../notifications/notifications.service'
+import { PresenceService } from './presence.service'
 import type { ConversationPreview, CursorResponse } from '@salonin/types'
 import type { Message } from '@salonin/types'
 
@@ -13,6 +14,7 @@ export class MessagingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationsService: NotificationsService,
+    private readonly presenceService: PresenceService,
   ) {}
 
   async createConversation(requesterId: string, otherUserId: string): Promise<ConversationPreview> {
@@ -97,6 +99,11 @@ export class MessagingService {
       _count: { _all: true },
     })
 
+    const otherUserIds = convs
+      .map((conv) => conv.participants.find((p) => p.userId !== userId)?.userId)
+      .filter((id): id is string => id != null)
+    const presenceMap = await this.presenceService.getPresenceBulk(otherUserIds)
+
     const previews = convs.map((conv) => {
       const myParticipant = conv.participants.find((p) => p.userId === userId)
       const otherParticipant = conv.participants.find((p) => p.userId !== userId)
@@ -111,6 +118,7 @@ export class MessagingService {
           photoUrl:
             otherUser?.workerProfile?.photoUrl ?? otherUser?.salonProfile?.photoUrls[0] ?? null,
           role: otherUser?.role ?? 'WORKER',
+          presence: presenceMap[otherParticipant?.userId ?? ''],
         },
         lastMessage:
           lastMsg != null
@@ -398,6 +406,9 @@ export class MessagingService {
 
     const otherUser = otherParticipant?.user
     const lastMsg = conv.messages[0]
+    const otherPresence = otherParticipant?.userId
+      ? await this.presenceService.getPresence(otherParticipant.userId)
+      : undefined
 
     return {
       id: conv.id,
@@ -407,6 +418,7 @@ export class MessagingService {
         photoUrl:
           otherUser?.workerProfile?.photoUrl ?? otherUser?.salonProfile?.photoUrls[0] ?? null,
         role: otherUser?.role ?? 'WORKER',
+        presence: otherPresence,
       },
       lastMessage:
         lastMsg != null

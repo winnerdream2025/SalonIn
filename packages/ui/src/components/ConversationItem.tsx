@@ -2,7 +2,7 @@ import React from 'react'
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import Svg, { Path } from 'react-native-svg'
 import type { ConversationPreview } from '@salonin/types'
-import { getAvatarGradient } from '@salonin/utils'
+import { getAvatarGradient, formatLastSeen } from '@salonin/utils'
 import { Skeleton } from '../primitives/Skeleton'
 import { useTheme } from '../hooks/useTheme'
 
@@ -61,6 +61,7 @@ export function ConversationItem({
   const { otherParticipant, lastMessage, unreadCount, isPinned, isMuted } = conversation
   const [avatarBg] = getAvatarGradient(otherParticipant.name)
   const initial = otherParticipant.name[0]?.toUpperCase() ?? '?'
+  const isOnline = otherParticipant.presence?.isOnline ?? false
 
   const lastText =
     lastMessage?.content ??
@@ -85,6 +86,7 @@ export function ConversationItem({
         ) : (
           <Text style={styles.avatarText}>{initial}</Text>
         )}
+        {isOnline && <View style={styles.onlineDot} />}
       </View>
 
       <View style={styles.info}>
@@ -127,6 +129,11 @@ export function ConversationItem({
             </View>
           )}
         </View>
+        {!isOnline && otherParticipant.presence?.lastSeenAt != null && (
+          <Text style={[styles.lastSeen, { color: theme.text.tertiary }]}>
+            {formatLastSeen(otherParticipant.presence.lastSeenAt)}
+          </Text>
+        )}
       </View>
     </TouchableOpacity>
   )
@@ -164,6 +171,17 @@ const styles = StyleSheet.create({
   },
   avatarImg: { width: 50, height: 50 },
   avatarText: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  onlineDot: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#2ECC71',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
 
   info: { flex: 1, minWidth: 0, gap: 3 },
 
@@ -182,6 +200,7 @@ const styles = StyleSheet.create({
 
   previewRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   preview: { fontSize: 13, flex: 1, marginRight: 6 },
+  lastSeen: { fontSize: 11, marginTop: 2 },
 
   badge: {
     minWidth: 20,

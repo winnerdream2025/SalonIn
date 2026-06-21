@@ -80,3 +80,25 @@ export function getAvatarGradient(name: string): [string, string] {
   const index = Math.abs(hash) % AVATAR_GRADIENTS.length
   return AVATAR_GRADIENTS[index] as [string, string]
 }
+
+// ─── Presence ─────────────────────────────────────────────────────────────────
+
+export function formatLastSeen(iso: string | null | undefined): string {
+  if (!iso) return 'Offline'
+  const date = new Date(iso)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  if (diffMs < 0) return 'Online'
+
+  const diffMins = Math.floor(diffMs / (1000 * 60))
+  if (diffMins < 1) return 'Last seen just now'
+  if (diffMins < 60) return `Last seen ${diffMins} min${diffMins === 1 ? '' : 's'} ago`
+
+  const diffHours = Math.floor(diffMins / 60)
+  if (diffHours < 24) return `Last seen ${diffHours} hour${diffHours === 1 ? '' : 's'} ago`
+
+  const diffDays = Math.floor(diffHours / 24)
+  if (diffDays < 7) return `Last seen ${diffDays} day${diffDays === 1 ? '' : 's'} ago`
+
+  return `Last seen ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+}

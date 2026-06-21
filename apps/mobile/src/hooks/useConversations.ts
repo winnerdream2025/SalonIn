@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { io } from 'socket.io-client'
 import type { Socket } from 'socket.io-client'
 import { messagesApi } from '@salonin/api-client'
-import type { ConversationPreview, MessageStatus } from '@salonin/types'
+import type { ConversationPreview, MessageStatus, UserPresence } from '@salonin/types'
 import { useAuthStore } from '../store/authStore'
 
 const WS_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000'
@@ -173,6 +173,16 @@ export function useConversations(search?: string) {
       )
     })
 
+    socket.on('presence:update', (updated: UserPresence) => {
+      setConversations((prev) =>
+        prev.map((conv) =>
+          conv.otherParticipant.userId === updated.userId
+            ? { ...conv, otherParticipant: { ...conv.otherParticipant, presence: updated } }
+            : conv,
+        ),
+      )
+    })
+
     socketRef.current = socket
 
     return () => {
@@ -180,6 +190,19 @@ export function useConversations(search?: string) {
       socketRef.current = null
     }
   }, [accessToken, currentUserId])
+
+  useEffect(() => {
+    if (!socketRef.current || conversations.length === 0) return
+    const otherUserIds = new Set(conversations.map((c) => c.otherParticipant.userId))
+    for (const id of otherUserIds) {
+      socketRef.current.emit('presence:subscribe', { userId: id })
+    }
+    return () => {
+      for (const id of otherUserIds) {
+        socketRef.current?.emit('presence:unsubscribe', { userId: id })
+      }
+    }
+  }, [conversations])
 
   return {
     conversations,

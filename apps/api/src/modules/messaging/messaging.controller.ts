@@ -16,6 +16,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator'
 import type { User } from '@salonin/types'
 import { MessagingService } from './messaging.service'
 import { MessagingGateway } from './messaging.gateway'
+import { PresenceService } from './presence.service'
 import { CreateConversationDto } from './dto/create-conversation.dto'
 import { SendMessageDto } from './dto/send-message.dto'
 import { GetMessagesDto } from './dto/get-messages.dto'
@@ -32,7 +33,13 @@ export class MessagingController {
   constructor(
     private readonly messagingService: MessagingService,
     private readonly messagingGateway: MessagingGateway,
+    private readonly presenceService: PresenceService,
   ) {}
+
+  @Get('presence/:userId')
+  async getPresence(@Param('userId') userId: string) {
+    return this.presenceService.getPresence(userId)
+  }
 
   @Post()
   @Throttle({ short: { limit: 10, ttl: 60000 } })

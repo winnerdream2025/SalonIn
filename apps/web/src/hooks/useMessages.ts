@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { io } from 'socket.io-client'
 import type { Socket } from 'socket.io-client'
 import { messagesApi } from '@salonin/api-client'
-import type { Message, MessageStatus } from '@salonin/types'
+import type { Message, MessageStatus, UserPresence, TypingEvent } from '@salonin/types'
 import { useAuthStore } from '../store/authStore'
 
 const WS_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'
@@ -16,7 +16,7 @@ function dedupeById(msgs: Message[]): Message[] {
   })
 }
 
-export function useMessages(conversationId: string) {
+export function useMessages(conversationId: string, otherUserId?: string) {
   const userId = useAuthStore((s) => s.user?.id)
   const accessToken = useAuthStore((s) => s.accessToken)
   const [messages, setMessages] = useState<Message[]>([])
@@ -27,7 +27,11 @@ export function useMessages(conversationId: string) {
   const [error, setError] = useState<Error | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   const [typingUsers, setTypingUsers] = useState<string[]>([])
+  const [presence, setPresence] = useState<UserPresence | null>(null)
   const socketRef = useRef<Socket | null>(null)
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isTypingRef = useRef(false)
+  const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     if (!accessToken) return
@@ -80,20 +84,38 @@ export function useMessages(conversationId: string) {
       },
     )
 
-    socket.on('typing', ({ userId: uid, isTyping }: { userId: string; isTyping: boolean }) => {
+    socket.on('typing', ({ userId: uid, isTyping }: TypingEvent) => {
       setTypingUsers((prev) =>
         isTyping ? (prev.includes(uid) ? prev : [...prev, uid]) : prev.filter((id) => id !== uid),
       )
     })
 
+    socket.on('presence:update', (updated: UserPresence) => {
+      setPresence((prev) => (prev?.userId === updated.userId ? updated : prev))
+    })
+
     socketRef.current = socket
 
+    heartbeatRef.current = setInterval(() => {
+      socket.emit('presence:heartbeat')
+    }, 30000)
+
     return () => {
+      if (heartbeatRef.current) clearInterval(heartbeatRef.current)
       socket.emit('leave:conversation', { conversationId })
       socket.disconnect()
       socketRef.current = null
     }
   }, [conversationId, accessToken, userId])
+
+  useEffect(() => {
+    if (!otherUserId || !userId || !conversationId) return
+    void messagesApi.getPresence(otherUserId).then((p) => setPresence(p))
+    socketRef.current?.emit('presence:subscribe', { userId: otherUserId })
+    return () => {
+      socketRef.current?.emit('presence:unsubscribe', { userId: otherUserId })
+    }
+  }, [otherUserId, userId, conversationId])
 
   useEffect(() => {
     setIsLoading(true)
@@ -178,10 +200,24 @@ export function useMessages(conversationId: string) {
   const setTyping = useCallback(
     (isTypingNow: boolean) => {
       const uid = userId ?? ''
-      socketRef.current?.emit(isTypingNow ? 'typing:start' : 'typing:stop', {
-        conversationId,
-        userId: uid,
-      })
+      if (isTypingNow) {
+        if (!isTypingRef.current) {
+          socketRef.current?.emit('typing:start', { conversationId, userId: uid })
+          isTypingRef.current = true
+        }
+        if (typingTimerRef.current) clearTimeout(typingTimerRef.current)
+        typingTimerRef.current = setTimeout(() => {
+          socketRef.current?.emit('typing:stop', { conversationId, userId: uid })
+          isTypingRef.current = false
+        }, 2000)
+      } else {
+        if (isTypingRef.current) {
+          socketRef.current?.emit('typing:stop', { conversationId, userId: uid })
+          isTypingRef.current = false
+        }
+        if (typingTimerRef.current) clearTimeout(typingTimerRef.current)
+        typingTimerRef.current = null
+      }
     },
     [conversationId, userId],
   )
@@ -194,6 +230,7 @@ export function useMessages(conversationId: string) {
     error,
     isConnected,
     typingUsers,
+    presence,
     sendMessage,
     loadMore,
     setTyping,

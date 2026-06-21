@@ -1,5 +1,5 @@
 import { api } from './client'
-import type { ConversationPreview, CursorResponse, Message } from '@salonin/types'
+import type { ConversationPreview, CursorResponse, Message, UserPresence } from '@salonin/types'
 
 export const messagesApi = {
   createConversation: (otherUserId: string): Promise<ConversationPreview> =>
@@ -48,4 +48,7 @@ export const messagesApi = {
 
   deleteConversation: (conversationId: string): Promise<void> =>
     api.delete(`/conversations/${conversationId}`).then(() => undefined),
+
+  getPresence: (userId: string): Promise<UserPresence> =>
+    api.get<UserPresence>(`/conversations/presence/${userId}`).then((r) => r.data),
 }
