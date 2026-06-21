@@ -285,11 +285,17 @@ model Message {
   sender         User         @relation("SentMessages", fields: [senderId], references: [id])
   content        String?
   mediaUrl       String?
+  type           String       @default("TEXT")
+  status         String       @default("sent")
   createdAt      DateTime     @default(now())
+  deliveredAt    DateTime?
+  readAt         DateTime?
   isRead         Boolean      @default(false)
   isSystem       Boolean      @default(false)
 
   @@index([conversationId, createdAt])
+  @@index([conversationId, status])
+  @@index([senderId, status])
   @@index([senderId, isRead])
 }
 

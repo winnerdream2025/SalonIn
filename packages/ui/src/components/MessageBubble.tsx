@@ -4,6 +4,7 @@ import type { Message } from '@salonin/types'
 import { getAvatarGradient } from '@salonin/utils'
 import { Skeleton } from '../primitives/Skeleton'
 import { useTheme } from '../hooks/useTheme'
+import { MessageStatusIcon } from './MessageStatusIcon'
 
 type MessageWithStringDate = Omit<Message, 'createdAt'> & { createdAt: Date | string }
 
@@ -65,9 +66,17 @@ export function MessageBubble({
             {message.content}
           </Text>
         )}
-        <Text style={[styles.time, { color: isSelf ? 'rgba(255,255,255,0.65)' : theme.text.tertiary }]}>
-          {time}
-        </Text>
+        <View style={styles.metaRow}>
+          <Text style={[styles.time, { color: isSelf ? 'rgba(255,255,255,0.65)' : theme.text.tertiary }]}>
+            {time}
+          </Text>
+          {isSelf && (
+            <MessageStatusIcon
+              status={message.status ?? 'sent'}
+              tint={isSelf ? 'rgba(255,255,255,0.65)' : theme.text.tertiary}
+            />
+          )}
+        </View>
       </View>
     </View>
   )
@@ -131,5 +140,7 @@ const styles = StyleSheet.create({
 
   content: { fontSize: 15, lineHeight: 21 },
 
-  time: { fontSize: 10, alignSelf: 'flex-end', marginTop: 1 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-end', marginTop: 1 },
+
+  time: { fontSize: 10 },
 })

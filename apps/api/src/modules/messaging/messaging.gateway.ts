@@ -12,6 +12,7 @@ import { ConfigService } from '@nestjs/config'
 import { JwtService } from '@nestjs/jwt'
 import type { Server, Socket } from 'socket.io'
 import { PrismaService } from '../../prisma/prisma.service'
+import { MessagingService } from './messaging.service'
 
 @WebSocketGateway({
   cors: {
@@ -28,6 +29,7 @@ export class MessagingGateway implements OnGatewayInit, OnGatewayConnection {
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    private readonly messagingService: MessagingService,
   ) {}
 
   handleConnection(client: Socket): void {
@@ -133,6 +135,39 @@ export class MessagingGateway implements OnGatewayInit, OnGatewayConnection {
           createdAt: (message as { createdAt?: string }).createdAt,
         })
       }
+    }
+  }
+
+  broadcastMessageStatus(
+    conversationId: string,
+    messageIds: string[],
+    status: 'delivered' | 'read',
+  ): void {
+    const timestamp = new Date().toISOString()
+    this.server.to(`conv:${conversationId}`).emit('message:status', {
+      conversationId,
+      messageIds,
+      status,
+      deliveredAt: status === 'delivered' ? timestamp : undefined,
+      readAt: status === 'read' ? timestamp : undefined,
+    })
+  }
+
+  @SubscribeMessage('message:delivered')
+  async handleDelivered(
+    @MessageBody() data: { conversationId: string; messageIds: string[] },
+    @ConnectedSocket() client: Socket,
+  ): Promise<void> {
+    const userId = client.data.userId as string | undefined
+    if (!userId) return
+
+    const updatedIds = await this.messagingService.markAsDelivered(
+      data.conversationId,
+      userId,
+      data.messageIds,
+    )
+    if (updatedIds.length > 0) {
+      this.broadcastMessageStatus(data.conversationId, updatedIds, 'delivered')
     }
   }
 

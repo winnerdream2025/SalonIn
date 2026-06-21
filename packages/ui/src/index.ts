@@ -35,6 +35,9 @@ export type { JobPostCardProps } from './components/JobPostCard'
 export { MessageBubble, MessageBubbleSkeleton } from './components/MessageBubble'
 export type { MessageBubbleProps } from './components/MessageBubble'
 
+export { MessageStatusIcon } from './components/MessageStatusIcon'
+export type { MessageStatusIconProps } from './components/MessageStatusIcon'
+
 export { ConversationItem, ConversationItemSkeleton } from './components/ConversationItem'
 export type { ConversationItemProps } from './components/ConversationItem'
 

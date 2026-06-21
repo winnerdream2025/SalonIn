@@ -117,6 +117,8 @@ export class MessagingService {
             ? {
                 content: lastMsg.content,
                 mediaUrl: lastMsg.mediaUrl,
+                type: lastMsg.type,
+                status: lastMsg.status as Message['status'],
                 createdAt: lastMsg.createdAt.toISOString(),
                 isRead: lastMsg.isRead,
                 senderId: lastMsg.senderId,
@@ -183,7 +185,14 @@ export class MessagingService {
     }
 
     const message = await this.prisma.message.create({
-      data: { conversationId, senderId, content, mediaUrl },
+      data: {
+        conversationId,
+        senderId,
+        content,
+        mediaUrl,
+        type: mediaUrl ? 'MEDIA' : 'TEXT',
+        status: 'sent',
+      },
     })
 
     await this.prisma.conversation.update({
@@ -273,12 +282,43 @@ export class MessagingService {
     }
   }
 
-  async markAsRead(conversationId: string, userId: string): Promise<void> {
+  async markAsRead(conversationId: string, userId: string): Promise<string[]> {
     await this.assertParticipant(conversationId, userId)
-    await this.prisma.message.updateMany({
+    const messages = await this.prisma.message.findMany({
       where: { conversationId, isRead: false, senderId: { not: userId } },
-      data: { isRead: true },
+      select: { id: true },
     })
+    if (messages.length === 0) return []
+
+    await this.prisma.message.updateMany({
+      where: { id: { in: messages.map((m) => m.id) } },
+      data: { isRead: true, status: 'read', readAt: new Date() },
+    })
+    return messages.map((m) => m.id)
+  }
+
+  async markAsDelivered(
+    conversationId: string,
+    userId: string,
+    messageIds: string[],
+  ): Promise<string[]> {
+    await this.assertParticipant(conversationId, userId)
+    const messages = await this.prisma.message.findMany({
+      where: {
+        conversationId,
+        senderId: { not: userId },
+        id: { in: messageIds },
+        status: { not: 'read' },
+      },
+      select: { id: true },
+    })
+    if (messages.length === 0) return []
+
+    await this.prisma.message.updateMany({
+      where: { id: { in: messages.map((m) => m.id) } },
+      data: { status: 'delivered', deliveredAt: new Date() },
+    })
+    return messages.map((m) => m.id)
   }
 
   async pinConversation(conversationId: string, userId: string, isPinned: boolean): Promise<void> {
@@ -373,6 +413,8 @@ export class MessagingService {
           ? {
               content: lastMsg.content,
               mediaUrl: lastMsg.mediaUrl,
+              type: lastMsg.type,
+              status: lastMsg.status as Message['status'],
               createdAt: lastMsg.createdAt.toISOString(),
               isRead: lastMsg.isRead,
               senderId: lastMsg.senderId,

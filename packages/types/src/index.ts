@@ -12,10 +12,26 @@ export type {
   PortfolioItem,
   Conversation,
   ConversationParticipant,
-  Message,
   Report,
   ChatRequest,
 } from '@prisma/client'
+
+export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read' | 'failed'
+
+export interface Message {
+  id: string
+  senderId: string
+  conversationId: string
+  content: string | null
+  mediaUrl: string | null
+  type?: string | null
+  status: MessageStatus
+  createdAt: Date | string
+  deliveredAt?: Date | string | null
+  readAt?: Date | string | null
+  isRead?: boolean
+  isSystem?: boolean
+}
 
 // ─── Enum re-exports (runtime values) ────────────────────────────────────────
 
@@ -207,6 +223,8 @@ export interface ConversationPreview {
   lastMessage: {
     content: string | null
     mediaUrl: string | null
+    type: string | null
+    status: MessageStatus
     createdAt: string
     isRead: boolean
     senderId: string

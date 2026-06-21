@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { io } from 'socket.io-client'
 import type { Socket } from 'socket.io-client'
 import { messagesApi } from '@salonin/api-client'
-import type { ConversationPreview } from '@salonin/types'
+import type { ConversationPreview, MessageStatus } from '@salonin/types'
 import { useAuthStore } from '../store/authStore'
 
 const WS_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000'
@@ -145,6 +145,8 @@ export function useConversations(search?: string) {
                   lastMessage: {
                     content: payload.content ?? null,
                     mediaUrl: null,
+                    type: 'TEXT',
+                    status: 'sent' as MessageStatus,
                     createdAt: payload.createdAt ?? new Date().toISOString(),
                     isRead: false,
                     senderId: payload.senderId,

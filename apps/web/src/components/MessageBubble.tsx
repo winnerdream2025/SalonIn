@@ -2,6 +2,7 @@
 
 import type { Message } from '@salonin/types'
 import { getAvatarGradient } from '@salonin/utils'
+import { MessageStatusIcon } from './MessageStatusIcon'
 
 interface MessageBubbleProps {
   message: Message
@@ -101,12 +102,20 @@ export function MessageBubble({
           style={{
             fontSize: 10,
             color: isSelf ? 'rgba(255,255,255,0.6)' : '#555',
-            display: 'block',
-            textAlign: 'right',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            gap: 2,
             marginTop: 4,
           }}
         >
           {time}
+          {isSelf && (
+            <MessageStatusIcon
+              status={message.status ?? 'sent'}
+              tint={isSelf ? 'rgba(255,255,255,0.65)' : '#555'}
+            />
+          )}
         </span>
       </div>
     </div>

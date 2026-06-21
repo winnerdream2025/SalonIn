@@ -75,7 +75,10 @@ export class MessagingController {
 
   @Patch(':id/read')
   async markAsRead(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
-    await this.messagingService.markAsRead(id, user.id)
+    const messageIds = await this.messagingService.markAsRead(id, user.id)
+    if (messageIds.length > 0) {
+      this.messagingGateway.broadcastMessageStatus(id, messageIds, 'read')
+    }
     return { success: true }
   }
 
