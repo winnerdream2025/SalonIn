@@ -167,7 +167,7 @@ export function useMessages(conversationId: string, otherUserId?: string) {
       setMessages((prev) => dedupeById([optimistic, ...prev]))
 
       try {
-        const msg = await messagesApi.sendMessage(conversationId, content, mediaUrl)
+        const msg = await messagesApi.sendMessage(conversationId, { content, mediaUrl })
         const serverMsg = msg as Message
         setMessages((prev) => {
           const filtered = prev.filter((m) => m.id !== tempId)
