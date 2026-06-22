@@ -13,6 +13,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react'
@@ -174,7 +175,7 @@ export function StoriesProvider({ children }: { children: React.ReactNode }) {
     void storiesApi.viewStory(storyId).catch(() => {})
   }, [])
 
-  const value: StoriesCtx = {
+  const value: StoriesCtx = useMemo(() => ({
     storyMap,
     allGroups,
     myGroup,
@@ -184,7 +185,7 @@ export function StoriesProvider({ children }: { children: React.ReactNode }) {
     openViewerAtIndex,
     openCreator,
     markViewed,
-  }
+  }), [storyMap, allGroups, myGroup, isLoading, refresh, openViewerForUser, openViewerAtIndex, openCreator, markViewed])
 
   return (
     <Ctx.Provider value={value}>

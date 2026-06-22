@@ -38,7 +38,8 @@
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.VIBRATE",
-        "android.permission.INTERNET"
+        "android.permission.INTERNET",
+        "android.permission.RECORD_AUDIO"
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -80,7 +81,13 @@
           "locationWhenInUsePermission": "My Salon In uses your location to show nearby beauty professionals and salons in your area."
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-av",
+        {
+          "microphonePermission": "My Salon In needs microphone access to send voice messages."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

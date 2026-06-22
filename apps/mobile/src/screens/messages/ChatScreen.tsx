@@ -86,6 +86,8 @@ export default function ChatScreen() {
   const [showGallery, setShowGallery] = useState(false)
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const inputRef = useRef<TextInput>(null)
+  const messagesRef = useRef<Message[]>(messages)
+  messagesRef.current = messages
 
   const isCurrentUserSender = chatRequest?.senderId === currentUserId
   const isCurrentUserReceiver = chatRequest?.receiverId === currentUserId
@@ -350,7 +352,8 @@ export default function ChatScreen() {
         )
       }
       const isSelf = item.senderId === currentUserId
-      const showAvatar = !isSelf && (index === 0 || messages[index - 1]?.senderId !== item.senderId)
+      const prevSenderId = messagesRef.current[index - 1]?.senderId
+      const showAvatar = !isSelf && (index === 0 || prevSenderId !== item.senderId)
       return (
         <View>
           <MessageBubble
@@ -383,7 +386,7 @@ export default function ChatScreen() {
         </View>
       )
     },
-    [currentUserId, messages, otherPhotoUrl, name, theme, reactToMessage],
+    [currentUserId, otherPhotoUrl, name, theme, reactToMessage],
   )
 
   return (

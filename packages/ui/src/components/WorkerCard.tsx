@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useState } from 'react'
+import React, { useRef, useCallback, useState, memo } from 'react'
 import { View, Text, Pressable, Animated, StyleSheet, Image } from 'react-native'
 import type { WorkerCardData } from '@salonin/types'
 import Svg, { Path, Circle } from 'react-native-svg'
@@ -76,7 +76,7 @@ const STRIP_VISIBLE = 3   // photos shown as squares
 const THUMB_SIZE    = 64  // px — each square
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export function WorkerCard({
+function WorkerCardImpl({
   worker,
   onPress,
   isLoading = false,
@@ -118,18 +118,18 @@ export function WorkerCard({
 
   return (
     <Animated.View style={{ transform: [{ scale }] }}>
-      <Pressable
-        onPress={onPress}
-        onLongPress={onLongPress}
-        onPressIn={animIn}
-        onPressOut={animOut}
-        style={[styles.card, {
-          backgroundColor: theme.bg.card,
-          borderColor: theme.border.subtle,
-          shadowColor: '#1A1A1A',
-        }]}
-      >
-        <View style={styles.cardContent}>
+      <View style={[styles.card, {
+        backgroundColor: theme.bg.card,
+        borderColor: theme.border.subtle,
+        shadowColor: '#1A1A1A',
+      }]}>
+        <Pressable
+          onPress={onPress}
+          onLongPress={onLongPress}
+          onPressIn={animIn}
+          onPressOut={animOut}
+        >
+        <View style={styles.cardBody}>
 
           {/* ── HEADER: avatar · identity · bookmark ──────────────────────── */}
           <View style={styles.headerRow}>
@@ -249,35 +249,37 @@ export function WorkerCard({
             </View>
           )}
 
-          {/* ── FOOTER: rate · social proof · outline CTA ─────────────────── */}
-          <View style={[styles.divider, { backgroundColor: theme.border.subtle }]} />
-          <View style={styles.footerRow}>
-            <View style={styles.footerLeft}>
-              {rateDisplay != null ? (
-                <Text style={[styles.rateText, { color: '#1D9E75' }]} numberOfLines={1}>
-                  {rateDisplay}
-                </Text>
-              ) : worker.experienceYears > 0 ? (
-                <Text style={[styles.rateText, { color: '#1D9E75' }]} numberOfLines={1}>
-                  {worker.experienceYears} yrs exp.
-                </Text>
-              ) : null}
-              {replyLabel != null && (
-                <Text style={[styles.replyLabel, { color: theme.text.tertiary }]} numberOfLines={1}>
-                  {replyLabel}
-                </Text>
-              )}
-            </View>
+        </View>
+        </Pressable>
 
-            {onMessage !== undefined && (
-              <Pressable style={[styles.messageBtn, { borderColor: '#D85A30' }]} onPress={onMessage}>
-                <Text style={styles.messageBtnText}>Message</Text>
-              </Pressable>
+        {/* ── FOOTER: outside card Pressable — message button is standalone ── */}
+        <View style={[styles.divider, { backgroundColor: theme.border.subtle }]} />
+        <View style={[styles.footerRow, styles.footerPad]}>
+          <View style={styles.footerLeft}>
+            {rateDisplay != null ? (
+              <Text style={[styles.rateText, { color: '#1D9E75' }]} numberOfLines={1}>
+                {rateDisplay}
+              </Text>
+            ) : worker.experienceYears > 0 ? (
+              <Text style={[styles.rateText, { color: '#1D9E75' }]} numberOfLines={1}>
+                {worker.experienceYears} yrs exp.
+              </Text>
+            ) : null}
+            {replyLabel != null && (
+              <Text style={[styles.replyLabel, { color: theme.text.tertiary }]} numberOfLines={1}>
+                {replyLabel}
+              </Text>
             )}
           </View>
 
+          {onMessage !== undefined && (
+            <Pressable style={[styles.messageBtn, { borderColor: '#D85A30' }]} onPress={onMessage}>
+              <Text style={styles.messageBtnText}>Message</Text>
+            </Pressable>
+          )}
         </View>
-      </Pressable>
+
+      </View>
     </Animated.View>
   )
 }
@@ -336,6 +338,18 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 11,
     gap: 8,
+  },
+
+  cardBody: {
+    paddingHorizontal: 13,
+    paddingTop: 12,
+    paddingBottom: 8,
+    gap: 8,
+  },
+
+  footerPad: {
+    paddingHorizontal: 13,
+    paddingBottom: 11,
   },
 
   // ── Header ────────────────────────────────────────────────────────────────
@@ -537,3 +551,5 @@ const styles = StyleSheet.create({
     letterSpacing: 0.1,
   },
 })
+
+export const WorkerCard = memo(WorkerCardImpl)

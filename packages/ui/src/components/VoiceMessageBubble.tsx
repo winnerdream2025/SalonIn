@@ -96,6 +96,9 @@ export function VoiceMessageBubble({
           if (dur > 0) setProgress(status.positionMillis / dur)
           setCurrentMs(status.positionMillis)
           if (status.didJustFinish) {
+            const finished = soundRef.current
+            soundRef.current = null
+            setTimeout(() => { void finished?.unloadAsync().catch(() => undefined) }, 0)
             setIsPlaying(false)
             setProgress(0)
             setCurrentMs(0)

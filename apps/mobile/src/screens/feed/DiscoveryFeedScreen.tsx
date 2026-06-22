@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react'
+
 import {
   View,
   FlatList,
@@ -17,7 +18,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import * as Haptics from 'expo-haptics'
 import { WorkerCard, WorkerCardSkeleton, Text, Button, useTheme, ReportModal, Avatar } from '@salonin/ui'
-import { useStories } from '../../contexts/StoriesContext'
+import { useStories, type UserStoryState } from '../../contexts/StoriesContext'
 import type { Theme } from '@salonin/ui'
 import type { WorkerCardData } from '@salonin/types'
 import { Availability } from '@salonin/types'
@@ -37,6 +38,38 @@ import type { WorkerFilters } from '../../components/WorkerFilterModal'
 const SPECIALTIES = ['All', ...SPECIALTY_CATEGORIES]
 
 const SKELETON_COUNT = 6
+
+interface WorkerCardRowProps {
+  worker: WorkerCardData
+  storyMap: Map<string, UserStoryState>
+  onPressWorker: (worker: WorkerCardData) => void
+  onLongPressWorker: (worker: WorkerCardData) => void
+  onMessageWorker: (worker: WorkerCardData) => void
+  onStoryPress: (userId: string) => void
+}
+
+function WorkerCardRow({
+  worker,
+  storyMap,
+  onPressWorker,
+  onLongPressWorker,
+  onMessageWorker,
+  onStoryPress,
+}: WorkerCardRowProps) {
+  const uid = worker.userId
+  const ss = uid ? storyMap.get(uid) : undefined
+  const storyState = ss?.hasStory ? (ss.hasUnseen ? 'unseen' : 'seen') : 'none'
+  return (
+    <WorkerCard
+      worker={worker}
+      onPress={() => onPressWorker(worker)}
+      onLongPress={() => onLongPressWorker(worker)}
+      onMessage={() => onMessageWorker(worker)}
+      storyState={storyState}
+      onStoryPress={uid && ss?.hasStory ? () => onStoryPress(uid) : undefined}
+    />
+  )
+}
 
 export default function DiscoveryFeedScreen() {
   const { bottom } = useSafeAreaInsets()
@@ -104,6 +137,14 @@ export default function DiscoveryFeedScreen() {
     router.push(`/worker/${worker.id}`)
   }, [])
 
+  const handleLongPressWorker = useCallback((worker: WorkerCardData) => {
+    setReportTarget(worker)
+  }, [])
+
+  const handleStoryPress = useCallback((userId: string) => {
+    openViewerForUser(userId)
+  }, [openViewerForUser])
+
   const handleToggleSpecialty = useCallback((specialty: string) => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     setSelectedSpecialty((prev) => (prev === specialty ? 'All' : specialty))
@@ -116,6 +157,108 @@ export default function DiscoveryFeedScreen() {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     setLocationModalVisible(true)
   }, [])
+
+  const renderItem = useCallback(
+    ({ item }: { item: WorkerCardData }) => (
+      <WorkerCardRow
+        worker={item}
+        storyMap={storyMap}
+        onPressWorker={handlePressWorker}
+        onLongPressWorker={handleLongPressWorker}
+        onMessageWorker={handleMessage}
+        onStoryPress={handleStoryPress}
+      />
+    ),
+    [storyMap, handlePressWorker, handleLongPressWorker, handleMessage, handleStoryPress],
+  )
+
+  const listHeader = useMemo(
+    () => (
+      <>
+        <SuggestedStylists theme={theme} />
+        {isExpanded && (
+          <Text style={[styles.expandedNote, { color: theme.text.tertiary }]}>
+            Showing results within {usedRadius} miles
+          </Text>
+        )}
+      </>
+    ),
+    [theme, isExpanded, usedRadius],
+  )
+
+  const listEmpty = useMemo(
+    () =>
+      isLoading ? (
+        <View style={styles.skeletonList}>
+          {Array.from({ length: SKELETON_COUNT }).map((_, i) => (
+            <WorkerCardSkeleton key={i} />
+          ))}
+        </View>
+      ) : error != null ? (
+        <View style={styles.centerPane}>
+          <View style={[styles.emptyIcon, { backgroundColor: 'rgba(226,75,74,0.10)' }]}>
+            <Ionicons name="cloud-offline-outline" size={28} color="#E24B4A" />
+          </View>
+          <Text style={[styles.emptyTitle, { color: theme.text.primary }]}>Couldn't load professionals</Text>
+          <Text style={[styles.stateText, { color: theme.text.secondary }]}>
+            {error.message.toLowerCase().includes('network')
+              ? 'Check your connection and try again.'
+              : 'Something went wrong on our end.'}
+          </Text>
+          <Button variant="secondary" onPress={refresh}>Try again</Button>
+        </View>
+      ) : (
+        <View style={styles.centerPane}>
+          <View style={[styles.emptyIcon, { backgroundColor: 'rgba(29,158,117,0.10)' }]}>
+            <Ionicons
+              name={search.trim().length > 0 ? 'search-outline' : 'people-outline'}
+              size={28}
+              color="#1D9E75"
+            />
+          </View>
+          <Text style={[styles.emptyTitle, { color: theme.text.primary }]}>
+            {search.trim().length > 0 ? 'No matching professionals' : `No pros in ${cityLabel} yet`}
+          </Text>
+          <Text style={[styles.stateText, { color: theme.text.secondary }]}>
+            {search.trim().length > 0
+              ? 'Try different keywords or adjust your filters'
+              : 'Be the first to join My Salon In in your area'}
+          </Text>
+          {search.trim().length === 0 && (
+            <TouchableOpacity
+              style={[styles.emptyCtaBtn, { backgroundColor: theme.brand.primary }]}
+              onPress={() => {
+                void Share.share({
+                  message: 'Join me on My Salon In — the app connecting beauty pros with top salons! https://mysalonin.com',
+                })
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>Invite a pro</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity onPress={() => setLocationModalVisible(true)} activeOpacity={0.8}>
+            <Text style={{ fontSize: 14, color: theme.text.tertiary, textDecorationLine: 'underline' }}>Change location</Text>
+          </TouchableOpacity>
+        </View>
+      ),
+    [isLoading, error, search, cityLabel, theme, refresh, setLocationModalVisible],
+  )
+
+  const listFooter = useMemo(
+    () =>
+      hasMore && isLoadingMore ? (
+        <View style={styles.footer}>
+          <ActivityIndicator color={theme.brand.primary} />
+        </View>
+      ) : null,
+    [hasMore, isLoadingMore, theme.brand.primary],
+  )
+
+  const contentContainerStyle = useMemo(
+    () => [styles.listContent, { paddingBottom: 56 + bottom + 16 }],
+    [bottom],
+  )
 
   if (!hasLocation) {
     return (
@@ -289,104 +432,11 @@ export default function DiscoveryFeedScreen() {
         <FlatList
           data={filteredWorkers}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => {
-            const uid = item.userId
-            const ss = uid ? storyMap.get(uid) : undefined
-            const storyState = ss?.hasStory ? (ss.hasUnseen ? 'unseen' : 'seen') : 'none'
-            return (
-              <WorkerCard
-                worker={item}
-                onPress={() => handlePressWorker(item)}
-                onLongPress={() => setReportTarget(item)}
-                onMessage={() => void handleMessage(item)}
-                storyState={storyState}
-                onStoryPress={uid && ss?.hasStory ? () => openViewerForUser(uid) : undefined}
-              />
-            )
-          }}
-          contentContainerStyle={[styles.listContent, { paddingBottom: 56 + bottom + 16 }]}
-          ListHeaderComponent={
-            <>
-              <SuggestedStylists theme={theme} />
-              {isExpanded && (
-                <Text style={[styles.expandedNote, { color: theme.text.tertiary }]}>
-                  Showing results within {usedRadius} miles
-                </Text>
-              )}
-            </>
-          }
-          ListEmptyComponent={
-            isLoading ? (
-              <View style={styles.skeletonList}>
-                {Array.from({ length: SKELETON_COUNT }).map((_, i) => (
-                  <WorkerCardSkeleton key={i} />
-                ))}
-              </View>
-            ) : error != null ? (
-              <View style={styles.centerPane}>
-                <View style={[styles.emptyIcon, { backgroundColor: 'rgba(226,75,74,0.10)' }]}>
-                  <Ionicons name="cloud-offline-outline" size={28} color="#E24B4A" />
-                </View>
-                <Text style={[styles.emptyTitle, { color: theme.text.primary }]}>
-                  Couldn't load professionals
-                </Text>
-                <Text style={[styles.stateText, { color: theme.text.secondary }]}>
-                  {error.message.toLowerCase().includes('network')
-                    ? 'Check your connection and try again.'
-                    : 'Something went wrong on our end.'}
-                </Text>
-                <Button variant="secondary" onPress={refresh}>Try again</Button>
-              </View>
-            ) : (
-              <View style={styles.centerPane}>
-                <View style={[styles.emptyIcon, { backgroundColor: 'rgba(29,158,117,0.10)' }]}>
-                  <Ionicons
-                    name={search.trim().length > 0 ? 'search-outline' : 'people-outline'}
-                    size={28}
-                    color="#1D9E75"
-                  />
-                </View>
-                <Text style={[styles.emptyTitle, { color: theme.text.primary }]}>
-                  {search.trim().length > 0
-                    ? 'No matching professionals'
-                    : `No pros in ${cityLabel} yet`}
-                </Text>
-                <Text style={[styles.stateText, { color: theme.text.secondary }]}>
-                  {search.trim().length > 0
-                    ? 'Try different keywords or adjust your filters'
-                    : 'Be the first to join My Salon In in your area'}
-                </Text>
-                {search.trim().length === 0 && (
-                  <TouchableOpacity
-                    style={[styles.emptyCtaBtn, { backgroundColor: theme.brand.primary }]}
-                    onPress={() => {
-                      void Share.share({
-                        message: 'Join me on My Salon In — the app connecting beauty pros with top salons! https://mysalonin.com',
-                      })
-                    }}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>Invite a pro</Text>
-                  </TouchableOpacity>
-                )}
-                <TouchableOpacity
-                  onPress={() => setLocationModalVisible(true)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={{ fontSize: 14, color: theme.text.tertiary, textDecorationLine: 'underline' }}>
-                    Change location
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )
-          }
-          ListFooterComponent={
-            hasMore && isLoadingMore ? (
-              <View style={styles.footer}>
-                <ActivityIndicator color={theme.brand.primary} />
-              </View>
-            ) : null
-          }
+          renderItem={renderItem}
+          contentContainerStyle={contentContainerStyle}
+          ListHeaderComponent={listHeader}
+          ListEmptyComponent={listEmpty}
+          ListFooterComponent={listFooter}
           refreshing={isRefreshing}
           onRefresh={refresh}
           onEndReached={loadMore}

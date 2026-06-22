@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { memo, useMemo, useCallback } from 'react'
 import { View, Text, Pressable, StyleSheet, Platform, useWindowDimensions } from 'react-native'
 import { Tabs, router } from 'expo-router'
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs'
@@ -33,7 +33,7 @@ function SparkleSearchIcon({ size, color }: { size: number; color: string }) {
 
 // ── Custom floating tab bar ──────────────────────────────────────────────────
 
-function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+const CustomTabBar = memo(function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const { bottom } = useSafeAreaInsets()
   const { width } = useWindowDimensions()
   const { theme, isDark } = useTheme()
@@ -102,7 +102,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
       </Pressable>
     </View>
   )
-}
+})
 
 const styles = StyleSheet.create({
   outerRow: {
@@ -175,6 +175,43 @@ const styles = StyleSheet.create({
 
 // ── Layout ───────────────────────────────────────────────────────────────────
 
+function ProfileTabIcon({
+  color,
+  size,
+  focused,
+  photoUrl,
+  isSalon,
+  theme,
+}: {
+  color: string
+  size: number
+  focused: boolean
+  photoUrl?: string
+  isSalon: boolean
+  theme: { brand: { primary: string } }
+}) {
+  if (!isSalon && photoUrl) {
+    return (
+      <Avatar
+        uri={photoUrl}
+        name="Me"
+        size="sm"
+        style={{
+          borderWidth: focused ? 2 : 0,
+          borderColor: focused ? theme.brand.primary : 'transparent',
+        }}
+      />
+    )
+  }
+  return (
+    <Ionicons
+      name={isSalon ? (focused ? 'business' : 'business-outline') : (focused ? 'person-circle' : 'person-circle-outline')}
+      size={size}
+      color={color}
+    />
+  )
+}
+
 export default function TabsLayout() {
   const user = useAuthStore((s) => s.user)
   const role = user?.role
@@ -184,70 +221,68 @@ export default function TabsLayout() {
   const { conversations } = useConversations()
   const { pendingCount, isLoaded: chatRequestsLoaded } = useChatRequests()
   const unreadCount = conversations.reduce((sum, c) => sum + c.unreadCount, 0)
-  const messagesBadge = isLoggedIn && chatRequestsLoaded ? unreadCount + pendingCount : 0
+  const messagesBadge = useMemo(
+    () => (isLoggedIn && chatRequestsLoaded ? unreadCount + pendingCount : 0),
+    [isLoggedIn, chatRequestsLoaded, unreadCount, pendingCount],
+  )
+  const photoUrl = (user as any)?.photoUrl
+
+  const renderTabBar = useCallback((props: BottomTabBarProps) => <CustomTabBar {...props} />, [])
+
+  const indexOptions = useMemo(
+    () => ({
+      tabBarLabel: isSalon ? 'Workers' : 'Discover',
+      tabBarIcon: ({ color, size, focused }: { color: string; size: number; focused: boolean }) => (
+        <Ionicons name={focused ? 'compass' : 'compass-outline'} size={size} color={color} />
+      ),
+    }),
+    [isSalon],
+  )
+
+  const jobsOptions = useMemo(
+    () => ({
+      tabBarLabel: isSalon ? 'My Jobs' : 'Jobs',
+      tabBarIcon: ({ color, size, focused }: { color: string; size: number; focused: boolean }) => (
+        <Ionicons name={focused ? 'briefcase' : 'briefcase-outline'} size={size} color={color} />
+      ),
+    }),
+    [isSalon],
+  )
+
+  const messagesOptions = useMemo(
+    () => ({
+      tabBarLabel: 'Inbox',
+      tabBarIcon: ({ color, size, focused }: { color: string; size: number; focused: boolean }) => (
+        <Ionicons name={focused ? 'chatbubble' : 'chatbubble-outline'} size={size} color={color} />
+      ),
+      tabBarBadge: messagesBadge > 0 ? messagesBadge : undefined,
+    }),
+    [messagesBadge],
+  )
+
+  const profileOptions = useMemo(
+    () => ({
+      tabBarLabel: isSalon ? 'My Salon' : 'Profile',
+      tabBarIcon: ({ color, size, focused }: { color: string; size: number; focused: boolean }) => (
+        <ProfileTabIcon
+          color={color}
+          size={size}
+          focused={focused}
+          photoUrl={photoUrl}
+          isSalon={isSalon}
+          theme={theme}
+        />
+      ),
+    }),
+    [isSalon, photoUrl, theme],
+  )
 
   return (
-    <Tabs
-      screenOptions={{ headerShown: false }}
-      tabBar={(props) => <CustomTabBar {...props} />}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          tabBarLabel: isSalon ? 'Workers' : 'Discover',
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'compass' : 'compass-outline'} size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="jobs"
-        options={{
-          tabBarLabel: isSalon ? 'My Jobs' : 'Jobs',
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'briefcase' : 'briefcase-outline'} size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="messages"
-        options={{
-          tabBarLabel: 'Inbox',
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'chatbubble' : 'chatbubble-outline'} size={size} color={color} />
-          ),
-          tabBarBadge: messagesBadge > 0 ? messagesBadge : undefined,
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          tabBarLabel: isSalon ? 'My Salon' : 'Profile',
-          tabBarIcon: ({ color, size, focused }) => {
-            const photoUrl = (user as any)?.photoUrl
-            if (!isSalon && photoUrl) {
-              return (
-                <Avatar
-                  uri={photoUrl}
-                  name="Me"
-                  size="sm"
-                  style={{
-                    borderWidth: focused ? 2 : 0,
-                    borderColor: focused ? theme.brand.primary : 'transparent',
-                  }}
-                />
-              )
-            }
-            return (
-              <Ionicons
-                name={isSalon ? (focused ? 'business' : 'business-outline') : (focused ? 'person-circle' : 'person-circle-outline')}
-                size={size}
-                color={color}
-              />
-            )
-          },
-        }}
-      />
+    <Tabs screenOptions={{ headerShown: false }} tabBar={renderTabBar}>
+      <Tabs.Screen name="index" options={indexOptions} />
+      <Tabs.Screen name="jobs" options={jobsOptions} />
+      <Tabs.Screen name="messages" options={messagesOptions} />
+      <Tabs.Screen name="profile" options={profileOptions} />
     </Tabs>
   )
 }

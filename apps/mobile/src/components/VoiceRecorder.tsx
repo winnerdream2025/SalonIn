@@ -360,6 +360,7 @@ export function VoiceRecorder({ onSend, onCancel }: VoiceRecorderProps) {
       if (recordingRef.current) {
         void recordingRef.current.stopAndUnloadAsync().catch(() => undefined)
       }
+      void Audio.setAudioModeAsync({ allowsRecordingIOS: false, playsInSilentModeIOS: true }).catch(() => undefined)
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 

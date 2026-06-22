@@ -7,7 +7,7 @@ import { extname } from 'path'
 
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/mpeg', 'video/webm']
-const ALLOWED_AUDIO_TYPES = ['audio/m4a', 'audio/aac', 'audio/mp4', 'audio/mpeg', 'audio/webm', 'audio/ogg']
+const ALLOWED_AUDIO_TYPES = ['audio/m4a', 'audio/x-m4a', 'audio/aac', 'audio/mp4', 'audio/mpeg', 'audio/webm', 'audio/ogg']
 const ALLOWED_DOCUMENT_TYPES = [
   'application/pdf',
   'application/msword',
