@@ -9,9 +9,15 @@ export interface StoryUser {
 export interface Story {
   id: string
   userId: string
-  mediaUrl: string
-  type: 'IMAGE' | 'VIDEO'
+  mediaUrl?: string | null
+  type: 'IMAGE' | 'VIDEO' | 'TEXT'
   caption?: string | null
+  textContent?: string | null
+  textBgColor?: string | null
+  visibility: 'PUBLIC' | 'FOLLOWERS' | 'PRIVATE'
+  bookingEnabled: boolean
+  location?: string | null
+  mentions: string[]
   createdAt: string
   expiresAt: string
   user: StoryUser
@@ -32,8 +38,39 @@ export interface StoriesFeed {
   groups: StoryGroup[]
 }
 
+export interface StoryAnalytics {
+  totalViews: number
+  totalLikes: number
+  totalReplies: number
+  viewers: { viewedAt: string; viewer: StoryUser }[]
+  likes: { createdAt: string; user: StoryUser }[]
+  replies: { id: string; content: string; createdAt: string; user: StoryUser }[]
+}
+
+export type CreateStoryPayload = {
+  mediaUrl?: string
+  thumbnailUrl?: string
+  type: 'IMAGE' | 'VIDEO' | 'TEXT'
+  caption?: string
+  textContent?: string
+  textBgColor?: string
+  visibility?: 'PUBLIC' | 'FOLLOWERS' | 'PRIVATE'
+  bookingEnabled?: boolean
+  location?: string
+  mentions?: string[]
+}
+
+export type UpdateStoryPayload = {
+  caption?: string
+  textContent?: string
+  visibility?: 'PUBLIC' | 'FOLLOWERS' | 'PRIVATE'
+  bookingEnabled?: boolean
+  location?: string
+  mentions?: string[]
+}
+
 export const storiesApi = {
-  create: (payload: { mediaUrl: string; type: 'IMAGE' | 'VIDEO'; caption?: string }): Promise<Story> =>
+  create: (payload: CreateStoryPayload): Promise<Story> =>
     api.post<Story>('/stories', payload).then((r) => r.data),
 
   getFeed: (): Promise<StoriesFeed> =>
@@ -41,6 +78,9 @@ export const storiesApi = {
 
   getMyStories: (): Promise<Story[]> =>
     api.get<Story[]>('/stories/my').then((r) => r.data),
+
+  update: (storyId: string, payload: UpdateStoryPayload): Promise<Story> =>
+    api.patch<Story>(`/stories/${storyId}`, payload).then((r) => r.data),
 
   deleteStory: (storyId: string): Promise<void> =>
     api.delete(`/stories/${storyId}`).then(() => undefined),
@@ -56,4 +96,7 @@ export const storiesApi = {
 
   getViewers: (storyId: string): Promise<{ viewedAt: string; viewer: StoryUser }[]> =>
     api.get(`/stories/${storyId}/viewers`).then((r) => r.data as { viewedAt: string; viewer: StoryUser }[]),
+
+  getAnalytics: (storyId: string): Promise<StoryAnalytics> =>
+    api.get<StoryAnalytics>(`/stories/${storyId}/analytics`).then((r) => r.data),
 }

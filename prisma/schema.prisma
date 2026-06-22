@@ -43,6 +43,13 @@ enum ListingType {
 enum MediaType {
   IMAGE
   VIDEO
+  TEXT
+}
+
+enum StoryVisibility {
+  PUBLIC
+  FOLLOWERS
+  PRIVATE
 }
 
 enum AppStatus {
@@ -87,6 +94,7 @@ enum NotificationType {
   STORY_REPLY
   STORY_LIKE
   NEW_FOLLOWER
+  NEW_STORY
   SYSTEM
 }
 
@@ -441,14 +449,21 @@ model Notification {
 }
 
 model Story {
-  id        String      @id @default(uuid())
-  userId    String
-  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  mediaUrl  String
-  type      MediaType
-  caption   String?
-  createdAt DateTime    @default(now())
-  expiresAt DateTime
+  id             String           @id @default(uuid())
+  userId         String
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mediaUrl       String?
+  type           MediaType
+  caption        String?
+  textContent    String?
+  textBgColor    String?
+  visibility     StoryVisibility  @default(PUBLIC)
+  bookingEnabled Boolean          @default(false)
+  location       String?
+  mentions       String[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime?        @updatedAt
+  expiresAt      DateTime
 
   views     StoryView[]
   likes     StoryLike[]

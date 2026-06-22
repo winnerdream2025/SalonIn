@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   UseGuards,
 } from '@nestjs/common'
@@ -12,6 +13,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
 import { CurrentUser } from '../../common/decorators/current-user.decorator'
 import { StoriesService } from './stories.service'
 import { CreateStoryDto } from './dto/create-story.dto'
+import { UpdateStoryDto } from './dto/update-story.dto'
 import { StoryReplyDto } from './dto/story-reply.dto'
 
 @Controller('stories')
@@ -32,6 +34,15 @@ export class StoriesController {
   @Get('my')
   mine(@CurrentUser() user: User) {
     return this.stories.getMyStories(user.id)
+  }
+
+  @Patch(':id')
+  update(
+    @CurrentUser() user: User,
+    @Param('id') storyId: string,
+    @Body() dto: UpdateStoryDto,
+  ) {
+    return this.stories.updateStory(user.id, storyId, dto)
   }
 
   @Delete(':id')
@@ -61,5 +72,10 @@ export class StoriesController {
   @Get(':id/viewers')
   viewers(@CurrentUser() user: User, @Param('id') storyId: string) {
     return this.stories.getViewers(user.id, storyId)
+  }
+
+  @Get(':id/analytics')
+  analytics(@CurrentUser() user: User, @Param('id') storyId: string) {
+    return this.stories.getAnalytics(user.id, storyId)
   }
 }

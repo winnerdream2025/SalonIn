@@ -1,13 +1,16 @@
 /**
- * StoryViewer — full-screen WhatsApp/Instagram-style story viewer.
+ * StoryViewer — full-screen story viewer.
  *
  * Features:
- * - Animated progress bars per story in the group
- * - Tap left/right to navigate stories, swipe-group auto-advances
+ * - Animated progress bars per story in a group
+ * - Tap left/right to navigate, tap ✕ to close
  * - Long-press to pause
- * - Heart like (toggle) with count
- * - Reply text input
+ * - Swipe down to close (PanResponder)
+ * - Heart like toggle with count
+ * - Reply text field (routes into chat)
  * - Video support via expo-av
+ * - Booking CTA when story.bookingEnabled
+ * - Owner actions: delete, edit caption, view analytics
  */
 import React, {
   useCallback,
@@ -16,11 +19,13 @@ import React, {
   useState,
 } from 'react'
 import {
+  Alert,
   Animated,
   Dimensions,
   Image,
   KeyboardAvoidingView,
   Modal,
+  PanResponder,
   Platform,
   Pressable,
   StyleSheet,
@@ -29,6 +34,7 @@ import {
   View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { Video, ResizeMode } from 'expo-av'
 import { Text } from '@salonin/ui'
@@ -39,7 +45,7 @@ import { useAuthStore } from '../store/authStore'
 const { width: SW, height: SH } = Dimensions.get('window')
 const IMAGE_DURATION = 5000
 
-// ─── Progress bar row ─────────────────────────────────────────────────────────
+// ─── Progress bars ────────────────────────────────────────────────────────────
 
 function ProgressBars({
   count,
@@ -73,6 +79,32 @@ function ProgressBars({
   )
 }
 
+// ─── Text story canvas ────────────────────────────────────────────────────────
+
+function TextStoryCanvas({ story }: { story: Story }) {
+  return (
+    <View
+      style={[
+        styles.media,
+        { backgroundColor: story.textBgColor ?? '#1A1A2E', alignItems: 'center', justifyContent: 'center' },
+      ]}
+    >
+      <Text
+        style={{
+          color: '#fff',
+          fontSize: 28,
+          fontWeight: '700',
+          textAlign: 'center',
+          lineHeight: 38,
+          paddingHorizontal: 32,
+        }}
+      >
+        {story.textContent ?? ''}
+      </Text>
+    </View>
+  )
+}
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -80,7 +112,6 @@ interface Props {
   groups: StoryGroup[]
   startGroupIndex: number
   onClose: () => void
-  /** Called after viewing so the context can update the map */
   onViewed?: (storyId: string, userId: string) => void
 }
 
@@ -98,16 +129,19 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose, onViewe
   const [showReply, setShowReply] = useState(false)
   const [paused, setPaused] = useState(false)
 
+  // Caption edit (owner)
+  const [showCaptionEdit, setShowCaptionEdit] = useState(false)
+  const [editCaption, setEditCaption] = useState('')
+
   const progress = useRef(new Animated.Value(0)).current
+  const translateY = useRef(new Animated.Value(0)).current
   const animRef = useRef<Animated.CompositeAnimation | null>(null)
   const groupIdxRef = useRef(groupIdx)
   const storyIdxRef = useRef(storyIdx)
 
-  // Keep refs in sync
   useEffect(() => { groupIdxRef.current = groupIdx }, [groupIdx])
   useEffect(() => { storyIdxRef.current = storyIdx }, [storyIdx])
 
-  // Reset when viewer opens
   useEffect(() => {
     if (visible) {
       setGroupIdx(startGroupIndex)
@@ -115,10 +149,35 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose, onViewe
       setReplyText('')
       setShowReply(false)
       setPaused(false)
+      translateY.setValue(0)
     }
   }, [visible, startGroupIndex])
 
-  // ── Navigation helpers ─────────────────────────────────────────────────────
+  // ── Swipe-down to close ───────────────────────────────────────────────────
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, { dy, dx }) =>
+        Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx) && dy > 0,
+      onPanResponderMove: (_, { dy }) => {
+        if (dy > 0) translateY.setValue(dy)
+      },
+      onPanResponderRelease: (_, { dy }) => {
+        if (dy > 100) {
+          Animated.timing(translateY, {
+            toValue: SH,
+            duration: 200,
+            useNativeDriver: true,
+          }).start(onClose)
+        } else {
+          Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start()
+        }
+      },
+    }),
+  ).current
+
+  // ── Navigation ────────────────────────────────────────────────────────────
 
   const goToNext = useCallback(() => {
     const gi = groupIdxRef.current
@@ -164,8 +223,6 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose, onViewe
         if (finished) goToNext()
       })
     },
-    // goToNext is stable (only refs + onClose); progress ref never changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [goToNext],
   )
 
@@ -176,13 +233,12 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose, onViewe
 
   const resumeProgress = useCallback(() => {
     setPaused(false)
-    // Restart from current value — simple but effective
     animRef.current?.start(({ finished }) => {
       if (finished) goToNext()
     })
   }, [goToNext])
 
-  // ── Story change effect ────────────────────────────────────────────────────
+  // ── Story change ─────────────────────────────────────────────────────────
 
   const group = groups[groupIdx]
   const story: Story | undefined = group?.stories[storyIdx]
@@ -190,15 +246,14 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose, onViewe
   useEffect(() => {
     if (!visible || !story || !group) return
 
-    // Update like state
     setLiked(story.likes.length > 0)
     setLikeCount(story._count.likes)
+    setShowCaptionEdit(false)
+    setEditCaption(story.caption ?? '')
 
-    // Mark as viewed
     onViewed?.(story.id, group.userId)
 
-    // Start timer for images; videos drive their own onLoad
-    if (story.type === 'IMAGE') {
+    if (story.type !== 'VIDEO') {
       startProgress(IMAGE_DURATION)
     } else {
       progress.setValue(0)
@@ -229,7 +284,71 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose, onViewe
       await storiesApi.reply(story.id, replyText.trim())
       setReplyText('')
       setShowReply(false)
-    } catch {}
+      resumeProgress()
+    } catch {
+      Alert.alert('Error', 'Failed to send reply. Try again.')
+    }
+  }
+
+  const handleDelete = () => {
+    if (!story) return
+    Alert.alert(
+      'Delete Story',
+      'This will remove your story for everyone. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await storiesApi.deleteStory(story.id)
+              goToNext()
+            } catch {
+              Alert.alert('Error', 'Failed to delete story.')
+            }
+          },
+        },
+      ],
+    )
+  }
+
+  const handleSaveCaption = async () => {
+    if (!story) return
+    try {
+      await storiesApi.update(story.id, { caption: editCaption.trim() || undefined })
+      setShowCaptionEdit(false)
+      resumeProgress()
+    } catch {
+      Alert.alert('Error', 'Failed to update caption.')
+    }
+  }
+
+  const showOwnerMenu = () => {
+    if (!story) return
+    pauseProgress()
+    Alert.alert('Story options', undefined, [
+      {
+        text: 'Edit caption',
+        onPress: () => {
+          setEditCaption(story.caption ?? '')
+          setShowCaptionEdit(true)
+        },
+      },
+      {
+        text: 'View analytics',
+        onPress: () => {
+          onClose()
+          router.push(`/story-analytics/${story.id}` as never)
+        },
+      },
+      {
+        text: 'Delete story',
+        style: 'destructive',
+        onPress: handleDelete,
+      },
+      { text: 'Cancel', style: 'cancel', onPress: resumeProgress },
+    ])
   }
 
   // ── Guard ──────────────────────────────────────────────────────────────────
@@ -255,11 +374,14 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose, onViewe
       statusBarTranslucent
       onRequestClose={onClose}
     >
-      <View style={styles.container}>
-        {/* ── Media ───────────────────────────────────────────────────────── */}
-        {story.type === 'IMAGE' ? (
+      <Animated.View
+        style={[styles.container, { transform: [{ translateY }] }]}
+        {...panResponder.panHandlers}
+      >
+        {/* ── Media ──────────────────────────────────────────────────── */}
+        {story.type === 'IMAGE' && story.mediaUrl ? (
           <Image source={{ uri: story.mediaUrl }} style={styles.media} resizeMode="cover" />
-        ) : (
+        ) : story.type === 'VIDEO' && story.mediaUrl ? (
           <Video
             source={{ uri: story.mediaUrl }}
             style={styles.media}
@@ -268,7 +390,10 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose, onViewe
             isLooping={false}
             onPlaybackStatusUpdate={(s) => {
               if ('didJustFinish' in s && s.didJustFinish) goToNext()
-              if ('durationMillis' in s && s.durationMillis && 'positionMillis' in s && s.positionMillis != null) {
+              if (
+                'durationMillis' in s && s.durationMillis &&
+                'positionMillis' in s && s.positionMillis != null
+              ) {
                 progress.setValue(s.positionMillis / s.durationMillis)
               }
             }}
@@ -276,18 +401,20 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose, onViewe
               if ('durationMillis' in s) startProgress(s.durationMillis ?? IMAGE_DURATION)
             }}
           />
+        ) : (
+          <TextStoryCanvas story={story} />
         )}
 
-        {/* ── Top gradient (semi-transparent overlay for legibility) ───────── */}
+        {/* ── Overlays ────────────────────────────────────────────── */}
         <View style={styles.topGradient} pointerEvents="none" />
         <View style={styles.bottomGradient} pointerEvents="none" />
 
-        {/* ── Progress bars ────────────────────────────────────────────────── */}
+        {/* ── Progress bars ───────────────────────────────────────── */}
         <View style={[styles.progressWrap, { paddingTop: insets.top + 10 }]}>
           <ProgressBars count={group.stories.length} current={storyIdx} progress={progress} />
         </View>
 
-        {/* ── Header ───────────────────────────────────────────────────────── */}
+        {/* ── Header ──────────────────────────────────────────────── */}
         <View style={[styles.header, { paddingTop: insets.top + 26 }]}>
           <View style={styles.authorRow}>
             {photoUrl ? (
@@ -299,18 +426,38 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose, onViewe
             )}
             <View style={{ gap: 1 }}>
               <Text style={styles.authorName}>{authorName}</Text>
-              <Text style={styles.timeSince}>{timeSince}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={styles.timeSince}>{timeSince}</Text>
+                {story.location ? (
+                  <>
+                    <Text style={styles.timeSince}>·</Text>
+                    <Ionicons name="location" size={10} color="rgba(255,255,255,0.55)" />
+                    <Text style={styles.timeSince}>{story.location}</Text>
+                  </>
+                ) : null}
+              </View>
             </View>
           </View>
-          <TouchableOpacity
-            onPress={onClose}
-            hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}
-          >
-            <Ionicons name="close" size={26} color="#fff" />
-          </TouchableOpacity>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            {isMine && (
+              <TouchableOpacity
+                onPress={showOwnerMenu}
+                hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+              >
+                <Ionicons name="ellipsis-horizontal" size={22} color="#fff" />
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              onPress={onClose}
+              hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}
+            >
+              <Ionicons name="close" size={26} color="#fff" />
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* ── Tap zones ─────────────────────────────────────────────────────── */}
+        {/* ── Tap zones ───────────────────────────────────────────── */}
         <View style={styles.tapZones} pointerEvents="box-none">
           <Pressable
             style={styles.tapLeft}
@@ -326,14 +473,74 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose, onViewe
           />
         </View>
 
-        {/* ── Caption ───────────────────────────────────────────────────────── */}
+        {/* ── Caption ─────────────────────────────────────────────── */}
         {story.caption != null && story.caption.length > 0 && (
           <View style={[styles.captionWrap, { bottom: insets.bottom + 100 }]}>
             <Text style={styles.caption}>{story.caption}</Text>
           </View>
         )}
 
-        {/* ── Bottom actions ─────────────────────────────────────────────────── */}
+        {/* ── Booking CTA ─────────────────────────────────────────── */}
+        {story.bookingEnabled && !isMine && (
+          <TouchableOpacity
+            style={[styles.bookingCTA, { bottom: insets.bottom + 100 + (story.caption ? 50 : 0) }]}
+            activeOpacity={0.85}
+            onPress={() => {
+              pauseProgress()
+              Alert.alert('Book Now', 'Booking flow would open here.')
+            }}
+          >
+            <Ionicons name="calendar" size={15} color="#fff" />
+            <Text style={styles.bookingCTAText}>Book Now</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* ── Owner viewer count ──────────────────────────────────── */}
+        {isMine && (
+          <TouchableOpacity
+            style={[styles.viewerCount, { bottom: insets.bottom + 100 }]}
+            onPress={() => {
+              onClose()
+              router.push(`/story-analytics/${story.id}` as never)
+            }}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="eye-outline" size={14} color="rgba(255,255,255,0.8)" />
+            <Text style={styles.viewerCountText}>{story._count.views}</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* ── Caption edit overlay ─────────────────────────────────── */}
+        {showCaptionEdit && (
+          <View style={[StyleSheet.absoluteFillObject, styles.captionEditOverlay]}>
+            <TextInput
+              style={styles.captionEditInput}
+              value={editCaption}
+              onChangeText={setEditCaption}
+              placeholder="Add a caption…"
+              placeholderTextColor="rgba(255,255,255,0.4)"
+              multiline
+              autoFocus
+              maxLength={300}
+            />
+            <View style={styles.captionEditActions}>
+              <TouchableOpacity
+                onPress={() => { setShowCaptionEdit(false); resumeProgress() }}
+                style={styles.captionEditCancel}
+              >
+                <Text style={{ color: '#aaa', fontWeight: '600' }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => void handleSaveCaption()}
+                style={styles.captionEditSave}
+              >
+                <Text style={{ color: '#fff', fontWeight: '700' }}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* ── Bottom actions ──────────────────────────────────────── */}
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={[styles.bottomActions, { paddingBottom: insets.bottom + 14 }]}
@@ -347,7 +554,7 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose, onViewe
                 value={replyText}
                 onChangeText={setReplyText}
                 autoFocus
-                onBlur={() => { if (!replyText.trim()) setShowReply(false) }}
+                onBlur={() => { if (!replyText.trim()) { setShowReply(false); resumeProgress() } }}
                 returnKeyType="send"
                 onSubmitEditing={() => void handleReply()}
               />
@@ -368,31 +575,40 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose, onViewe
               {!isMine && (
                 <TouchableOpacity
                   style={styles.replyTrigger}
-                  onPress={() => { setPaused(true); setShowReply(true) }}
+                  onPress={() => { pauseProgress(); setShowReply(true) }}
                   activeOpacity={0.8}
                 >
                   <Text style={styles.replyPlaceholder}>Reply…</Text>
                 </TouchableOpacity>
               )}
-              <TouchableOpacity onPress={() => void handleLike()} style={styles.likeBtn}>
-                <Ionicons
-                  name={liked ? 'heart' : 'heart-outline'}
-                  size={30}
-                  color={liked ? '#FF3B6F' : '#fff'}
-                />
-                {likeCount > 0 && (
-                  <Text style={styles.likeCount}>{likeCount}</Text>
-                )}
-              </TouchableOpacity>
+              {isMine ? (
+                <TouchableOpacity
+                  onPress={() => {
+                    onClose()
+                    router.push(`/story-analytics/${story.id}` as never)
+                  }}
+                  style={styles.analyticsBtn}
+                >
+                  <Ionicons name="bar-chart-outline" size={22} color="#fff" />
+                  <Text style={styles.analyticsCount}>{story._count.views}</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity onPress={() => void handleLike()} style={styles.likeBtn}>
+                  <Ionicons
+                    name={liked ? 'heart' : 'heart-outline'}
+                    size={30}
+                    color={liked ? '#FF3B6F' : '#fff'}
+                  />
+                  {likeCount > 0 && <Text style={styles.likeCount}>{likeCount}</Text>}
+                </TouchableOpacity>
+              )}
             </View>
           )}
         </KeyboardAvoidingView>
-      </View>
+      </Animated.View>
     </Modal>
   )
 }
-
-// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container: {
@@ -419,7 +635,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 180,
+    height: 200,
     backgroundColor: 'rgba(0,0,0,0.35)',
   },
   progressWrap: {
@@ -460,6 +676,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    flex: 1,
   },
   authorAvatar: {
     width: 36,
@@ -483,7 +700,7 @@ const styles = StyleSheet.create({
   },
   timeSince: {
     color: 'rgba(255,255,255,0.65)',
-    fontSize: 12,
+    fontSize: 11,
   },
   tapZones: {
     position: 'absolute',
@@ -508,6 +725,68 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
     lineHeight: 22,
+  },
+  bookingCTA: {
+    position: 'absolute',
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#D85A30',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  bookingCTAText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  viewerCount: {
+    position: 'absolute',
+    left: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  viewerCountText: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  captionEditOverlay: {
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    gap: 16,
+  },
+  captionEditInput: {
+    width: '100%',
+    color: '#fff',
+    fontSize: 17,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+    borderRadius: 12,
+    padding: 14,
+    minHeight: 80,
+  },
+  captionEditActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  captionEditCancel: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#444',
+  },
+  captionEditSave: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 20,
+    backgroundColor: '#D85A30',
   },
   bottomActions: {
     position: 'absolute',
@@ -542,6 +821,16 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     marginTop: 1,
+  },
+  analyticsBtn: {
+    alignItems: 'center',
+    padding: 8,
+    gap: 2,
+  },
+  analyticsCount: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
   },
   replyRow: {
     flexDirection: 'row',

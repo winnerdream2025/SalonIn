@@ -39,7 +39,7 @@ export { notificationsApi } from './notifications.api'
 export type { NotificationItem, NotificationsListResponse } from './notifications.api'
 
 export { storiesApi } from './stories.api'
-export type { Story, StoryGroup, StoriesFeed, StoryUser } from './stories.api'
+export type { Story, StoryGroup, StoriesFeed, StoryUser, StoryAnalytics, CreateStoryPayload, UpdateStoryPayload } from './stories.api'
 
 export { followsApi } from './follows.api'
 

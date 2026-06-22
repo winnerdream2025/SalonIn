@@ -1,31 +1,15 @@
-import { IsArray, IsBoolean, IsEnum, IsOptional, IsString, IsUrl, MaxLength, ValidateIf } from 'class-validator'
-import { MediaType } from '@prisma/client'
+import { IsArray, IsBoolean, IsEnum, IsOptional, IsString, MaxLength } from 'class-validator'
 
-export class CreateStoryDto {
-  @IsOptional()
-  @IsUrl()
-  mediaUrl?: string
-
-  @IsOptional()
-  @IsString()
-  thumbnailUrl?: string
-
-  @IsEnum(MediaType)
-  type!: MediaType
-
+export class UpdateStoryDto {
   @IsOptional()
   @IsString()
   @MaxLength(300)
   caption?: string
 
-  @ValidateIf((o: CreateStoryDto) => o.type === 'TEXT')
+  @IsOptional()
   @IsString()
   @MaxLength(500)
   textContent?: string
-
-  @IsOptional()
-  @IsString()
-  textBgColor?: string
 
   @IsOptional()
   @IsEnum(['PUBLIC', 'FOLLOWERS', 'PRIVATE'])
