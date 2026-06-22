@@ -26,7 +26,7 @@ const TABS: NetworkTab[] = ['Suggested', 'Following', 'Friends']
 
 // ─── Tab bar ─────────────────────────────────────────────────────────────────
 
-function TabBar({
+const TabBar = React.memo(function TabBar({
   active,
   onSelect,
   counts,
@@ -65,7 +65,7 @@ function TabBar({
       })}
     </View>
   )
-}
+})
 
 const tabStyles = StyleSheet.create({
   wrap: {
@@ -167,7 +167,7 @@ const actionStyles = StyleSheet.create({
 
 // ─── Suggested user row ───────────────────────────────────────────────────────
 
-function SuggestedRow({
+const SuggestedRow = React.memo(function SuggestedRow({
   user,
   onFollow,
   onRemove,
@@ -225,11 +225,11 @@ function SuggestedRow({
       </View>
     </View>
   )
-}
+})
 
 // ─── Following / Friends row ──────────────────────────────────────────────────
 
-function NetworkRow({
+const NetworkRow = React.memo(function NetworkRow({
   user,
   isFriend,
   onMessage,
@@ -300,7 +300,7 @@ function NetworkRow({
       </View>
     </View>
   )
-}
+})
 
 const rowStyles = StyleSheet.create({
   row: {
@@ -397,7 +397,7 @@ export default function FindPeopleScreen() {
     onSearch: onFollowingSearch,
     toggleFollow: toggleFollowingFollow,
   } = useFollowing(currentUser?.id)
-  const [unfollowLoadingIds] = useState<Set<string>>(new Set())
+  const [unfollowLoadingIds, setUnfollowLoadingIds] = useState<Set<string>>(new Set())
 
   // Friends = following where isFollowedBack is true
   const friends = useMemo(() => following.filter((u) => u.isFollowedBack), [following])
@@ -476,16 +476,34 @@ export default function FindPeopleScreen() {
     }
   }, [currentUser])
 
+  const handleUnfollow = useCallback(async (userId: string) => {
+    setUnfollowLoadingIds((s) => new Set([...s, userId]))
+    try {
+      await toggleFollowingFollow(userId, true)
+    } finally {
+      setUnfollowLoadingIds((s) => { const n = new Set(s); n.delete(userId); return n })
+    }
+  }, [toggleFollowingFollow])
+
+  const handleRemove = useCallback(async (userId: string) => {
+    setUnfollowLoadingIds((s) => new Set([...s, userId]))
+    try {
+      await toggleFollowingFollow(userId, true)
+    } finally {
+      setUnfollowLoadingIds((s) => { const n = new Set(s); n.delete(userId); return n })
+    }
+  }, [toggleFollowingFollow])
+
   const handleUnfollowConfirm = useCallback((userId: string, name: string) => {
     Alert.alert('Unfollow', `Unfollow ${name}?`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Unfollow',
         style: 'destructive',
-        onPress: () => void toggleFollowingFollow(userId, true),
+        onPress: () => void handleUnfollow(userId),
       },
     ])
-  }, [toggleFollowingFollow])
+  }, [handleUnfollow])
 
   const handleRemoveFriend = useCallback((userId: string, name: string) => {
     Alert.alert(
@@ -496,11 +514,11 @@ export default function FindPeopleScreen() {
         {
           text: 'Remove',
           style: 'destructive',
-          onPress: () => void toggleFollowingFollow(userId, true),
+          onPress: () => void handleRemove(userId),
         },
       ],
     )
-  }, [toggleFollowingFollow])
+  }, [handleRemove])
 
   // ── Tab content ────────────────────────────────────────────────────────────
 
@@ -543,13 +561,13 @@ export default function FindPeopleScreen() {
           user={item}
           isFriend={true}
           onMessage={() => void handleMessage(item.id, name, photo)}
-          onUnfollow={() => void toggleFollowingFollow(item.id, true)}
+          onUnfollow={() => void handleUnfollow(item.id)}
           onRemove={() => handleRemoveFriend(item.id, name)}
           loadingUnfollow={unfollowLoadingIds.has(item.id)}
         />
       )
     },
-    [handleMessage, handleRemoveFriend, toggleFollowingFollow, unfollowLoadingIds],
+    [handleMessage, handleRemoveFriend, handleUnfollow, unfollowLoadingIds],
   )
 
   const activeData =
@@ -559,15 +577,35 @@ export default function FindPeopleScreen() {
         ? filteredFollowing
         : filteredFriends
 
-  const activeRender =
-    activeTab === 'Suggested'
-      ? renderSuggested
-      : activeTab === 'Following'
-        ? renderFollowing
-        : renderFriend
+  const activeRender = useCallback(
+    ({ item }: { item: SuggestedUser | FollowUser }) => {
+      if (activeTab === 'Suggested') return renderSuggested({ item: item as SuggestedUser })
+      if (activeTab === 'Following') return renderFollowing({ item: item as FollowUser })
+      return renderFriend({ item: item as FollowUser })
+    },
+    [activeTab, renderSuggested, renderFollowing, renderFriend],
+  )
+
+  const keyExtractor = useCallback((item: SuggestedUser | FollowUser) => item.id, [])
+
+  const onEndReached = useCallback(() => {
+    if (activeTab !== 'Suggested') loadMoreFollowing()
+  }, [activeTab, loadMoreFollowing])
 
   const isActiveLoading =
     activeTab === 'Suggested' ? suggestLoading : followingLoading
+
+  const listEmpty = useMemo(
+    () =>
+      isActiveLoading ? (
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator color={theme.brand.primary} />
+        </View>
+      ) : (
+        <EmptyState tab={activeTab} />
+      ),
+    [isActiveLoading, activeTab, theme.brand.primary],
+  )
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]} edges={['top']}>
@@ -625,21 +663,13 @@ export default function FindPeopleScreen() {
       {/* ── List ── */}
       <FlatList
         data={isActiveLoading ? [] : (activeData as never[])}
-        keyExtractor={(item: never) => (item as { id: string }).id}
+        keyExtractor={keyExtractor as never}
         renderItem={activeRender as never}
-        onEndReached={activeTab !== 'Suggested' ? loadMoreFollowing : undefined}
+        onEndReached={onEndReached}
         onEndReachedThreshold={0.3}
         contentContainerStyle={[styles.list, { paddingBottom: 40 + bottom }]}
         showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          isActiveLoading ? (
-            <View style={styles.loadingWrap}>
-              <ActivityIndicator color={theme.brand.primary} />
-            </View>
-          ) : (
-            <EmptyState tab={activeTab} />
-          )
-        }
+        ListEmptyComponent={listEmpty}
       />
     </SafeAreaView>
   )

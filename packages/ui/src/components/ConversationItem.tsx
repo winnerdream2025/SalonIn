@@ -1,4 +1,4 @@
-import React, { useRef } from 'react'
+import React, { memo, useRef } from 'react'
 import {
   Animated,
   Image,
@@ -73,7 +73,7 @@ const ACTION_WIDTH = 72  // width of each swipe action button
 const REVEAL_THRESHOLD = 40  // px dragged before we snap open
 const SNAP_OPEN = ACTION_WIDTH * 2  // total reveal distance
 
-export function ConversationItem({
+function ConversationItemImpl({
   conversation,
   onPress,
   onLongPress,
@@ -259,6 +259,8 @@ export function ConversationItem({
     </View>
   )
 }
+
+export const ConversationItem = memo(ConversationItemImpl)
 
 export function ConversationItemSkeleton() {
   return (

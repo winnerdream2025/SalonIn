@@ -19,6 +19,7 @@ import { useChatRequests } from '../../hooks/useChatRequests'
 import { useNotificationCenter } from '../../hooks/useNotificationCenter'
 import { StoriesBar } from '../../components/StoriesBar'
 import { useStories } from '../../contexts/StoriesContext'
+import type { UserStoryState } from '../../contexts/StoriesContext'
 
 const SKELETON_COUNT = 6
 
@@ -42,7 +43,7 @@ interface NotifAggregator {
 
 // ─── Pill Tab Bar ─────────────────────────────────────────────────────────────
 
-function PillTabBar({
+const PillTabBar = React.memo(function PillTabBar({
   activeTab,
   onSelect,
   mainCount,
@@ -118,7 +119,7 @@ function PillTabBar({
       </TouchableOpacity>
     </View>
   )
-}
+})
 
 // ─── Notification Aggregator Row ──────────────────────────────────────────────
 
@@ -147,6 +148,46 @@ const NotifAggRow = React.memo(function NotifAggRow({ item }: { item: NotifAggre
         </View>
       )}
     </TouchableOpacity>
+  )
+})
+
+const Separator = React.memo(function Separator() {
+  const { theme } = useTheme()
+  return <View style={[styles.separator, { backgroundColor: theme.border.subtle }]} />
+})
+
+// ─── Conversation row (memoized) ─────────────────────────────────────────────
+
+const ConversationRow = React.memo(function ConversationRow({
+  item,
+  storyMap,
+  onPress,
+  onLongPress,
+  onArchive,
+  onDelete,
+  onStoryPress,
+}: {
+  item: ConversationPreview
+  storyMap: Map<string, UserStoryState>
+  onPress: (conv: ConversationPreview) => void
+  onLongPress: (conv: ConversationPreview) => void
+  onArchive: (conv: ConversationPreview) => void
+  onDelete: (conv: ConversationPreview) => void
+  onStoryPress: (userId: string) => void
+}) {
+  const uid = item.otherParticipant.userId
+  const ss = storyMap.get(uid)
+  const storyState = ss?.hasStory ? (ss.hasUnseen ? 'unseen' : 'seen') : 'none'
+  return (
+    <ConversationItem
+      conversation={item}
+      onPress={() => onPress(item)}
+      onLongPress={() => onLongPress(item)}
+      onArchive={() => onArchive(item)}
+      onDelete={() => onDelete(item)}
+      storyState={storyState as 'unseen' | 'seen' | 'none'}
+      onStoryPress={ss?.hasStory ? () => onStoryPress(uid) : undefined}
+    />
   )
 })
 
@@ -295,6 +336,88 @@ export default function ConversationsListScreen() {
     [pinConversation, archiveConversation, muteConversation, deleteConversation],
   )
 
+  const handleArchive = useCallback(
+    (conv: ConversationPreview) => void archiveConversation(conv.id, !conv.isArchived),
+    [archiveConversation],
+  )
+
+  const handleDelete = useCallback((conv: ConversationPreview) => {
+    Alert.alert('Delete conversation?', 'This will remove it from your inbox.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => void deleteConversation(conv.id) },
+    ])
+  }, [deleteConversation])
+
+  const handleStoryPress = useCallback((userId: string) => openViewerForUser(userId), [openViewerForUser])
+
+  const renderItem = useCallback(
+    ({ item }: { item: ConversationPreview }) => (
+      <ConversationRow
+        item={item}
+        storyMap={storyMap}
+        onPress={handlePress}
+        onLongPress={showActions}
+        onArchive={handleArchive}
+        onDelete={handleDelete}
+        onStoryPress={handleStoryPress}
+      />
+    ),
+    [storyMap, handlePress, showActions, handleArchive, handleDelete, handleStoryPress],
+  )
+
+  const convKeyExtractor = useCallback((item: ConversationPreview) => item.id, [])
+
+  const listEmpty = useMemo(
+    () =>
+      isLoading ? (
+        <>
+          {Array.from({ length: SKELETON_COUNT }).map((_, i) => (
+            <ConversationItemSkeleton key={i} />
+          ))}
+        </>
+      ) : error != null ? (
+        <View style={styles.emptyWrap}>
+          <View style={[styles.emptyIconBox, { backgroundColor: theme.bg.elevated }]}>
+            <Ionicons name="wifi-outline" size={26} color={theme.text.tertiary} />
+          </View>
+          <Text style={[styles.emptyTitle, { color: theme.text.primary }]}>Couldn't load messages</Text>
+          <Text style={[styles.emptySub, { color: theme.text.secondary }]}>Check your connection and try again</Text>
+          <TouchableOpacity
+            onPress={() => void refresh()}
+            style={[styles.retryBtn, { backgroundColor: theme.brand.primary }]}
+            activeOpacity={0.8}
+          >
+            <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View style={styles.emptyWrap}>
+          <View style={[styles.emptyIconBox, { backgroundColor: 'rgba(216,90,48,0.08)' }]}>
+            <Ionicons name="chatbubbles-outline" size={28} color={theme.brand.primary} />
+          </View>
+          <Text style={[styles.emptyTitle, { color: theme.text.primary }]}>
+            {activeTab === 'Starred'
+              ? 'No starred chats'
+              : activeTab === 'Unread'
+                ? "You're all caught up"
+                : search.length > 0
+                  ? 'No matches found'
+                  : 'No conversations yet'}
+          </Text>
+          <Text style={[styles.emptySub, { color: theme.text.secondary }]}>
+            {activeTab === 'Starred'
+              ? 'Pin conversations to star them'
+              : activeTab === 'Unread'
+                ? 'All messages are read'
+                : search.length > 0
+                  ? 'Try a different search term'
+                  : 'Visit a worker or salon profile\nto start a conversation'}
+          </Text>
+        </View>
+      ),
+    [isLoading, error, activeTab, search, theme, refresh],
+  )
+
   // ── Render ────────────────────────────────────────────────────────────────
   const ListHeader = useMemo(
     () => (
@@ -381,83 +504,14 @@ export default function ConversationsListScreen() {
       <FlatList
         ListHeaderComponent={ListHeader}
         data={isLoading ? [] : filtered}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => {
-          const uid = item.otherParticipant.userId
-          const ss = storyMap.get(uid)
-          const storyState = ss?.hasStory ? (ss.hasUnseen ? 'unseen' : 'seen') : 'none'
-          return (
-            <ConversationItem
-              conversation={item}
-              onPress={() => handlePress(item)}
-              onLongPress={() => showActions(item)}
-              onArchive={() => void archiveConversation(item.id, !item.isArchived)}
-              onDelete={() =>
-                Alert.alert('Delete conversation?', 'This will remove it from your inbox.', [
-                  { text: 'Cancel', style: 'cancel' },
-                  { text: 'Delete', style: 'destructive', onPress: () => void deleteConversation(item.id) },
-                ])
-              }
-              storyState={storyState as 'unseen' | 'seen' | 'none'}
-              onStoryPress={ss?.hasStory ? () => openViewerForUser(uid) : undefined}
-            />
-          )
-        }}
-        ListEmptyComponent={
-          isLoading ? (
-            <>
-              {Array.from({ length: SKELETON_COUNT }).map((_, i) => (
-                <ConversationItemSkeleton key={i} />
-              ))}
-            </>
-          ) : error != null ? (
-            <View style={styles.emptyWrap}>
-              <View style={[styles.emptyIconBox, { backgroundColor: theme.bg.elevated }]}>
-                <Ionicons name="wifi-outline" size={26} color={theme.text.tertiary} />
-              </View>
-              <Text style={[styles.emptyTitle, { color: theme.text.primary }]}>Couldn't load messages</Text>
-              <Text style={[styles.emptySub, { color: theme.text.secondary }]}>Check your connection and try again</Text>
-              <TouchableOpacity
-                onPress={() => void refresh()}
-                style={[styles.retryBtn, { backgroundColor: theme.brand.primary }]}
-                activeOpacity={0.8}
-              >
-                <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }}>Retry</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={styles.emptyWrap}>
-              <View style={[styles.emptyIconBox, { backgroundColor: 'rgba(216,90,48,0.08)' }]}>
-                <Ionicons name="chatbubbles-outline" size={28} color={theme.brand.primary} />
-              </View>
-              <Text style={[styles.emptyTitle, { color: theme.text.primary }]}>
-                {activeTab === 'Starred'
-                  ? 'No starred chats'
-                  : activeTab === 'Unread'
-                    ? "You're all caught up"
-                    : search.length > 0
-                      ? 'No matches found'
-                      : 'No conversations yet'}
-              </Text>
-              <Text style={[styles.emptySub, { color: theme.text.secondary }]}>
-                {activeTab === 'Starred'
-                  ? 'Pin conversations to star them'
-                  : activeTab === 'Unread'
-                    ? 'All messages are read'
-                    : search.length > 0
-                      ? 'Try a different search term'
-                      : 'Visit a worker or salon profile\nto start a conversation'}
-              </Text>
-            </View>
-          )
-        }
+        keyExtractor={convKeyExtractor}
+        renderItem={renderItem}
         refreshing={isRefreshing}
         onRefresh={() => void refresh()}
         contentContainerStyle={[styles.list, { paddingBottom: 52 + bottom + 20 }]}
         showsVerticalScrollIndicator={false}
-        ItemSeparatorComponent={() => (
-          <View style={[styles.separator, { backgroundColor: theme.border.subtle }]} />
-        )}
+        ItemSeparatorComponent={Separator}
+        ListEmptyComponent={listEmpty}
       />
     </SafeAreaView>
   )

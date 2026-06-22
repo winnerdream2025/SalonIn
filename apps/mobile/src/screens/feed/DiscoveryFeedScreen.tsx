@@ -622,15 +622,10 @@ const styles = StyleSheet.create({
 
 // ── Suggested People (shared card design) ────────────────────────────────────
 
-const AVATAR_D = 72
-const RING_W = 3
+const AVATAR_D = 48
+const RING_W = 2
 const RING_GAP = 2
 const RING_D = AVATAR_D + (RING_W + RING_GAP) * 2
-
-function formatCount(n: number): string {
-  if (n >= 1000) return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k`
-  return String(n)
-}
 
 interface SuggestedCardProps {
   user: SuggestedUser
@@ -673,7 +668,7 @@ function SuggestedCard({ user, theme, isFollowed, storyState, onFollow, onMessag
       {/* Verified badge */}
       {user.isVerified && (
         <View style={suggestStyles.verifiedBadge}>
-          <Ionicons name="checkmark-circle" size={18} color="#1877F2" />
+          <Ionicons name="checkmark-circle" size={12} color="#1877F2" />
         </View>
       )}
       {/* Mutual badge */}
@@ -699,29 +694,6 @@ function SuggestedCard({ user, theme, isFollowed, storyState, onFollow, onMessag
       <Text style={[suggestStyles.specialty, { color: theme.text.tertiary }]} numberOfLines={1}>
         {specialty}
       </Text>
-
-      {/* Stats row */}
-      <View style={suggestStyles.statsRow}>
-        <View style={suggestStyles.statItem}>
-          <Ionicons name="image-outline" size={11} color={theme.text.tertiary} />
-          <Text style={[suggestStyles.statVal, { color: theme.text.secondary }]}>
-            {formatCount(user.listingsCount)}
-          </Text>
-        </View>
-        <View style={suggestStyles.statDot} />
-        <View style={suggestStyles.statItem}>
-          <Ionicons name="star" size={11} color="#EF9F27" />
-          <Text style={[suggestStyles.statVal, { color: theme.text.secondary }]}>
-            {user.rating > 0 ? user.rating.toFixed(1) : '—'}
-          </Text>
-        </View>
-      </View>
-      <View style={suggestStyles.followersRow}>
-        <Ionicons name="people-outline" size={11} color={theme.text.tertiary} />
-        <Text style={[suggestStyles.followersText, { color: theme.text.secondary }]}>
-          {formatCount(user.followersCount)} followers
-        </Text>
-      </View>
 
       {/* Action buttons */}
       <View style={suggestStyles.actions}>
@@ -901,12 +873,12 @@ const suggestStyles = StyleSheet.create({
   row: { paddingHorizontal: 12, gap: 10, paddingBottom: 8 },
 
   card: {
-    width: 126,
+    width: 100,
     borderRadius: 18,
     borderWidth: StyleSheet.hairlineWidth,
-    padding: 12,
+    padding: 8,
     alignItems: 'center',
-    gap: 5,
+    gap: 4,
   },
 
   // Avatar with ring
@@ -916,16 +888,16 @@ const suggestStyles = StyleSheet.create({
   avatarWithRing: { marginTop: 0 },
   avatarImg: { width: AVATAR_D, height: AVATAR_D },
   avatarFallback: { width: AVATAR_D, height: AVATAR_D, borderRadius: AVATAR_D / 2, alignItems: 'center', justifyContent: 'center' },
-  avatarInitial: { fontSize: 26, fontWeight: '800' },
+  avatarInitial: { fontSize: 22, fontWeight: '800' },
 
   verifiedBadge: {
     position: 'absolute',
     top: RING_W,
     right: RING_W,
     backgroundColor: '#fff',
-    borderRadius: 10,
-    width: 20,
-    height: 20,
+    borderRadius: 8,
+    width: 16,
+    height: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -933,9 +905,9 @@ const suggestStyles = StyleSheet.create({
     position: 'absolute',
     bottom: 2,
     right: 2,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -943,30 +915,22 @@ const suggestStyles = StyleSheet.create({
   name: { fontSize: 13, fontWeight: '800', textAlign: 'center', lineHeight: 17, letterSpacing: -0.2 },
   specialty: { fontSize: 11, textAlign: 'center', marginTop: -2 },
 
-  statsRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
-  statItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  statVal: { fontSize: 11, fontWeight: '600' },
-  statDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: '#8B9BB4' },
-
-  followersRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: -2 },
-  followersText: { fontSize: 10 },
-
   actions: { flexDirection: 'row', gap: 6, marginTop: 4, width: '100%' },
   msgBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
   followBtn: {
     flex: 1,
-    paddingVertical: 7,
+    paddingVertical: 6,
     borderRadius: 99,
     alignItems: 'center',
   },
-  followBtnText: { fontSize: 12, fontWeight: '700' },
+  followBtnText: { fontSize: 11, fontWeight: '700' },
 
   skeletonAvatar: { width: RING_D, height: RING_D, borderRadius: RING_D / 2 },
   skeletonLine: { height: 11, borderRadius: 6, marginTop: 2 },
