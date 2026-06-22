@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react'
 import {
   Alert,
   FlatList,
+  ScrollView,
   StyleSheet,
   TextInput,
   TouchableOpacity,
@@ -15,17 +16,146 @@ import { useTheme, ConversationItem, ConversationItemSkeleton, Text } from '@sal
 import type { ConversationPreview } from '@salonin/types'
 import { useConversations } from '../../hooks/useConversations'
 import { useChatRequests } from '../../hooks/useChatRequests'
+import { useNotificationCenter } from '../../hooks/useNotificationCenter'
 import { StoriesBar } from '../../components/StoriesBar'
 import { useStories } from '../../contexts/StoriesContext'
 
 const SKELETON_COUNT = 6
-const TABS = ['All', 'Unread', 'Archived'] as const
-type InboxTab = (typeof TABS)[number]
+
+// ─── Tabs ────────────────────────────────────────────────────────────────────
+
+type InboxTab = 'Main' | 'Requests' | 'Unread' | 'Starred'
+const TABS: InboxTab[] = ['Main', 'Requests', 'Unread', 'Starred']
+
+// ─── Notification row types shown at top of Main tab ─────────────────────────
+
+interface NotifAggregator {
+  id: string
+  title: string
+  subtitle: string
+  iconBg: string
+  iconName: keyof typeof Ionicons.glyphMap
+  iconColor: string
+  badgeCount: number
+  onPress: () => void
+}
+
+// ─── Pill Tab Bar ─────────────────────────────────────────────────────────────
+
+function PillTabBar({
+  activeTab,
+  onSelect,
+  mainCount,
+  unreadCount,
+  requestCount,
+}: {
+  activeTab: InboxTab
+  onSelect: (t: InboxTab) => void
+  mainCount: number
+  unreadCount: number
+  requestCount: number
+}) {
+  const { theme } = useTheme()
+
+  const label = (tab: InboxTab): string => {
+    switch (tab) {
+      case 'Main':
+        return mainCount > 0 ? `Main ${mainCount > 99 ? '99+' : mainCount}` : 'Main'
+      case 'Requests':
+        return requestCount > 0 ? `Requests ${requestCount}` : 'Requests'
+      case 'Unread':
+        return unreadCount > 0 ? `Unread ${unreadCount > 99 ? '99+' : unreadCount}` : 'Unread'
+      case 'Starred':
+        return 'Starred'
+    }
+  }
+
+  return (
+    <View style={styles.pillTabRow}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.pillTabScroll}
+      >
+        {TABS.map((tab) => {
+          const active = tab === activeTab
+          return (
+            <TouchableOpacity
+              key={tab}
+              onPress={() => onSelect(tab)}
+              activeOpacity={0.75}
+              style={[
+                styles.pillTab,
+                active
+                  ? { backgroundColor: theme.brand.primary }
+                  : { backgroundColor: theme.bg.elevated, borderColor: theme.border.default, borderWidth: 1 },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.pillTabText,
+                  { color: active ? '#fff' : theme.text.secondary },
+                ]}
+              >
+                {label(tab)}
+              </Text>
+              {tab === 'Requests' && (
+                <Ionicons
+                  name="chevron-forward"
+                  size={12}
+                  color={active ? '#fff' : theme.text.tertiary}
+                  style={{ marginLeft: 2 }}
+                />
+              )}
+            </TouchableOpacity>
+          )
+        })}
+      </ScrollView>
+
+      {/* Filter icon */}
+      <TouchableOpacity style={[styles.filterBtn, { backgroundColor: theme.bg.elevated }]} activeOpacity={0.8}>
+        <Ionicons name="options-outline" size={18} color={theme.text.secondary} />
+      </TouchableOpacity>
+    </View>
+  )
+}
+
+// ─── Notification Aggregator Row ──────────────────────────────────────────────
+
+const NotifAggRow = React.memo(function NotifAggRow({ item }: { item: NotifAggregator }) {
+  const { theme } = useTheme()
+  return (
+    <TouchableOpacity
+      style={[styles.notifRow, { backgroundColor: theme.bg.surface }]}
+      onPress={item.onPress}
+      activeOpacity={0.8}
+    >
+      <View style={[styles.notifIconWrap, { backgroundColor: item.iconBg }]}>
+        <Ionicons name={item.iconName} size={22} color={item.iconColor} />
+      </View>
+      <View style={styles.notifInfo}>
+        <Text style={[styles.notifTitle, { color: theme.text.primary }]}>{item.title}</Text>
+        <Text style={[styles.notifSub, { color: theme.text.secondary }]} numberOfLines={1}>
+          {item.subtitle}
+        </Text>
+      </View>
+      {item.badgeCount > 0 && (
+        <View style={[styles.notifBadge, { backgroundColor: '#E24B4A' }]}>
+          <Text style={styles.notifBadgeText}>
+            {item.badgeCount > 99 ? '99+' : item.badgeCount}
+          </Text>
+        </View>
+      )}
+    </TouchableOpacity>
+  )
+})
+
+// ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function ConversationsListScreen() {
   const { bottom } = useSafeAreaInsets()
   const { theme } = useTheme()
-  const [activeTab, setActiveTab] = useState<InboxTab>('All')
+  const [activeTab, setActiveTab] = useState<InboxTab>('Main')
   const [search, setSearch] = useState('')
   const [isSearching, setIsSearching] = useState(false)
   const {
@@ -40,15 +170,87 @@ export default function ConversationsListScreen() {
     deleteConversation,
   } = useConversations(search.trim())
   const { pendingCount } = useChatRequests()
-  // Stories context — viewer/creator modals live in StoriesProvider at app root
+  const { unreadCount: notifUnread, notifications } = useNotificationCenter()
   const { openViewerForUser, storyMap } = useStories()
 
+  // ── Derived counts ────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
-    if (activeTab === 'All') return conversations.filter((c) => !c.isArchived)
-    if (activeTab === 'Unread') return conversations.filter((c) => !c.isArchived && c.unreadCount > 0)
-    return conversations.filter((c) => c.isArchived)
+    const base = conversations.filter((c) => !c.isArchived)
+    if (activeTab === 'Main') return base
+    if (activeTab === 'Unread') return base.filter((c) => c.unreadCount > 0)
+    if (activeTab === 'Starred') return base.filter((c) => c.isPinned)
+    return [] // Requests handled separately
   }, [conversations, activeTab])
 
+  const mainCount = useMemo(
+    () => conversations.filter((c) => !c.isArchived).length + notifUnread,
+    [conversations, notifUnread],
+  )
+  const unreadConvCount = useMemo(
+    () => conversations.filter((c) => !c.isArchived && c.unreadCount > 0).length,
+    [conversations],
+  )
+
+  // ── Notification aggregators ───────────────────────────────────────────────
+  const followerNotifs = useMemo(
+    () => notifications.filter((n) => n.type === 'NEW_FOLLOWER' || n.type === 'FOLLOW'),
+    [notifications],
+  )
+  const activityNotifs = useMemo(
+    () => notifications.filter((n) => ['REVIEW_RECEIVED', 'NEW_JOB_MATCH', 'APPLICATION_ACCEPTED', 'APPLICATION_DECLINED'].includes(n.type)),
+    [notifications],
+  )
+  const systemNotifs = useMemo(
+    () => notifications.filter((n) => ['SYSTEM', 'NEW_APPLICATION'].includes(n.type)),
+    [notifications],
+  )
+
+  const aggregators: NotifAggregator[] = useMemo(
+    () => [
+      {
+        id: 'followers',
+        title: 'New followers',
+        subtitle:
+          followerNotifs.length > 0
+            ? followerNotifs[0]!.body
+            : 'No new followers yet',
+        iconBg: '#378ADD',
+        iconName: 'people',
+        iconColor: '#fff',
+        badgeCount: followerNotifs.filter((n) => !n.isRead).length,
+        onPress: () => router.push('/(tabs)/notifications' as Parameters<typeof router.push>[0]),
+      },
+      {
+        id: 'activity',
+        title: 'Activity',
+        subtitle:
+          activityNotifs.length > 0
+            ? activityNotifs[0]!.body
+            : 'Reviews, job matches & more',
+        iconBg: '#E24B4A',
+        iconName: 'heart',
+        iconColor: '#fff',
+        badgeCount: activityNotifs.filter((n) => !n.isRead).length,
+        onPress: () => router.push('/(tabs)/notifications' as Parameters<typeof router.push>[0]),
+      },
+      {
+        id: 'system',
+        title: 'System notifications',
+        subtitle:
+          systemNotifs.length > 0
+            ? systemNotifs[0]!.body
+            : 'App updates and alerts',
+        iconBg: '#1C1C1E',
+        iconName: 'notifications',
+        iconColor: '#fff',
+        badgeCount: systemNotifs.filter((n) => !n.isRead).length,
+        onPress: () => router.push('/(tabs)/notifications' as Parameters<typeof router.push>[0]),
+      },
+    ],
+    [followerNotifs, activityNotifs, systemNotifs],
+  )
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
   const handlePress = useCallback((conv: ConversationPreview) => {
     router.push({
       pathname: '/chat/[id]',
@@ -82,11 +284,7 @@ export default function ConversationsListScreen() {
           onPress: () => {
             Alert.alert('Delete conversation?', 'This will remove it from your inbox.', [
               { text: 'Cancel', style: 'cancel' },
-              {
-                text: 'Delete',
-                style: 'destructive',
-                onPress: () => void deleteConversation(conv.id),
-              },
+              { text: 'Delete', style: 'destructive', onPress: () => void deleteConversation(conv.id) },
             ])
           },
         },
@@ -97,17 +295,32 @@ export default function ConversationsListScreen() {
     [pinConversation, archiveConversation, muteConversation, deleteConversation],
   )
 
+  // ── Render ────────────────────────────────────────────────────────────────
+  const ListHeader = useMemo(
+    () => (
+      <>
+        <StoriesBar />
+        {activeTab === 'Main' && (
+          <View style={[styles.aggregatorSection, { borderBottomColor: theme.border.subtle }]}>
+            {aggregators.map((agg) => (
+              <NotifAggRow key={agg.id} item={agg} />
+            ))}
+            <View style={[styles.aggDivider, { backgroundColor: theme.border.subtle }]} />
+          </View>
+        )}
+      </>
+    ),
+    [activeTab, aggregators, theme],
+  )
+
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]} edges={['top']}>
-      {/* Header */}
+      {/* ── Header ── */}
       <View style={styles.header}>
-        <View style={styles.titleWrap}>
-          <Text style={[styles.titleSerif, { color: theme.text.primary }]} numberOfLines={1}>Inbox</Text>
-          {!isLoading && filtered.length > 0 && activeTab === 'All' && (
-            <Text style={[styles.headerSub, { color: theme.text.tertiary }]}>
-              {filtered.length} conversation{filtered.length !== 1 ? 's' : ''}
-            </Text>
-          )}
+        <View style={styles.titleRow}>
+          <Text style={[styles.titleText, { color: theme.text.primary }]}>Inbox</Text>
+          <View style={[styles.onlineDot, { backgroundColor: '#2ECC71', borderColor: theme.bg.base }]} />
+          <Ionicons name="chevron-down" size={14} color={theme.text.tertiary} style={{ marginLeft: 2 }} />
         </View>
 
         <View style={styles.headerActions}>
@@ -116,42 +329,25 @@ export default function ConversationsListScreen() {
             style={[styles.iconBtn, { backgroundColor: theme.bg.elevated }]}
             activeOpacity={0.8}
           >
-            <Ionicons name="search" size={18} color={theme.text.secondary} />
+            <Ionicons name={isSearching ? 'close' : 'search'} size={18} color={theme.text.secondary} />
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() => router.push('/chat-requests' as Parameters<typeof router.push>[0])}
-            style={[
-              styles.requestsBtn,
-              pendingCount > 0
-                ? { backgroundColor: '#D85A30' }
-                : { backgroundColor: theme.bg.elevated, borderColor: theme.border.default, borderWidth: 1 },
-            ]}
+            style={[styles.iconBtn, { backgroundColor: theme.bg.elevated }]}
             activeOpacity={0.8}
           >
-            <Ionicons
-              name={pendingCount > 0 ? 'people' : 'people-outline'}
-              size={15}
-              color={pendingCount > 0 ? '#fff' : theme.text.secondary}
-            />
-            <Text style={[styles.requestsBtnText, { color: pendingCount > 0 ? '#fff' : theme.text.secondary }]}>
-              Requests
-            </Text>
-            {pendingCount > 0 && (
-              <View style={styles.requestsBadge}>
-                <Text style={styles.requestsBadgeText}>{pendingCount}</Text>
-              </View>
-            )}
+            <Ionicons name="ellipsis-horizontal" size={18} color={theme.text.secondary} />
           </TouchableOpacity>
         </View>
       </View>
 
+      {/* ── Search bar ── */}
       {isSearching && (
-        <View style={[styles.searchWrap, { borderBottomColor: theme.border.subtle }]}>
-          <Ionicons name="search" size={16} color={theme.text.tertiary} />
+        <View style={[styles.searchWrap, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}>
+          <Ionicons name="search" size={15} color={theme.text.tertiary} />
           <TextInput
             style={[styles.searchInput, { color: theme.text.primary }]}
-            placeholder="Search by name or message"
+            placeholder="Search conversations…"
             placeholderTextColor={theme.text.tertiary}
             value={search}
             onChangeText={setSearch}
@@ -160,54 +356,30 @@ export default function ConversationsListScreen() {
           />
           {search.length > 0 && (
             <TouchableOpacity onPress={() => setSearch('')} activeOpacity={0.7}>
-              <Ionicons name="close-circle" size={18} color={theme.text.tertiary} />
+              <Ionicons name="close-circle" size={17} color={theme.text.tertiary} />
             </TouchableOpacity>
           )}
         </View>
       )}
 
-      {/* Tabs */}
-      <View style={[styles.tabBar, { borderBottomColor: theme.border.subtle }]}>
-        {TABS.map((tab) => {
-          const isActive = tab === activeTab
-          const count =
-            tab === 'All'
-              ? conversations.filter((c) => !c.isArchived).length
-              : tab === 'Unread'
-                ? conversations.filter((c) => !c.isArchived && c.unreadCount > 0).length
-                : conversations.filter((c) => c.isArchived).length
-          return (
-            <TouchableOpacity
-              key={tab}
-              onPress={() => setActiveTab(tab)}
-              style={styles.tab}
-              activeOpacity={0.7}
-            >
-              <Text
-                style={[
-                  styles.tabText,
-                  { color: isActive ? theme.text.primary : theme.text.secondary },
-                ]}
-              >
-                {tab}
-              </Text>
-              {count > 0 && (
-                <View style={[styles.tabBadge, { backgroundColor: theme.bg.elevated }]}>
-                  <Text style={[styles.tabBadgeText, { color: theme.text.secondary }]}>{count}</Text>
-                </View>
-              )}
-              {isActive && (
-                <View style={[styles.tabIndicator, { backgroundColor: theme.brand.primary }]} />
-              )}
-            </TouchableOpacity>
-          )
-        })}
-      </View>
+      {/* ── Pill tabs ── */}
+      <PillTabBar
+        activeTab={activeTab}
+        onSelect={(t) => {
+          if (t === 'Requests') {
+            router.push('/chat-requests' as Parameters<typeof router.push>[0])
+          } else {
+            setActiveTab(t)
+          }
+        }}
+        mainCount={mainCount}
+        unreadCount={unreadConvCount}
+        requestCount={pendingCount}
+      />
 
-      <View style={[styles.divider, { backgroundColor: theme.border.subtle }]} />
-
+      {/* ── List ── */}
       <FlatList
-        ListHeaderComponent={<StoriesBar />}
+        ListHeaderComponent={ListHeader}
         data={isLoading ? [] : filtered}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => {
@@ -219,6 +391,13 @@ export default function ConversationsListScreen() {
               conversation={item}
               onPress={() => handlePress(item)}
               onLongPress={() => showActions(item)}
+              onArchive={() => void archiveConversation(item.id, !item.isArchived)}
+              onDelete={() =>
+                Alert.alert('Delete conversation?', 'This will remove it from your inbox.', [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Delete', style: 'destructive', onPress: () => void deleteConversation(item.id) },
+                ])
+              }
               storyState={storyState as 'unseen' | 'seen' | 'none'}
               onStoryPress={ss?.hasStory ? () => openViewerForUser(uid) : undefined}
             />
@@ -252,19 +431,19 @@ export default function ConversationsListScreen() {
                 <Ionicons name="chatbubbles-outline" size={28} color={theme.brand.primary} />
               </View>
               <Text style={[styles.emptyTitle, { color: theme.text.primary }]}>
-                {activeTab === 'Archived'
-                  ? 'No archived chats'
+                {activeTab === 'Starred'
+                  ? 'No starred chats'
                   : activeTab === 'Unread'
-                    ? 'No unread messages'
+                    ? "You're all caught up"
                     : search.length > 0
                       ? 'No matches found'
                       : 'No conversations yet'}
               </Text>
               <Text style={[styles.emptySub, { color: theme.text.secondary }]}>
-                {activeTab === 'Archived'
-                  ? 'Archive conversations to access them later'
+                {activeTab === 'Starred'
+                  ? 'Pin conversations to star them'
                   : activeTab === 'Unread'
-                    ? 'You’re all caught up'
+                    ? 'All messages are read'
                     : search.length > 0
                       ? 'Try a different search term'
                       : 'Visit a worker or salon profile\nto start a conversation'}
@@ -287,28 +466,29 @@ export default function ConversationsListScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
 
+  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 16,
+    paddingTop: 12,
+    paddingBottom: 10,
   },
-  titleWrap: {
-    flexShrink: 1,
-    minWidth: 0,
-    marginRight: 8,
-  },
-  titleSerif: {
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  titleText: {
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '900',
     letterSpacing: -0.5,
-    lineHeight: 36,
   },
-  headerSub: { fontSize: 13, marginTop: 2 },
-
+  onlineDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    marginBottom: 1,
+  },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   iconBtn: {
     width: 36,
@@ -318,78 +498,88 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  // Search
   searchWrap: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 15,
-    paddingVertical: 6,
-  },
-
-  tabBar: {
-    flexDirection: 'row',
-    paddingHorizontal: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  tab: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 12,
-    position: 'relative',
-  },
-  tabText: { fontSize: 14, fontWeight: '600' },
-  tabBadge: {
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    paddingHorizontal: 5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tabBadgeText: { fontSize: 10, fontWeight: '700' },
-  tabIndicator: {
-    position: 'absolute',
-    bottom: 0,
-    left: 16,
-    right: 16,
-    height: 2,
-    borderRadius: 1,
-  },
-
-  requestsBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 13,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    paddingHorizontal: 14,
     paddingVertical: 9,
-    borderRadius: 22,
-    flexShrink: 0,  // never compress the requests button
+    borderRadius: 12,
+    borderWidth: 1,
   },
-  requestsBtnText: { fontSize: 13, fontWeight: '600' },
-  requestsBadge: {
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: 'rgba(255,255,255,0.3)',
+  searchInput: { flex: 1, fontSize: 14 },
+
+  // Pill tabs
+  pillTabRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingRight: 12,
+    marginBottom: 4,
+  },
+  pillTabScroll: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    gap: 8,
+    flexDirection: 'row',
+  },
+  pillTab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+  },
+  pillTabText: { fontSize: 13, fontWeight: '700' },
+  filterBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 4,
+    flexShrink: 0,
   },
-  requestsBadgeText: { fontSize: 10, fontWeight: '800', color: '#fff' },
 
-  divider: { height: StyleSheet.hairlineWidth },
+  // Notification aggregator rows
+  aggregatorSection: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  aggDivider: { height: StyleSheet.hairlineWidth },
+  notifRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    gap: 14,
+  },
+  notifIconWrap: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  notifInfo: { flex: 1, minWidth: 0, gap: 3 },
+  notifTitle: { fontSize: 15, fontWeight: '700' },
+  notifSub: { fontSize: 13 },
+  notifBadge: {
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notifBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+
+  // List
   list: { flexGrow: 1 },
-  separator: { height: StyleSheet.hairlineWidth, marginLeft: 72 },
+  separator: { height: StyleSheet.hairlineWidth, marginLeft: 78 },
 
+  // Empty
   emptyWrap: {
     alignItems: 'center',
     paddingTop: 80,
@@ -404,9 +594,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 6,
   },
-  emptyEmoji: { fontSize: 30 },
   emptyTitle: { fontSize: 18, fontWeight: '700', textAlign: 'center' },
-  emptySub: { fontSize: 14, textAlign: 'center', lineHeight: 21, color: 'gray' },
+  emptySub: { fontSize: 14, textAlign: 'center', lineHeight: 21 },
   retryBtn: {
     marginTop: 6,
     paddingHorizontal: 24,

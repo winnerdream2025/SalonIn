@@ -27,6 +27,7 @@ import { useStories } from '../../contexts/StoriesContext'
 import { SPECIALTY_CATEGORIES } from '@salonin/config'
 import { JobFilterModal, activeFilterCount, EMPTY_JOB_FILTERS } from '../../components/JobFilterModal'
 import type { JobFilters } from '../../components/JobFilterModal'
+import { SuggestedSalons } from './DiscoveryFeedScreen'
 
 const LISTING_TYPES = [
   { value: undefined, label: 'All' },
@@ -369,6 +370,7 @@ export default function JobFeedScreen() {
           ListHeaderComponent={
             <View>
               {PageHeader}
+              <SuggestedSalons theme={theme} />
               {SearchAndFilters}
             </View>
           }

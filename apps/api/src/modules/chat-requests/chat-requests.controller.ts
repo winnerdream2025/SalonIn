@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, UseGuards } from '@nestjs/common'
+import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common'
 import type { ChatRequestPreview } from '@salonin/types'
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
 import { CurrentUser } from '../../common/decorators/current-user.decorator'
@@ -27,7 +27,7 @@ export class ChatRequestsController {
 
   @Get('conversation/:convId')
   getForConversation(
-    @Param('convId', ParseUUIDPipe) convId: string,
+    @Param('convId') convId: string,
     @CurrentUser() user: User,
   ): Promise<ChatRequestPreview | null> {
     return this.chatRequestsService.getForConversation(convId, user.id)
@@ -35,7 +35,7 @@ export class ChatRequestsController {
 
   @Patch(':id')
   respond(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @CurrentUser() user: User,
     @Body() dto: UpdateChatRequestDto,
   ): Promise<ChatRequestPreview> {

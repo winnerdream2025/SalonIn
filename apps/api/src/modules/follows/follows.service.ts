@@ -200,18 +200,28 @@ export class FollowsService {
       .map((f) => f.followingId)
       .filter((id) => !followingIds.has(id))
 
-    // Top rated workers/salons not yet followed
+    // Top rated workers/salons not yet followed (include user stats)
     const topWorkers = await this.prisma.workerProfile.findMany({
       where: { userId: { notIn: [...followingIds] } },
       orderBy: { rating: 'desc' },
       take: 10,
-      select: { userId: true, name: true, photoUrl: true, specialties: true, city: true, state: true, isVerified: true, rating: true },
+      select: {
+        userId: true, name: true, photoUrl: true, specialties: true,
+        city: true, state: true, isVerified: true, rating: true,
+        _count: { select: { portfolioItems: true } },
+        user: { select: { followersCount: true } },
+      },
     })
     const topSalons = await this.prisma.salonProfile.findMany({
       where: { userId: { notIn: [...followingIds] } },
       orderBy: { rating: 'desc' },
       take: 5,
-      select: { userId: true, name: true, photoUrls: true, specialties: true, city: true, state: true, isVerified: true, rating: true },
+      select: {
+        userId: true, name: true, photoUrls: true, specialties: true,
+        city: true, state: true, isVerified: true, rating: true,
+        _count: { select: { jobPosts: true } },
+        user: { select: { followersCount: true } },
+      },
     })
 
     const suggestions: Array<{
@@ -225,6 +235,8 @@ export class FollowsService {
       rating: number
       type: 'worker' | 'salon'
       reason: 'mutual' | 'top_rated'
+      followersCount: number
+      listingsCount: number
     }> = []
 
     // Mutual follows first
@@ -233,23 +245,36 @@ export class FollowsService {
         where: { id: uid },
         select: {
           id: true,
-          workerProfile: { select: { name: true, photoUrl: true, specialties: true, city: true, state: true, isVerified: true, rating: true } },
-          salonProfile: { select: { name: true, photoUrls: true, specialties: true, city: true, state: true, isVerified: true, rating: true } },
+          followersCount: true,
+          workerProfile: {
+            select: {
+              name: true, photoUrl: true, specialties: true,
+              city: true, state: true, isVerified: true, rating: true,
+              _count: { select: { portfolioItems: true } },
+            },
+          },
+          salonProfile: {
+            select: {
+              name: true, photoUrls: true, specialties: true,
+              city: true, state: true, isVerified: true, rating: true,
+              _count: { select: { jobPosts: true } },
+            },
+          },
         },
       })
       if (!user) continue
       if (user.workerProfile) {
-        suggestions.push({ id: uid, name: user.workerProfile.name, photoUrl: user.workerProfile.photoUrl, specialties: user.workerProfile.specialties, city: user.workerProfile.city, state: user.workerProfile.state, isVerified: user.workerProfile.isVerified, rating: user.workerProfile.rating, type: 'worker', reason: 'mutual' })
+        suggestions.push({ id: uid, name: user.workerProfile.name, photoUrl: user.workerProfile.photoUrl, specialties: user.workerProfile.specialties, city: user.workerProfile.city, state: user.workerProfile.state, isVerified: user.workerProfile.isVerified, rating: user.workerProfile.rating, type: 'worker', reason: 'mutual', followersCount: user.followersCount, listingsCount: user.workerProfile._count.portfolioItems })
       } else if (user.salonProfile) {
-        suggestions.push({ id: uid, name: user.salonProfile.name, photoUrl: user.salonProfile.photoUrls[0] ?? null, specialties: user.salonProfile.specialties, city: user.salonProfile.city, state: user.salonProfile.state, isVerified: user.salonProfile.isVerified, rating: user.salonProfile.rating, type: 'salon', reason: 'mutual' })
+        suggestions.push({ id: uid, name: user.salonProfile.name, photoUrl: user.salonProfile.photoUrls[0] ?? null, specialties: user.salonProfile.specialties, city: user.salonProfile.city, state: user.salonProfile.state, isVerified: user.salonProfile.isVerified, rating: user.salonProfile.rating, type: 'salon', reason: 'mutual', followersCount: user.followersCount, listingsCount: user.salonProfile._count.jobPosts })
       }
     }
 
     for (const w of topWorkers) {
-      suggestions.push({ id: w.userId, name: w.name, photoUrl: w.photoUrl, specialties: w.specialties, city: w.city, state: w.state, isVerified: w.isVerified, rating: w.rating, type: 'worker', reason: 'top_rated' })
+      suggestions.push({ id: w.userId, name: w.name, photoUrl: w.photoUrl, specialties: w.specialties, city: w.city, state: w.state, isVerified: w.isVerified, rating: w.rating, type: 'worker', reason: 'top_rated', followersCount: w.user.followersCount, listingsCount: w._count.portfolioItems })
     }
     for (const s of topSalons) {
-      suggestions.push({ id: s.userId, name: s.name, photoUrl: s.photoUrls[0] ?? null, specialties: s.specialties, city: s.city, state: s.state, isVerified: s.isVerified, rating: s.rating, type: 'salon', reason: 'top_rated' })
+      suggestions.push({ id: s.userId, name: s.name, photoUrl: s.photoUrls[0] ?? null, specialties: s.specialties, city: s.city, state: s.state, isVerified: s.isVerified, rating: s.rating, type: 'salon', reason: 'top_rated', followersCount: s.user.followersCount, listingsCount: s._count.jobPosts })
     }
 
     // Deduplicate

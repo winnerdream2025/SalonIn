@@ -1,5 +1,13 @@
-import React from 'react'
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import React, { useRef } from 'react'
+import {
+  Animated,
+  Image,
+  PanResponder,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native'
 import Svg, { Path } from 'react-native-svg'
 import type { ConversationPreview } from '@salonin/types'
 import { getAvatarGradient, formatLastSeen } from '@salonin/utils'
@@ -10,6 +18,8 @@ export interface ConversationItemProps {
   conversation: ConversationPreview
   onPress: () => void
   onLongPress?: () => void
+  onArchive?: () => void
+  onDelete?: () => void
   isSelected?: boolean
   /** Story ring state for the other participant's avatar */
   storyState?: 'unseen' | 'seen' | 'none'
@@ -59,11 +69,16 @@ const RING = 2
 const GAP = 2
 const AVATAR_D = 50
 const RING_D = AVATAR_D + (RING + GAP) * 2
+const ACTION_WIDTH = 72  // width of each swipe action button
+const REVEAL_THRESHOLD = 40  // px dragged before we snap open
+const SNAP_OPEN = ACTION_WIDTH * 2  // total reveal distance
 
 export function ConversationItem({
   conversation,
   onPress,
   onLongPress,
+  onArchive,
+  onDelete,
   isSelected,
   storyState = 'none',
   onStoryPress,
@@ -81,6 +96,52 @@ export function ConversationItem({
   const hasRing = storyState !== 'none'
   const ringColor = storyState === 'unseen' ? '#D85A30' : '#666'
 
+  // ── Swipe gesture ────────────────────────────────────────────────────────
+  const translateX = useRef(new Animated.Value(0)).current
+  const currentX = useRef(0)
+  const isOpen = useRef(false)
+
+  const close = () => {
+    Animated.spring(translateX, { toValue: 0, useNativeDriver: true, tension: 80, friction: 12 }).start()
+    isOpen.current = false
+    currentX.current = 0
+  }
+
+  const open = () => {
+    Animated.spring(translateX, { toValue: -SNAP_OPEN, useNativeDriver: true, tension: 80, friction: 12 }).start()
+    isOpen.current = true
+    currentX.current = -SNAP_OPEN
+  }
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 6 && Math.abs(g.dy) < Math.abs(g.dx),
+      onPanResponderGrant: () => {
+        translateX.setOffset(currentX.current)
+        translateX.setValue(0)
+      },
+      onPanResponderMove: (_, g) => {
+        const val = Math.min(0, Math.max(-SNAP_OPEN, g.dx))
+        translateX.setValue(val)
+      },
+      onPanResponderRelease: (_, g) => {
+        translateX.flattenOffset()
+        const current = currentX.current + g.dx
+        if (current < -REVEAL_THRESHOLD) {
+          open()
+        } else {
+          close()
+        }
+      },
+      onPanResponderTerminate: () => {
+        translateX.flattenOffset()
+        close()
+      },
+    }),
+  ).current
+
+  // ── Avatar ────────────────────────────────────────────────────────────────
   const avatarInner = (
     <View style={[styles.avatar, { backgroundColor: avatarBg }]}>
       {otherParticipant.photoUrl != null ? (
@@ -93,80 +154,109 @@ export function ConversationItem({
   )
 
   return (
-    <TouchableOpacity
-      style={[
-        styles.container,
-        {
-          backgroundColor: theme.bg.surface,
-          borderLeftColor: isSelected ? theme.brand.primary : 'transparent',
-        },
-      ]}
-      onPress={onPress}
-      onLongPress={onLongPress}
-      activeOpacity={0.8}
-    >
-      {hasRing ? (
+    <View style={styles.swipeWrapper}>
+      {/* Swipe action buttons revealed behind */}
+      <View style={styles.actionsContainer}>
         <TouchableOpacity
-          onPress={onStoryPress}
-          activeOpacity={0.8}
-          style={[
-            styles.ring,
-            { borderColor: ringColor, width: RING_D, height: RING_D, borderRadius: RING_D / 2 },
-          ]}
+          style={[styles.actionBtn, { backgroundColor: '#E8883A' }]}
+          onPress={() => { close(); onArchive?.() }}
+          activeOpacity={0.85}
         >
-          {avatarInner}
+          <Text style={styles.actionIcon}>📦</Text>
+          <Text style={styles.actionLabel}>Archive</Text>
         </TouchableOpacity>
-      ) : (
-        avatarInner
-      )}
+        <TouchableOpacity
+          style={[styles.actionBtn, { backgroundColor: '#E24B4A' }]}
+          onPress={() => { close(); onDelete?.() }}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.actionIcon}>🗑</Text>
+          <Text style={styles.actionLabel}>Delete</Text>
+        </TouchableOpacity>
+      </View>
 
-      <View style={styles.info}>
-        <View style={styles.nameRow}>
-          <Text
-            style={[styles.name, unreadCount > 0 && styles.nameUnread, { color: theme.text.primary }]}
-            numberOfLines={1}
-          >
-            {otherParticipant.name}
-          </Text>
-          <View style={styles.metaRow}>
-            {isPinned && (
-              <View style={[styles.iconPill, { backgroundColor: 'rgba(216,90,48,0.12)' }]}>
-                <PinIcon color={theme.brand.primary} />
+      {/* Swipeable row */}
+      <Animated.View style={{ transform: [{ translateX }] }} {...panResponder.panHandlers}>
+        <TouchableOpacity
+          style={[
+            styles.container,
+            {
+              backgroundColor: theme.bg.surface,
+              borderLeftColor: isSelected ? theme.brand.primary : 'transparent',
+            },
+          ]}
+          onPress={() => { if (isOpen.current) { close() } else { onPress() } }}
+          onLongPress={onLongPress}
+          activeOpacity={0.8}
+        >
+          {hasRing ? (
+            <TouchableOpacity
+              onPress={onStoryPress}
+              activeOpacity={0.8}
+              style={[
+                styles.ring,
+                { borderColor: ringColor, width: RING_D, height: RING_D, borderRadius: RING_D / 2 },
+              ]}
+            >
+              {avatarInner}
+            </TouchableOpacity>
+          ) : (
+            avatarInner
+          )}
+
+          <View style={styles.info}>
+            <View style={styles.nameRow}>
+              <Text
+                style={[styles.name, unreadCount > 0 && styles.nameUnread, { color: theme.text.primary }]}
+                numberOfLines={1}
+              >
+                {otherParticipant.name}
+              </Text>
+              <View style={styles.metaRow}>
+                {isPinned && (
+                  <View style={[styles.iconPill, { backgroundColor: 'rgba(216,90,48,0.12)' }]}>
+                    <PinIcon color={theme.brand.primary} />
+                  </View>
+                )}
+                {isMuted && (
+                  <View style={[styles.iconPill, { backgroundColor: theme.bg.elevated }]}>
+                    <MuteIcon color={theme.text.secondary} />
+                  </View>
+                )}
+                {lastMessage != null && (
+                  <Text style={[styles.time, { color: unreadCount > 0 ? theme.brand.primary : theme.text.secondary }]} numberOfLines={1}>
+                    {formatTime(lastMessage.createdAt)}
+                  </Text>
+                )}
               </View>
-            )}
-            {isMuted && (
-              <View style={[styles.iconPill, { backgroundColor: theme.bg.elevated }]}>
-                <MuteIcon color={theme.text.secondary} />
-              </View>
-            )}
-            {lastMessage != null && (
-              <Text style={[styles.time, { color: theme.text.secondary }]} numberOfLines={1}>
-                {formatTime(lastMessage.createdAt)}
+            </View>
+
+            <View style={styles.previewRow}>
+              <Text
+                style={[styles.preview, { color: unreadCount > 0 ? theme.text.primary : theme.text.secondary }]}
+                numberOfLines={1}
+              >
+                {lastText}
+              </Text>
+              {unreadCount > 0 ? (
+                <View style={[styles.badge, { backgroundColor: theme.brand.primary }]}>
+                  <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+                </View>
+              ) : isMuted ? null : (
+                <View style={[styles.cameraBtn, { backgroundColor: theme.bg.elevated }]}>
+                  <Text style={{ fontSize: 13 }}>📷</Text>
+                </View>
+              )}
+            </View>
+            {!isOnline && otherParticipant.presence?.lastSeenAt != null && (
+              <Text style={[styles.lastSeen, { color: theme.text.tertiary }]}>
+                {formatLastSeen(otherParticipant.presence.lastSeenAt)}
               </Text>
             )}
           </View>
-        </View>
-
-        <View style={styles.previewRow}>
-          <Text
-            style={[styles.preview, { color: unreadCount > 0 ? theme.text.primary : theme.text.secondary }]}
-            numberOfLines={1}
-          >
-            {lastText}
-          </Text>
-          {unreadCount > 0 && (
-            <View style={[styles.badge, { backgroundColor: theme.brand.primary }]}>
-              <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
-            </View>
-          )}
-        </View>
-        {!isOnline && otherParticipant.presence?.lastSeenAt != null && (
-          <Text style={[styles.lastSeen, { color: theme.text.tertiary }]}>
-            {formatLastSeen(otherParticipant.presence.lastSeenAt)}
-          </Text>
-        )}
-      </View>
-    </TouchableOpacity>
+        </TouchableOpacity>
+      </Animated.View>
+    </View>
   )
 }
 
@@ -183,12 +273,31 @@ export function ConversationItemSkeleton() {
 }
 
 const styles = StyleSheet.create({
+  swipeWrapper: {
+    overflow: 'hidden',
+  },
+  actionsContainer: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    flexDirection: 'row',
+  },
+  actionBtn: {
+    width: ACTION_WIDTH,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  actionIcon: { fontSize: 20 },
+  actionLabel: { fontSize: 11, fontWeight: '700', color: '#fff' },
+
   container: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 13,
     borderLeftWidth: 3,
   },
   ring: {
@@ -223,7 +332,7 @@ const styles = StyleSheet.create({
   info: { flex: 1, minWidth: 0, gap: 3 },
 
   nameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minWidth: 0 },
-  name: { fontSize: 15, fontWeight: '700', flex: 1, marginRight: 8 },
+  name: { fontSize: 15, fontWeight: '600', flex: 1, marginRight: 8 },
   nameUnread: { fontWeight: '800' },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   time: { fontSize: 12 },
@@ -240,13 +349,22 @@ const styles = StyleSheet.create({
   lastSeen: { fontSize: 11, marginTop: 2 },
 
   badge: {
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
-    paddingHorizontal: 5,
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    paddingHorizontal: 6,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
-  badgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
+  badgeText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+
+  cameraBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
 })

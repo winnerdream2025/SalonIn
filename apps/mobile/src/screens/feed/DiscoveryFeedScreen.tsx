@@ -3,6 +3,7 @@ import React, { useState, useCallback, useMemo } from 'react'
 import {
   View,
   FlatList,
+  Image,
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
@@ -17,7 +18,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import * as Haptics from 'expo-haptics'
-import { WorkerCard, WorkerCardSkeleton, Text, Button, useTheme, ReportModal, Avatar } from '@salonin/ui'
+import { WorkerCard, WorkerCardSkeleton, Text, Button, useTheme, ReportModal } from '@salonin/ui'
 import { useStories, type UserStoryState } from '../../contexts/StoriesContext'
 import type { Theme } from '@salonin/ui'
 import type { WorkerCardData } from '@salonin/types'
@@ -338,6 +339,13 @@ export default function DiscoveryFeedScreen() {
               </Text>
               <Ionicons name="chevron-down" size={12} color={isGPSLocation ? '#1D9E75' : theme.text.tertiary} />
             </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.push('/find-people' as never)}
+              style={styles.networkBtn}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="people-outline" size={20} color={theme.text.secondary} />
+            </TouchableOpacity>
             <NotificationBell />
           </View>
         </View>
@@ -534,6 +542,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     paddingVertical: 0,
   },
+  networkBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   filterDot: {
     position: 'absolute',
     top: -3,
@@ -605,13 +620,162 @@ const styles = StyleSheet.create({
   },
 })
 
-// ── Suggested Stylists ────────────────────────────────────────────────────────
+// ── Suggested People (shared card design) ────────────────────────────────────
+
+const AVATAR_D = 72
+const RING_W = 3
+const RING_GAP = 2
+const RING_D = AVATAR_D + (RING_W + RING_GAP) * 2
+
+function formatCount(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k`
+  return String(n)
+}
+
+interface SuggestedCardProps {
+  user: SuggestedUser
+  theme: Theme
+  isFollowed: boolean
+  storyState: 'unseen' | 'seen' | 'none'
+  onFollow: () => void
+  onMessage: () => void
+  onStoryPress?: () => void
+}
+
+function SuggestedCard({ user, theme, isFollowed, storyState, onFollow, onMessage, onStoryPress }: SuggestedCardProps) {
+  const specialty = user.specialties[0] ?? (user.type === 'salon' ? 'Salon' : 'Stylist')
+  const hasRing = storyState !== 'none'
+  const ringColor = storyState === 'unseen' ? '#D85A30' : '#8B9BB4'
+  const profilePath = user.type === 'salon' ? `/salon/${user.id}` : `/worker/${user.id}`
+
+  const initial = user.name.charAt(0).toUpperCase()
+
+  const avatarEl = (
+    <View style={suggestStyles.avatarWrap}>
+      {/* Ring */}
+      {hasRing && (
+        <TouchableOpacity
+          onPress={onStoryPress}
+          activeOpacity={0.85}
+          style={[suggestStyles.ring, { borderColor: ringColor, width: RING_D, height: RING_D, borderRadius: RING_D / 2 }]}
+        />
+      )}
+      {/* Avatar */}
+      <View style={[suggestStyles.avatar, hasRing && suggestStyles.avatarWithRing]}>
+        {user.photoUrl ? (
+          <Image source={{ uri: user.photoUrl }} style={suggestStyles.avatarImg} />
+        ) : (
+          <View style={[suggestStyles.avatarFallback, { backgroundColor: theme.bg.elevated }]}>
+            <Text style={[suggestStyles.avatarInitial, { color: theme.brand.primary }]}>{initial}</Text>
+          </View>
+        )}
+      </View>
+      {/* Verified badge */}
+      {user.isVerified && (
+        <View style={suggestStyles.verifiedBadge}>
+          <Ionicons name="checkmark-circle" size={18} color="#1877F2" />
+        </View>
+      )}
+      {/* Mutual badge */}
+      {user.reason === 'mutual' && !hasRing && (
+        <View style={[suggestStyles.mutualBadge, { backgroundColor: '#1D9E75' }]}>
+          <Ionicons name="people" size={9} color="#fff" />
+        </View>
+      )}
+    </View>
+  )
+
+  return (
+    <TouchableOpacity
+      style={[suggestStyles.card, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}
+      activeOpacity={0.88}
+      onPress={() => router.push(profilePath as never)}
+    >
+      {avatarEl}
+
+      <Text style={[suggestStyles.name, { color: theme.text.primary }]} numberOfLines={2}>
+        {user.name}
+      </Text>
+      <Text style={[suggestStyles.specialty, { color: theme.text.tertiary }]} numberOfLines={1}>
+        {specialty}
+      </Text>
+
+      {/* Stats row */}
+      <View style={suggestStyles.statsRow}>
+        <View style={suggestStyles.statItem}>
+          <Ionicons name="image-outline" size={11} color={theme.text.tertiary} />
+          <Text style={[suggestStyles.statVal, { color: theme.text.secondary }]}>
+            {formatCount(user.listingsCount)}
+          </Text>
+        </View>
+        <View style={suggestStyles.statDot} />
+        <View style={suggestStyles.statItem}>
+          <Ionicons name="star" size={11} color="#EF9F27" />
+          <Text style={[suggestStyles.statVal, { color: theme.text.secondary }]}>
+            {user.rating > 0 ? user.rating.toFixed(1) : '—'}
+          </Text>
+        </View>
+      </View>
+      <View style={suggestStyles.followersRow}>
+        <Ionicons name="people-outline" size={11} color={theme.text.tertiary} />
+        <Text style={[suggestStyles.followersText, { color: theme.text.secondary }]}>
+          {formatCount(user.followersCount)} followers
+        </Text>
+      </View>
+
+      {/* Action buttons */}
+      <View style={suggestStyles.actions}>
+        <TouchableOpacity
+          style={[suggestStyles.msgBtn, { backgroundColor: theme.bg.elevated }]}
+          onPress={onMessage}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="chatbubble-outline" size={13} color={theme.text.secondary} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            suggestStyles.followBtn,
+            isFollowed
+              ? { backgroundColor: 'transparent', borderWidth: 1, borderColor: theme.border.default }
+              : { backgroundColor: theme.brand.primary },
+          ]}
+          onPress={onFollow}
+          activeOpacity={0.8}
+        >
+          <Text style={[suggestStyles.followBtnText, { color: isFollowed ? theme.text.secondary : '#fff' }]}>
+            {isFollowed ? 'Following' : 'Follow'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </TouchableOpacity>
+  )
+}
+
+function SuggestedCardSkeleton({ theme }: { theme: Theme }) {
+  const bg = theme.border.default
+  return (
+    <View style={[suggestStyles.card, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
+      <View style={[suggestStyles.skeletonAvatar, { backgroundColor: bg }]} />
+      <View style={[suggestStyles.skeletonLine, { width: 80, backgroundColor: bg }]} />
+      <View style={[suggestStyles.skeletonLine, { width: 55, height: 9, backgroundColor: bg }]} />
+      <View style={[suggestStyles.skeletonLine, { width: 90, height: 9, backgroundColor: bg }]} />
+      <View style={[suggestStyles.skeletonBtn, { backgroundColor: bg }]} />
+    </View>
+  )
+}
+
+// ── Suggested Stylists (Discover page — workers only) ─────────────────────────
 
 function SuggestedStylists({ theme }: { theme: Theme }) {
   const { suggestions, isLoading } = useSuggestedUsers()
+  const { storyMap, openViewerForUser } = useStories()
   const [followedIds, setFollowedIds] = React.useState<Set<string>>(new Set())
+  const currentUser = useAuthStore((s) => s.user)
 
-  if (!isLoading && suggestions.length === 0) return null
+  const workers = React.useMemo(() => suggestions.filter((s) => s.type === 'worker'), [suggestions])
+
+  if (!isLoading && workers.length === 0) return null
 
   const handleFollow = async (userId: string) => {
     setFollowedIds((prev) => new Set([...prev, userId]))
@@ -621,146 +785,190 @@ function SuggestedStylists({ theme }: { theme: Theme }) {
     })
   }
 
+  const handleMessage = async (userId: string, name: string, photoUrl: string | null) => {
+    if (!currentUser) { router.push('/(auth)/login'); return }
+    try {
+      const conv = await messagesApi.createConversation(userId)
+      router.push({ pathname: '/chat/[id]', params: { id: conv.id, name, otherUserId: userId, otherPhotoUrl: photoUrl ?? '' } } as never)
+    } catch { /* silent */ }
+  }
+
   return (
     <View style={suggestStyles.section}>
-      <View style={suggestStyles.header}>
-        <Text style={[suggestStyles.title, { color: theme.text.primary }]}>People to follow</Text>
-        <TouchableOpacity onPress={() => router.push('/search' as never)} activeOpacity={0.7}>
+      <View style={suggestStyles.sectionHeader}>
+        <Text style={[suggestStyles.sectionTitle, { color: theme.text.primary }]}>Suggested stylists</Text>
+        <TouchableOpacity onPress={() => router.push('/find-people' as never)} activeOpacity={0.7}>
           <Text style={[suggestStyles.seeAll, { color: theme.brand.primary }]}>See all</Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={suggestStyles.row}
-      >
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={suggestStyles.row}>
         {isLoading
-          ? Array.from({ length: 5 }).map((_, i) => (
-              <SuggestedCardSkeleton key={i} theme={theme} />
-            ))
-          : suggestions.map((user) => (
-              <SuggestedCard
-                key={user.id}
-                user={user}
-                theme={theme}
-                isFollowed={followedIds.has(user.id)}
-                onFollow={() => void handleFollow(user.id)}
-              />
-            ))
-        }
+          ? Array.from({ length: 4 }).map((_, i) => <SuggestedCardSkeleton key={i} theme={theme} />)
+          : workers.map((u) => {
+              const ss = storyMap.get(u.id)
+              const storyState = ss?.hasStory ? (ss.hasUnseen ? 'unseen' : 'seen') : 'none'
+              return (
+                <SuggestedCard
+                  key={u.id}
+                  user={u}
+                  theme={theme}
+                  isFollowed={followedIds.has(u.id)}
+                  storyState={storyState}
+                  onFollow={() => void handleFollow(u.id)}
+                  onMessage={() => void handleMessage(u.id, u.name, u.photoUrl)}
+                  onStoryPress={ss?.hasStory ? () => openViewerForUser(u.id) : undefined}
+                />
+              )
+            })}
       </ScrollView>
     </View>
   )
 }
 
-function SuggestedCard({
-  user,
-  theme,
-  isFollowed,
-  onFollow,
-}: {
-  user: SuggestedUser
-  theme: Theme
-  isFollowed: boolean
-  onFollow: () => void
-}) {
-  const specialty = user.specialties[0] ?? null
+// ── Suggested Salons (Jobs page — exported for use there) ─────────────────────
+
+export function SuggestedSalons({ theme }: { theme: Theme }) {
+  const { suggestions, isLoading } = useSuggestedUsers()
+  const { storyMap, openViewerForUser } = useStories()
+  const [followedIds, setFollowedIds] = React.useState<Set<string>>(new Set())
+  const currentUser = useAuthStore((s) => s.user)
+
+  const salons = React.useMemo(() => suggestions.filter((s) => s.type === 'salon'), [suggestions])
+
+  if (!isLoading && salons.length === 0) return null
+
+  const handleFollow = async (userId: string) => {
+    setFollowedIds((prev) => new Set([...prev, userId]))
+    const { followsApi } = await import('@salonin/api-client')
+    await followsApi.follow(userId).catch(() => {
+      setFollowedIds((prev) => { const next = new Set(prev); next.delete(userId); return next })
+    })
+  }
+
+  const handleMessage = async (userId: string, name: string, photoUrl: string | null) => {
+    if (!currentUser) { router.push('/(auth)/login'); return }
+    try {
+      const conv = await messagesApi.createConversation(userId)
+      router.push({ pathname: '/chat/[id]', params: { id: conv.id, name, otherUserId: userId, otherPhotoUrl: photoUrl ?? '' } } as never)
+    } catch { /* silent */ }
+  }
 
   return (
-    <TouchableOpacity
-      style={[suggestStyles.card, { backgroundColor: theme.bg.card, borderColor: theme.border.default }]}
-      activeOpacity={0.85}
-      onPress={() => router.push(`/worker/${user.id}` as never)}
-    >
-      <Avatar uri={user.photoUrl} name={user.name} size="lg" />
+    <View style={suggestStyles.section}>
+      <View style={suggestStyles.sectionHeader}>
+        <Text style={[suggestStyles.sectionTitle, { color: theme.text.primary }]}>Top salons near you</Text>
+        <TouchableOpacity onPress={() => router.push('/find-people' as never)} activeOpacity={0.7}>
+          <Text style={[suggestStyles.seeAll, { color: theme.brand.primary }]}>See all</Text>
+        </TouchableOpacity>
+      </View>
 
-      {user.reason === 'mutual' && (
-        <View style={[suggestStyles.followsBadge, { backgroundColor: 'rgba(29,158,117,0.12)', borderColor: 'rgba(29,158,117,0.3)' }]}>
-          <Text style={[suggestStyles.followsBadgeText, { color: '#1D9E75' }]}>Follows you</Text>
-        </View>
-      )}
-
-      <Text style={[suggestStyles.name, { color: theme.text.primary }]} numberOfLines={1}>
-        {user.name}
-      </Text>
-
-      {specialty && (
-        <Text style={[suggestStyles.specialty, { color: theme.text.tertiary }]} numberOfLines={1}>
-          {specialty}
-        </Text>
-      )}
-
-      <TouchableOpacity
-        style={[
-          suggestStyles.followBtn,
-          isFollowed
-            ? { backgroundColor: 'transparent', borderWidth: 1, borderColor: theme.border.default }
-            : { backgroundColor: theme.brand.primary },
-        ]}
-        onPress={onFollow}
-        activeOpacity={0.8}
-      >
-        <Text style={[suggestStyles.followBtnText, { color: isFollowed ? theme.text.secondary : '#FFFFFF' }]}>
-          {isFollowed ? 'Following' : 'Follow'}
-        </Text>
-      </TouchableOpacity>
-    </TouchableOpacity>
-  )
-}
-
-function SuggestedCardSkeleton({ theme }: { theme: Theme }) {
-  return (
-    <View style={[suggestStyles.card, { backgroundColor: theme.bg.card, borderColor: theme.border.default }]}>
-      <View style={[suggestStyles.skeletonAvatar, { backgroundColor: theme.border.default }]} />
-      <View style={[suggestStyles.skeletonName, { backgroundColor: theme.border.default }]} />
-      <View style={[suggestStyles.skeletonSpecialty, { backgroundColor: theme.border.default }]} />
-      <View style={[suggestStyles.skeletonBtn, { backgroundColor: theme.border.default }]} />
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={suggestStyles.row}>
+        {isLoading
+          ? Array.from({ length: 4 }).map((_, i) => <SuggestedCardSkeleton key={i} theme={theme} />)
+          : salons.map((u) => {
+              const ss = storyMap.get(u.id)
+              const storyState = ss?.hasStory ? (ss.hasUnseen ? 'unseen' : 'seen') : 'none'
+              return (
+                <SuggestedCard
+                  key={u.id}
+                  user={u}
+                  theme={theme}
+                  isFollowed={followedIds.has(u.id)}
+                  storyState={storyState}
+                  onFollow={() => void handleFollow(u.id)}
+                  onMessage={() => void handleMessage(u.id, u.name, u.photoUrl)}
+                  onStoryPress={ss?.hasStory ? () => openViewerForUser(u.id) : undefined}
+                />
+              )
+            })}
+      </ScrollView>
     </View>
   )
 }
 
 const suggestStyles = StyleSheet.create({
-  section: { paddingTop: 8, paddingBottom: 4 },
-  header: {
+  section: { paddingTop: 12, paddingBottom: 4 },
+  sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingBottom: 10,
+    paddingBottom: 12,
   },
-  title: { fontSize: 16, fontWeight: '700' },
+  sectionTitle: { fontSize: 16, fontWeight: '800', letterSpacing: -0.2 },
   seeAll: { fontSize: 13, fontWeight: '600' },
-  row: { paddingHorizontal: 12, gap: 10, paddingBottom: 4 },
+  row: { paddingHorizontal: 12, gap: 10, paddingBottom: 8 },
+
   card: {
-    width: 108,
-    borderRadius: 16,
+    width: 126,
+    borderRadius: 18,
     borderWidth: StyleSheet.hairlineWidth,
     padding: 12,
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
   },
-  followsBadge: {
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 99,
-    borderWidth: StyleSheet.hairlineWidth,
-    marginTop: -2,
+
+  // Avatar with ring
+  avatarWrap: { position: 'relative', width: RING_D, height: RING_D, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
+  ring: { position: 'absolute', borderWidth: RING_W },
+  avatar: { width: AVATAR_D, height: AVATAR_D, borderRadius: AVATAR_D / 2, overflow: 'hidden' },
+  avatarWithRing: { marginTop: 0 },
+  avatarImg: { width: AVATAR_D, height: AVATAR_D },
+  avatarFallback: { width: AVATAR_D, height: AVATAR_D, borderRadius: AVATAR_D / 2, alignItems: 'center', justifyContent: 'center' },
+  avatarInitial: { fontSize: 26, fontWeight: '800' },
+
+  verifiedBadge: {
+    position: 'absolute',
+    top: RING_W,
+    right: RING_W,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  followsBadgeText: { fontSize: 9, fontWeight: '600' },
-  name: { fontSize: 12, fontWeight: '700', textAlign: 'center', lineHeight: 16 },
-  specialty: { fontSize: 10, textAlign: 'center', lineHeight: 14, marginTop: -2 },
+  mutualBadge: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  name: { fontSize: 13, fontWeight: '800', textAlign: 'center', lineHeight: 17, letterSpacing: -0.2 },
+  specialty: { fontSize: 11, textAlign: 'center', marginTop: -2 },
+
+  statsRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
+  statItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  statVal: { fontSize: 11, fontWeight: '600' },
+  statDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: '#8B9BB4' },
+
+  followersRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: -2 },
+  followersText: { fontSize: 10 },
+
+  actions: { flexDirection: 'row', gap: 6, marginTop: 4, width: '100%' },
+  msgBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
   followBtn: {
-    marginTop: 2,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
+    flex: 1,
+    paddingVertical: 7,
     borderRadius: 99,
-    width: '100%',
     alignItems: 'center',
   },
   followBtnText: { fontSize: 12, fontWeight: '700' },
-  skeletonAvatar: { width: 56, height: 56, borderRadius: 28 },
-  skeletonName: { width: 70, height: 11, borderRadius: 6, marginTop: 2 },
-  skeletonSpecialty: { width: 50, height: 9, borderRadius: 5 },
-  skeletonBtn: { width: 76, height: 28, borderRadius: 99, marginTop: 2 },
+
+  skeletonAvatar: { width: RING_D, height: RING_D, borderRadius: RING_D / 2 },
+  skeletonLine: { height: 11, borderRadius: 6, marginTop: 2 },
+  skeletonBtn: { width: '100%', height: 30, borderRadius: 99, marginTop: 4 },
 })

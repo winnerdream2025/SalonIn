@@ -45,6 +45,8 @@ export interface SuggestedUser {
   rating: number
   type: 'worker' | 'salon'
   reason: 'mutual' | 'top_rated'
+  followersCount: number
+  listingsCount: number
 }
 
 export const followsApi = {
