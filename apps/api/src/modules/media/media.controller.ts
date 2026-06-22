@@ -29,6 +29,7 @@ const ALLOWED_TYPES = [
   'video/webm',
   // Audio
   'audio/m4a',
+  'audio/x-m4a',
   'audio/aac',
   'audio/mp4',
   'audio/mpeg',
