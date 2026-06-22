@@ -1,4 +1,4 @@
-import { api } from './client'
+import { api, getAccessToken } from './client'
 
 export interface MediaFile {
   uri: string
@@ -20,16 +20,34 @@ async function uploadMedia(
   const form = new FormData()
   form.append('file', { uri: file.uri, type: file.mimeType, name: file.name } as unknown as Blob)
 
-  const { data } = await api.post<{ url: string }>(`/media/upload?folder=${folder}`, form, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-    onUploadProgress: options?.onProgress
-      ? (e) => {
-          const total = e.total ?? 1
-          options.onProgress!(Math.round((e.loaded / total) * 100))
-        }
-      : undefined,
+  // Use native fetch instead of Axios: Axios 1.x may not detect React Native's
+  // FormData (toString returns '[object Object]') and JSON-serializes it to {},
+  // sending an empty body to multer. fetch() sets the multipart boundary correctly.
+  options?.onProgress?.(10)
+
+  const token = getAccessToken()
+  const baseURL = (api.defaults.baseURL ?? 'http://localhost:4000').replace(/\/$/, '')
+
+  const response = await fetch(`${baseURL}/media/upload?folder=${folder}`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: form,
   })
-  return data
+
+  options?.onProgress?.(90)
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({} as Record<string, unknown>))
+    const d = errorBody as { error?: string; message?: string | string[] }
+    const msg =
+      d.error ??
+      (Array.isArray(d.message) ? d.message.join(', ') : d.message) ??
+      `Upload failed (${response.status})`
+    throw new Error(typeof msg === 'string' ? msg : 'Upload failed')
+  }
+
+  options?.onProgress?.(100)
+  return response.json() as Promise<{ url: string }>
 }
 
 async function uploadMultiple(

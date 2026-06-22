@@ -320,11 +320,12 @@ export function VoiceRecorder({ onSend, onCancel }: VoiceRecorderProps) {
       )
       const waveformData = downsample(rawMetering.current, WAVEFORM_BARS)
       onSend(url, durationSeconds, waveformData)
-    } catch {
+    } catch (e: unknown) {
       setState('error')
+      const msg = e instanceof Error ? e.message : 'Please try again.'
       Alert.alert(
         'Upload failed',
-        'Could not send voice message. Please try again.',
+        msg,
         [
           { text: 'Cancel', style: 'cancel', onPress: onCancel },
           { text: 'Retry',  onPress: () => void doSend() },
