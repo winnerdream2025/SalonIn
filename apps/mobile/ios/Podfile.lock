@@ -21,6 +21,8 @@ PODS:
     - ExpoModulesCore
   - ExpoDevice (5.9.4):
     - ExpoModulesCore
+  - ExpoDocumentPicker (12.0.2):
+    - ExpoModulesCore
   - ExpoFileSystem (17.0.1):
     - ExpoModulesCore
   - ExpoFont (12.0.10):
@@ -1333,6 +1335,7 @@ DEPENDENCIES:
   - "Expo (from `../../../node_modules/.pnpm/expo@51.0.39_@babel+core@7.29.7_@babel+preset-env@7.29.7_@babel+core@7.29.7__react-native@0.7_e27fqrisfqffrw5uwvohu3upf4/node_modules/expo`)"
   - "ExpoAsset (from `../../../node_modules/.pnpm/expo-asset@10.0.10_expo@51.0.39_@babel+core@7.29.7_@babel+preset-env@7.29.7_@babel+core@7.29._gjw3drhnde2wkoyamjresjrdwy/node_modules/expo-asset/ios`)"
   - "ExpoDevice (from `../../../node_modules/.pnpm/expo-device@5.9.4_patch_hash=w4jmyefeseynpwr22r22brfcce_expo@51.0.39_@babel+core@7.29.7_@babe_l5alcim4wvsowbhdw5m5e6zpia/node_modules/expo-device/ios`)"
+  - "ExpoDocumentPicker (from `../../../node_modules/.pnpm/expo-document-picker@12.0.2_expo@51.0.39_@babel+core@7.29.7_@babel+preset-env@7.29.7_@babel+c_ajyiaqtszsmqr3zf7ru5yesp3u/node_modules/expo-document-picker/ios`)"
   - "ExpoFileSystem (from `../../../node_modules/.pnpm/expo-file-system@17.0.1_expo@51.0.39_@babel+core@7.29.7_@babel+preset-env@7.29.7_@babel+core@_owthmo43tkw2zny43x77yiug5q/node_modules/expo-file-system/ios`)"
   - "ExpoFont (from `../../../node_modules/.pnpm/expo-font@12.0.10_expo@51.0.39_@babel+core@7.29.7_@babel+preset-env@7.29.7_@babel+core@7.29.7_lcyou6zeegbf24u6fnd6evxgei/node_modules/expo-font/ios`)"
   - "ExpoHaptics (from `../../../node_modules/.pnpm/expo-haptics@13.0.1_expo@51.0.39_@babel+core@7.29.7_@babel+preset-env@7.29.7_@babel+core@7.29_44khl27f4kewrs3dbcl553c5lm/node_modules/expo-haptics/ios`)"
@@ -1435,6 +1438,8 @@ EXTERNAL SOURCES:
     :path: "../../../node_modules/.pnpm/expo-asset@10.0.10_expo@51.0.39_@babel+core@7.29.7_@babel+preset-env@7.29.7_@babel+core@7.29._gjw3drhnde2wkoyamjresjrdwy/node_modules/expo-asset/ios"
   ExpoDevice:
     :path: "../../../node_modules/.pnpm/expo-device@5.9.4_patch_hash=w4jmyefeseynpwr22r22brfcce_expo@51.0.39_@babel+core@7.29.7_@babe_l5alcim4wvsowbhdw5m5e6zpia/node_modules/expo-device/ios"
+  ExpoDocumentPicker:
+    :path: "../../../node_modules/.pnpm/expo-document-picker@12.0.2_expo@51.0.39_@babel+core@7.29.7_@babel+preset-env@7.29.7_@babel+c_ajyiaqtszsmqr3zf7ru5yesp3u/node_modules/expo-document-picker/ios"
   ExpoFileSystem:
     :path: "../../../node_modules/.pnpm/expo-file-system@17.0.1_expo@51.0.39_@babel+core@7.29.7_@babel+preset-env@7.29.7_@babel+core@_owthmo43tkw2zny43x77yiug5q/node_modules/expo-file-system/ios"
   ExpoFont:
@@ -1587,6 +1592,7 @@ SPEC CHECKSUMS:
   Expo: ed0a748eb6be0efd2c3df7f6de3f3158a14464c9
   ExpoAsset: 286fee7ba711ce66bf20b315e68106b13b8629fc
   ExpoDevice: fc21b9193d704f3759c1ede1b383fcdb0370b46a
+  ExpoDocumentPicker: 3204d5169a090ddbb23c4bf035bb86c3a6ea0ec2
   ExpoFileSystem: 2988caaf68b7cb706e36d382829d99811d9d76a5
   ExpoFont: 38dddf823e32740c2a9f37c926a33aeca736b5c4
   ExpoHaptics: 9f47be324f691b6291c17c216189ab832d1a4d69

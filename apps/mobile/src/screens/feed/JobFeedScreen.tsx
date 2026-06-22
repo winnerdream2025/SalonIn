@@ -136,7 +136,15 @@ export default function JobFeedScreen() {
     try {
       const detail = await jobsApi.getById(job.id)
       const conv = await messagesApi.createConversation(detail.salon.userId)
-      router.push(`/chat/${conv.id}?name=${encodeURIComponent(job.salonName)}` as never)
+      router.push({
+        pathname: '/chat/[id]',
+        params: {
+          id: conv.id,
+          name: job.salonName,
+          otherUserId: detail.salon.userId,
+          otherPhotoUrl: detail.salon.photoUrls[0] ?? '',
+        },
+      } as never)
     } catch (e: unknown) {
       Alert.alert('Messaging failed', parseApiError(e))
     } finally {

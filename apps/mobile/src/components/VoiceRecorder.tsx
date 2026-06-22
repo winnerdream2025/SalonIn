@@ -143,35 +143,40 @@ export function VoiceRecorder({ onSend, onCancel }: VoiceRecorderProps) {
   // ── Start recording ────────────────────────────────────────────────────────
 
   const startRecording = useCallback(async () => {
-    const { granted } = await Audio.requestPermissionsAsync()
-    if (!granted) {
-      Alert.alert('Microphone permission', 'Please allow microphone access in Settings.')
+    try {
+      const { granted } = await Audio.requestPermissionsAsync()
+      if (!granted) {
+        Alert.alert('Microphone permission', 'Please allow microphone access in Settings.')
+        onCancel()
+        return
+      }
+
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true })
+
+      const { recording } = await Audio.Recording.createAsync(
+        RECORDING_OPTIONS,
+        (status) => {
+          if (!status.isRecording) return
+          if (status.metering != null) {
+            // dBFS: typical range -160..0; normalise to 0-1
+            const norm = Math.max(0, Math.min(1, (status.metering + 60) / 60))
+            rawMetering.current.push(norm)
+            setLiveBars((prev) => [...prev, norm].slice(-BAR_WINDOW))
+          }
+        },
+        100, // status update interval ms
+      )
+
+      recordingRef.current = recording
+      rawMetering.current  = []
+      pausedMsRef.current  = 0
+      setState('recording')
+      startTimer()
+      startPulse()
+    } catch {
+      Alert.alert('Recording failed', 'Could not start recording. Please check microphone access and try again.')
       onCancel()
-      return
     }
-
-    await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true })
-
-    const { recording } = await Audio.Recording.createAsync(
-      RECORDING_OPTIONS,
-      (status) => {
-        if (!status.isRecording) return
-        if (status.metering != null) {
-          // dBFS: typical range -160..0; normalise to 0-1
-          const norm = Math.max(0, Math.min(1, (status.metering + 60) / 60))
-          rawMetering.current.push(norm)
-          setLiveBars((prev) => [...prev, norm].slice(-BAR_WINDOW))
-        }
-      },
-      100, // status update interval ms
-    )
-
-    recordingRef.current = recording
-    rawMetering.current  = []
-    pausedMsRef.current  = 0
-    setState('recording')
-    startTimer()
-    startPulse()
   }, [setState, startTimer, startPulse, onCancel])
 
   // ── Pause ──────────────────────────────────────────────────────────────────

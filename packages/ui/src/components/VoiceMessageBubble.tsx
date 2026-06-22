@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { Audio } from 'expo-av'
 import { useTheme } from '../hooks/useTheme'
@@ -72,7 +72,9 @@ export function VoiceMessageBubble({
 
   const togglePlay = useCallback(async () => {
     if (isPlaying) {
-      await soundRef.current?.pauseAsync().catch(() => undefined)
+      if (soundRef.current) {
+        await soundRef.current.pauseAsync().catch(() => undefined)
+      }
       setIsPlaying(false)
       return
     }
@@ -83,24 +85,28 @@ export function VoiceMessageBubble({
       return
     }
 
-    await Audio.setAudioModeAsync({ playsInSilentModeIOS: true })
-    const { sound } = await Audio.Sound.createAsync(
-      { uri: audioUrl },
-      { shouldPlay: true },
-      (status) => {
-        if (!status.isLoaded) return
-        const dur = status.durationMillis ?? durationMs
-        if (dur > 0) setProgress(status.positionMillis / dur)
-        setCurrentMs(status.positionMillis)
-        if (status.didJustFinish) {
-          setIsPlaying(false)
-          setProgress(0)
-          setCurrentMs(0)
-        }
-      },
-    )
-    soundRef.current = sound
-    setIsPlaying(true)
+    try {
+      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, allowsRecordingIOS: false })
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: audioUrl },
+        { shouldPlay: true },
+        (status) => {
+          if (!status.isLoaded) return
+          const dur = status.durationMillis ?? durationMs
+          if (dur > 0) setProgress(status.positionMillis / dur)
+          setCurrentMs(status.positionMillis)
+          if (status.didJustFinish) {
+            setIsPlaying(false)
+            setProgress(0)
+            setCurrentMs(0)
+          }
+        },
+      )
+      soundRef.current = sound
+      setIsPlaying(true)
+    } catch {
+      Alert.alert('Playback error', 'Could not play this audio message. Please try again.')
+    }
   }, [isPlaying, audioUrl, durationMs])
 
   useEffect(() => {

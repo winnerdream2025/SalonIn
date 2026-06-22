@@ -67,8 +67,16 @@ export default function DiscoveryFeedScreen() {
       return
     }
     try {
-      const conv = await messagesApi.createConversation(worker.id)
-      router.push(`/chat/${conv.id}?name=${encodeURIComponent(worker.name)}` as never)
+      const conv = await messagesApi.createConversation(worker.userId ?? worker.id)
+      router.push({
+        pathname: '/chat/[id]',
+        params: {
+          id: conv.id,
+          name: worker.name,
+          otherUserId: worker.userId ?? '',
+          otherPhotoUrl: worker.photoUrl ?? '',
+        },
+      } as never)
     } catch (e: unknown) {
       Alert.alert('Couldn\'t start chat', parseApiError(e))
     }

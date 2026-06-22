@@ -63,7 +63,15 @@ export default function WorkerProfileScreen() {
     setIsMessaging(true)
     try {
       const conv = await messagesApi.createConversation(profile.userId)
-      router.push(`/chat/${conv.id}?name=${encodeURIComponent(profile.name)}` as never)
+      router.push({
+        pathname: '/chat/[id]',
+        params: {
+          id: conv.id,
+          name: profile.name,
+          otherUserId: profile.userId,
+          otherPhotoUrl: profile.photoUrl ?? '',
+        },
+      } as never)
     } catch {
       Alert.alert('Error', 'Could not start conversation. Please try again.')
     } finally {
