@@ -1,6 +1,6 @@
 import { IsIn, IsOptional } from 'class-validator'
 
-const ALLOWED_FOLDERS = ['avatars', 'uploads', 'portfolio', 'spaces', 'voice'] as const
+const ALLOWED_FOLDERS = ['avatars', 'uploads', 'portfolio', 'spaces', 'voice', 'videos', 'documents'] as const
 
 export class UploadMediaDto {
   @IsOptional()
