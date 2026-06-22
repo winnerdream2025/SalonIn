@@ -70,6 +70,7 @@ const RECORDING_OPTIONS: Audio.RecordingOptions = {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type RecordState = 'recording' | 'paused' | 'uploading' | 'error'
+type PreviewState = 'idle' | 'playing' | 'paused_preview'
 
 export interface VoiceRecorderProps {
   onSend:   (audioUrl: string, duration: number, waveformData: number[]) => void
@@ -82,18 +83,20 @@ export function VoiceRecorder({ onSend, onCancel }: VoiceRecorderProps) {
   const { theme } = useTheme()
 
   // UI state
-  const [recState,  setRecState]  = useState<RecordState>('recording')
-  const [elapsedMs, setElapsedMs] = useState(0)
-  const [liveBars,  setLiveBars]  = useState<number[]>([])
+  const [recState,     setRecState]     = useState<RecordState>('recording')
+  const [previewState, setPreviewState] = useState<PreviewState>('idle')
+  const [elapsedMs,    setElapsedMs]    = useState(0)
+  const [liveBars,     setLiveBars]     = useState<number[]>([])
 
   // Refs — never stale in callbacks
-  const recordingRef  = useRef<Audio.Recording | null>(null)
-  const rawMetering   = useRef<number[]>([])
-  const timerRef      = useRef<ReturnType<typeof setInterval> | null>(null)
-  const startMsRef    = useRef(0)
-  const pausedMsRef   = useRef(0)
-  const recStateRef   = useRef<RecordState>('recording')
-  const pulseAnim     = useRef(new Animated.Value(1)).current
+  const recordingRef   = useRef<Audio.Recording | null>(null)
+  const previewSound   = useRef<Audio.Sound | null>(null)
+  const rawMetering    = useRef<number[]>([])
+  const timerRef       = useRef<ReturnType<typeof setInterval> | null>(null)
+  const startMsRef     = useRef(0)
+  const pausedMsRef    = useRef(0)
+  const recStateRef    = useRef<RecordState>('recording')
+  const pulseAnim      = useRef(new Animated.Value(1)).current
 
   // Keep ref in sync with state
   const setState = useCallback((s: RecordState) => {
@@ -209,11 +212,62 @@ export function VoiceRecorder({ onSend, onCancel }: VoiceRecorderProps) {
     startPulse()
   }, [setState, startTimer, startPulse])
 
+  // ── Preview (play recorded audio before sending) ────────────────────────────
+
+  const stopPreview = useCallback(async () => {
+    if (previewSound.current) {
+      await previewSound.current.stopAsync().catch(() => undefined)
+      await previewSound.current.unloadAsync().catch(() => undefined)
+      previewSound.current = null
+    }
+    setPreviewState('idle')
+    await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true }).catch(() => undefined)
+  }, [])
+
+  const togglePreview = useCallback(async () => {
+    const uri = recordingRef.current?.getURI()
+    if (!uri) return
+
+    if (previewState === 'playing' && previewSound.current) {
+      await previewSound.current.pauseAsync().catch(() => undefined)
+      setPreviewState('paused_preview')
+      return
+    }
+
+    if (previewState === 'paused_preview' && previewSound.current) {
+      await previewSound.current.playAsync().catch(() => undefined)
+      setPreviewState('playing')
+      return
+    }
+
+    try {
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: false, playsInSilentModeIOS: true })
+      const { sound } = await Audio.Sound.createAsync(
+        { uri },
+        { shouldPlay: true },
+        (status) => {
+          if (!status.isLoaded) return
+          if (status.didJustFinish) {
+            previewSound.current = null
+            setPreviewState('idle')
+            void Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true })
+          }
+        },
+      )
+      previewSound.current = sound
+      setPreviewState('playing')
+    } catch {
+      Alert.alert('Preview error', 'Could not play recording.')
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true }).catch(() => undefined)
+    }
+  }, [previewState])
+
   // ── Send (stop → upload → callback) ───────────────────────────────────────
 
   const doSend = useCallback(async () => {
     stopTimer()
     stopPulse()
+    await stopPreview()
     if (!recordingRef.current) return
 
     const elapsed = pausedMsRef.current + (
@@ -254,12 +308,13 @@ export function VoiceRecorder({ onSend, onCancel }: VoiceRecorderProps) {
   const cancelRecording = useCallback(async () => {
     stopTimer()
     stopPulse()
+    await stopPreview()
     if (recordingRef.current) {
       await recordingRef.current.stopAndUnloadAsync().catch(() => undefined)
       recordingRef.current = null
     }
     onCancel()
-  }, [stopTimer, stopPulse, onCancel])
+  }, [stopTimer, stopPulse, stopPreview, onCancel])
 
   // ── Mount / unmount ────────────────────────────────────────────────────────
 
@@ -267,6 +322,10 @@ export function VoiceRecorder({ onSend, onCancel }: VoiceRecorderProps) {
     void startRecording()
     return () => {
       stopTimer()
+      if (previewSound.current) {
+        void previewSound.current.stopAsync().catch(() => undefined)
+        void previewSound.current.unloadAsync().catch(() => undefined)
+      }
       if (recordingRef.current) {
         void recordingRef.current.stopAndUnloadAsync().catch(() => undefined)
       }
@@ -275,9 +334,11 @@ export function VoiceRecorder({ onSend, onCancel }: VoiceRecorderProps) {
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
-  const isUploading = recState === 'uploading'
-  const isPaused    = recState === 'paused'
-  const isRecording = recState === 'recording'
+  const isUploading   = recState === 'uploading'
+  const isPaused      = recState === 'paused'
+  const isRecording   = recState === 'recording'
+  const isPreviewing  = previewState === 'playing' || previewState === 'paused_preview'
+  const canPreview    = isPaused && !!recordingRef.current?.getURI()
 
   return (
     <View style={[styles.container, { backgroundColor: theme.bg.card, borderTopColor: theme.border.default }]}>
@@ -336,8 +397,24 @@ export function VoiceRecorder({ onSend, onCancel }: VoiceRecorderProps) {
         </View>
       </View>
 
-      {/* Pause / Resume */}
-      {(isRecording || isPaused) && (
+      {/* Preview: play recorded audio before sending */}
+      {canPreview && (
+        <TouchableOpacity
+          onPress={() => void togglePreview()}
+          style={[styles.iconBtn, { backgroundColor: theme.bg.elevated, borderRadius: 18 }]}
+          activeOpacity={0.7}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Ionicons
+            name={isPreviewing ? 'pause' : 'play'}
+            size={20}
+            color={theme.brand.primary}
+          />
+        </TouchableOpacity>
+      )}
+
+      {/* Pause / Resume recording */}
+      {(isRecording || isPaused) && !isPreviewing && (
         <TouchableOpacity
           onPress={isRecording ? () => void pauseRecording() : () => void resumeRecording()}
           style={[styles.iconBtn, { backgroundColor: theme.bg.elevated, borderRadius: 18 }]}
