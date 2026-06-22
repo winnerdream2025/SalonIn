@@ -27,8 +27,9 @@ export function useConversations(search?: string) {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [error, setError] = useState<Error | null>(null)
   const socketRef = useRef<Socket | null>(null)
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const load = useCallback(async (isRefresh = false) => {
+  const load = useCallback(async (searchTerm?: string, isRefresh = false) => {
     if (isRefresh) {
       setIsRefreshing(true)
     } else {
@@ -36,7 +37,7 @@ export function useConversations(search?: string) {
     }
     setError(null)
     try {
-      const data = await messagesApi.getConversations(search)
+      const data = await messagesApi.getConversations(searchTerm)
       setConversations(data)
     } catch (e: unknown) {
       setError(e instanceof Error ? e : new Error('Failed to load conversations'))
@@ -44,13 +45,27 @@ export function useConversations(search?: string) {
       setIsLoading(false)
       setIsRefreshing(false)
     }
-  }, [search])
+  }, [])
 
-  const refresh = useCallback(() => load(true), [load])
+  const refresh = useCallback(() => load(search, true), [load, search])
 
+  // Initial load (no debounce)
   useEffect(() => {
     void load()
-  }, [load])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Debounced search reload
+  useEffect(() => {
+    if (search === undefined || search === '') return
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+    searchDebounceRef.current = setTimeout(() => {
+      void load(search)
+    }, 350)
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+    }
+  }, [search, load])
 
   const updateConversation = useCallback(
     (id: string, patch: Partial<ConversationPreview>) => {
@@ -191,15 +206,25 @@ export function useConversations(search?: string) {
     }
   }, [accessToken, currentUserId])
 
+  // Track which user IDs we're subscribed to — only re-subscribe when the set changes,
+  // NOT on every conversations array mutation (which would cause a feedback loop).
+  const subscribedIdsRef = useRef<Set<string>>(new Set())
   useEffect(() => {
-    if (!socketRef.current || conversations.length === 0) return
-    const otherUserIds = new Set(conversations.map((c) => c.otherParticipant.userId))
-    for (const id of otherUserIds) {
-      socketRef.current.emit('presence:subscribe', { userId: id })
+    if (!socketRef.current) return
+    const newIds = new Set(conversations.map((c) => c.otherParticipant.userId))
+
+    // Subscribe to IDs we haven't subscribed to yet
+    for (const id of newIds) {
+      if (!subscribedIdsRef.current.has(id)) {
+        socketRef.current.emit('presence:subscribe', { userId: id })
+        subscribedIdsRef.current.add(id)
+      }
     }
-    return () => {
-      for (const id of otherUserIds) {
+    // Unsubscribe from IDs no longer in the list
+    for (const id of subscribedIdsRef.current) {
+      if (!newIds.has(id)) {
         socketRef.current?.emit('presence:unsubscribe', { userId: id })
+        subscribedIdsRef.current.delete(id)
       }
     }
   }, [conversations])

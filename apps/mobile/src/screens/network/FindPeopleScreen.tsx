@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useCallback, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -431,11 +431,11 @@ export default function FindPeopleScreen() {
     )
   }, [friends, search])
 
-  const counts: Record<NetworkTab, number> = {
+  const counts: Record<NetworkTab, number> = useMemo(() => ({
     Suggested: filteredSuggestions.length,
     Following: filteredFollowing.length,
     Friends: filteredFriends.length,
-  }
+  }), [filteredSuggestions.length, filteredFollowing.length, filteredFriends.length])
 
   const handleFollow = useCallback(async (userId: string) => {
     if (followLoadingIds.has(userId)) return
@@ -522,17 +522,23 @@ export default function FindPeopleScreen() {
 
   // ── Tab content ────────────────────────────────────────────────────────────
 
+  // Stable refs for Sets so renderSuggested doesn't recreate on every follow toggle
+  const followedIdsRef = useRef(followedIds)
+  followedIdsRef.current = followedIds
+  const followLoadingIdsRef = useRef(followLoadingIds)
+  followLoadingIdsRef.current = followLoadingIds
+
   const renderSuggested = useCallback(
     ({ item }: { item: SuggestedUser }) => (
       <SuggestedRow
         user={item}
-        followed={followedIds.has(item.id)}
-        loading={followLoadingIds.has(item.id)}
+        followed={followedIdsRef.current.has(item.id)}
+        loading={followLoadingIdsRef.current.has(item.id)}
         onFollow={() => void handleFollow(item.id)}
         onRemove={() => handleRemoveSuggestion(item.id)}
       />
     ),
-    [followedIds, followLoadingIds, handleFollow, handleRemoveSuggestion],
+    [handleFollow, handleRemoveSuggestion],
   )
 
   const renderFollowing = useCallback(
