@@ -56,6 +56,7 @@ describe('JobsService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks()
+    mockPrisma.$queryRaw.mockResolvedValue([{ lat: null, lng: null }])
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -121,7 +122,7 @@ describe('JobsService', () => {
       await expect(service.applyToJob('job-1', USER_ID)).rejects.toThrow(ForbiddenException)
     })
 
-    it('throws ConflictException if already applied', async () => {
+    it('throws ConflictException when already applied', async () => {
       mockPrisma.jobPost.findFirst.mockResolvedValue({ id: 'job-1', salon: { userId: 'salon-user' } })
       mockPrisma.workerProfile.findUnique.mockResolvedValue({ id: 'wp-1', name: 'Alice' })
       mockPrisma.jobApplication.findFirst.mockResolvedValue({ id: 'app-existing' })
@@ -161,8 +162,8 @@ describe('JobsService', () => {
         id: 'job-1',
         salon: {
           name: 'Glamour Studio', photoUrls: [], description: null,
-          city: null, state: null, country: null, userId: 'u1',
-          isVerified: false, rating: 0, reviewCount: 0,
+          city: 'DC', state: 'DC', country: 'USA',
+          userId: 'u1', isVerified: false, rating: 0, reviewCount: 0,
         },
         _count: { applications: 3 },
       }
@@ -171,8 +172,9 @@ describe('JobsService', () => {
 
       const result = await service.getById('job-1')
 
-      expect(result.applicantCount).toBe(3)
+      expect(result.id).toBe('job-1')
       expect(result.salon.name).toBe('Glamour Studio')
+      expect(result.applicantCount).toBe(3)
     })
   })
 
