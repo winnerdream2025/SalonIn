@@ -558,15 +558,24 @@ const styles = StyleSheet.create({
 // ── Suggested Stylists ────────────────────────────────────────────────────────
 
 function SuggestedStylists({ theme }: { theme: Theme }) {
-  const { users, loading, followedIds, toggleFollow } = useSuggestedUsers(10)
+  const { suggestions, isLoading } = useSuggestedUsers()
+  const [followedIds, setFollowedIds] = React.useState<Set<string>>(new Set())
 
-  if (!loading && users.length === 0) return null
+  if (!isLoading && suggestions.length === 0) return null
+
+  const handleFollow = async (userId: string) => {
+    setFollowedIds((prev) => new Set([...prev, userId]))
+    const { followsApi } = await import('@salonin/api-client')
+    await followsApi.follow(userId).catch(() => {
+      setFollowedIds((prev) => { const next = new Set(prev); next.delete(userId); return next })
+    })
+  }
 
   return (
     <View style={suggestStyles.section}>
       <View style={suggestStyles.header}>
         <Text style={[suggestStyles.title, { color: theme.text.primary }]}>People to follow</Text>
-        <TouchableOpacity onPress={() => router.push('/follow/suggested' as never)} activeOpacity={0.7}>
+        <TouchableOpacity onPress={() => router.push('/search' as never)} activeOpacity={0.7}>
           <Text style={[suggestStyles.seeAll, { color: theme.brand.primary }]}>See all</Text>
         </TouchableOpacity>
       </View>
@@ -576,17 +585,17 @@ function SuggestedStylists({ theme }: { theme: Theme }) {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={suggestStyles.row}
       >
-        {loading
+        {isLoading
           ? Array.from({ length: 5 }).map((_, i) => (
               <SuggestedCardSkeleton key={i} theme={theme} />
             ))
-          : users.map(user => (
+          : suggestions.map((user) => (
               <SuggestedCard
                 key={user.id}
                 user={user}
                 theme={theme}
                 isFollowed={followedIds.has(user.id)}
-                onFollow={() => void toggleFollow(user.id)}
+                onFollow={() => void handleFollow(user.id)}
               />
             ))
         }
@@ -616,9 +625,9 @@ function SuggestedCard({
     >
       <Avatar uri={user.photoUrl} name={user.name} size="lg" />
 
-      {user.followsMe && (
-        <View style={[suggestStyles.followsBadge, { backgroundColor: theme.bg.base, borderColor: theme.border.default }]}>
-          <Text style={[suggestStyles.followsBadgeText, { color: theme.text.tertiary }]}>Follows you</Text>
+      {user.reason === 'mutual' && (
+        <View style={[suggestStyles.followsBadge, { backgroundColor: 'rgba(29,158,117,0.12)', borderColor: 'rgba(29,158,117,0.3)' }]}>
+          <Text style={[suggestStyles.followsBadgeText, { color: '#1D9E75' }]}>Follows you</Text>
         </View>
       )}
 

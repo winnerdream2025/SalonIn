@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing'
-import { ForbiddenException, NotFoundException } from '@nestjs/common'
+import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common'
 import { JobsService } from './jobs.service'
 import { PrismaService } from '../../prisma/prisma.service'
 import { NotificationsService } from '../notifications/notifications.service'
@@ -121,14 +121,12 @@ describe('JobsService', () => {
       await expect(service.applyToJob('job-1', USER_ID)).rejects.toThrow(ForbiddenException)
     })
 
-    it('is idempotent — returns success if already applied', async () => {
+    it('throws ConflictException if already applied', async () => {
       mockPrisma.jobPost.findFirst.mockResolvedValue({ id: 'job-1', salon: { userId: 'salon-user' } })
       mockPrisma.workerProfile.findUnique.mockResolvedValue({ id: 'wp-1', name: 'Alice' })
       mockPrisma.jobApplication.findFirst.mockResolvedValue({ id: 'app-existing' })
 
-      const result = await service.applyToJob('job-1', USER_ID)
-
-      expect(result).toEqual({ success: true })
+      await expect(service.applyToJob('job-1', USER_ID)).rejects.toThrow(ConflictException)
       expect(mockPrisma.jobApplication.create).not.toHaveBeenCalled()
     })
 
@@ -159,12 +157,22 @@ describe('JobsService', () => {
     })
 
     it('returns job post with salon when found', async () => {
-      const post = { id: 'job-1', salon: { name: 'Glamour Studio', photoUrls: [] } }
+      const post = {
+        id: 'job-1',
+        salon: {
+          name: 'Glamour Studio', photoUrls: [], description: null,
+          city: null, state: null, country: null, userId: 'u1',
+          isVerified: false, rating: 0, reviewCount: 0,
+        },
+        _count: { applications: 3 },
+      }
       mockPrisma.jobPost.findFirst.mockResolvedValue(post)
+      mockPrisma.$queryRaw.mockResolvedValue([{ lat: 38.9, lng: -77.0 }])
 
       const result = await service.getById('job-1')
 
-      expect(result).toEqual(post)
+      expect(result.applicantCount).toBe(3)
+      expect(result.salon.name).toBe('Glamour Studio')
     })
   })
 
