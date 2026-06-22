@@ -69,7 +69,7 @@ const RECORDING_OPTIONS: Audio.RecordingOptions = {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type RecordState = 'recording' | 'paused' | 'uploading' | 'error'
+type RecordState = 'recording' | 'paused' | 'ready' | 'uploading' | 'error'
 type PreviewState = 'idle' | 'playing' | 'paused_preview'
 
 export interface VoiceRecorderProps {
@@ -91,6 +91,8 @@ export function VoiceRecorder({ onSend, onCancel }: VoiceRecorderProps) {
   // Refs — never stale in callbacks
   const recordingRef   = useRef<Audio.Recording | null>(null)
   const previewSound   = useRef<Audio.Sound | null>(null)
+  const finalizedUri   = useRef<string | null>(null)   // set after stopAndUnload for preview
+  const finalizedMs    = useRef(0)                     // duration when finalized
   const rawMetering    = useRef<number[]>([])
   const timerRef       = useRef<ReturnType<typeof setInterval> | null>(null)
   const startMsRef     = useRef(0)
@@ -225,22 +227,44 @@ export function VoiceRecorder({ onSend, onCancel }: VoiceRecorderProps) {
   }, [])
 
   const togglePreview = useCallback(async () => {
-    const uri = recordingRef.current?.getURI()
-    if (!uri) return
-
+    // Resume/pause already-loaded preview sound
     if (previewState === 'playing' && previewSound.current) {
       await previewSound.current.pauseAsync().catch(() => undefined)
       setPreviewState('paused_preview')
       return
     }
-
     if (previewState === 'paused_preview' && previewSound.current) {
       await previewSound.current.playAsync().catch(() => undefined)
       setPreviewState('playing')
       return
     }
 
+    // First-time preview: must finalize the recording first.
+    // iOS M4A files are only valid (moov atom written) after stopAndUnloadAsync.
+    // Playing a paused recording always fails — finalize it here.
     try {
+      let uri = finalizedUri.current
+
+      if (!uri && recordingRef.current) {
+        stopTimer()
+        stopPulse()
+        const elapsed = pausedMsRef.current + (
+          recStateRef.current === 'recording' ? Date.now() - startMsRef.current : 0
+        )
+        await recordingRef.current.stopAndUnloadAsync().catch(() => undefined)
+        uri = recordingRef.current.getURI() ?? null
+        recordingRef.current = null
+        if (!uri) {
+          Alert.alert('Preview error', 'Recording file not found.')
+          return
+        }
+        finalizedUri.current = uri
+        finalizedMs.current  = Math.max(1, Math.round(elapsed / 1000))
+        setState('ready')  // recording finalized — can only send or discard now
+      }
+
+      if (!uri) return
+
       await Audio.setAudioModeAsync({ allowsRecordingIOS: false, playsInSilentModeIOS: true })
       const { sound } = await Audio.Sound.createAsync(
         { uri },
@@ -250,7 +274,6 @@ export function VoiceRecorder({ onSend, onCancel }: VoiceRecorderProps) {
           if (status.didJustFinish) {
             previewSound.current = null
             setPreviewState('idle')
-            void Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true })
           }
         },
       )
@@ -258,9 +281,8 @@ export function VoiceRecorder({ onSend, onCancel }: VoiceRecorderProps) {
       setPreviewState('playing')
     } catch {
       Alert.alert('Preview error', 'Could not play recording.')
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true }).catch(() => undefined)
     }
-  }, [previewState])
+  }, [previewState, stopTimer, stopPulse, setState])
 
   // ── Send (stop → upload → callback) ───────────────────────────────────────
 
@@ -268,16 +290,24 @@ export function VoiceRecorder({ onSend, onCancel }: VoiceRecorderProps) {
     stopTimer()
     stopPulse()
     await stopPreview()
-    if (!recordingRef.current) return
 
-    const elapsed = pausedMsRef.current + (
-      recStateRef.current === 'recording' ? Date.now() - startMsRef.current : 0
-    )
-    const durationSeconds = Math.max(1, Math.round(elapsed / 1000))
+    let uri: string | null = null
+    let durationSeconds = 1
 
-    await recordingRef.current.stopAndUnloadAsync().catch(() => undefined)
-    const uri = recordingRef.current.getURI()
-    recordingRef.current = null
+    if (finalizedUri.current) {
+      // Recording was already finalized for preview — use stored URI
+      uri = finalizedUri.current
+      durationSeconds = finalizedMs.current
+    } else if (recordingRef.current) {
+      // Still active — finalize now
+      const elapsed = pausedMsRef.current + (
+        recStateRef.current === 'recording' ? Date.now() - startMsRef.current : 0
+      )
+      durationSeconds = Math.max(1, Math.round(elapsed / 1000))
+      await recordingRef.current.stopAndUnloadAsync().catch(() => undefined)
+      uri = recordingRef.current.getURI() ?? null
+      recordingRef.current = null
+    }
 
     if (!uri) { onCancel(); return }
 
@@ -337,8 +367,9 @@ export function VoiceRecorder({ onSend, onCancel }: VoiceRecorderProps) {
   const isUploading   = recState === 'uploading'
   const isPaused      = recState === 'paused'
   const isRecording   = recState === 'recording'
+  const isReady       = recState === 'ready'   // finalized, awaiting send/discard
   const isPreviewing  = previewState === 'playing' || previewState === 'paused_preview'
-  const canPreview    = isPaused && !!recordingRef.current?.getURI()
+  const canPreview    = (isPaused || isReady) && !isUploading
 
   return (
     <View style={[styles.container, { backgroundColor: theme.bg.card, borderTopColor: theme.border.default }]}>
@@ -394,6 +425,9 @@ export function VoiceRecorder({ onSend, onCancel }: VoiceRecorderProps) {
           {isPaused && (
             <Text style={[styles.pauseLabel, { color: theme.text.tertiary }]}>Paused</Text>
           )}
+          {isReady && (
+            <Text style={[styles.pauseLabel, { color: theme.brand.primary }]}>Ready</Text>
+          )}
         </View>
       </View>
 
@@ -413,8 +447,8 @@ export function VoiceRecorder({ onSend, onCancel }: VoiceRecorderProps) {
         </TouchableOpacity>
       )}
 
-      {/* Pause / Resume recording */}
-      {(isRecording || isPaused) && !isPreviewing && (
+      {/* Pause / Resume recording — hidden once finalized */}
+      {(isRecording || isPaused) && !isPreviewing && !isReady && (
         <TouchableOpacity
           onPress={isRecording ? () => void pauseRecording() : () => void resumeRecording()}
           style={[styles.iconBtn, { backgroundColor: theme.bg.elevated, borderRadius: 18 }]}
@@ -433,15 +467,15 @@ export function VoiceRecorder({ onSend, onCancel }: VoiceRecorderProps) {
       <TouchableOpacity
         onPress={() => void doSend()}
         style={[styles.sendBtn, {
-          backgroundColor: (!isUploading && elapsedMs >= 500) ? theme.brand.primary : theme.bg.elevated,
+          backgroundColor: (!isUploading && (isReady || elapsedMs >= 500)) ? theme.brand.primary : theme.bg.elevated,
         }]}
         activeOpacity={0.8}
-        disabled={isUploading || elapsedMs < 500}
+        disabled={isUploading || (!isReady && elapsedMs < 500)}
       >
         {isUploading ? (
           <Ionicons name="hourglass-outline" size={16} color={theme.text.tertiary} />
         ) : (
-          <Ionicons name="send" size={16} color={elapsedMs >= 500 ? '#FFFFFF' : theme.text.tertiary} />
+          <Ionicons name="send" size={16} color={(isReady || elapsedMs >= 500) ? '#FFFFFF' : theme.text.tertiary} />
         )}
       </TouchableOpacity>
     </View>
