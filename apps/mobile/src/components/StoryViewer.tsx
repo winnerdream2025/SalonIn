@@ -480,7 +480,7 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose, onViewe
 
         {/* ── Caption ─────────────────────────────────────────────── */}
         {story.caption != null && story.caption.length > 0 && (
-          <View style={[styles.captionWrap, { bottom: insets.bottom + 100 }]}>
+          <View style={[styles.captionWrap, { bottom: insets.bottom + 80 }]}>
             <Text style={styles.caption}>{story.caption}</Text>
           </View>
         )}
@@ -497,21 +497,6 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose, onViewe
           >
             <Ionicons name="calendar" size={15} color="#fff" />
             <Text style={styles.bookingCTAText}>Book Now</Text>
-          </TouchableOpacity>
-        )}
-
-        {/* ── Owner viewer count ──────────────────────────────────── */}
-        {isMine && (
-          <TouchableOpacity
-            style={[styles.viewerCount, { bottom: insets.bottom + 100 }]}
-            onPress={() => {
-              onClose()
-              router.push(`/story-analytics/${story.id}` as never)
-            }}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="eye-outline" size={14} color="rgba(255,255,255,0.8)" />
-            <Text style={styles.viewerCountText}>{story._count.views} views</Text>
           </TouchableOpacity>
         )}
 
@@ -593,9 +578,12 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose, onViewe
                     router.push(`/story-analytics/${story.id}` as never)
                   }}
                   style={styles.analyticsBtn}
+                  activeOpacity={0.75}
                 >
-                  <Ionicons name="bar-chart-outline" size={22} color="#fff" />
-                  <Text style={styles.analyticsCount}>{story._count.views} views</Text>
+                  <Ionicons name="eye-outline" size={18} color="rgba(255,255,255,0.85)" />
+                  <Text style={styles.analyticsCount}>
+                    {story._count.views} {story._count.views === 1 ? 'view' : 'views'}
+                  </Text>
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity onPress={() => void handleLike()} style={styles.likeBtn}>
@@ -747,18 +735,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
-  viewerCount: {
-    position: 'absolute',
-    left: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  viewerCountText: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 13,
-    fontWeight: '600',
-  },
   captionEditOverlay: {
     backgroundColor: 'rgba(0,0,0,0.85)',
     alignItems: 'center',
@@ -828,14 +804,15 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   analyticsBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
     padding: 8,
-    gap: 2,
   },
   analyticsCount: {
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: '700',
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 13,
+    fontWeight: '600',
   },
   replyRow: {
     flexDirection: 'row',
