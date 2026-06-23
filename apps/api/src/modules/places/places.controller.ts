@@ -1,11 +1,9 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common'
+import { Controller, Get, Query } from '@nestjs/common'
 import { Throttle } from '@nestjs/throttler'
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
 import { PlacesService } from './places.service'
 import { AutocompleteDto, PlaceDetailsDto, ReverseGeocodeDto } from './dto/place-queries.dto'
 
 @Controller('places')
-@UseGuards(JwtAuthGuard)
 @Throttle({ short: { limit: 30, ttl: 60_000 } })
 export class PlacesController {
   constructor(private readonly places: PlacesService) {}
