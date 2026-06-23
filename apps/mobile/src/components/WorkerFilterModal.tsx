@@ -11,17 +11,17 @@ import {
 import * as Haptics from 'expo-haptics'
 import { useTheme } from '@salonin/ui'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { SPECIALTY_CATEGORIES } from '@salonin/config'
+import { ALL_SPECIALTIES } from '@salonin/config'
 
 export interface WorkerFilters {
   availability: string | null
-  category: string | null
+  specialty: string | null
   distance: number | null
 }
 
 export const EMPTY_WORKER_FILTERS: WorkerFilters = {
   availability: null,
-  category: null,
+  specialty: null,
   distance: null,
 }
 
@@ -32,9 +32,9 @@ const AVAILABILITIES = [
   { value: 'WEEKEND', label: 'Weekend' },
 ] as const
 
-const CATEGORIES = [
+const SPECIALTIES = [
   { value: null, label: 'All' },
-  ...SPECIALTY_CATEGORIES.map((cat) => ({ value: cat, label: cat })),
+  ...ALL_SPECIALTIES.map((s) => ({ value: s, label: s })),
 ]
 
 const DISTANCES = [
@@ -57,7 +57,7 @@ export function WorkerFilterModal({ visible, onClose, filters, onApply }: Props)
   const { bottom } = useSafeAreaInsets()
   const [draft, setDraft] = useState<WorkerFilters>(filters)
 
-  const activeCount = [draft.availability, draft.category, draft.distance].filter(Boolean).length
+  const activeCount = [draft.availability, draft.specialty, draft.distance].filter(Boolean).length
 
   const handleApply = useCallback(() => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
@@ -66,7 +66,7 @@ export function WorkerFilterModal({ visible, onClose, filters, onApply }: Props)
   }, [draft, onApply, onClose])
 
   const handleClear = useCallback(() => {
-    setDraft({ availability: null, category: null, distance: null })
+    setDraft({ availability: null, specialty: null, distance: null })
   }, [])
 
   return (
@@ -119,16 +119,16 @@ export function WorkerFilterModal({ visible, onClose, filters, onApply }: Props)
               })}
             </View>
 
-            <Text style={[s.sectionTitle, { color: theme.text.secondary }]}>Specialty Category</Text>
+            <Text style={[s.sectionTitle, { color: theme.text.secondary }]}>Specialty</Text>
             <View style={s.optionsRow}>
-              {CATEGORIES.map((o) => {
-                const active = draft.category === o.value
+              {SPECIALTIES.map((o) => {
+                const active = draft.specialty === o.value
                 return (
                   <TouchableOpacity
                     key={o.label}
                     onPress={() => {
                       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                      setDraft((d) => ({ ...d, category: o.value }))
+                      setDraft((d) => ({ ...d, specialty: o.value }))
                     }}
                     style={[
                       s.optionPill,
@@ -192,7 +192,7 @@ export function WorkerFilterModal({ visible, onClose, filters, onApply }: Props)
 }
 
 export function activeWorkerFilterCount(f: WorkerFilters): number {
-  return [f.availability, f.category, f.distance].filter(Boolean).length
+  return [f.availability, f.specialty, f.distance].filter(Boolean).length
 }
 
 const s = StyleSheet.create({

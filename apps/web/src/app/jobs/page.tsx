@@ -16,7 +16,7 @@ const T = {
   brand: { primary: '#D85A30' },
 } as const
 
-const SPECIALTIES = ALL_SPECIALTIES.slice(0, 20)
+const SPECIALTIES = ALL_SPECIALTIES
 
 const CITY_PRESETS = WORLD_CITIES.map((c) => ({ cityId: c.id, label: `${c.flag} ${c.name}`, lat: c.lat, lng: c.lng }))
 

@@ -102,36 +102,37 @@ export default function SalonJobsScreen() {
           </Button>
         </View>
       ) : (
-        <FlatList
-          data={jobs}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <View style={styles.cardWrap}>
-              <JobPostCard job={item} onPress={() => handlePressJob(item)} />
-            </View>
-          )}
-          contentContainerStyle={[styles.listContent, { paddingBottom: 56 + bottom + 16 }]}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={handleRefresh}
-              tintColor={theme.text.secondary}
-            />
-          }
-        />
+        <>
+          <FlatList
+            data={jobs}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <View style={styles.cardWrap}>
+                <JobPostCard job={item} onPress={() => handlePressJob(item)} />
+              </View>
+            )}
+            contentContainerStyle={[styles.listContent, { paddingBottom: 56 + bottom + 16 }]}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefreshing}
+                onRefresh={handleRefresh}
+                tintColor={theme.text.secondary}
+              />
+            }
+          />
+          <Pressable
+            onPress={handleCreateJob}
+            style={({ pressed }) => [
+              styles.fab,
+              { backgroundColor: theme.brand.primary, bottom: bottom + 72, transform: [{ scale: pressed ? 0.92 : 1 }] },
+            ]}
+          >
+            <Ionicons name="add" size={28} color="#FFFFFF" />
+            <Text style={styles.fabLabel}>Post Job</Text>
+          </Pressable>
+        </>
       )}
-
-      <Pressable
-        onPress={handleCreateJob}
-        style={({ pressed }) => [
-          styles.fab,
-          { backgroundColor: theme.brand.primary, bottom: bottom + 72, transform: [{ scale: pressed ? 0.92 : 1 }] },
-        ]}
-      >
-        <Ionicons name="add" size={28} color="#FFFFFF" />
-        <Text style={styles.fabLabel}>Post Job</Text>
-      </Pressable>
     </SafeAreaView>
   )
 }

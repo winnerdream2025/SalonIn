@@ -3,6 +3,7 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import Stripe from 'stripe'
@@ -10,16 +11,20 @@ import { PrismaService } from '../../prisma/prisma.service'
 
 @Injectable()
 export class VerifyService {
-  private readonly stripe: Stripe
+  private readonly stripe: Stripe | null = null
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
   ) {
-    this.stripe = new Stripe(this.config.getOrThrow<string>('STRIPE_SECRET_KEY'))
+    const key = this.config.get<string>('STRIPE_SECRET_KEY')
+    if (key) {
+      this.stripe = new Stripe(key)
+    }
   }
 
   async createIdentitySession(userId: string): Promise<{ url: string; sessionId: string }> {
+    if (!this.stripe) throw new ServiceUnavailableException('Identity verification is not configured')
     const worker = await this.prisma.workerProfile.findUnique({
       where: { userId },
       select: { id: true, isVerified: true },
@@ -46,6 +51,7 @@ export class VerifyService {
   }
 
   async handleWebhook(rawBody: Buffer, signature: string): Promise<void> {
+    if (!this.stripe) throw new ServiceUnavailableException('Identity verification is not configured')
     const secret = this.config.getOrThrow<string>('STRIPE_WEBHOOK_SECRET')
 
     let event: Stripe.Event

@@ -25,7 +25,7 @@ import type { WorkerCardData } from '@salonin/types'
 import { Availability } from '@salonin/types'
 import { reportsApi, messagesApi, parseApiError } from '@salonin/api-client'
 import type { SuggestedUser } from '@salonin/api-client'
-import { SPECIALTY_CATEGORIES } from '@salonin/config'
+import { ALL_SPECIALTIES } from '@salonin/config'
 import { useAuthStore } from '../../store/authStore'
 import { useNearbyWorkers } from '../../hooks/useNearbyWorkers'
 import { useLocationStore } from '../../store/locationStore'
@@ -36,7 +36,7 @@ import { LocationModal } from '../../components/LocationModal'
 import { WorkerFilterModal, activeWorkerFilterCount, EMPTY_WORKER_FILTERS } from '../../components/WorkerFilterModal'
 import type { WorkerFilters } from '../../components/WorkerFilterModal'
 
-const SPECIALTIES = ['All', ...SPECIALTY_CATEGORIES]
+const SPECIALTIES = ['All', ...ALL_SPECIALTIES]
 
 const SKELETON_COUNT = 6
 
@@ -120,7 +120,7 @@ export default function DiscoveryFeedScreen() {
 
   const { workers, isLoading, isRefreshing, isLoadingMore, hasMore, error, isExpanded, usedRadius, refresh, loadMore } =
     useNearbyWorkers({
-      specialty: workerFilters.category ?? specialtyFilter,
+      specialty: workerFilters.specialty ?? specialtyFilter,
       availability: workerFilters.availability ? (workerFilters.availability as Availability) : undefined,
       radiusMiles,
     })
@@ -458,7 +458,7 @@ export default function DiscoveryFeedScreen() {
           onClose={() => setReportTarget(null)}
           onSubmit={async (type, reason) => {
             if (!reportTarget) return
-            await reportsApi.createReport(reportTarget.id, type, reason)
+            await reportsApi.createReport(reportTarget.userId ?? reportTarget.id, type, reason)
             setReportTarget(null)
           }}
         />

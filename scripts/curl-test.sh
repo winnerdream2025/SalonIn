@@ -35,7 +35,7 @@ echo -e "\n${B}[2] AUTH${NC}"
 
 W_RESP=$(curl -s -X POST "$BASE/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"email":"jasmine@salonin.test","password":"Password123!"}')
+  -d '{"email":"testworker@mysalonin.com","password":"Test1234!"}')
 WT=$(echo "$W_RESP" | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d.get("accessToken",""))' 2>/dev/null)
 WID=$(echo "$W_RESP" | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d.get("user",{}).get("id",""))' 2>/dev/null)
 [ -n "$WT" ] \
@@ -46,7 +46,7 @@ sleep 0.5
 
 S_RESP=$(curl -s -X POST "$BASE/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"email":"glamstudio@salonin.test","password":"Password123!"}')
+  -d '{"email":"testsalon@mysalonin.com","password":"Test1234!"}')
 ST=$(echo "$S_RESP" | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d.get("accessToken",""))' 2>/dev/null)
 SID=$(echo "$S_RESP" | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d.get("user",{}).get("id",""))' 2>/dev/null)
 [ -n "$ST" ] \
@@ -55,7 +55,7 @@ SID=$(echo "$S_RESP" | python3 -c 'import sys,json; d=json.load(sys.stdin); prin
 
 sleep 0.3
 FPV=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$BASE/auth/forgot-password" \
-  -H "Content-Type: application/json" -d '{"email":"jasmine@salonin.test"}')
+  -H "Content-Type: application/json" -d '{"email":"testworker@mysalonin.com"}')
 [ "$FPV" = "200" ] || [ "$FPV" = "429" ] \
   && { echo -e "${G}✓${NC} [$FPV] POST /auth/forgot-password (200=sent, 429=throttled)"; ((pass++)); } \
   || { echo -e "${R}✗${NC} [$FPV vs 200] POST /auth/forgot-password (valid)"; ((fail++)); }
@@ -90,10 +90,10 @@ SPID=$(curl -s "$BASE/salons/me" -H "Authorization: Bearer $ST" \
 
 # ── [5] WORKERS/NEARBY (matching) ────────────────
 echo -e "\n${B}[5] WORKERS/NEARBY${NC}"
-chk "GET /workers/nearby (r=25mi)"         GET "/workers/nearby?cityId=dmv&lat=38.9072&lng=-77.0369&radiusMiles=25" 200 "" "$WT"
-chk "GET /workers/nearby (r=15mi)"         GET "/workers/nearby?cityId=dmv&lat=38.9072&lng=-77.0369&radiusMiles=15" 200 "" "$WT"
-chk "GET /workers/nearby (r=50mi)"         GET "/workers/nearby?cityId=dmv&lat=38.9072&lng=-77.0369&radiusMiles=50" 200 "" "$WT"
-chk "GET /workers/nearby (public,no auth)" GET "/workers/nearby?cityId=dmv&lat=38.9072&lng=-77.0369&radiusMiles=25" 200
+chk "GET /workers/nearby (r=25mi)"         GET "/workers/nearby?lat=38.9072&lng=-77.0369&radiusMiles=25" 200 "" "$WT"
+chk "GET /workers/nearby (r=15mi)"         GET "/workers/nearby?lat=38.9072&lng=-77.0369&radiusMiles=15" 200 "" "$WT"
+chk "GET /workers/nearby (r=50mi)"         GET "/workers/nearby?lat=38.9072&lng=-77.0369&radiusMiles=50" 200 "" "$WT"
+chk "GET /workers/nearby (public,no auth)" GET "/workers/nearby?lat=38.9072&lng=-77.0369&radiusMiles=25" 200
 
 # ── [6] JOBS ──────────────────────────────────────
 echo -e "\n${B}[6] JOBS${NC}"
@@ -116,7 +116,7 @@ APPLY_CODE=$(echo "$APPLY_RESP" | tail -1)
 EXPIRES=$(python3 -c "from datetime import datetime,timedelta; print((datetime.utcnow()+timedelta(days=14)).strftime('%Y-%m-%dT%H:%M:%S.000Z'))")
 CJ_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$BASE/jobs" \
   -H "Content-Type: application/json" -H "Authorization: Bearer $ST" \
-  -d "{\"title\":\"Curl Test Role\",\"description\":\"Created by curl-test.sh automation\",\"specialty\":\"Knotless braids\",\"payStructure\":\"60/40 Commission\",\"type\":\"FREELANCE\",\"listingType\":\"JOB\",\"cityId\":\"dmv\",\"expiresAt\":\"$EXPIRES\"}")
+  -d "{\"title\":\"Curl Test Role\",\"description\":\"Created by curl-test.sh automation\",\"specialty\":\"Knotless braids\",\"payStructure\":\"60/40 Commission\",\"type\":\"FREELANCE\",\"listingType\":\"JOB\",\"cityId\":\"dmv\",\"lat\":38.9072,\"lng\":-77.0369,\"expiresAt\":\"$EXPIRES\"}")
 [ "$CJ_CODE" = "201" ] \
   && { echo -e "${G}✓${NC} [201] POST /jobs (salon creates)"; ((pass++)); } \
   || { echo -e "${R}✗${NC} [$CJ_CODE vs 201] POST /jobs (salon creates)"; ((fail++)); }
@@ -217,10 +217,6 @@ M4A_CODE=$(echo "$M4A_RESP" | tail -1)
 M4A_BODY=$(echo "$M4A_RESP" | sed '$d')
 if [ "$M4A_CODE" = "201" ]; then
   echo -e "${G}✓${NC} [$M4A_CODE] POST /media/upload audio/x-m4a"
-  ((pass++))
-elif [ "$M4A_CODE" = "500" ]; then
-  # 500 usually means the file passed validation but S3 is not configured locally (placeholder bucket)
-  echo -e "${G}✓${NC} [$M4A_CODE] POST /media/upload audio/x-m4a (MIME accepted; S3 placeholder)"
   ((pass++))
 else
   echo -e "${R}✗${NC} [$M4A_CODE vs 201] POST /media/upload audio/x-m4a"

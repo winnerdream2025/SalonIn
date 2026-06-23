@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common'
+import { BadRequestException, Injectable, ServiceUnavailableException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import sharp from 'sharp'
@@ -24,26 +24,30 @@ const MAX_DOCUMENT_BYTES = 25 * 1024 * 1024
 
 @Injectable()
 export class MediaService {
-  private readonly s3: S3Client
-  private readonly bucket: string
-  private readonly region: string
+  private readonly s3: S3Client | null = null
+  private readonly bucket: string | undefined
+  private readonly region: string | undefined
 
   constructor(config: ConfigService) {
-    this.region = config.getOrThrow<string>('AWS_REGION')
-    this.bucket = config.getOrThrow<string>('AWS_S3_BUCKET')
-    this.s3 = new S3Client({
-      region: this.region,
-      credentials: {
-        accessKeyId: config.getOrThrow<string>('AWS_ACCESS_KEY_ID'),
-        secretAccessKey: config.getOrThrow<string>('AWS_SECRET_ACCESS_KEY'),
-      },
-    })
+    this.region = config.get<string>('AWS_REGION')
+    this.bucket = config.get<string>('AWS_S3_BUCKET')
+    const accessKeyId = config.get<string>('AWS_ACCESS_KEY_ID')
+    const secretAccessKey = config.get<string>('AWS_SECRET_ACCESS_KEY')
+    if (this.region && this.bucket && accessKeyId && secretAccessKey) {
+      this.s3 = new S3Client({
+        region: this.region,
+        credentials: { accessKeyId, secretAccessKey },
+      })
+    }
   }
 
   async uploadFile(
     file: Express.Multer.File,
     folder: string = 'uploads',
   ): Promise<{ url: string }> {
+    if (!this.s3 || !this.bucket || !this.region) {
+      throw new ServiceUnavailableException('Storage service is not configured')
+    }
     this.validateSize(file)
 
     let buffer = file.buffer
