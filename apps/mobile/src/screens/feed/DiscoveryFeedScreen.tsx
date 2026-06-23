@@ -944,17 +944,17 @@ const suggestStyles = StyleSheet.create({
 
   card: {
     width: 86,
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 8,
-    paddingTop: 12,
-    paddingBottom: 12,
+    paddingHorizontal: 6,
+    paddingTop: 8,
+    paddingBottom: 8,
     alignItems: 'center',
-    gap: 3,
+    gap: 1,
   },
 
   // Avatar + ring
-  avatarWrap: { position: 'relative', alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
+  avatarWrap: { position: 'relative', alignItems: 'center', justifyContent: 'center', marginBottom: 1 },
   ring: { position: 'absolute', borderWidth: RING_W },
   avatar: { width: AVATAR_D, height: AVATAR_D, borderRadius: AVATAR_D / 2, overflow: 'hidden' },
   avatarImg: { width: AVATAR_D, height: AVATAR_D },
@@ -987,13 +987,13 @@ const suggestStyles = StyleSheet.create({
   },
 
   // Text content
-  name: { fontSize: 13, fontWeight: '700', textAlign: 'center', lineHeight: 17, letterSpacing: -0.2, width: '100%' },
+  name: { fontSize: 11, fontWeight: '700', textAlign: 'center', lineHeight: 13, letterSpacing: -0.2, width: '100%' },
   followedLabel: { fontSize: 10, fontWeight: '700', textAlign: 'center' },
-  specialty: { fontSize: 11, textAlign: 'center', width: '100%', opacity: 0.6 },
+  specialty: { fontSize: 10, textAlign: 'center', width: '100%', opacity: 0.6, lineHeight: 12 },
 
   // Stats rows
-  statsRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 1 },
-  statVal: { fontSize: 11, fontWeight: '600' },
+  statsRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  statVal: { fontSize: 10, fontWeight: '600' },
   statDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: '#8B9BB4' },
 
   // Skeletons
