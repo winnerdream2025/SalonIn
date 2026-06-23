@@ -112,11 +112,6 @@ const PillTabBar = React.memo(function PillTabBar({
           )
         })}
       </ScrollView>
-
-      {/* Filter icon */}
-      <TouchableOpacity style={[styles.filterBtn, { backgroundColor: theme.bg.elevated }]} activeOpacity={0.8}>
-        <Ionicons name="options-outline" size={18} color={theme.text.secondary} />
-      </TouchableOpacity>
     </View>
   )
 })
@@ -440,28 +435,15 @@ export default function ConversationsListScreen() {
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]} edges={['top']}>
       {/* ── Header ── */}
       <View style={styles.header}>
-        <View style={styles.titleRow}>
-          <Text style={[styles.titleText, { color: theme.text.primary }]}>Inbox</Text>
-          <View style={[styles.onlineDot, { backgroundColor: '#2ECC71', borderColor: theme.bg.base }]} />
-          <Ionicons name="chevron-down" size={14} color={theme.text.tertiary} style={{ marginLeft: 2 }} />
-        </View>
+        <Text style={[styles.titleText, { color: theme.text.primary }]}>Inbox</Text>
 
-        <View style={styles.headerActions}>
-          <TouchableOpacity
-            onPress={() => setIsSearching((s) => !s)}
-            style={[styles.iconBtn, { backgroundColor: theme.bg.elevated }]}
-            activeOpacity={0.8}
-          >
-            <Ionicons name={isSearching ? 'close' : 'search'} size={18} color={theme.text.secondary} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.iconBtn, { backgroundColor: theme.bg.elevated }]}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="ellipsis-horizontal" size={18} color={theme.text.secondary} />
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          onPress={() => setIsSearching((s) => !s)}
+          style={[styles.iconBtn, { backgroundColor: theme.bg.elevated }]}
+          activeOpacity={0.8}
+        >
+          <Ionicons name={isSearching ? 'close' : 'search'} size={18} color={theme.text.secondary} />
+        </TouchableOpacity>
       </View>
 
       {/* ── Search bar ── */}
@@ -529,21 +511,12 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 10,
   },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   titleText: {
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
     fontSize: 28,
     fontWeight: '900',
     letterSpacing: -0.5,
   },
-  onlineDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    borderWidth: 1.5,
-    marginBottom: 1,
-  },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   iconBtn: {
     width: 36,
     height: 36,
@@ -570,7 +543,6 @@ const styles = StyleSheet.create({
   pillTabRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingRight: 12,
     marginBottom: 4,
   },
   pillTabScroll: {
@@ -587,14 +559,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   pillTabText: { fontSize: 13, fontWeight: '700' },
-  filterBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
+
 
   // Notification aggregator rows
   aggregatorSection: {

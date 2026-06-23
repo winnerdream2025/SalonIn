@@ -622,8 +622,8 @@ const styles = StyleSheet.create({
 
 // ── Suggested People (shared card design) ────────────────────────────────────
 
-const AVATAR_D = 72
-const RING_W = 3
+const AVATAR_D = 56
+const RING_W = 2.5
 const RING_GAP = 2
 const RING_D = AVATAR_D + (RING_W + RING_GAP) * 2
 
@@ -647,122 +647,101 @@ function SuggestedCard({ user, theme, isFollowed, storyState, onFollow, onMessag
   const hasRing = storyState !== 'none'
   const ringColor = storyState === 'unseen' ? '#D85A30' : '#8B9BB4'
   const profilePath = user.type === 'salon' ? `/salon/${user.id}` : `/worker/${user.id}`
-
+  const [showFollowedLabel, setShowFollowedLabel] = React.useState(false)
   const initial = user.name.charAt(0).toUpperCase()
 
-  const avatarEl = (
-    <View style={suggestStyles.avatarWrap}>
-      {/* Ring */}
-      {hasRing && (
-        <TouchableOpacity
-          onPress={onStoryPress}
-          activeOpacity={0.85}
-          style={[suggestStyles.ring, { borderColor: ringColor, width: RING_D, height: RING_D, borderRadius: RING_D / 2 }]}
-        />
-      )}
-      {/* Avatar */}
-      <View style={[suggestStyles.avatar, hasRing && suggestStyles.avatarWithRing]}>
-        {user.photoUrl ? (
-          <Image source={{ uri: user.photoUrl }} style={suggestStyles.avatarImg} />
-        ) : (
-          <View style={[suggestStyles.avatarFallback, { backgroundColor: theme.bg.elevated }]}>
-            <Text style={[suggestStyles.avatarInitial, { color: theme.brand.primary }]}>{initial}</Text>
-          </View>
-        )}
-      </View>
-      {/* Verified badge */}
-      {user.isVerified && (
-        <View style={suggestStyles.verifiedBadge}>
-          <Ionicons name="checkmark-circle" size={12} color="#1877F2" />
-        </View>
-      )}
-      {/* Mutual badge */}
-      {user.reason === 'mutual' && !hasRing && (
-        <View style={[suggestStyles.mutualBadge, { backgroundColor: '#1D9E75' }]}>
-          <Ionicons name="people" size={9} color="#fff" />
-        </View>
-      )}
-    </View>
-  )
+  const handleFollowPress = () => {
+    onFollow()
+    if (!isFollowed) {
+      setShowFollowedLabel(true)
+      setTimeout(() => setShowFollowedLabel(false), 2000)
+    }
+  }
 
   return (
     <TouchableOpacity
       style={[suggestStyles.card, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}
-      activeOpacity={0.88}
+      activeOpacity={0.9}
       onPress={() => router.push(profilePath as never)}
     >
-      {avatarEl}
+      {/* ── Avatar + overlaid badges ── */}
+      <View style={[suggestStyles.avatarWrap, { width: RING_D, height: RING_D }]}>
+        {hasRing && (
+          <TouchableOpacity
+            onPress={onStoryPress}
+            activeOpacity={0.85}
+            style={[suggestStyles.ring, { borderColor: ringColor, width: RING_D, height: RING_D, borderRadius: RING_D / 2 }]}
+          />
+        )}
+        <View style={suggestStyles.avatar}>
+          {user.photoUrl ? (
+            <Image source={{ uri: user.photoUrl }} style={suggestStyles.avatarImg} />
+          ) : (
+            <View style={[suggestStyles.avatarFallback, { backgroundColor: theme.bg.elevated }]}>
+              <Text style={[suggestStyles.avatarInitial, { color: theme.brand.primary }]}>{initial}</Text>
+            </View>
+          )}
+        </View>
 
-      <Text style={[suggestStyles.name, { color: theme.text.primary }]} numberOfLines={2}>
+        {/* Verified badge — top-right */}
+        {user.isVerified && (
+          <View style={[suggestStyles.verifiedBadge, { backgroundColor: theme.bg.card }]}>
+            <Ionicons name="checkmark-circle" size={14} color="#1877F2" />
+          </View>
+        )}
+
+        {/* Follow (+/✓) — bottom-right, on avatar ring */}
+        <TouchableOpacity
+          style={[
+            suggestStyles.followOverlay,
+            {
+              backgroundColor: isFollowed ? '#1D9E75' : theme.brand.primary,
+              borderColor: theme.bg.card,
+            },
+          ]}
+          onPress={handleFollowPress}
+          activeOpacity={0.8}
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+        >
+          <Ionicons name={isFollowed ? 'checkmark' : 'add'} size={12} color="#fff" />
+        </TouchableOpacity>
+      </View>
+
+      {/* ── Name (1 line, truncated) ── */}
+      <Text style={[suggestStyles.name, { color: theme.text.primary }]} numberOfLines={1}>
         {user.name}
       </Text>
-      <Text style={[suggestStyles.specialty, { color: theme.text.tertiary }]} numberOfLines={1}>
-        {specialty}
-      </Text>
 
-      {/* Stats row */}
+      {/* ── Followed feedback (2 s) OR specialty ── */}
+      {showFollowedLabel ? (
+        <Text style={[suggestStyles.followedLabel, { color: '#1D9E75' }]}>Followed ✓</Text>
+      ) : (
+        <Text style={[suggestStyles.specialty, { color: theme.text.tertiary }]} numberOfLines={1}>
+          {specialty}
+        </Text>
+      )}
+
+      {/* ── Followers · Rating ── */}
       <View style={suggestStyles.statsRow}>
-        <View style={suggestStyles.statItem}>
-          <Ionicons name="image-outline" size={11} color={theme.text.tertiary} />
-          <Text style={[suggestStyles.statVal, { color: theme.text.secondary }]}>
-            {formatCount(user.listingsCount)}
-          </Text>
-        </View>
+        <Ionicons name="people-outline" size={10} color={theme.text.tertiary} />
+        <Text style={[suggestStyles.statVal, { color: theme.text.secondary }]}>
+          {formatCount(user.followersCount)}
+        </Text>
         <View style={suggestStyles.statDot} />
-        <View style={suggestStyles.statItem}>
-          <Ionicons name="star" size={11} color="#EF9F27" />
-          <Text style={[suggestStyles.statVal, { color: theme.text.secondary }]}>
-            {user.rating > 0 ? user.rating.toFixed(1) : '—'}
-          </Text>
-        </View>
-      </View>
-      <View style={suggestStyles.followersRow}>
-        <Ionicons name="people-outline" size={11} color={theme.text.tertiary} />
-        <Text style={[suggestStyles.followersText, { color: theme.text.secondary }]}>
-          {formatCount(user.followersCount)} followers
+        <Ionicons name="star" size={10} color="#EF9F27" />
+        <Text style={[suggestStyles.statVal, { color: theme.text.secondary }]}>
+          {user.rating > 0 ? user.rating.toFixed(1) : '—'}
         </Text>
       </View>
 
-      {/* Action buttons */}
-      <View style={suggestStyles.actions}>
-        <TouchableOpacity
-          style={[suggestStyles.msgBtn, { backgroundColor: theme.bg.elevated }]}
-          onPress={onMessage}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="chatbubble-outline" size={13} color={theme.text.secondary} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            suggestStyles.followBtn,
-            isFollowed
-              ? { backgroundColor: 'transparent', borderWidth: 1, borderColor: theme.border.default }
-              : { backgroundColor: theme.brand.primary },
-          ]}
-          onPress={onFollow}
-          activeOpacity={0.8}
-        >
-          <Ionicons
-            name={isFollowed ? 'checkmark' : 'add'}
-            size={18}
-            color={isFollowed ? theme.text.secondary : '#fff'}
-          />
-        </TouchableOpacity>
-      </View>
-
-      {/* Social media */}
-      <View style={suggestStyles.socialRow}>
-        <TouchableOpacity style={suggestStyles.socialBtn} activeOpacity={0.7}>
-          <Ionicons name="logo-instagram" size={18} color="#E1306C" />
-        </TouchableOpacity>
-        <TouchableOpacity style={suggestStyles.socialBtn} activeOpacity={0.7}>
-          <Ionicons name="logo-facebook" size={18} color="#1877F2" />
-        </TouchableOpacity>
-        <TouchableOpacity style={suggestStyles.socialBtn} activeOpacity={0.7}>
-          <Ionicons name="logo-tiktok" size={18} color="#000" />
-        </TouchableOpacity>
-      </View>
+      {/* ── Message button ── */}
+      <TouchableOpacity
+        style={[suggestStyles.msgBtn, { backgroundColor: theme.bg.elevated }]}
+        onPress={onMessage}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="chatbubble-outline" size={13} color={theme.text.secondary} />
+      </TouchableOpacity>
     </TouchableOpacity>
   )
 }
@@ -772,11 +751,9 @@ function SuggestedCardSkeleton({ theme }: { theme: Theme }) {
   return (
     <View style={[suggestStyles.card, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
       <View style={[suggestStyles.skeletonAvatar, { backgroundColor: bg }]} />
-      <View style={[suggestStyles.skeletonLine, { width: 80, backgroundColor: bg }]} />
-      <View style={[suggestStyles.skeletonLine, { width: 55, height: 9, backgroundColor: bg }]} />
-      <View style={[suggestStyles.skeletonLine, { width: 70, height: 9, backgroundColor: bg }]} />
+      <View style={[suggestStyles.skeletonLine, { width: 70, backgroundColor: bg }]} />
+      <View style={[suggestStyles.skeletonLine, { width: 48, height: 9, backgroundColor: bg }]} />
       <View style={[suggestStyles.skeletonLine, { width: 60, height: 9, backgroundColor: bg }]} />
-      <View style={[suggestStyles.skeletonLine, { width: 80, height: 9, backgroundColor: bg }]} />
       <View style={[suggestStyles.skeletonBtn, { backgroundColor: bg }]} />
     </View>
   )
@@ -915,81 +892,75 @@ const suggestStyles = StyleSheet.create({
   },
   sectionTitle: { fontSize: 16, fontWeight: '800', letterSpacing: -0.2 },
   seeAll: { fontSize: 13, fontWeight: '600' },
-  row: { paddingHorizontal: 12, gap: 10, paddingBottom: 8 },
+  row: { paddingHorizontal: 12, gap: 8, paddingBottom: 8 },
 
   card: {
-    width: 110,
-    borderRadius: 18,
+    width: 100,
+    borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth,
-    padding: 10,
+    paddingHorizontal: 8,
+    paddingTop: 12,
+    paddingBottom: 10,
     alignItems: 'center',
-    gap: 4,
+    gap: 3,
   },
 
-  // Avatar with ring
-  avatarWrap: { position: 'relative', width: RING_D, height: RING_D, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
+  // Avatar + ring
+  avatarWrap: { position: 'relative', alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
   ring: { position: 'absolute', borderWidth: RING_W },
   avatar: { width: AVATAR_D, height: AVATAR_D, borderRadius: AVATAR_D / 2, overflow: 'hidden' },
-  avatarWithRing: { marginTop: 0 },
   avatarImg: { width: AVATAR_D, height: AVATAR_D },
   avatarFallback: { width: AVATAR_D, height: AVATAR_D, borderRadius: AVATAR_D / 2, alignItems: 'center', justifyContent: 'center' },
-  avatarInitial: { fontSize: 26, fontWeight: '800' },
+  avatarInitial: { fontSize: 20, fontWeight: '800' },
 
+  // Verified badge — top-right of avatar frame
   verifiedBadge: {
     position: 'absolute',
-    top: RING_W,
-    right: RING_W,
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    width: 20,
-    height: 20,
+    top: 0,
+    right: 0,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  mutualBadge: {
+
+  // Follow button — bottom-right overlay, on avatar circle edge
+  followOverlay: {
     position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    bottom: 0,
+    right: 0,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 2,
   },
 
-  name: { fontSize: 13, fontWeight: '800', textAlign: 'center', lineHeight: 17, letterSpacing: -0.2 },
-  specialty: { fontSize: 11, textAlign: 'center', marginTop: -2 },
+  // Text content
+  name: { fontSize: 12, fontWeight: '800', textAlign: 'center', lineHeight: 15, letterSpacing: -0.3, width: '100%' },
+  followedLabel: { fontSize: 10, fontWeight: '700', textAlign: 'center' },
+  specialty: { fontSize: 10, textAlign: 'center', width: '100%' },
 
-  statsRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
-  statItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  statVal: { fontSize: 11, fontWeight: '600' },
+  // Stats row: followers · rating
+  statsRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 1 },
+  statVal: { fontSize: 10, fontWeight: '600' },
   statDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: '#8B9BB4' },
 
-  followersRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: -2 },
-  followersText: { fontSize: 10 },
-
-  actions: { flexDirection: 'row', gap: 6, marginTop: 4, width: '100%' },
+  // Message button
   msgBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    flexShrink: 0,
+    gap: 4,
+    width: '100%',
+    paddingVertical: 6,
+    borderRadius: 10,
+    marginTop: 5,
   },
-  followBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  followBtnText: { fontSize: 12, fontWeight: '700' },
-
-  socialRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 2 },
-  socialBtn: { padding: 2 },
-
-  skeletonAvatar: { width: RING_D, height: RING_D, borderRadius: RING_D / 2 },
-  skeletonLine: { height: 11, borderRadius: 6, marginTop: 2 },
-  skeletonBtn: { width: '100%', height: 30, borderRadius: 99, marginTop: 4 },
+  // Skeletons
+  skeletonAvatar: { width: RING_D, height: RING_D, borderRadius: RING_D / 2, marginBottom: 6 },
+  skeletonLine: { height: 10, borderRadius: 5, marginTop: 3 },
+  skeletonBtn: { width: '100%', height: 26, borderRadius: 10, marginTop: 6 },
 })
