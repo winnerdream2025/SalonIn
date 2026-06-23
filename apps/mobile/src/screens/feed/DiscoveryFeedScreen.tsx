@@ -25,7 +25,7 @@ import type { WorkerCardData } from '@salonin/types'
 import { Availability } from '@salonin/types'
 import { reportsApi, messagesApi, parseApiError } from '@salonin/api-client'
 import type { SuggestedUser } from '@salonin/api-client'
-import { ALL_SPECIALTIES } from '@salonin/config'
+import { ALL_SPECIALTIES, specialtyLabel } from '@salonin/config'
 import { useAuthStore } from '../../store/authStore'
 import { useAuthGateStore } from '../../store/authGateStore'
 import { useAuthGate } from '../../hooks/useAuthGate'
@@ -192,12 +192,6 @@ export default function DiscoveryFeedScreen() {
               >
                 Discover
               </Text>
-              <Text
-                style={[styles.subtitle, { color: theme.text.secondary }]}
-                numberOfLines={2}
-              >
-                Beauty professionals near you
-              </Text>
             </View>
             <View style={[styles.headerRight, { marginTop: 6 }]}>
               <TouchableOpacity
@@ -230,6 +224,12 @@ export default function DiscoveryFeedScreen() {
             </View>
           </View>
         </View>
+        <Text
+          style={[styles.subtitle, { color: theme.text.secondary }]}
+          numberOfLines={1}
+        >
+          Beauty professionals near you
+        </Text>
         <SuggestedStylists theme={theme} />
         {isExpanded && (
           <Text style={[styles.expandedNote, { color: theme.text.tertiary }]}>
@@ -520,7 +520,8 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 2,
     lineHeight: 18,
-    maxWidth: 200,
+    paddingHorizontal: 16,
+    paddingBottom: 2,
   },
   serifTitle: {
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
@@ -547,7 +548,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flexShrink: 1,
     minWidth: 0,
-    maxWidth: 160,
+    maxWidth: 110,
   },
   searchRow: {
     paddingHorizontal: 16,
@@ -670,7 +671,7 @@ interface SuggestedCardProps {
 function SuggestedCard({ user, theme, isFollowed, storyState, onFollow, onMessage, onStoryPress }: SuggestedCardProps) {
   const name = user.name ?? ''
   const specialties = user.specialties ?? []
-  const specialty = specialties[0] ?? (user.type === 'salon' ? 'Salon' : 'Stylist')
+  const specialty = specialtyLabel(specialties[0]) || (user.type === 'salon' ? 'Salon' : 'Stylist')
   const hasRing = storyState !== 'none'
   const ringColor = storyState === 'unseen' ? '#D85A30' : '#8B9BB4'
   const profilePath = user.type === 'salon' ? `/salon/${user.id}` : `/worker/${user.id}`
