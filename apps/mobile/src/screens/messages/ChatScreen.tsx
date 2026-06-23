@@ -14,9 +14,10 @@ import {
 } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 import * as DocumentPicker from 'expo-document-picker'
-import * as Location from 'expo-location'
 import { VoiceRecorder } from '../../components/VoiceRecorder'
 import { AttachmentPicker } from '../../components/AttachmentPicker'
+import { ChatLocationPicker } from '../../components/ChatLocationPicker'
+import type { PickedLocation } from '../../components/ChatLocationPicker'
 import { MediaPreviewSheet } from '../../components/MediaPreviewSheet'
 import { ContactFormSheet } from '../../components/ContactFormSheet'
 import { ImageGalleryViewer } from '../../components/ImageGalleryViewer'
@@ -80,6 +81,7 @@ export default function ChatScreen() {
   const [uploadProgress, setUploadProgress] = useState(0)
   const [isUploadingMedia, setIsUploadingMedia] = useState(false)
   const [showContactForm, setShowContactForm] = useState(false)
+  const [showLocationPicker, setShowLocationPicker] = useState(false)
   // Gallery viewer
   const [galleryImages, setGalleryImages] = useState<string[]>([])
   const [galleryIndex, setGalleryIndex] = useState(0)
@@ -135,6 +137,24 @@ export default function ChatScreen() {
     }
   }, [draft, sendMessage, editMessage, setTyping, inputDisabled, isSending, replyingTo, editingMessage])
 
+  const handleLocationSend = useCallback(async (loc: PickedLocation) => {
+    setShowLocationPicker(false)
+    setIsSending(true)
+    try {
+      await sendMessage({
+        latitude: loc.latitude,
+        longitude: loc.longitude,
+        locationName: loc.locationName,
+        replyToId: replyingTo?.id,
+      })
+      setReplyingTo(null)
+    } catch (e: unknown) {
+      Alert.alert('Could not send location', parseApiError(e))
+    } finally {
+      setIsSending(false)
+    }
+  }, [sendMessage, replyingTo])
+
   const handleAttachmentSelect = useCallback(async (type: import('../../components/AttachmentPicker').AttachmentType) => {
     if (type === 'contact') {
       setShowContactForm(true)
@@ -142,30 +162,7 @@ export default function ChatScreen() {
     }
 
     if (type === 'location') {
-      const { status } = await Location.requestForegroundPermissionsAsync()
-      if (status !== 'granted') {
-        Alert.alert('Location access required', 'Please enable location in settings.')
-        return
-      }
-      setIsSending(true)
-      try {
-        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
-        const [geo] = await Location.reverseGeocodeAsync({ latitude: loc.coords.latitude, longitude: loc.coords.longitude })
-        const locationName = geo
-          ? [geo.name, geo.street, geo.city, geo.region].filter(Boolean).join(', ')
-          : undefined
-        await sendMessage({
-          latitude: loc.coords.latitude,
-          longitude: loc.coords.longitude,
-          locationName,
-          replyToId: replyingTo?.id,
-        })
-        setReplyingTo(null)
-      } catch (e: unknown) {
-        Alert.alert('Could not get location', parseApiError(e))
-      } finally {
-        setIsSending(false)
-      }
+      setShowLocationPicker(true)
       return
     }
 
@@ -721,6 +718,12 @@ export default function ChatScreen() {
         visible={showContactForm}
         onClose={() => setShowContactForm(false)}
         onSend={(n, p) => void handleSendContact(n, p)}
+      />
+
+      <ChatLocationPicker
+        visible={showLocationPicker}
+        onClose={() => setShowLocationPicker(false)}
+        onSend={(loc) => void handleLocationSend(loc)}
       />
 
       <ImageGalleryViewer
