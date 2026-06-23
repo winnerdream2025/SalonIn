@@ -8,7 +8,7 @@
         "projectId": "4b8c3233-ffb4-4c1d-b74b-bebdf9298f7b"
       }
     },
-    "version": "1.0.5",
+    "version": "1.0.6",
     "orientation": "portrait",
     "scheme": "salonin",
     "icon": "./assets/icon.png",
@@ -20,7 +20,7 @@
     },
     "android": {
       "package": "com.salonin.app",
-      "versionCode": 11,
+      "versionCode": 12,
       "compileSdkVersion": 35,
       "targetSdkVersion": 35,
       "minSdkVersion": 24,
