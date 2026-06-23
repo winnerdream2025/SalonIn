@@ -648,7 +648,7 @@ const styles = StyleSheet.create({
 
 // ── Suggested People (shared card design) ────────────────────────────────────
 
-const AVATAR_D = 56
+const AVATAR_D = 72
 const RING_W = 2.5
 const RING_GAP = 2
 const RING_D = AVATAR_D + (RING_W + RING_GAP) * 2
@@ -732,7 +732,7 @@ function SuggestedCard({ user, theme, isFollowed, storyState, onFollow, onMessag
           activeOpacity={0.8}
           hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
         >
-          <Ionicons name={isFollowed ? 'checkmark' : 'add'} size={12} color="#fff" />
+          <Ionicons name={isFollowed ? 'checkmark' : 'add'} size={14} color="#fff" />
         </TouchableOpacity>
       </View>
 
@@ -949,15 +949,16 @@ const suggestStyles = StyleSheet.create({
   },
   sectionTitle: { fontSize: 16, fontWeight: '800', letterSpacing: -0.2 },
   seeAll: { fontSize: 13, fontWeight: '600' },
-  row: { paddingHorizontal: 12, gap: 8, paddingBottom: 8 },
+  row: { paddingHorizontal: 12, gap: 12, paddingBottom: 8 },
 
   card: {
-    width: 100,
-    borderRadius: 16,
+    width: 148,
+    height: 196,
+    borderRadius: 22,
     borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 8,
-    paddingTop: 12,
-    paddingBottom: 10,
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    paddingBottom: 12,
     alignItems: 'center',
     gap: 3,
   },
@@ -987,37 +988,37 @@ const suggestStyles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: 0,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
   },
 
   // Text content
-  name: { fontSize: 12, fontWeight: '800', textAlign: 'center', lineHeight: 15, letterSpacing: -0.3, width: '100%' },
-  followedLabel: { fontSize: 10, fontWeight: '700', textAlign: 'center' },
-  specialty: { fontSize: 10, textAlign: 'center', width: '100%' },
+  name: { fontSize: 16, fontWeight: '700', textAlign: 'center', lineHeight: 20, letterSpacing: -0.3, width: '100%' },
+  followedLabel: { fontSize: 12, fontWeight: '700', textAlign: 'center' },
+  specialty: { fontSize: 13, textAlign: 'center', width: '100%', opacity: 0.7 },
 
-  // Stats row: followers · rating
-  statsRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 1 },
-  statVal: { fontSize: 10, fontWeight: '600' },
+  // Stats row: rating
+  statsRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 1, height: 20 },
+  statVal: { fontSize: 12, fontWeight: '600' },
   statDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: '#8B9BB4' },
 
-  // Message button
+  // Message button — pill style
   msgBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
-    width: '100%',
-    paddingVertical: 6,
-    borderRadius: 10,
+    height: 36,
+    borderRadius: 18,
+    paddingHorizontal: 14,
     marginTop: 5,
   },
   // Skeletons
   skeletonAvatar: { width: RING_D, height: RING_D, borderRadius: RING_D / 2, marginBottom: 6 },
   skeletonLine: { height: 10, borderRadius: 5, marginTop: 3 },
-  skeletonBtn: { width: '100%', height: 26, borderRadius: 10, marginTop: 6 },
+  skeletonBtn: { width: 100, height: 36, borderRadius: 18, marginTop: 6 },
 })
