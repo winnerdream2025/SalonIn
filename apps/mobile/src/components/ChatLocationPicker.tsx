@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   Keyboard,
   Platform,
-  KeyboardAvoidingView,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import MapViewRN, { Marker, PROVIDER_DEFAULT } from 'react-native-maps'
@@ -121,16 +120,12 @@ export function ChatLocationPicker({ visible, onClose, onSend }: Props) {
       onRequestClose={handleClose}
     >
       <View style={[styles.overlay, Platform.OS === 'android' && { backgroundColor: 'rgba(0,0,0,0.55)' }]}>
-        <SafeAreaView style={[styles.sheet, { backgroundColor: theme.bg.surface }]} edges={['bottom']}>
+        <SafeAreaView style={[styles.sheet, showSearch && styles.fullSheet, { backgroundColor: theme.bg.surface }]} edges={['bottom']}>
           <View style={[styles.handle, { backgroundColor: theme.border.default }]} />
 
           {showSearch ? (
-            /* ── Search mode: full-sheet, keyboard-aware ── */
-            <KeyboardAvoidingView
-              style={styles.searchSheet}
-              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-              keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
-            >
+            /* ── Search mode: full-sheet ── */
+            <View style={styles.searchSheet}>
               {/* Search bar */}
               <View style={[styles.searchBar, { backgroundColor: theme.bg.input }]}>
                 <TouchableOpacity
@@ -215,7 +210,7 @@ export function ChatLocationPicker({ visible, onClose, onSend }: Props) {
                   )
                 }
               />
-            </KeyboardAvoidingView>
+            </View>
           ) : (
             /* ── Map mode ── */
             <>
@@ -292,6 +287,9 @@ const styles = StyleSheet.create({
     maxHeight: '92%',
     paddingTop: 8,
     overflow: 'hidden',
+  },
+  fullSheet: {
+    flex: 1,
   },
   handle: {
     width: 36,
