@@ -11,7 +11,8 @@ import {
   Platform,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps'
+import MapViewRN, { Marker, PROVIDER_DEFAULT } from 'react-native-maps'
+import { SafeMapView as MapView } from './SafeMapView'
 import * as Location from 'expo-location'
 import { Ionicons } from '@expo/vector-icons'
 import { Text, useTheme } from '@salonin/ui'
@@ -45,7 +46,7 @@ export function ChatLocationPicker({ visible, onClose, onSend }: Props) {
   const [search, setSearch] = useState('')
   const [showSearch, setShowSearch] = useState(false)
   const [selectingId, setSelectingId] = useState<string | null>(null)
-  const mapRef = useRef<MapView>(null)
+  const mapRef = useRef<MapViewRN>(null)
 
   const { results, isLoading: isSearching } = usePlaceSearch(showSearch ? search : '')
 

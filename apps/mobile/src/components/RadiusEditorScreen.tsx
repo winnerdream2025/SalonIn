@@ -14,7 +14,8 @@ import {
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
-import MapView, { PROVIDER_DEFAULT, type Region } from 'react-native-maps'
+import MapViewRN, { PROVIDER_DEFAULT, type Region } from 'react-native-maps'
+import { SafeMapView as MapView } from './SafeMapView'
 import Slider from '@react-native-community/slider'
 import * as Haptics from 'expo-haptics'
 import { Text, useTheme } from '@salonin/ui'
@@ -39,7 +40,7 @@ export function RadiusEditorScreen({ visible, onClose, onApply }: Props) {
   const { theme } = useTheme()
   const insets = useSafeAreaInsets()
   const location = useLocationStore()
-  const mapRef = useRef<MapView>(null)
+  const mapRef = useRef<MapViewRN>(null)
 
   const [mode, setMode] = useState<RadiusMode>(location.radiusMode)
   const [miles, setMiles] = useState(location.radiusMiles)

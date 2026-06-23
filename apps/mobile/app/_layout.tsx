@@ -8,6 +8,7 @@ import { useNotifications } from '../src/hooks/useNotifications'
 import { useAuthStore } from '../src/store/authStore'
 import { Logo } from '@salonin/ui'
 import { StoriesProvider } from '../src/contexts/StoriesContext'
+import { ErrorBoundary } from '../src/components/ErrorBoundary'
 
 // Sentry temporarily disabled due to iOS 26.5 SDK compatibility issues
 // import * as Sentry from '@sentry/react-native'
@@ -79,4 +80,10 @@ function RootLayout() {
   )
 }
 
-export default RootLayout
+export default function RootLayoutWithBoundary() {
+  return (
+    <ErrorBoundary>
+      <RootLayout />
+    </ErrorBoundary>
+  )
+}

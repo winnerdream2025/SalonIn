@@ -9,7 +9,8 @@ import {
   Platform,
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
-import MapView, { PROVIDER_DEFAULT, Marker, type Region } from 'react-native-maps'
+import MapViewRN, { PROVIDER_DEFAULT, Marker, type Region } from 'react-native-maps'
+import { SafeMapView as MapView } from '../../components/SafeMapView'
 import * as Haptics from 'expo-haptics'
 import { Text, useTheme } from '@salonin/ui'
 import { usePlaceSearch, type PlaceResult } from '../../hooks/usePlaceSearch'
@@ -40,7 +41,7 @@ interface Props {
  */
 export function JobLocationStep({ value, onChange }: Props) {
   const { theme } = useTheme()
-  const mapRef = useRef<MapView>(null)
+  const mapRef = useRef<MapViewRN>(null)
 
   const [query, setQuery] = useState(value?.formattedAddress ?? value?.city ?? '')
   const [showDropdown, setShowDropdown] = useState(false)
