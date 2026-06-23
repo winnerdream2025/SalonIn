@@ -47,9 +47,9 @@ export const useDeviceLocation = () => {
       let resolved: SetLocationParams = {
         lat,
         lng,
-        city: 'Selected area',
+        city: '',
         country: '',
-        formattedAddress: 'Selected area',
+        formattedAddress: '',
       }
 
       // 1️⃣ Try Google Geocoding API first (accurate, consistent worldwide)

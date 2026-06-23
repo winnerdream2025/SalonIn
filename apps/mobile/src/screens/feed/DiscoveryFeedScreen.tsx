@@ -156,7 +156,7 @@ export default function DiscoveryFeedScreen() {
   }, [])
 
   // Show real reverse-geocoded name (e.g. "Atlanta, GA") — fall back to generic label
-  const cityLabel = city ?? (isGPSLocation ? 'Near you' : 'Set location')
+  const cityLabel = city || (isGPSLocation ? 'Near you' : 'Set location')
 
   const openLocationModal = useCallback(() => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
