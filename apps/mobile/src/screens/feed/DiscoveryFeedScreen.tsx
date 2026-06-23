@@ -4,6 +4,7 @@ import {
   View,
   FlatList,
   Image,
+  Modal,
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
@@ -39,6 +40,52 @@ import { WorkerFilterModal, activeWorkerFilterCount, EMPTY_WORKER_FILTERS } from
 import type { WorkerFilters } from '../../components/WorkerFilterModal'
 
 const SPECIALTIES = [{ id: 'All', label: 'All' }, ...ALL_SPECIALTIES]
+const RADIUS_PRESETS = [5, 10, 25, 50, 100]
+
+function RadiusPickerSheet({
+  visible, current, onSelect, onClose, theme,
+}: {
+  visible: boolean
+  current: number
+  onSelect: (miles: number) => void
+  onClose: () => void
+  theme: Theme
+}) {
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <TouchableOpacity style={radiusStyles.backdrop} onPress={onClose} activeOpacity={1} />
+      <View style={[radiusStyles.sheet, { backgroundColor: theme.bg.card }]}>
+        <View style={[radiusStyles.handle, { backgroundColor: theme.border.default }]} />
+        <Text style={[radiusStyles.title, { color: theme.text.primary }]}>Search radius</Text>
+        <Text style={[radiusStyles.sub, { color: theme.text.secondary }]}>
+          Show professionals within
+        </Text>
+        <View style={radiusStyles.presets}>
+          {RADIUS_PRESETS.map((r) => {
+            const active = r === current
+            return (
+              <TouchableOpacity
+                key={r}
+                onPress={() => { onSelect(r); onClose() }}
+                activeOpacity={0.75}
+                style={[
+                  radiusStyles.chip,
+                  active
+                    ? { backgroundColor: '#D85A30', borderColor: '#D85A30' }
+                    : { backgroundColor: theme.bg.elevated, borderColor: theme.border.default },
+                ]}
+              >
+                <Text style={[radiusStyles.chipText, { color: active ? '#fff' : theme.text.secondary }]}>
+                  {r} mi
+                </Text>
+              </TouchableOpacity>
+            )
+          })}
+        </View>
+      </View>
+    </Modal>
+  )
+}
 
 const SKELETON_COUNT = 6
 
@@ -82,6 +129,8 @@ export default function DiscoveryFeedScreen() {
   const city = useLocationStore((s) => s.city)
   const isGPSLocation = useLocationStore((s) => s.isGPSLocation)
   const radiusMiles = useLocationStore((s) => s.radiusMiles)
+  const radiusMode = useLocationStore((s) => s.radiusMode)
+  const setRadius = useLocationStore((s) => s.setRadius)
   const hasLocation = lat != null && lng != null
 
   const { requestLocation, status } = useDeviceLocation()
@@ -91,6 +140,7 @@ export default function DiscoveryFeedScreen() {
   const [locationModalVisible, setLocationModalVisible] = useState(false)
   const [search, setSearch] = useState('')
   const [showFilterModal, setShowFilterModal] = useState(false)
+  const [showRadiusPicker, setShowRadiusPicker] = useState(false)
   const [workerFilters, setWorkerFilters] = useState<WorkerFilters>(EMPTY_WORKER_FILTERS)
   const filterCount = activeWorkerFilterCount(workerFilters)
   const currentUser = useAuthStore((s) => s.user)
@@ -224,21 +274,42 @@ export default function DiscoveryFeedScreen() {
             </View>
           </View>
         </View>
-        <Text
-          style={[styles.subtitle, { color: theme.text.secondary }]}
-          numberOfLines={1}
-        >
-          Beauty professionals near you
-        </Text>
         <SuggestedStylists theme={theme} />
-        {isExpanded && (
-          <Text style={[styles.expandedNote, { color: theme.text.tertiary }]}>
-            Showing results within {usedRadius} miles
-          </Text>
-        )}
+        <View style={styles.sectionRow}>
+          <Text style={[styles.sectionLabel, { color: theme.text.primary }]}>Professionals near you</Text>
+          <TouchableOpacity
+            style={[
+              styles.expandedBadge,
+              (isExpanded || radiusMode === 'custom')
+                ? { backgroundColor: 'rgba(216,90,48,0.10)' }
+                : { backgroundColor: theme.bg.elevated },
+            ]}
+            onPress={() => setShowRadiusPicker(true)}
+            activeOpacity={0.75}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
+            <Ionicons
+              name="location-outline"
+              size={11}
+              color={(isExpanded || radiusMode === 'custom') ? '#D85A30' : theme.text.tertiary}
+            />
+            <Text style={[
+              styles.expandedNote,
+              { color: (isExpanded || radiusMode === 'custom') ? '#D85A30' : theme.text.tertiary },
+            ]}>
+              {usedRadius} mi
+            </Text>
+            <Ionicons
+              name="chevron-down"
+              size={10}
+              color={(isExpanded || radiusMode === 'custom') ? '#D85A30' : theme.text.tertiary}
+            />
+          </TouchableOpacity>
+        </View>
       </>
     ),
-    [theme, isExpanded, usedRadius, isGPSLocation, cityLabel, openLocationModal],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [theme, isExpanded, usedRadius, isGPSLocation, cityLabel, openLocationModal, radiusMode],
   )
 
   const listEmpty = useMemo(
@@ -492,6 +563,14 @@ export default function DiscoveryFeedScreen() {
           visible={locationModalVisible}
           onClose={() => setLocationModalVisible(false)}
         />
+
+        <RadiusPickerSheet
+          visible={showRadiusPicker}
+          current={usedRadius}
+          onSelect={(miles) => setRadius(miles, 'custom')}
+          onClose={() => setShowRadiusPicker(false)}
+          theme={theme}
+        />
       </KeyboardAvoidingView>
     </SafeAreaView>
   )
@@ -508,7 +587,7 @@ const styles = StyleSheet.create({
   pageHeader: {
     paddingHorizontal: 16,
     paddingTop: 8,
-    paddingBottom: 2,
+    paddingBottom: 0,
   },
   pageHeaderRow: {
     flexDirection: 'row',
@@ -604,13 +683,31 @@ const styles = StyleSheet.create({
     height: 34,
     justifyContent: 'center',
   },
-  listContent: { paddingTop: 4 },
+  listContent: { paddingTop: 0 },
   skeletonList: { gap: 8, paddingTop: 8 },
+  sectionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 6,
+  },
+  sectionLabel: {
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+  },
+  expandedBadge: {
+    backgroundColor: 'rgba(216,90,48,0.10)',
+    borderRadius: 20,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+  },
   expandedNote: {
     fontSize: 11,
-    textAlign: 'center' as const,
-    marginBottom: 6,
-    marginTop: 2,
+    fontWeight: '700',
+    color: '#D85A30',
   },
   emptyCtaBtn: {
     paddingHorizontal: 28,
@@ -763,13 +860,11 @@ function SuggestedCard({ user, theme, isFollowed, storyState, onFollow, onMessag
         )}
       </View>
 
-      {/* ── Followers / location ── */}
+      {/* ── Followers count ── */}
       <View style={suggestStyles.statsRow}>
         <Ionicons name="people-outline" size={10} color={theme.text.tertiary} />
-        <Text style={[suggestStyles.statVal, { color: theme.text.tertiary }]} numberOfLines={1}>
-          {(user.city || user.state)
-            ? [user.city, user.state].filter(Boolean).join(', ')
-            : `${formatCount(user.followersCount ?? 0)} followers`}
+        <Text style={[suggestStyles.statVal, { color: theme.text.tertiary }]}>
+          {formatCount(user.followersCount ?? 0)}
         </Text>
       </View>
     </TouchableOpacity>
@@ -1000,4 +1095,50 @@ const suggestStyles = StyleSheet.create({
   skeletonAvatar: { width: RING_D, height: RING_D, borderRadius: RING_D / 2, marginBottom: 6 },
   skeletonLine: { height: 9, borderRadius: 5, marginTop: 3 },
   skeletonBtn: { width: 60, height: 9, borderRadius: 5, marginTop: 3 },
+})
+
+const radiusStyles = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  sheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 12,
+    paddingBottom: 40,
+    paddingHorizontal: 20,
+  },
+  handle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+    marginBottom: 4,
+  },
+  sub: {
+    fontSize: 13,
+    marginBottom: 20,
+  },
+  presets: {
+    flexDirection: 'row',
+    gap: 10,
+    flexWrap: 'wrap',
+  },
+  chip: {
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 22,
+    borderWidth: 1,
+  },
+  chipText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
 })
