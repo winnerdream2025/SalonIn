@@ -39,6 +39,9 @@ function typeIcon(type: string): keyof typeof Ionicons.glyphMap {
     case 'CHAT_REQUEST_ACCEPTED': return 'chatbubbles'
     case 'NEW_JOB_MATCH': return 'briefcase-outline'
     case 'REVIEW_RECEIVED': return 'star-outline'
+    case 'NEW_FOLLOWER':
+    case 'FOLLOW': return 'person-add-outline'
+    case 'SYSTEM': return 'megaphone-outline'
     default: return 'notifications-outline'
   }
 }
@@ -48,6 +51,8 @@ function typeIconColor(type: string, accent: string, theme: { text: { secondary:
     case 'APPLICATION_ACCEPTED': return '#1D9E75'
     case 'APPLICATION_DECLINED': return '#E24B4A'
     case 'NEW_APPLICATION': return accent
+    case 'NEW_FOLLOWER':
+    case 'FOLLOW': return '#378ADD'
     case 'NEW_MESSAGE':
     case 'CHAT_REQUEST':
     case 'CHAT_REQUEST_ACCEPTED': return '#378ADD'
@@ -152,8 +157,16 @@ export default function NotificationsScreen() {
       const data = (item.data ?? {}) as Record<string, unknown>
       const conversationId = data.conversationId as string | undefined
       const jobId = data.jobId as string | undefined
+      const followerId = data.followerId as string | undefined
+      const followerRole = data.followerRole as string | undefined
 
-      if (conversationId && ['NEW_MESSAGE', 'CHAT_REQUEST', 'CHAT_REQUEST_ACCEPTED'].includes(item.type)) {
+      if (['NEW_FOLLOWER', 'FOLLOW'].includes(item.type) && followerId) {
+        if (followerRole === 'SALON') {
+          router.push(`/salon/${followerId}` as never)
+        } else {
+          router.push(`/worker/${followerId}` as never)
+        }
+      } else if (conversationId && ['NEW_MESSAGE', 'CHAT_REQUEST', 'CHAT_REQUEST_ACCEPTED'].includes(item.type)) {
         router.push(`/chat/${conversationId}` as never)
       } else if (jobId && ['NEW_APPLICATION', 'APPLICATION_ACCEPTED', 'APPLICATION_DECLINED', 'NEW_JOB_MATCH'].includes(item.type)) {
         router.push(`/jobs/${jobId}` as never)

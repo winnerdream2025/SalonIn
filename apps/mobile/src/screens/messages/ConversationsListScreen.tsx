@@ -17,6 +17,7 @@ import type { ConversationPreview } from '@salonin/types'
 import { useConversations } from '../../hooks/useConversations'
 import { useChatRequests } from '../../hooks/useChatRequests'
 import { useNotificationCenter } from '../../hooks/useNotificationCenter'
+import { useAuthStore } from '../../store/authStore'
 import { StoriesBar } from '../../components/StoriesBar'
 import { useStories } from '../../contexts/StoriesContext'
 import type { UserStoryState } from '../../contexts/StoriesContext'
@@ -208,6 +209,7 @@ export default function ConversationsListScreen() {
   const { pendingCount } = useChatRequests()
   const { unreadCount: notifUnread, notifications } = useNotificationCenter()
   const { openViewerForUser, storyMap } = useStories()
+  const currentUser = useAuthStore((s) => s.user)
 
   // ── Derived counts ────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
@@ -254,7 +256,7 @@ export default function ConversationsListScreen() {
         iconName: 'people',
         iconColor: '#fff',
         badgeCount: followerNotifs.filter((n) => !n.isRead).length,
-        onPress: () => router.push('/(tabs)/notifications' as Parameters<typeof router.push>[0]),
+        onPress: () => router.push({ pathname: '/follow/followers', params: { userId: currentUser?.id ?? '', name: 'My' } } as never),
       },
       {
         id: 'activity',
@@ -267,7 +269,7 @@ export default function ConversationsListScreen() {
         iconName: 'heart',
         iconColor: '#fff',
         badgeCount: activityNotifs.filter((n) => !n.isRead).length,
-        onPress: () => router.push('/(tabs)/notifications' as Parameters<typeof router.push>[0]),
+        onPress: () => router.push('/notifications' as Parameters<typeof router.push>[0]),
       },
       {
         id: 'system',
@@ -280,10 +282,10 @@ export default function ConversationsListScreen() {
         iconName: 'notifications',
         iconColor: '#fff',
         badgeCount: systemNotifs.filter((n) => !n.isRead).length,
-        onPress: () => router.push('/(tabs)/notifications' as Parameters<typeof router.push>[0]),
+        onPress: () => router.push('/notifications' as Parameters<typeof router.push>[0]),
       },
     ],
-    [followerNotifs, activityNotifs, systemNotifs],
+    [followerNotifs, activityNotifs, systemNotifs, currentUser],
   )
 
   // ── Handlers ──────────────────────────────────────────────────────────────

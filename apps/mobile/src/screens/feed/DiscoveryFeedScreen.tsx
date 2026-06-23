@@ -730,7 +730,7 @@ function SuggestedCard({ user, theme, isFollowed, storyState, onFollow, onMessag
         <View style={suggestStyles.statDot} />
         <Ionicons name="star" size={10} color="#EF9F27" />
         <Text style={[suggestStyles.statVal, { color: theme.text.secondary }]}>
-          {user.rating > 0 ? user.rating.toFixed(1) : '—'}
+          {user.rating.toFixed(1)}
         </Text>
       </View>
 

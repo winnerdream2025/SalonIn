@@ -238,13 +238,9 @@ function ConversationItemImpl({
               >
                 {lastText}
               </Text>
-              {unreadCount > 0 ? (
+              {unreadCount > 0 && (
                 <View style={[styles.badge, { backgroundColor: theme.brand.primary }]}>
                   <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
-                </View>
-              ) : isMuted ? null : (
-                <View style={[styles.cameraBtn, { backgroundColor: theme.bg.elevated }]}>
-                  <Text style={{ fontSize: 13 }}>📷</Text>
                 </View>
               )}
             </View>
@@ -360,13 +356,4 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   badgeText: { color: '#fff', fontSize: 11, fontWeight: '800' },
-
-  cameraBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
 })

@@ -3,6 +3,7 @@ import { AppState } from 'react-native'
 import * as Notifications from 'expo-notifications'
 import { notificationsApi, type NotificationItem } from '@salonin/api-client'
 import { useAuthStore } from '../store/authStore'
+import { useChatStore } from '../store/chatStore'
 
 const POLL_INTERVAL_MS = 30_000
 
@@ -33,6 +34,7 @@ export function useNotificationCenter(): UseNotificationCenterResult {
     try {
       const { count } = await notificationsApi.unreadCount()
       setUnreadCount(count)
+      useChatStore.getState().setNotifUnreadCount(count)
       await Notifications.setBadgeCountAsync(count)
     } catch {
       // graceful fail

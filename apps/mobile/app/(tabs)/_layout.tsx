@@ -219,10 +219,11 @@ export default function TabsLayout() {
   const isSalon = role === Role.SALON
   const { theme } = useTheme()
   const unreadCount = useChatStore((s) => s.unreadCount)
+  const notifUnreadCount = useChatStore((s) => s.notifUnreadCount)
   const { pendingCount, isLoaded: chatRequestsLoaded } = useChatRequests()
   const messagesBadge = useMemo(
-    () => (isLoggedIn && chatRequestsLoaded ? unreadCount + pendingCount : 0),
-    [isLoggedIn, chatRequestsLoaded, unreadCount, pendingCount],
+    () => (isLoggedIn && chatRequestsLoaded ? unreadCount + pendingCount + notifUnreadCount : 0),
+    [isLoggedIn, chatRequestsLoaded, unreadCount, pendingCount, notifUnreadCount],
   )
   const photoUrl = (user as any)?.photoUrl
 

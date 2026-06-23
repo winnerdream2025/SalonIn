@@ -295,11 +295,12 @@ export class FollowsService {
       },
     })
     const name = follower?.workerProfile?.name ?? follower?.salonProfile?.name ?? 'Someone'
+    const followerRole = follower?.salonProfile ? 'SALON' : 'WORKER'
     await this.notifications.sendPush(
       followingId,
       'New follower',
       `${name} started following you`,
-      { followerId, type: 'NEW_FOLLOWER' },
+      { followerId, followerRole, type: 'NEW_FOLLOWER' },
       NotificationType.NEW_FOLLOWER,
     )
   }
