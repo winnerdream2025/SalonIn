@@ -180,6 +180,46 @@ export default function DiscoveryFeedScreen() {
   const listHeader = useMemo(
     () => (
       <>
+        {/* ── Page header (scrolls with list, like Jobs) ── */}
+        <View style={styles.pageHeader}>
+          <View style={styles.pageHeaderRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.serifTitle, { color: theme.text.primary }]}>Discover</Text>
+              <Text style={[styles.subtitle, { color: theme.text.secondary }]}>
+                Beauty professionals near you
+              </Text>
+            </View>
+            <View style={[styles.headerRight, { marginTop: 6 }]}>
+              <TouchableOpacity
+                onPress={openLocationModal}
+                style={[
+                  styles.locationPill,
+                  isGPSLocation
+                    ? { backgroundColor: 'rgba(29,158,117,0.12)', borderColor: 'rgba(29,158,117,0.3)' }
+                    : { backgroundColor: theme.bg.elevated, borderColor: theme.border.default },
+                ]}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="location-outline" size={14} color={isGPSLocation ? '#1D9E75' : '#D85A30'} />
+                <Text
+                  style={{ fontSize: 13, fontWeight: '600', color: isGPSLocation ? '#1D9E75' : theme.text.secondary, flexShrink: 1 }}
+                  numberOfLines={1}
+                >
+                  {cityLabel}
+                </Text>
+                <Ionicons name="chevron-down" size={14} color={isGPSLocation ? '#1D9E75' : theme.text.tertiary} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => router.push('/find-people' as never)}
+                style={styles.networkBtn}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="people-outline" size={20} color={theme.text.secondary} />
+              </TouchableOpacity>
+              <NotificationBell />
+            </View>
+          </View>
+        </View>
         <SuggestedStylists theme={theme} />
         {isExpanded && (
           <Text style={[styles.expandedNote, { color: theme.text.tertiary }]}>
@@ -188,7 +228,7 @@ export default function DiscoveryFeedScreen() {
         )}
       </>
     ),
-    [theme, isExpanded, usedRadius],
+    [theme, isExpanded, usedRadius, isGPSLocation, cityLabel, openLocationModal],
   )
 
   const listEmpty = useMemo(
@@ -318,42 +358,6 @@ export default function DiscoveryFeedScreen() {
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]} edges={['top']}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        {/* ── Compact title bar ── */}
-        <View style={[styles.titleBar, { borderBottomColor: theme.border.subtle }]}>
-          <View style={styles.titleWrap}>
-            <Text style={[styles.serifTitle, { color: theme.text.primary }]} numberOfLines={1}>Discover</Text>
-          </View>
-          <View style={styles.headerRight}>
-            <TouchableOpacity
-              onPress={openLocationModal}
-              style={[
-                styles.locationPill,
-                isGPSLocation
-                  ? { backgroundColor: 'rgba(29,158,117,0.12)', borderColor: 'rgba(29,158,117,0.3)' }
-                  : { backgroundColor: theme.bg.elevated, borderColor: theme.border.default },
-              ]}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="location-outline" size={13} color={isGPSLocation ? '#1D9E75' : '#D85A30'} />
-              <Text
-                style={{ fontSize: 12, fontWeight: '600', color: isGPSLocation ? '#1D9E75' : theme.text.secondary, flexShrink: 1 }}
-                numberOfLines={1}
-              >
-                {cityLabel}
-              </Text>
-              <Ionicons name="chevron-down" size={12} color={isGPSLocation ? '#1D9E75' : theme.text.tertiary} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => router.push('/find-people' as never)}
-              style={styles.networkBtn}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="people-outline" size={20} color={theme.text.secondary} />
-            </TouchableOpacity>
-            <NotificationBell />
-          </View>
-        </View>
-
         {/* ── Search (filter icon inside, matching JobFeedScreen) ── */}
         <View style={[styles.searchRow, { backgroundColor: theme.bg.base }]}>
           <View style={[styles.searchWrap, { backgroundColor: theme.bg.input }]}>
@@ -491,17 +495,20 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     gap: 12,
   },
-  titleBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  pageHeader: {
     paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingTop: 12,
+    paddingBottom: 4,
   },
-  titleWrap: {
-    flex: 1,            // fills all space left after headerRight takes its natural size
-    minWidth: 0,
+  pageHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  subtitle: {
+    fontSize: 13,
+    marginTop: 1,
   },
   serifTitle: {
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
