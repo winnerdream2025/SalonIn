@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { workersApi } from '@salonin/api-client'
 import type { WorkerProfileFull } from '@salonin/types'
+import { useAuthStore } from '../store/authStore'
 
 export function useWorkerProfile(id: string) {
   const [profile, setProfile] = useState<WorkerProfileFull | null>(null)
@@ -30,10 +31,12 @@ export function useMyWorkerProfile() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
   const [tick, setTick] = useState(0)
+  const user = useAuthStore((s) => s.user)
 
   const refetch = useCallback(() => setTick((t) => t + 1), [])
 
   useEffect(() => {
+    if (!user) { setIsLoading(false); return }
     let cancelled = false
     setIsLoading(true)
     setError(null)
@@ -45,7 +48,7 @@ export function useMyWorkerProfile() {
       })
       .finally(() => { if (!cancelled) setIsLoading(false) })
     return () => { cancelled = true }
-  }, [tick])
+  }, [user, tick])
 
   return { profile, isLoading, error, refetch }
 }

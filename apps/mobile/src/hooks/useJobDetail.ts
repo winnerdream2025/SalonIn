@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { jobsApi, workersApi } from '@salonin/api-client'
 import type { JobPostDetail, JobApplicationWithJob } from '@salonin/types'
+import { useAuthStore } from '../store/authStore'
 
 export function useJobDetail(id: string) {
   const [job, setJob] = useState<JobPostDetail | null>(null)
@@ -28,8 +29,10 @@ export function useJobDetail(id: string) {
 export function useMyApplications() {
   const [applications, setApplications] = useState<JobApplicationWithJob[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const user = useAuthStore((s) => s.user)
 
   useEffect(() => {
+    if (!user) { setIsLoading(false); return }
     let cancelled = false
     workersApi
       .getMyApplications()
@@ -37,7 +40,7 @@ export function useMyApplications() {
       .catch(() => {})
       .finally(() => { if (!cancelled) setIsLoading(false) })
     return () => { cancelled = true }
-  }, [])
+  }, [user])
 
   return { applications, isLoading }
 }
