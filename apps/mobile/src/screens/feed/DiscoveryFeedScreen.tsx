@@ -750,18 +750,28 @@ function SuggestedCard({ user, theme, isFollowed, storyState, onFollow, onMessag
         </Text>
       )}
 
-      {/* ── Followers · Rating ── */}
+      {/* ── Rating ★ (reviewCount) ── */}
       <View style={suggestStyles.statsRow}>
-        <Ionicons name="people-outline" size={10} color={theme.text.tertiary} />
-        <Text style={[suggestStyles.statVal, { color: theme.text.secondary }]}>
-          {formatCount(user.followersCount ?? 0)}
-        </Text>
-        <View style={suggestStyles.statDot} />
-        <Ionicons name="star" size={10} color="#EF9F27" />
-        <Text style={[suggestStyles.statVal, { color: theme.text.secondary }]}>
+        <Text style={[suggestStyles.statVal, { color: theme.text.secondary, fontWeight: '700' }]}>
           {rating.toFixed(1)}
         </Text>
+        <Ionicons name="star" size={10} color="#EF9F27" />
+        {(user.reviewCount ?? 0) > 0 && (
+          <Text style={[suggestStyles.statVal, { color: theme.text.tertiary }]}>
+            ({formatCount(user.reviewCount ?? 0)})
+          </Text>
+        )}
       </View>
+
+      {/* ── City / state ── */}
+      {(user.city || user.state) ? (
+        <View style={suggestStyles.statsRow}>
+          <Ionicons name="location-outline" size={10} color={theme.text.tertiary} />
+          <Text style={[suggestStyles.statVal, { color: theme.text.tertiary }]} numberOfLines={1}>
+            {[user.city, user.state].filter(Boolean).join(', ')}
+          </Text>
+        </View>
+      ) : null}
 
       {/* ── Message button ── */}
       <TouchableOpacity

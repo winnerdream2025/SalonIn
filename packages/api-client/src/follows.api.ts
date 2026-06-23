@@ -46,6 +46,7 @@ export interface SuggestedUser {
   type: 'worker' | 'salon'
   reason: 'mutual' | 'top_rated'
   followersCount: number
+  reviewCount: number
   listingsCount: number
 }
 

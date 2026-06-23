@@ -437,7 +437,14 @@ export default function ConversationsListScreen() {
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]} edges={['top']}>
       {/* ── Header ── */}
       <View style={styles.header}>
-        <Text style={[styles.titleText, { color: theme.text.primary }]}>Inbox</Text>
+        <Text
+          style={[styles.titleText, { color: theme.text.primary }]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.75}
+        >
+          Inbox
+        </Text>
 
         <TouchableOpacity
           onPress={() => setIsSearching((s) => !s)}
@@ -515,9 +522,11 @@ const styles = StyleSheet.create({
   },
   titleText: {
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-    fontSize: 34,
+    fontSize: 38,
     fontWeight: '900',
     letterSpacing: -0.5,
+    lineHeight: 42,
+    flexShrink: 0,
   },
   iconBtn: {
     width: 36,

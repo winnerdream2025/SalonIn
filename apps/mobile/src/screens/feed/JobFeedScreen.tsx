@@ -289,7 +289,14 @@ export default function JobFeedScreen() {
     return (
       <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]} edges={['top']}>
         <View style={styles.pageHeader}>
-          <Text style={[styles.serifTitle, { color: theme.text.primary }]}>Jobs</Text>
+          <Text
+            style={[styles.serifTitle, { color: theme.text.primary }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.75}
+          >
+            Jobs
+          </Text>
         </View>
         <View style={styles.centerPane}>
           <Text style={[styles.locTitle, { color: theme.text.primary }]}>Where are you?</Text>
@@ -317,9 +324,13 @@ export default function JobFeedScreen() {
     <View style={styles.pageHeader}>
       <View style={styles.pageHeaderRow}>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.serifTitle, { color: theme.text.primary }]}>Jobs</Text>
-          <Text style={[styles.subtitle, { color: theme.text.secondary }]}>
-            Find your next opportunity
+          <Text
+            style={[styles.serifTitle, { color: theme.text.primary }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.75}
+          >
+            Jobs
           </Text>
         </View>
         <View style={styles.headerRight}>
@@ -340,6 +351,9 @@ export default function JobFeedScreen() {
           <NotificationBell />
         </View>
       </View>
+      <Text style={[styles.subtitle, { color: theme.text.secondary }]} numberOfLines={1}>
+        Find your next opportunity
+      </Text>
     </View>
   )
 
@@ -496,14 +510,18 @@ const styles = StyleSheet.create({
   },
   serifTitle: {
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-    fontSize: 34,
+    fontSize: 38,
     fontWeight: '900',
     letterSpacing: -0.5,
-    lineHeight: 40,
+    lineHeight: 42,
+    flexShrink: 0,
   },
   subtitle: {
     fontSize: 13,
-    marginTop: 1,
+    marginTop: 2,
+    lineHeight: 18,
+    paddingHorizontal: 16,
+    paddingBottom: 2,
   },
   headerRight: {
     flexDirection: 'row',
@@ -521,7 +539,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flexShrink: 1,
     minWidth: 0,
-    maxWidth: 160,
+    maxWidth: 110,
   },
 
   // ── Search + filter bar ───────────────────────────────────────────────────

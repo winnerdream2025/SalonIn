@@ -149,7 +149,14 @@ export default function WorkerOwnProfileScreen() {
         {/* ── Page title bar ─────────────────────────────── */}
         <View style={styles.titleBar}>
           <View style={styles.titleWrap}>
-            <Text style={[styles.pageTitle, { color: theme.text.primary }]}>Profile</Text>
+            <Text
+              style={[styles.pageTitle, { color: theme.text.primary }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.75}
+            >
+              Profile
+            </Text>
           </View>
           <TouchableOpacity
             onPress={() => router.push('/worker/edit')}
@@ -541,10 +548,12 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   pageTitle: {
-    fontSize: 34,
+    fontSize: 38,
     fontWeight: '900',
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
     letterSpacing: -0.5,
+    lineHeight: 42,
+    flexShrink: 0,
   },
   editPill: {
     flexDirection: 'row',
