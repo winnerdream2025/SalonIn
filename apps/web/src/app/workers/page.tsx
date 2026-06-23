@@ -169,11 +169,11 @@ export default function WorkersPage() {
               </p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {SPECIALTIES.map((s) => {
-                  const active = selectedSpecialty === s
+                  const active = selectedSpecialty === s.id
                   return (
                     <button
-                      key={s}
-                      onClick={() => handleToggleSpecialty(s)}
+                      key={s.id}
+                      onClick={() => handleToggleSpecialty(s.id)}
                       style={{
                         backgroundColor: active ? T.brand.primary : T.bg.elevated,
                         border: `1px solid ${active ? T.brand.primary : T.border.default}`,
@@ -184,7 +184,7 @@ export default function WorkersPage() {
                         cursor: 'pointer',
                       }}
                     >
-                      {s}
+                      {s.label}
                     </button>
                   )
                 })}

@@ -14,7 +14,7 @@ import * as Location from 'expo-location'
 import { Avatar, Text, Button, useTheme } from '@salonin/ui'
 import { Availability } from '@salonin/types'
 import { workersApi, parseApiError } from '@salonin/api-client'
-import { BEAUTY_SPECIALTIES } from '@salonin/config'
+import { SPECIALTY_CATEGORIES, SPECIALTIES_BY_CATEGORY } from '@salonin/config'
 import { reverseGeocodeWithGoogle } from '../src/utils/googlePlaces'
 import { useLocationStore } from '../src/store/locationStore'
 import { useMyWorkerProfile } from '../src/hooks/useWorkerProfile'
@@ -200,18 +200,18 @@ export default function OnboardingScreen() {
               <Text variant="body" color="secondary" style={styles.subheading}>
                 Select everything that applies — salons filter by these.
               </Text>
-              {Object.entries(BEAUTY_SPECIALTIES).map(([category, items]) => (
-                <View key={category} style={styles.categoryBlock}>
+              {SPECIALTY_CATEGORIES.map((cat) => (
+                <View key={cat.id} style={styles.categoryBlock}>
                   <Text variant="label" color="secondary" style={styles.categoryLabel}>
-                    {category.toUpperCase()}
+                    {cat.label.toUpperCase()}
                   </Text>
                   <View style={styles.chipRow}>
-                    {items.map((spec) => {
-                      const active = selectedSpecialties.includes(spec)
+                    {(SPECIALTIES_BY_CATEGORY[cat.id] ?? []).map((s) => {
+                      const active = selectedSpecialties.includes(s.id)
                       return (
                         <TouchableOpacity
-                          key={spec}
-                          onPress={() => toggleSpecialty(spec)}
+                          key={s.id}
+                          onPress={() => toggleSpecialty(s.id)}
                           activeOpacity={0.8}
                           style={[
                             styles.chip,
@@ -225,7 +225,7 @@ export default function OnboardingScreen() {
                             variant="caption"
                             style={{ color: active ? '#FFFFFF' : theme.text.primary }}
                           >
-                            {spec}
+                            {s.label}
                           </Text>
                         </TouchableOpacity>
                       )

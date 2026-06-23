@@ -34,7 +34,7 @@ const AVAILABILITIES = [
 
 const SPECIALTIES = [
   { value: null, label: 'All' },
-  ...ALL_SPECIALTIES.map((s) => ({ value: s, label: s })),
+  ...ALL_SPECIALTIES.map((s) => ({ value: s.id, label: s.label })),
 ]
 
 const DISTANCES = [

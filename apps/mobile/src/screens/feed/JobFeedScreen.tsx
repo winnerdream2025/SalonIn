@@ -24,7 +24,7 @@ import { useAuthStore } from '../../store/authStore'
 import { NotificationBell } from '../../components/NotificationBell'
 import { jobsApi, messagesApi, parseApiError } from '@salonin/api-client'
 import { useStories } from '../../contexts/StoriesContext'
-import { SPECIALTY_CATEGORIES } from '@salonin/config'
+import { ALL_SPECIALTIES } from '@salonin/config'
 import { JobFilterModal, activeFilterCount, EMPTY_JOB_FILTERS } from '../../components/JobFilterModal'
 import type { JobFilters } from '../../components/JobFilterModal'
 import { SuggestedSalons } from './DiscoveryFeedScreen'
@@ -36,7 +36,7 @@ const LISTING_TYPES = [
   { value: 'SPACE',  label: 'Spaces' },
 ] as const
 
-const SPECIALTIES = ['All', ...SPECIALTY_CATEGORIES]
+const SPECIALTIES = [{ id: 'All', label: 'All' }, ...ALL_SPECIALTIES]
 
 const SKELETON_COUNT = 5
 
@@ -263,12 +263,12 @@ export default function JobFeedScreen() {
           )
         })}
         {(selectedListingType === undefined || selectedListingType === 'JOB') &&
-          SPECIALTIES.filter((s) => s !== 'All').map((s) => {
-            const active = selectedSpecialty === s
+          SPECIALTIES.filter((s) => s.id !== 'All').map((s) => {
+            const active = selectedSpecialty === s.id
             return (
               <TouchableOpacity
-                key={s}
-                onPress={() => handleToggleSpecialty(s)}
+                key={s.id}
+                onPress={() => handleToggleSpecialty(s.id)}
                 style={[
                   styles.filterPill,
                   {
@@ -278,7 +278,7 @@ export default function JobFeedScreen() {
                 ]}
               >
                 <Text style={{ fontSize: 13, fontWeight: '600', color: active ? '#fff' : theme.text.secondary }}>
-                  {s}
+                  {s.label}
                 </Text>
               </TouchableOpacity>
             )

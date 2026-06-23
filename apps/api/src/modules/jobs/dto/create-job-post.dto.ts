@@ -1,5 +1,6 @@
 import { ArrayMaxSize, IsArray, IsBoolean, IsDateString, IsIn, IsNumber, IsOptional, IsString, IsUrl, Max, MaxLength, Min } from 'class-validator'
 import type { EmploymentType, ListingType } from '@prisma/client'
+import { ALL_SPECIALTY_IDS } from '@salonin/config'
 import { IsInFuture } from '../../../common/validators/is-future.validator'
 
 export class CreateJobPostDto {
@@ -11,8 +12,7 @@ export class CreateJobPostDto {
   @MaxLength(3000)
   description!: string
 
-  @IsString()
-  @MaxLength(50)
+  @IsIn(ALL_SPECIALTY_IDS)
   specialty!: string
 
   @IsString()

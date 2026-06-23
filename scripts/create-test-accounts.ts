@@ -9,7 +9,7 @@ async function main() {
   const existing = await prisma.user.findMany({
     where: {
       email: {
-        in: ['testworker@mysalon.com', 'testsalon@mysalon.com'],
+        in: ['testworker@mysalonin.com', 'testsalon@mysalonin.com'],
       },
     },
     include: { workerProfile: true, salonProfile: true },
@@ -22,11 +22,11 @@ async function main() {
 
   const hash = await bcrypt.hash('Test1234!', 10)
 
-  const workerExists = existing.find((u) => u.email === 'testworker@mysalon.com')
+  const workerExists = existing.find((u) => u.email === 'testworker@mysalonin.com')
   if (!workerExists) {
     const user = await prisma.user.create({
       data: {
-        email: 'testworker@mysalon.com',
+        email: 'testworker@mysalonin.com',
         passwordHash: hash,
         role: 'WORKER',
         isActive: true,
@@ -34,10 +34,9 @@ async function main() {
           create: {
             name: 'Test Worker',
             bio: 'Apple App Store review test account — beauty professional',
-            specialties: ['Braids', 'Nails', 'Lashes'],
+            specialties: ['knotless-braids', 'gel-nails', 'classic-lashes'],
             experienceYears: 3,
             availability: 'NOW',
-            cityId: 'dmv',
             languages: ['English'],
           },
         },
@@ -48,11 +47,11 @@ async function main() {
     console.log(`\n⚠️  WORKER already exists: ${workerExists.email}`)
   }
 
-  const salonExists = existing.find((u) => u.email === 'testsalon@mysalon.com')
+  const salonExists = existing.find((u) => u.email === 'testsalon@mysalonin.com')
   if (!salonExists) {
     const user = await prisma.user.create({
       data: {
-        email: 'testsalon@mysalon.com',
+        email: 'testsalon@mysalonin.com',
         passwordHash: hash,
         role: 'SALON',
         isActive: true,
@@ -60,8 +59,7 @@ async function main() {
           create: {
             name: 'Test Salon',
             description: 'Apple App Store review test account — salon owner',
-            specialties: ['Hair', 'Nails', 'Lashes', 'Makeup'],
-            cityId: 'dmv',
+            specialties: ['knotless-braids', 'gel-nails', 'classic-lashes', 'bridal-makeup'],
             isHiring: true,
           },
         },
@@ -75,7 +73,7 @@ async function main() {
   // Final verification
   const final = await prisma.user.findMany({
     where: {
-      email: { in: ['testworker@mysalon.com', 'testsalon@mysalon.com'] },
+      email: { in: ['testworker@mysalonin.com', 'testsalon@mysalonin.com'] },
     },
     select: { id: true, email: true, role: true, isActive: true },
   })
@@ -86,8 +84,8 @@ async function main() {
   }
 
   console.log('\nCredentials for Apple review:')
-  console.log('  Worker:  testworker@mysalon.com / Test1234!')
-  console.log('  Salon:   testsalon@mysalon.com  / Test1234!')
+  console.log('  Worker:  testworker@mysalonin.com / Test1234!')
+  console.log('  Salon:   testsalon@mysalonin.com  / Test1234!')
 }
 
 main()

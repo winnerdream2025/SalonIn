@@ -4,6 +4,8 @@ import json, requests, sys
 from datetime import datetime, timedelta
 
 BASE = "http://localhost:4000"
+LAT = 38.9072
+LNG = -77.0369
 issues = []
 ok = []
 
@@ -38,8 +40,10 @@ check("GET /health", r, 200, require_fields=["status"])
 
 # 2. Specialties
 r = requests.get(f"{BASE}/specialties")
-data = check("GET /specialties", r, 200)
-ok.append(f"   Categories: {list(data.keys())}")
+data = check("GET /specialties", r, 200, require_fields=["id"])
+if isinstance(data, list):
+    cats = sorted(set((s.get("categoryId") for s in data if s.get("categoryId"))))
+    ok.append(f"   Categories: {cats}")
 
 # 3. Auth - login worker
 r = requests.post(f"{BASE}/auth/login", json={"email":"auditworker@salonin.test","password":"Test1234!"})
@@ -75,7 +79,7 @@ check("GET /workers/me (no auth → 401)", r, 401)
 # 9. Update worker profile
 r = requests.patch(f"{BASE}/workers/me", headers=W_HEADERS, json={
     "bio": "Specialized in natural hair care",
-    "specialties": ["Knotless braids","Locs","Natural hair"],
+    "specialties": ["knotless-braids","locs","natural-hair"],
     "availability": "NOW",
     "rateRange": "$80-$150",
     "rateNote": "Prices vary by length"
@@ -91,7 +95,7 @@ ok.append(f"   isHiring={data.get('isHiring')} | description={str(data.get('desc
 # 11. Update salon profile
 r = requests.patch(f"{BASE}/salons/me", headers=S_HEADERS, json={
     "description": "Premium natural hair salon in DMV",
-    "specialties": ["Knotless braids","Locs","Natural hair"],
+    "specialties": ["knotless-braids","locs","natural-hair"],
     "isHiring": True
 })
 check("PATCH /salons/me", r, 200)
@@ -109,7 +113,11 @@ r = requests.post(f"{BASE}/jobs", headers=S_HEADERS, json={
     "specialty": "Knotless braids",
     "payStructure": "60/40 commission split",
     "type": "FREELANCE",
-    "cityId": "dmv",
+    "lat": LAT,
+    "lng": LNG,
+    "city": "Washington",
+    "state": "DC",
+    "country": "USA",
     "expiresAt": EXPIRES
 })
 job = check("POST /jobs (create)", r, 201, require_fields=["id","title"])
@@ -117,8 +125,8 @@ JOB_ID = job.get("id","")
 ok.append(f"   Job ID: {JOB_ID[:8]}...")
 
 # 14. List jobs public
-r = requests.get(f"{BASE}/jobs", params={"cityId":"dmv","limit":10})
-data = check("GET /jobs?cityId=dmv (public list)", r, 200)
+r = requests.get(f"{BASE}/jobs", params={"lat":LAT,"lng":LNG,"radiusMiles":50,"limit":10})
+data = check("GET /jobs?lat&lng&radiusMiles (public list)", r, 200)
 ok.append(f"   total={data.get('total','?')} | items={len(data.get('data',[]))}")
 
 # 15. Get job by ID
@@ -145,13 +153,13 @@ if APP_ID:
     check("PATCH /jobs/:id/applicants/:appId (ACCEPTED)", r, 200)
 
 # 20. Nearby workers — actual route is /workers/nearby with lat/lng/radiusMiles (DMV coords)
-r = requests.get(f"{BASE}/workers/nearby", params={"lat":38.9072,"lng":-77.0369,"radiusMiles":50,"cityId":"dmv"})
-data = check("GET /workers/nearby?lat&lng&radiusMiles&cityId (public)", r, 200)
+r = requests.get(f"{BASE}/workers/nearby", params={"lat":LAT,"lng":LNG,"radiusMiles":50})
+data = check("GET /workers/nearby?lat&lng&radiusMiles (public)", r, 200)
 ok.append(f"   nearby workers={len(data.get('data',[]))} | hasMore={data.get('hasMore')}")
 
 # 21. Job feed for worker — public /jobs endpoint with cityId filter
-r = requests.get(f"{BASE}/jobs", params={"cityId":"dmv","limit":5})
-data = check("GET /jobs?cityId=dmv (worker job feed)", r, 200)
+r = requests.get(f"{BASE}/jobs", params={"lat":LAT,"lng":LNG,"radiusMiles":50,"limit":5})
+data = check("GET /jobs?lat&lng&radiusMiles (worker job feed)", r, 200)
 ok.append(f"   jobs in feed={len(data.get('data',[]))}")
 
 # 22. Reviews - can-review

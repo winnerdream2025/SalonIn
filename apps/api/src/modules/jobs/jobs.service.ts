@@ -1,5 +1,6 @@
 import { ConflictException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common'
 import { Cron, CronExpression } from '@nestjs/schedule'
+import { specialtyLabel } from '@salonin/config'
 import { PrismaService } from '../../prisma/prisma.service'
 import { NotificationsService } from '../notifications/notifications.service'
 import type { JobPostCardData, PaginatedResponse } from '@salonin/types'
@@ -197,11 +198,11 @@ export class JobsService {
     }
     if (dto.type) {
       params.push(dto.type)
-      filters.push(`AND jp.type = $${params.length}`)
+      filters.push(`AND jp.type = $${params.length}::"EmploymentType"`)
     }
     if (dto.listingType) {
       params.push(dto.listingType)
-      filters.push(`AND jp."listingType" = $${params.length}`)
+      filters.push(`AND jp."listingType" = $${params.length}::"ListingType"`)
     }
     if (dto.salonId) {
       params.push(dto.salonId)
@@ -305,36 +306,41 @@ export class JobsService {
     const total = rows.length > 0 ? parseInt(rows[0]!.total_count, 10) : 0
 
     return {
-      data: rows.map((r) => ({
-        id: r.id,
-        title: r.title,
-        description: r.description,
-        specialty: r.specialty,
-        payStructure: r.payStructure,
-        type: r.type as JobPostCardData['type'],
-        listingType: r.listingType as JobPostCardData['listingType'],
-        isUrgent: r.isUrgent,
-        city: r.city ?? null,
-        state: r.state ?? undefined,
-        country: r.country ?? undefined,
-        expiresAt: r.expiresAt.toISOString(),
-        salonId: r.salonId,
-        salonName: r.salonName,
-        salonPhotoUrl: r.salonPhotoUrls[0] ?? null,
-        salonCoverUrl: r.salonPhotoUrls[1] ?? r.salonPhotoUrls[0] ?? null,
-        salonVerified: r.salonVerified,
-        salonRating: r.salonRating > 0 ? r.salonRating : undefined,
-        salonReviewCount: r.salonReviewCount > 0 ? r.salonReviewCount : undefined,
-        salonHiringCount: parseInt(r.salonHiringCount, 10),
-        applicantCount: parseInt(r.applicantCount, 10),
-        portfolioPhotoUrls: r.salonPhotoUrls.slice(0, 6),
-        spaceSize: r.spaceSize ?? undefined,
-        spaceAmenities: r.spaceAmenities.length > 0 ? r.spaceAmenities : undefined,
-        spacePhotos: r.spacePhotos.length > 0 ? r.spacePhotos : undefined,
-        rentalDeposit: r.rentalDeposit ?? undefined,
-        availableFrom: r.availableFrom?.toISOString() ?? undefined,
-        distanceMiles: r.distanceMiles,
-      })),
+      data: rows.map((r) => {
+        const salonPhotoUrls = r.salonPhotoUrls ?? []
+        const spaceAmenities = r.spaceAmenities ?? []
+        const spacePhotos = r.spacePhotos ?? []
+        return {
+          id: r.id,
+          title: r.title,
+          description: r.description,
+          specialty: specialtyLabel(r.specialty),
+          payStructure: r.payStructure,
+          type: r.type as JobPostCardData['type'],
+          listingType: r.listingType as JobPostCardData['listingType'],
+          isUrgent: r.isUrgent,
+          city: r.city ?? null,
+          state: r.state ?? undefined,
+          country: r.country ?? undefined,
+          expiresAt: r.expiresAt.toISOString(),
+          salonId: r.salonId,
+          salonName: r.salonName,
+          salonPhotoUrl: salonPhotoUrls[0] ?? null,
+          salonCoverUrl: salonPhotoUrls[1] ?? salonPhotoUrls[0] ?? null,
+          salonVerified: r.salonVerified,
+          salonRating: r.salonRating > 0 ? r.salonRating : undefined,
+          salonReviewCount: r.salonReviewCount > 0 ? r.salonReviewCount : undefined,
+          salonHiringCount: parseInt(r.salonHiringCount, 10),
+          applicantCount: parseInt(r.applicantCount, 10),
+          portfolioPhotoUrls: salonPhotoUrls.slice(0, 6),
+          spaceSize: r.spaceSize ?? undefined,
+          spaceAmenities: spaceAmenities.length > 0 ? spaceAmenities : undefined,
+          spacePhotos: spacePhotos.length > 0 ? spacePhotos : undefined,
+          rentalDeposit: r.rentalDeposit ?? undefined,
+          availableFrom: r.availableFrom?.toISOString() ?? undefined,
+          distanceMiles: r.distanceMiles,
+        }
+      }),
       total,
       page,
       limit,
@@ -375,11 +381,14 @@ export class JobsService {
     }
     _count: { applications: number }
   }): JobPostCardData {
+    const salonPhotoUrls = r.salon.photoUrls ?? []
+    const spaceAmenities = r.spaceAmenities ?? []
+    const spacePhotos = r.spacePhotos ?? []
     return {
       id: r.id,
       title: r.title,
       description: r.description,
-      specialty: r.specialty,
+      specialty: specialtyLabel(r.specialty),
       payStructure: r.payStructure,
       type: r.type as JobPostCardData['type'],
       listingType: r.listingType as JobPostCardData['listingType'],
@@ -391,17 +400,17 @@ export class JobsService {
       salonId: r.salon.id,
       salonUserId: r.salon.userId,
       salonName: r.salon.name,
-      salonPhotoUrl: r.salon.photoUrls[0] ?? null,
-      salonCoverUrl: r.salon.photoUrls[1] ?? r.salon.photoUrls[0] ?? null,
+      salonPhotoUrl: salonPhotoUrls[0] ?? null,
+      salonCoverUrl: salonPhotoUrls[1] ?? salonPhotoUrls[0] ?? null,
       salonVerified: r.salon.isVerified,
       salonRating: r.salon.rating > 0 ? r.salon.rating : undefined,
       salonReviewCount: r.salon.reviewCount > 0 ? r.salon.reviewCount : undefined,
       salonHiringCount: r.salon._count.jobPosts,
       applicantCount: r._count.applications,
-      portfolioPhotoUrls: r.salon.photoUrls.slice(0, 6),
+      portfolioPhotoUrls: salonPhotoUrls.slice(0, 6),
       spaceSize: r.spaceSize ?? undefined,
-      spaceAmenities: r.spaceAmenities.length > 0 ? r.spaceAmenities : undefined,
-      spacePhotos: r.spacePhotos.length > 0 ? r.spacePhotos : undefined,
+      spaceAmenities: spaceAmenities.length > 0 ? spaceAmenities : undefined,
+      spacePhotos: spacePhotos.length > 0 ? spacePhotos : undefined,
       rentalDeposit: r.rentalDeposit ?? undefined,
       availableFrom: r.availableFrom?.toISOString() ?? undefined,
     }

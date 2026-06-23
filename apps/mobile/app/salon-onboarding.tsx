@@ -13,11 +13,11 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Text, Button, Input, useTheme } from '@salonin/ui'
 import { salonsApi } from '@salonin/api-client'
-import { BEAUTY_SPECIALTIES } from '@salonin/config'
+import { ALL_SPECIALTIES } from '@salonin/config'
 
 const STEP_COUNT = 2
 
-const SPECIALTY_OPTIONS = Object.values(BEAUTY_SPECIALTIES).flat()
+const SPECIALTY_OPTIONS = ALL_SPECIALTIES
 
 export default function SalonOnboardingScreen() {
   const { theme } = useTheme()
@@ -121,11 +121,11 @@ export default function SalonOnboardingScreen() {
               </Text>
               <View style={styles.pillGrid}>
                 {SPECIALTY_OPTIONS.map((s) => {
-                  const active = selectedSpecialties.includes(s)
+                  const active = selectedSpecialties.includes(s.id)
                   return (
                     <TouchableOpacity
-                      key={s}
-                      onPress={() => toggleSpecialty(s)}
+                      key={s.id}
+                      onPress={() => toggleSpecialty(s.id)}
                       activeOpacity={0.8}
                       style={[
                         styles.pill,
@@ -139,7 +139,7 @@ export default function SalonOnboardingScreen() {
                         variant="caption"
                         style={{ color: active ? '#FFFFFF' : theme.text.primary }}
                       >
-                        {s}
+                        {s.label}
                       </Text>
                     </TouchableOpacity>
                   )

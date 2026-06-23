@@ -1,5 +1,6 @@
 import { ArrayMaxSize, IsArray, IsBoolean, IsDateString, IsIn, IsNumber, IsOptional, IsString, IsUrl, Max, MaxLength, Min } from 'class-validator'
 import type { EmploymentType, ListingType } from '@prisma/client'
+import { ALL_SPECIALTY_IDS } from '@salonin/config'
 
 export class UpdateJobPostDto {
   @IsOptional()
@@ -13,8 +14,7 @@ export class UpdateJobPostDto {
   description?: string
 
   @IsOptional()
-  @IsString()
-  @MaxLength(50)
+  @IsIn(ALL_SPECIALTY_IDS)
   specialty?: string
 
   @IsOptional()

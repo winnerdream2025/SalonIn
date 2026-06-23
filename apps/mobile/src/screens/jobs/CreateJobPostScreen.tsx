@@ -16,7 +16,7 @@ import * as Haptics from 'expo-haptics'
 import { JobPostCard, Text, useTheme } from '@salonin/ui'
 import type { CreateJobPostDto, JobPostCardData } from '@salonin/types'
 import { jobsApi, parseApiError } from '@salonin/api-client'
-import { ALL_SPECIALTIES, ALL_PROFESSIONALS, JOB_PAY_TYPES, PERCENTAGE_PRESETS, SEAT_RATE_PRESETS, buildJobPayString } from '@salonin/config'
+import { ALL_SPECIALTIES, ALL_PROFESSIONALS, JOB_PAY_TYPES, PERCENTAGE_PRESETS, SEAT_RATE_PRESETS, buildJobPayString, specialtyLabel } from '@salonin/config'
 import type { JobPayType } from '@salonin/config'
 import { useLocationStore } from '../../store/locationStore'
 import { useAuthStore } from '../../store/authStore'
@@ -129,7 +129,7 @@ export default function CreateJobPostScreen() {
     id: '__preview__',
     title: title.trim() || 'Listing Title',
     description: description.trim() || undefined,
-    specialty: specialty || 'Specialty',
+    specialty: specialty ? specialtyLabel(specialty) : 'Specialty',
     payStructure: resolvedPayStructure,
     type: selectedType as JobPostCardData['type'],
     listingType: (listingType || 'JOB') as JobPostCardData['listingType'],
@@ -339,11 +339,13 @@ export default function CreateJobPostScreen() {
                 </Text>
                 <View style={styles.pillGrid}>
                   {(listingType === 'RENTAL' || listingType === 'SPACE' ? PROFESSIONALS : SPECIALTIES).map((s) => {
-                    const active = specialty === s
+                    const val = typeof s === 'string' ? s : s.id
+                    const lbl = typeof s === 'string' ? s : s.label
+                    const active = specialty === val
                     return (
                       <TouchableOpacity
-                        key={s}
-                        onPress={() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSpecialty(s); setError(undefined) }}
+                        key={val}
+                        onPress={() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSpecialty(val); setError(undefined) }}
                         style={[
                           styles.pill,
                           {
@@ -353,7 +355,7 @@ export default function CreateJobPostScreen() {
                         ]}
                       >
                         <Text style={[styles.pillText, { color: active ? '#FFFFFF' : theme.text.secondary }]}>
-                          {s}
+                          {lbl}
                         </Text>
                       </TouchableOpacity>
                     )

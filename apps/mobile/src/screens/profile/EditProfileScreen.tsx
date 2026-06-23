@@ -21,7 +21,7 @@ import { Text, Button, useTheme } from '@salonin/ui'
 import { Availability } from '@salonin/types'
 import type { AvailabilitySchedule } from '@salonin/types'
 import { workersApi, parseApiError } from '@salonin/api-client'
-import { BEAUTY_SPECIALTIES, WORKER_PAY_TYPES, PERCENTAGE_PRESETS, SEAT_RATE_PRESETS, buildWorkerPayString } from '@salonin/config'
+import { SPECIALTY_CATEGORIES, SPECIALTIES_BY_CATEGORY, specialtyLabel, WORKER_PAY_TYPES, PERCENTAGE_PRESETS, SEAT_RATE_PRESETS, buildWorkerPayString } from '@salonin/config'
 import type { WorkerPayType } from '@salonin/config'
 import { useMyWorkerProfile } from '../../hooks/useWorkerProfile'
 import { useMediaUpload } from '../../hooks/useMediaUpload'
@@ -31,21 +31,13 @@ import { useMediaUpload } from '../../hooks/useMediaUpload'
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name']
 
 const CATEGORY_ICONS: Record<string, IoniconsName> = {
-  Hair:     'cut-outline',
-  Nails:    'color-palette-outline',
-  Lashes:   'eye-outline',
-  Makeup:   'sparkles-outline',
-  Barber:   'cut-outline',
-  Skincare: 'leaf-outline',
-  Other:    'ellipsis-horizontal-circle-outline',
+  hair:     'cut-outline',
+  nails:    'color-palette-outline',
+  lashes:   'eye-outline',
+  makeup:   'sparkles-outline',
+  barber:   'cut-outline',
+  skincare: 'leaf-outline',
 }
-
-const SPECIALTY_CATEGORIES = Object.fromEntries(
-  Object.entries(BEAUTY_SPECIALTIES).map(([cat, subs]) => [
-    cat,
-    { icon: (CATEGORY_ICONS[cat] ?? 'ellipsis-horizontal-circle-outline') as IoniconsName, subs },
-  ]),
-) as Record<string, { icon: IoniconsName; subs: string[] }>
 
 const AVAIL_OPTIONS: { value: Availability; label: string; sub: string; color: string }[] = [
   { value: Availability.NOW,           label: 'Available now',   sub: 'Ready to work immediately', color: '#1D9E75' },
@@ -604,7 +596,7 @@ export default function EditProfileScreen() {
           <AccordionSection
             title="Specialties"
             subtitle={specialties.length > 0
-              ? specialties.slice(0, 3).join(', ') + (specialties.length > 3 ? ` +${specialties.length - 3}` : '')
+              ? specialties.slice(0, 3).map((id) => specialtyLabel(id)).join(', ') + (specialties.length > 3 ? ` +${specialties.length - 3}` : '')
               : 'Select your skills'}
             icon="cut-outline"
             isComplete={specialties.length > 0}
@@ -613,14 +605,14 @@ export default function EditProfileScreen() {
           >
             {/* Category tabs */}
             <View style={styles.categoryRow}>
-              {Object.entries(SPECIALTY_CATEGORIES).map(([cat, { icon }]) => {
-                const active = selectedCategory === cat
+              {SPECIALTY_CATEGORIES.map((cat) => {
+                const active = selectedCategory === cat.id
                 return (
                   <TouchableOpacity
-                    key={cat}
+                    key={cat.id}
                     onPress={() => {
                       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                      setSelectedCategory((prev) => (prev === cat ? null : cat))
+                      setSelectedCategory((prev) => (prev === cat.id ? null : cat.id))
                     }}
                     style={[
                       styles.categoryPill,
@@ -630,9 +622,9 @@ export default function EditProfileScreen() {
                       },
                     ]}
                   >
-                    <Ionicons name={icon} size={14} color={active ? '#FFFFFF' : theme.text.secondary} />
+                    <Ionicons name={CATEGORY_ICONS[cat.id] ?? 'ellipsis-horizontal-circle-outline'} size={14} color={active ? '#FFFFFF' : theme.text.secondary} />
                     <Text style={{ fontSize: 12, fontWeight: '600', color: active ? '#FFFFFF' : theme.text.secondary }}>
-                      {cat}
+                      {cat.label}
                     </Text>
                   </TouchableOpacity>
                 )
@@ -643,15 +635,15 @@ export default function EditProfileScreen() {
             {selectedCategory && (
               <View style={[styles.subSection, { borderTopColor: theme.border.subtle }]}>
                 <Text style={[styles.subLabel, { color: theme.text.tertiary }]}>
-                  {selectedCategory}
+                  {SPECIALTY_CATEGORIES.find((c) => c.id === selectedCategory)?.label ?? ''}
                 </Text>
                 <View style={styles.pillGrid}>
-                  {SPECIALTY_CATEGORIES[selectedCategory]!.subs.map((sub) => {
-                    const active = specialties.includes(sub)
+                  {(SPECIALTIES_BY_CATEGORY[selectedCategory ?? ''] ?? []).map((s) => {
+                    const active = specialties.includes(s.id)
                     return (
                       <TouchableOpacity
-                        key={sub}
-                        onPress={() => toggleSpecialty(sub)}
+                        key={s.id}
+                        onPress={() => toggleSpecialty(s.id)}
                         style={[
                           styles.subPill,
                           {
@@ -661,7 +653,7 @@ export default function EditProfileScreen() {
                         ]}
                       >
                         <Text style={{ fontSize: 12, fontWeight: '600', color: active ? '#FFFFFF' : theme.text.secondary }}>
-                          {sub}
+                          {s.label}
                         </Text>
                       </TouchableOpacity>
                     )
@@ -675,13 +667,13 @@ export default function EditProfileScreen() {
               <View style={[styles.subSection, { borderTopColor: theme.border.subtle }]}>
                 <Text style={[styles.subLabel, { color: theme.text.tertiary }]}>Selected ({specialties.length})</Text>
                 <View style={styles.pillGrid}>
-                  {specialties.map((s) => (
+                  {specialties.map((id) => (
                     <TouchableOpacity
-                      key={s}
-                      onPress={() => toggleSpecialty(s)}
+                      key={id}
+                      onPress={() => toggleSpecialty(id)}
                       style={[styles.subPill, { backgroundColor: '#D85A30', borderColor: '#D85A30' }]}
                     >
-                      <Text style={{ fontSize: 12, fontWeight: '600', color: '#FFFFFF' }}>{s} ×</Text>
+                      <Text style={{ fontSize: 12, fontWeight: '600', color: '#FFFFFF' }}>{specialtyLabel(id)} ×</Text>
                     </TouchableOpacity>
                   ))}
                 </View>

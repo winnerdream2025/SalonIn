@@ -65,14 +65,18 @@ export class MediaService {
 
     const key = `${folder}/${randomUUID()}${ext}`
 
-    await this.s3.send(
-      new PutObjectCommand({
-        Bucket: this.bucket,
-        Key: key,
-        Body: buffer,
-        ContentType: contentType,
-      }),
-    )
+    try {
+      await this.s3.send(
+        new PutObjectCommand({
+          Bucket: this.bucket,
+          Key: key,
+          Body: buffer,
+          ContentType: contentType,
+        }),
+      )
+    } catch (err) {
+      throw new ServiceUnavailableException('Storage service unavailable')
+    }
 
     return { url: this.buildUrl(key) }
   }

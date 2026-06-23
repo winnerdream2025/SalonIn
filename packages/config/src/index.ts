@@ -11,7 +11,16 @@ export {
 } from './world-cities'
 export type { WorldCity } from './world-cities'
 
-export { BEAUTY_SPECIALTIES, ALL_SPECIALTIES, SPECIALTY_CATEGORIES } from './specialties'
+export {
+  BEAUTY_SPECIALTIES,
+  ALL_SPECIALTIES,
+  ALL_SPECIALTY_IDS,
+  SPECIALTY_CATEGORIES,
+  SPECIALTIES_BY_CATEGORY,
+  SPECIALTY_BY_ID,
+  specialtyLabel,
+} from './specialties'
+export type { Specialty, SpecialtyCategory } from './specialties'
 
 export { BEAUTY_PROFESSIONALS, ALL_PROFESSIONALS, PROFESSIONAL_CATEGORIES } from './professionals'
 

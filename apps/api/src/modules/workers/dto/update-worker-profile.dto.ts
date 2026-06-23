@@ -13,6 +13,7 @@ import {
   Min,
 } from 'class-validator'
 import type { Availability, EmploymentType } from '@prisma/client'
+import { ALL_SPECIALTY_IDS } from '@salonin/config'
 
 export class UpdateWorkerProfileDto {
   @IsOptional()
@@ -32,8 +33,7 @@ export class UpdateWorkerProfileDto {
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(20)
-  @IsString({ each: true })
-  @MaxLength(50, { each: true })
+  @IsIn(ALL_SPECIALTY_IDS, { each: true })
   specialties?: string[]
 
   @IsOptional()

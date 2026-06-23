@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
 import type { Availability } from '@salonin/types'
 import type { WorkerCardData, CursorResponse } from '@salonin/types'
+import { specialtyLabel } from '@salonin/config'
 import { PrismaService } from '../../prisma/prisma.service'
 import { RedisService } from '../../redis/redis.service'
 import { MetricsService } from '../../common/metrics/metrics.service'
@@ -304,7 +305,7 @@ export class MatchingService {
       name: raw.name,
       photoUrl: raw.photoUrl,
       bio: raw.bio,
-      specialties: parsePostgresArray(raw.specialties),
+      specialties: parsePostgresArray(raw.specialties).map(specialtyLabel),
       availability: raw.availability as Availability,
       distanceMiles: raw.distanceMeters != null
         ? Math.round((raw.distanceMeters / 1609.344) * 100) / 100

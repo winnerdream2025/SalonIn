@@ -225,7 +225,7 @@ EXPIRES_AT=$(date -u -v+30d '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || date -u -d '+30
 call "POST /jobs (create)" "201" \
   -X POST "$BASE/jobs" \
   -H "Authorization: Bearer $SALON_TOKEN" \
-  -d "{\"title\":\"API Test Job\",\"description\":\"Test job from automated suite\",\"specialty\":\"Hairstylist\",\"payStructure\":\"\$20/hr\",\"type\":\"FULL_TIME\",\"cityId\":\"dmv\",\"lat\":38.9072,\"lng\":-77.0369,\"expiresAt\":\"$EXPIRES_AT\"}" || true
+  -d "{\"title\":\"API Test Job\",\"description\":\"Test job from automated suite\",\"specialty\":\"knotless-braids\",\"payStructure\":\"\$20/hr\",\"type\":\"FULL_TIME\",\"cityId\":\"dmv\",\"lat\":38.9072,\"lng\":-77.0369,\"expiresAt\":\"$EXPIRES_AT\"}" || true
 JOB_ID=$(echo "$BODY" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4 || echo "")
 
 call "GET /jobs?cityId=dmv" "200" \

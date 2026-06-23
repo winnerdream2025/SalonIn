@@ -36,7 +36,7 @@ import { LocationModal } from '../../components/LocationModal'
 import { WorkerFilterModal, activeWorkerFilterCount, EMPTY_WORKER_FILTERS } from '../../components/WorkerFilterModal'
 import type { WorkerFilters } from '../../components/WorkerFilterModal'
 
-const SPECIALTIES = ['All', ...ALL_SPECIALTIES]
+const SPECIALTIES = [{ id: 'All', label: 'All' }, ...ALL_SPECIALTIES]
 
 const SKELETON_COUNT = 6
 
@@ -416,11 +416,11 @@ export default function DiscoveryFeedScreen() {
             )
           })()}
           {SPECIALTIES.map((sp) => {
-            const active = selectedSpecialty === sp
+            const active = selectedSpecialty === sp.id
             return (
               <TouchableOpacity
-                key={sp}
-                onPress={() => handleToggleSpecialty(sp)}
+                key={sp.id}
+                onPress={() => handleToggleSpecialty(sp.id)}
                 style={[
                   styles.chip,
                   {
@@ -430,7 +430,7 @@ export default function DiscoveryFeedScreen() {
                 ]}
               >
                 <Text style={{ fontSize: 13, fontWeight: '600', color: active ? '#FFFFFF' : theme.text.secondary }}>
-                  {sp}
+                  {sp.label}
                 </Text>
               </TouchableOpacity>
             )
@@ -643,12 +643,15 @@ interface SuggestedCardProps {
 }
 
 function SuggestedCard({ user, theme, isFollowed, storyState, onFollow, onMessage, onStoryPress }: SuggestedCardProps) {
-  const specialty = user.specialties[0] ?? (user.type === 'salon' ? 'Salon' : 'Stylist')
+  const name = user.name ?? ''
+  const specialties = user.specialties ?? []
+  const specialty = specialties[0] ?? (user.type === 'salon' ? 'Salon' : 'Stylist')
   const hasRing = storyState !== 'none'
   const ringColor = storyState === 'unseen' ? '#D85A30' : '#8B9BB4'
   const profilePath = user.type === 'salon' ? `/salon/${user.id}` : `/worker/${user.id}`
   const [showFollowedLabel, setShowFollowedLabel] = React.useState(false)
-  const initial = user.name.charAt(0).toUpperCase()
+  const initial = name.charAt(0).toUpperCase()
+  const rating = user.rating ?? 0
 
   const handleFollowPress = () => {
     onFollow()
@@ -709,7 +712,7 @@ function SuggestedCard({ user, theme, isFollowed, storyState, onFollow, onMessag
 
       {/* ── Name (1 line, truncated) ── */}
       <Text style={[suggestStyles.name, { color: theme.text.primary }]} numberOfLines={1}>
-        {user.name}
+        {name}
       </Text>
 
       {/* ── Followed feedback (2 s) OR specialty ── */}
@@ -725,12 +728,12 @@ function SuggestedCard({ user, theme, isFollowed, storyState, onFollow, onMessag
       <View style={suggestStyles.statsRow}>
         <Ionicons name="people-outline" size={10} color={theme.text.tertiary} />
         <Text style={[suggestStyles.statVal, { color: theme.text.secondary }]}>
-          {formatCount(user.followersCount)}
+          {formatCount(user.followersCount ?? 0)}
         </Text>
         <View style={suggestStyles.statDot} />
         <Ionicons name="star" size={10} color="#EF9F27" />
         <Text style={[suggestStyles.statVal, { color: theme.text.secondary }]}>
-          {user.rating.toFixed(1)}
+          {rating.toFixed(1)}
         </Text>
       </View>
 

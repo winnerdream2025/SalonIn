@@ -17,16 +17,13 @@ import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import { Text, Button, useTheme } from '@salonin/ui'
 import { salonsApi, parseApiError } from '@salonin/api-client'
-import { BEAUTY_SPECIALTIES } from '@salonin/config'
+import { SPECIALTY_CATEGORIES, SPECIALTIES_BY_CATEGORY, specialtyLabel } from '@salonin/config'
 import { useMySalonProfile } from '../../hooks/useMySalonProfile'
 import { useMediaUpload } from '../../hooks/useMediaUpload'
 
 const CATEGORY_ICONS: Record<string, string> = {
-  Hair: '💇', Nails: '💅', Lashes: '�', Makeup: '💄', Barber: '✂️', Skincare: '✨', Other: '�',
+  hair: '💇', nails: '💅', lashes: '👁', makeup: '💄', barber: '✂️', skincare: '✨',
 }
-const SPECIALTY_CATEGORIES = Object.fromEntries(
-  Object.entries(BEAUTY_SPECIALTIES).map(([cat, subs]) => [cat, { icon: CATEGORY_ICONS[cat] ?? '🔧', subs }]),
-) as Record<string, { icon: string; subs: string[] }>
 
 function SectionHeader({
   title,
@@ -272,21 +269,21 @@ export default function SalonEditScreen() {
           <View style={[styles.sectionCard, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
             <SectionHeader
               title="Specialties"
-              subtitle={specialties.length > 0 ? specialties.slice(0, 3).join(', ') + (specialties.length > 3 ? ` +${specialties.length - 3}` : '') : 'What services do you offer?'}
+              subtitle={specialties.length > 0 ? specialties.slice(0, 3).map((id) => specialtyLabel(id)).join(', ') + (specialties.length > 3 ? ` +${specialties.length - 3}` : '') : 'What services do you offer?'}
               isOpen={openSection === 'specialties'}
               onPress={() => toggleSection('specialties')}
             />
             {openSection === 'specialties' && (
               <View style={styles.sectionBody}>
                 <View style={styles.categoryRow}>
-                  {Object.entries(SPECIALTY_CATEGORIES).map(([cat, { icon }]) => {
-                    const active = selectedCategory === cat
+                  {SPECIALTY_CATEGORIES.map((cat) => {
+                    const active = selectedCategory === cat.id
                     return (
                       <TouchableOpacity
-                        key={cat}
+                        key={cat.id}
                         onPress={() => {
                           void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                          setSelectedCategory((prev) => (prev === cat ? null : cat))
+                          setSelectedCategory((prev) => (prev === cat.id ? null : cat.id))
                         }}
                         style={[
                           styles.categoryPill,
@@ -296,8 +293,8 @@ export default function SalonEditScreen() {
                           },
                         ]}
                       >
-                        <Text style={{ fontSize: 14 }}>{icon}</Text>
-                        <Text style={{ fontSize: 12, color: active ? '#fff' : theme.text.secondary, fontWeight: '600' }}>{cat}</Text>
+                        <Text style={{ fontSize: 14 }}>{CATEGORY_ICONS[cat.id] ?? '✦'}</Text>
+                        <Text style={{ fontSize: 12, color: active ? '#fff' : theme.text.secondary, fontWeight: '600' }}>{cat.label}</Text>
                       </TouchableOpacity>
                     )
                   })}
@@ -306,15 +303,15 @@ export default function SalonEditScreen() {
                 {selectedCategory && (
                   <View style={[styles.subPillWrap, { borderTopColor: theme.border.subtle }]}>
                     <Text style={{ fontSize: 11, color: theme.text.tertiary, marginBottom: 10, letterSpacing: 0.5 }}>
-                      {selectedCategory.toUpperCase()}
+                      {(SPECIALTY_CATEGORIES.find((c) => c.id === selectedCategory)?.label ?? '').toUpperCase()}
                     </Text>
                     <View style={styles.pillGrid}>
-                      {SPECIALTY_CATEGORIES[selectedCategory]!.subs.map((sub) => {
-                        const active = specialties.includes(sub)
+                      {(SPECIALTIES_BY_CATEGORY[selectedCategory] ?? []).map((s) => {
+                        const active = specialties.includes(s.id)
                         return (
                           <TouchableOpacity
-                            key={sub}
-                            onPress={() => toggleSpecialty(sub)}
+                            key={s.id}
+                            onPress={() => toggleSpecialty(s.id)}
                             style={[
                               styles.subPill,
                               {
@@ -323,7 +320,7 @@ export default function SalonEditScreen() {
                               },
                             ]}
                           >
-                            <Text style={{ fontSize: 12, color: active ? '#fff' : theme.text.secondary }}>{sub}</Text>
+                            <Text style={{ fontSize: 12, color: active ? '#fff' : theme.text.secondary }}>{s.label}</Text>
                           </TouchableOpacity>
                         )
                       })}
@@ -335,13 +332,13 @@ export default function SalonEditScreen() {
                   <View style={[styles.selectedWrap, { borderTopColor: theme.border.subtle }]}>
                     <Text style={{ fontSize: 11, color: theme.text.tertiary, marginBottom: 8, letterSpacing: 0.5 }}>SELECTED</Text>
                     <View style={styles.pillGrid}>
-                      {specialties.map((s) => (
+                      {specialties.map((id) => (
                         <TouchableOpacity
-                          key={s}
-                          onPress={() => toggleSpecialty(s)}
+                          key={id}
+                          onPress={() => toggleSpecialty(id)}
                           style={[styles.subPill, { backgroundColor: '#D85A30', borderColor: '#D85A30' }]}
                         >
-                          <Text style={{ fontSize: 12, color: theme.text.inverse }}>{s} ×</Text>
+                          <Text style={{ fontSize: 12, color: theme.text.inverse }}>{specialtyLabel(id)} ×</Text>
                         </TouchableOpacity>
                       ))}
                     </View>

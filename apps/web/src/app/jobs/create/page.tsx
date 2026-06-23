@@ -70,7 +70,7 @@ export default function CreateJobPage() {
   const DEFAULT_LNG = -77.0369
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [specialty, setSpecialty] = useState(SPECIALTIES[0]!)
+  const [specialty, setSpecialty] = useState<string>(SPECIALTIES[0]!.id)
   const [payStructure, setPayStructure] = useState('')
   const [type, setType] = useState<EmploymentType>('FULL_TIME')
   const [isUrgent, setIsUrgent] = useState(false)
@@ -206,7 +206,7 @@ export default function CreateJobPage() {
                 onChange={(e) => setSpecialty(e.target.value)}
               >
                 {SPECIALTIES.map((s) => (
-                  <option key={s} value={s}>{s}</option>
+                  <option key={s.id} value={s.id}>{s.label}</option>
                 ))}
               </select>
             </div>
