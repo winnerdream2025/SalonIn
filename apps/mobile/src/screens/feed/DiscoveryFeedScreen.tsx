@@ -648,7 +648,7 @@ const styles = StyleSheet.create({
 
 // ── Suggested People (shared card design) ────────────────────────────────────
 
-const AVATAR_D = 72
+const AVATAR_D = 62
 const RING_W = 2.5
 const RING_GAP = 2
 const RING_D = AVATAR_D + (RING_W + RING_GAP) * 2
@@ -732,7 +732,7 @@ function SuggestedCard({ user, theme, isFollowed, storyState, onFollow, onMessag
           activeOpacity={0.8}
           hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
         >
-          <Ionicons name={isFollowed ? 'checkmark' : 'add'} size={14} color="#fff" />
+          <Ionicons name={isFollowed ? 'checkmark' : 'add'} size={12} color="#fff" />
         </TouchableOpacity>
       </View>
 
@@ -763,24 +763,15 @@ function SuggestedCard({ user, theme, isFollowed, storyState, onFollow, onMessag
         )}
       </View>
 
-      {/* ── City / state ── */}
-      {(user.city || user.state) ? (
-        <View style={suggestStyles.statsRow}>
-          <Ionicons name="location-outline" size={10} color={theme.text.tertiary} />
-          <Text style={[suggestStyles.statVal, { color: theme.text.tertiary }]} numberOfLines={1}>
-            {[user.city, user.state].filter(Boolean).join(', ')}
-          </Text>
-        </View>
-      ) : null}
-
-      {/* ── Message button ── */}
-      <TouchableOpacity
-        style={[suggestStyles.msgBtn, { backgroundColor: theme.bg.elevated }]}
-        onPress={onMessage}
-        activeOpacity={0.8}
-      >
-        <Ionicons name="chatbubble-outline" size={13} color={theme.text.secondary} />
-      </TouchableOpacity>
+      {/* ── Followers / location ── */}
+      <View style={suggestStyles.statsRow}>
+        <Ionicons name="people-outline" size={10} color={theme.text.tertiary} />
+        <Text style={[suggestStyles.statVal, { color: theme.text.tertiary }]} numberOfLines={1}>
+          {(user.city || user.state)
+            ? [user.city, user.state].filter(Boolean).join(', ')
+            : `${formatCount(user.followersCount ?? 0)} followers`}
+        </Text>
+      </View>
     </TouchableOpacity>
   )
 }
@@ -790,9 +781,9 @@ function SuggestedCardSkeleton({ theme }: { theme: Theme }) {
   return (
     <View style={[suggestStyles.card, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
       <View style={[suggestStyles.skeletonAvatar, { backgroundColor: bg }]} />
-      <View style={[suggestStyles.skeletonLine, { width: 70, backgroundColor: bg }]} />
-      <View style={[suggestStyles.skeletonLine, { width: 48, height: 9, backgroundColor: bg }]} />
-      <View style={[suggestStyles.skeletonLine, { width: 60, height: 9, backgroundColor: bg }]} />
+      <View style={[suggestStyles.skeletonLine, { width: 60, backgroundColor: bg }]} />
+      <View style={[suggestStyles.skeletonLine, { width: 44, backgroundColor: bg }]} />
+      <View style={[suggestStyles.skeletonLine, { width: 52, backgroundColor: bg }]} />
       <View style={[suggestStyles.skeletonBtn, { backgroundColor: bg }]} />
     </View>
   )
@@ -949,15 +940,14 @@ const suggestStyles = StyleSheet.create({
   },
   sectionTitle: { fontSize: 16, fontWeight: '800', letterSpacing: -0.2 },
   seeAll: { fontSize: 13, fontWeight: '600' },
-  row: { paddingHorizontal: 12, gap: 12, paddingBottom: 8 },
+  row: { paddingHorizontal: 12, gap: 8, paddingBottom: 8 },
 
   card: {
-    width: 148,
-    height: 196,
-    borderRadius: 22,
+    width: 86,
+    borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 14,
-    paddingTop: 14,
+    paddingHorizontal: 8,
+    paddingTop: 12,
     paddingBottom: 12,
     alignItems: 'center',
     gap: 3,
@@ -988,37 +978,26 @@ const suggestStyles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: 0,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
   },
 
   // Text content
-  name: { fontSize: 16, fontWeight: '700', textAlign: 'center', lineHeight: 20, letterSpacing: -0.3, width: '100%' },
-  followedLabel: { fontSize: 12, fontWeight: '700', textAlign: 'center' },
-  specialty: { fontSize: 13, textAlign: 'center', width: '100%', opacity: 0.7 },
+  name: { fontSize: 13, fontWeight: '700', textAlign: 'center', lineHeight: 17, letterSpacing: -0.2, width: '100%' },
+  followedLabel: { fontSize: 10, fontWeight: '700', textAlign: 'center' },
+  specialty: { fontSize: 11, textAlign: 'center', width: '100%', opacity: 0.6 },
 
-  // Stats row: rating
-  statsRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 1, height: 20 },
-  statVal: { fontSize: 12, fontWeight: '600' },
+  // Stats rows
+  statsRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 1 },
+  statVal: { fontSize: 11, fontWeight: '600' },
   statDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: '#8B9BB4' },
 
-  // Message button — pill style
-  msgBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    height: 36,
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    marginTop: 5,
-  },
   // Skeletons
   skeletonAvatar: { width: RING_D, height: RING_D, borderRadius: RING_D / 2, marginBottom: 6 },
-  skeletonLine: { height: 10, borderRadius: 5, marginTop: 3 },
-  skeletonBtn: { width: 100, height: 36, borderRadius: 18, marginTop: 6 },
+  skeletonLine: { height: 9, borderRadius: 5, marginTop: 3 },
+  skeletonBtn: { width: 60, height: 9, borderRadius: 5, marginTop: 3 },
 })
