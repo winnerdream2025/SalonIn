@@ -184,8 +184,18 @@ export default function DiscoveryFeedScreen() {
         <View style={styles.pageHeader}>
           <View style={styles.pageHeaderRow}>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.serifTitle, { color: theme.text.primary }]}>Discover</Text>
-              <Text style={[styles.subtitle, { color: theme.text.secondary }]}>
+              <Text
+                style={[styles.serifTitle, { color: theme.text.primary }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.75}
+              >
+                Discover
+              </Text>
+              <Text
+                style={[styles.subtitle, { color: theme.text.secondary }]}
+                numberOfLines={2}
+              >
                 Beauty professionals near you
               </Text>
             </View>
@@ -497,8 +507,8 @@ const styles = StyleSheet.create({
   },
   pageHeader: {
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 4,
+    paddingTop: 8,
+    paddingBottom: 2,
   },
   pageHeaderRow: {
     flexDirection: 'row',
@@ -508,13 +518,17 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 13,
-    marginTop: 1,
+    marginTop: 2,
+    lineHeight: 18,
+    maxWidth: 200,
   },
   serifTitle: {
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-    fontSize: 34,
+    fontSize: 38,
     fontWeight: '900',
     letterSpacing: -0.5,
+    lineHeight: 42,
+    flexShrink: 0,
   },
   headerRight: {
     flexDirection: 'row',
@@ -914,13 +928,13 @@ export function SuggestedSalons({ theme }: { theme: Theme }) {
 }
 
 const suggestStyles = StyleSheet.create({
-  section: { paddingTop: 12, paddingBottom: 4 },
+  section: { paddingTop: 4, paddingBottom: 4 },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingBottom: 8,
   },
   sectionTitle: { fontSize: 16, fontWeight: '800', letterSpacing: -0.2 },
   seeAll: { fontSize: 13, fontWeight: '600' },
