@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Keyboard,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import MapViewRN, { Marker, PROVIDER_DEFAULT } from 'react-native-maps'
@@ -123,25 +124,19 @@ export function ChatLocationPicker({ visible, onClose, onSend }: Props) {
         <SafeAreaView style={[styles.sheet, { backgroundColor: theme.bg.surface }]} edges={['bottom']}>
           <View style={[styles.handle, { backgroundColor: theme.border.default }]} />
 
-          {/* ── Header ── */}
-          <View style={styles.header}>
-            <TouchableOpacity onPress={handleClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-              <Ionicons name="close" size={22} color={theme.text.primary} />
-            </TouchableOpacity>
-            <Text style={[styles.title, { color: theme.text.primary }]}>Share Location</Text>
-            <TouchableOpacity
-              onPress={() => setShowSearch(true)}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          {showSearch ? (
+            /* ── Search mode: full-sheet, keyboard-aware ── */
+            <KeyboardAvoidingView
+              style={styles.searchSheet}
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
             >
-              <Ionicons name="search" size={22} color={theme.text.primary} />
-            </TouchableOpacity>
-          </View>
-
-          {/* ── Search overlay ── */}
-          {showSearch && (
-            <View style={[styles.searchOverlay, { backgroundColor: theme.bg.surface }]}>
+              {/* Search bar */}
               <View style={[styles.searchBar, { backgroundColor: theme.bg.input }]}>
-                <TouchableOpacity onPress={() => { setShowSearch(false); setSearch('') }}>
+                <TouchableOpacity
+                  onPress={() => { setShowSearch(false); setSearch(''); Keyboard.dismiss() }}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                >
                   <Ionicons name="arrow-back" size={20} color={theme.text.secondary} />
                 </TouchableOpacity>
                 <TextInput
@@ -161,12 +156,15 @@ export function ChatLocationPicker({ visible, onClose, onSend }: Props) {
                   </TouchableOpacity>
                 )}
               </View>
+
+              {/* Results list — stays above keyboard */}
               <FlatList
                 data={results}
                 keyExtractor={(p) => p.id}
                 keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="on-drag"
                 showsVerticalScrollIndicator={false}
-                style={{ flex: 1 }}
+                style={styles.resultsList}
                 renderItem={({ item }) => (
                   <TouchableOpacity
                     style={[styles.placeRow, { borderBottomColor: theme.border.subtle }]}
@@ -217,49 +215,66 @@ export function ChatLocationPicker({ visible, onClose, onSend }: Props) {
                   )
                 }
               />
-            </View>
-          )}
-
-          {/* ── Live map ── */}
-          <View style={styles.mapWrap}>
-            <MapView
-              ref={mapRef}
-              style={styles.map}
-              provider={PROVIDER_DEFAULT}
-              region={region}
-              scrollEnabled
-              zoomEnabled
-              onRegionChangeComplete={(r) => setRegion(r)}
-            >
-              <Marker coordinate={{ latitude: region.latitude, longitude: region.longitude }}>
-                <View style={styles.markerOuter}>
-                  <View style={styles.markerInner} />
-                </View>
-              </Marker>
-            </MapView>
-            {isLoadingGPS && (
-              <View style={styles.mapLoadingOverlay}>
-                <View style={[styles.mapLoadingPill, { backgroundColor: theme.bg.surface }]}>
-                  <ActivityIndicator size="small" color="#D85A30" />
-                  <Text style={[styles.mapLoadingText, { color: theme.text.primary }]}>Finding location…</Text>
-                </View>
+            </KeyboardAvoidingView>
+          ) : (
+            /* ── Map mode ── */
+            <>
+              {/* Header */}
+              <View style={styles.header}>
+                <TouchableOpacity onPress={handleClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+                  <Ionicons name="close" size={22} color={theme.text.primary} />
+                </TouchableOpacity>
+                <Text style={[styles.title, { color: theme.text.primary }]}>Share Location</Text>
+                <TouchableOpacity
+                  onPress={() => setShowSearch(true)}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                >
+                  <Ionicons name="search" size={22} color={theme.text.primary} />
+                </TouchableOpacity>
               </View>
-            )}
-          </View>
 
-          {/* ── Footer: location name + Send ── */}
-          <View style={[styles.footer, { borderTopColor: theme.border.default, backgroundColor: theme.bg.surface }]}>
-            <View style={styles.locationInfo}>
-              <Ionicons name="location" size={18} color="#D85A30" />
-              <Text style={[styles.locationLabel, { color: theme.text.primary }]} numberOfLines={2}>
-                {locationName || `${region.latitude.toFixed(5)}, ${region.longitude.toFixed(5)}`}
-              </Text>
-            </View>
-            <TouchableOpacity style={styles.sendBtn} onPress={handleSend} activeOpacity={0.85}>
-              <Ionicons name="send" size={16} color="#fff" />
-              <Text style={styles.sendBtnText}>Send</Text>
-            </TouchableOpacity>
-          </View>
+              {/* Live map */}
+              <View style={styles.mapWrap}>
+                <MapView
+                  ref={mapRef}
+                  style={styles.map}
+                  provider={PROVIDER_DEFAULT}
+                  region={region}
+                  scrollEnabled
+                  zoomEnabled
+                  onRegionChangeComplete={(r) => setRegion(r)}
+                >
+                  <Marker coordinate={{ latitude: region.latitude, longitude: region.longitude }}>
+                    <View style={styles.markerOuter}>
+                      <View style={styles.markerInner} />
+                    </View>
+                  </Marker>
+                </MapView>
+                {isLoadingGPS && (
+                  <View style={styles.mapLoadingOverlay}>
+                    <View style={[styles.mapLoadingPill, { backgroundColor: theme.bg.surface }]}>
+                      <ActivityIndicator size="small" color="#D85A30" />
+                      <Text style={[styles.mapLoadingText, { color: theme.text.primary }]}>Finding location…</Text>
+                    </View>
+                  </View>
+                )}
+              </View>
+
+              {/* Footer: location name + Send */}
+              <View style={[styles.footer, { borderTopColor: theme.border.default, backgroundColor: theme.bg.surface }]}>
+                <View style={styles.locationInfo}>
+                  <Ionicons name="location" size={18} color="#D85A30" />
+                  <Text style={[styles.locationLabel, { color: theme.text.primary }]} numberOfLines={2}>
+                    {locationName || `${region.latitude.toFixed(5)}, ${region.longitude.toFixed(5)}`}
+                  </Text>
+                </View>
+                <TouchableOpacity style={styles.sendBtn} onPress={handleSend} activeOpacity={0.85}>
+                  <Ionicons name="send" size={16} color="#fff" />
+                  <Text style={styles.sendBtnText}>Send</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
         </SafeAreaView>
       </View>
     </Modal>
@@ -297,17 +312,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: -0.3,
   },
-  // ── Search overlay ──────────────────────────────────────────────────────────
-  searchOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 10,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingTop: 14,
+  // ── Search mode ───────────────────────────────────────────────────────────
+  searchSheet: {
+    flex: 1,
+    paddingTop: 6,
+  },
+  resultsList: {
+    flex: 1,
   },
   searchBar: {
     flexDirection: 'row',
