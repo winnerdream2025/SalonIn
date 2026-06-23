@@ -26,6 +26,7 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as ImagePicker from 'expo-image-picker'
+import { Video, ResizeMode } from 'expo-av'
 import { Ionicons } from '@expo/vector-icons'
 import { Text } from '@salonin/ui'
 import { mediaApi, storiesApi } from '@salonin/api-client'
@@ -70,6 +71,8 @@ export function StoryCreator({ visible, onClose, onCreated }: Props) {
   // UI state
   const [showPreview, setShowPreview] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [previewPlaying, setPreviewPlaying] = useState(true)
+  const [showLocationInput, setShowLocationInput] = useState(false)
 
   // ── Pickers ─────────────────────────────────────────────────────────────
 
@@ -82,13 +85,12 @@ export function StoryCreator({ visible, onClose, onCreated }: Props) {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.All,
       quality: 0.85,
-      allowsEditing: true,
-      aspect: [9, 16],
     })
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0]
       setMediaUri(asset.uri)
       setMediaType(asset.type === 'video' ? 'VIDEO' : 'IMAGE')
+      setPreviewPlaying(true)
       setShowPreview(true)
     }
   }, [])
@@ -109,6 +111,7 @@ export function StoryCreator({ visible, onClose, onCreated }: Props) {
       const asset = result.assets[0]
       setMediaUri(asset.uri)
       setMediaType(asset.type === 'video' ? 'VIDEO' : 'IMAGE')
+      setPreviewPlaying(true)
       setShowPreview(true)
     }
   }, [])
@@ -164,143 +167,154 @@ export function StoryCreator({ visible, onClose, onCreated }: Props) {
     setBookingEnabled(false)
     setVisibility('PUBLIC')
     setShowPreview(false)
+    setPreviewPlaying(true)
+    setShowLocationInput(false)
     setTab('gallery')
     onClose()
   }
 
-  // ── Preview screen ──────────────────────────────────────────────────────
+  // ── Preview screen (WhatsApp-style full-screen) ─────────────────────────
 
   if (showPreview || (tab === 'text' && textContent.length > 0)) {
     const canPost = tab === 'text' ? textContent.trim().length > 0 : mediaUri != null
+    const isVideoPreview = mediaType === 'VIDEO'
     return (
       <Modal visible={visible} animationType="slide" statusBarTranslucent onRequestClose={handleClose}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={{ flex: 1 }}
-        >
-          <View style={[styles.screen, { paddingTop: insets.top }]}>
-            {/* Preview area */}
-            <View style={styles.previewArea}>
-              {tab === 'text' ? (
-                <View style={[styles.textPreview, { backgroundColor: textBgColor }]}>
-                  <Text style={styles.textPreviewContent}>{textContent || 'Your story text...'}</Text>
-                </View>
-              ) : mediaUri != null ? (
-                <Image source={{ uri: mediaUri }} style={styles.previewImage} resizeMode="cover" />
-              ) : null}
-
-              {/* Caption overlay */}
-              {caption.length > 0 && (
-                <View style={styles.captionOverlay}>
-                  <Text style={styles.captionOverlayText}>{caption}</Text>
-                </View>
-              )}
-
-              {/* Booking badge overlay */}
-              {bookingEnabled && (
-                <View style={styles.bookingOverlay}>
-                  <Ionicons name="calendar" size={14} color="#fff" />
-                  <Text style={styles.bookingOverlayText}>Book Now</Text>
-                </View>
-              )}
+        <View style={styles.pvScreen}>
+          {/* ── Full-screen media ── */}
+          {tab === 'text' ? (
+            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: textBgColor, alignItems: 'center', justifyContent: 'center', padding: 24 }]}>
+              <Text style={styles.textPreviewContent}>{textContent}</Text>
             </View>
+          ) : isVideoPreview && mediaUri ? (
+            <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => setPreviewPlaying((p) => !p)}>
+              <Video
+                source={{ uri: mediaUri }}
+                style={StyleSheet.absoluteFillObject}
+                resizeMode={ResizeMode.COVER}
+                shouldPlay={previewPlaying}
+                isLooping
+                volume={1.0}
+              />
+              {!previewPlaying && (
+                <View style={styles.pvPlayOverlay}>
+                  <View style={styles.pvPlayCircle}>
+                    <Ionicons name="play" size={38} color="#fff" />
+                  </View>
+                </View>
+              )}
+            </TouchableOpacity>
+          ) : mediaUri ? (
+            <Image source={{ uri: mediaUri }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+          ) : null}
 
-            {/* Editing panel */}
-            <ScrollView
-              style={[styles.editPanel, { backgroundColor: '#0D0D0D' }]}
-              contentContainerStyle={[styles.editPanelContent, { paddingBottom: insets.bottom + 16 }]}
-              keyboardShouldPersistTaps="handled"
+          {/* ── Top gradient ── */}
+          <View style={styles.pvTopGrad} pointerEvents="none" />
+
+          {/* ── Header: back + Share button ── */}
+          <View style={[styles.pvHeader, { paddingTop: insets.top + 8 }]}>
+            <TouchableOpacity
+              onPress={() => setShowPreview(false)}
+              hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}
+              style={styles.pvBackBtn}
             >
-              {/* Header row */}
-              <View style={styles.editHeader}>
-                <TouchableOpacity onPress={() => setShowPreview(false)} hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}>
-                  <Ionicons name="arrow-back" size={22} color="#fff" />
-                </TouchableOpacity>
-                <Text style={styles.editTitle}>Preview</Text>
-                <TouchableOpacity
-                  onPress={() => void handlePost()}
-                  disabled={!canPost || uploading}
-                  style={[styles.shareBtn, (!canPost || uploading) && { opacity: 0.4 }]}
-                >
-                  {uploading
-                    ? <ActivityIndicator color="#fff" size="small" />
-                    : <Text style={styles.shareBtnText}>Share</Text>}
-                </TouchableOpacity>
-              </View>
+              <Ionicons name="arrow-back" size={22} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => void handlePost()}
+              disabled={!canPost || uploading}
+              style={[styles.pvSendBtn, (!canPost || uploading) && { opacity: 0.4 }]}
+              activeOpacity={0.85}
+            >
+              {uploading ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <>
+                  <Text style={styles.pvSendText}>Share</Text>
+                  <Ionicons name="send" size={15} color="#fff" />
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
 
-              {/* Caption input */}
-              <View style={styles.editRow}>
-                <Ionicons name="text" size={16} color="#999" />
-                <TextInput
-                  style={styles.editInput}
-                  placeholder="Add a caption…"
-                  placeholderTextColor="#555"
-                  value={caption}
-                  onChangeText={setCaption}
-                  maxLength={300}
-                  multiline
-                />
-              </View>
+          {/* ── Bottom gradient ── */}
+          <View style={styles.pvBottomGrad} pointerEvents="none" />
 
-              {/* Location */}
-              <View style={styles.editRow}>
-                <Ionicons name="location-outline" size={16} color="#999" />
+          {/* ── Bottom controls ── */}
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={[styles.pvBottom, { paddingBottom: insets.bottom + 14 }]}
+          >
+            {/* Location input (shown when chip tapped) */}
+            {showLocationInput && (
+              <View style={styles.pvLocationRow}>
+                <Ionicons name="location-outline" size={16} color="rgba(255,255,255,0.7)" />
                 <TextInput
-                  style={styles.editInput}
-                  placeholder="Add location…"
-                  placeholderTextColor="#555"
+                  style={styles.pvLocationInput}
+                  placeholder="Tag a location…"
+                  placeholderTextColor="rgba(255,255,255,0.4)"
                   value={location}
                   onChangeText={setLocation}
+                  autoFocus
                   maxLength={100}
+                  returnKeyType="done"
+                  onSubmitEditing={() => setShowLocationInput(false)}
+                  onBlur={() => setShowLocationInput(false)}
                 />
+                <TouchableOpacity onPress={() => { setLocation(''); setShowLocationInput(false) }}>
+                  <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.5)" />
+                </TouchableOpacity>
               </View>
+            )}
 
-              {/* Visibility */}
-              <View style={styles.editRow}>
-                <Ionicons name="eye-outline" size={16} color="#999" />
-                <Text style={styles.editLabel}>Audience</Text>
-                <View style={styles.visibilityGroup}>
-                  {(['PUBLIC', 'FOLLOWERS', 'PRIVATE'] as Visibility[]).map((v) => (
-                    <TouchableOpacity
-                      key={v}
-                      onPress={() => setVisibility(v)}
-                      style={[
-                        styles.visibilityChip,
-                        visibility === v && styles.visibilityChipActive,
-                      ]}
-                    >
-                      <Text style={[
-                        styles.visibilityChipText,
-                        visibility === v && styles.visibilityChipTextActive,
-                      ]}>
-                        {v === 'PUBLIC' ? 'Everyone' : v === 'FOLLOWERS' ? 'Followers' : 'Only me'}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
+            {/* Caption input */}
+            <View style={styles.pvCaptionRow}>
+              <TextInput
+                style={styles.pvCaptionInput}
+                placeholder="Add a caption…"
+                placeholderTextColor="rgba(255,255,255,0.45)"
+                value={caption}
+                onChangeText={setCaption}
+                maxLength={300}
+              />
+            </View>
 
-              {/* Booking CTA toggle */}
+            {/* Option chips: location · visibility · booking */}
+            <View style={styles.pvChipsRow}>
               <TouchableOpacity
-                style={styles.editRow}
-                onPress={() => setBookingEnabled((b) => !b)}
-                activeOpacity={0.8}
+                style={[styles.pvChip, location.length > 0 && styles.pvChipActive]}
+                onPress={() => setShowLocationInput((l) => !l)}
+                activeOpacity={0.75}
               >
-                <Ionicons name="calendar-outline" size={16} color="#999" />
-                <Text style={styles.editLabel}>Enable "Book Now" CTA</Text>
-                <View style={[
-                  styles.toggle,
-                  { backgroundColor: bookingEnabled ? '#D85A30' : '#333' },
-                ]}>
-                  <View style={[
-                    styles.toggleThumb,
-                    { transform: [{ translateX: bookingEnabled ? 18 : 2 }] },
-                  ]} />
-                </View>
+                <Ionicons name="location-outline" size={13} color="#fff" />
+                <Text style={styles.pvChipText} numberOfLines={1}>
+                  {location.length > 0 ? location : 'Location'}
+                </Text>
               </TouchableOpacity>
-            </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
+              <TouchableOpacity
+                style={styles.pvChip}
+                onPress={() => {
+                  const opts: Visibility[] = ['PUBLIC', 'FOLLOWERS', 'PRIVATE']
+                  setVisibility(opts[(opts.indexOf(visibility) + 1) % opts.length]!)
+                }}
+                activeOpacity={0.75}
+              >
+                <Ionicons name="eye-outline" size={13} color="#fff" />
+                <Text style={styles.pvChipText}>
+                  {visibility === 'PUBLIC' ? 'Everyone' : visibility === 'FOLLOWERS' ? 'Followers' : 'Only me'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.pvChip, bookingEnabled && styles.pvChipActive]}
+                onPress={() => setBookingEnabled((b) => !b)}
+                activeOpacity={0.75}
+              >
+                <Ionicons name="calendar-outline" size={13} color="#fff" />
+                <Text style={styles.pvChipText}>Book Now</Text>
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
       </Modal>
     )
   }
@@ -556,144 +570,146 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
-  // Preview / Edit panel
-  previewArea: {
-    height: 340,
-    backgroundColor: '#000',
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  textPreview: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
+  // Text preview (used inside full-screen text story preview)
   textPreviewContent: {
     color: '#fff',
     fontSize: 24,
     fontWeight: '700',
     textAlign: 'center',
   },
-  previewImage: {
-    width: '100%',
-    height: '100%',
-  },
-  captionOverlay: {
-    position: 'absolute',
-    bottom: 12,
-    left: 16,
-    right: 16,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  captionOverlayText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  bookingOverlay: {
-    position: 'absolute',
-    bottom: 50,
-    left: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#D85A30',
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-  },
-  bookingOverlayText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  editPanel: {
+  // ── Full-screen preview (WhatsApp-style) ──────────────────────────────────
+  pvScreen: {
     flex: 1,
+    backgroundColor: '#000',
   },
-  editPanelContent: {
-    padding: 16,
-    gap: 4,
+  pvTopGrad: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 130,
+    backgroundColor: 'rgba(0,0,0,0.45)',
   },
-  editHeader: {
+  pvBottomGrad: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 260,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+  },
+  pvHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    paddingHorizontal: 16,
+    paddingBottom: 14,
   },
-  editTitle: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  shareBtn: {
-    backgroundColor: '#D85A30',
-    borderRadius: 20,
-    paddingHorizontal: 18,
-    paddingVertical: 8,
-    minWidth: 70,
+  pvBackBtn: {
+    width: 40,
+    height: 40,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  shareBtnText: {
+  pvSendBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#D85A30',
+    borderRadius: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    minWidth: 96,
+    justifyContent: 'center',
+  },
+  pvSendText: {
     color: '#fff',
     fontSize: 15,
     fontWeight: '700',
   },
-  editRow: {
+  pvBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 14,
+    gap: 8,
+  },
+  pvLocationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255,255,255,0.1)',
-    paddingVertical: 14,
+    gap: 8,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.15)',
   },
-  editLabel: {
-    color: '#aaa',
-    fontSize: 14,
-    flex: 1,
-  },
-  editInput: {
+  pvLocationInput: {
     flex: 1,
     color: '#fff',
     fontSize: 14,
     paddingVertical: 0,
   },
-  visibilityGroup: {
+  pvCaptionRow: {
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 24,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 18,
+    paddingVertical: 13,
+  },
+  pvCaptionInput: {
+    color: '#fff',
+    fontSize: 15,
+  },
+  pvChipsRow: {
     flexDirection: 'row',
-    gap: 6,
+    gap: 8,
+    flexWrap: 'wrap',
   },
-  visibilityChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#333',
+  pvChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.25)',
   },
-  visibilityChipActive: {
-    backgroundColor: '#D85A30',
+  pvChipActive: {
+    backgroundColor: 'rgba(216,90,48,0.85)',
     borderColor: '#D85A30',
   },
-  visibilityChipText: {
-    color: '#888',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  visibilityChipTextActive: {
+  pvChipText: {
     color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+    maxWidth: 110,
   },
-  toggle: {
-    width: 40,
-    height: 22,
-    borderRadius: 11,
+  pvPlayOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
     justifyContent: 'center',
   },
-  toggleThumb: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#fff',
+  pvPlayCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingLeft: 4,
   },
 })
