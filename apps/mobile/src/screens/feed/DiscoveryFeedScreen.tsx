@@ -27,6 +27,8 @@ import { reportsApi, messagesApi, parseApiError } from '@salonin/api-client'
 import type { SuggestedUser } from '@salonin/api-client'
 import { ALL_SPECIALTIES } from '@salonin/config'
 import { useAuthStore } from '../../store/authStore'
+import { useAuthGateStore } from '../../store/authGateStore'
+import { useAuthGate } from '../../hooks/useAuthGate'
 import { useNearbyWorkers } from '../../hooks/useNearbyWorkers'
 import { useLocationStore } from '../../store/locationStore'
 import { useDeviceLocation } from '../../hooks/useDeviceLocation'
@@ -94,10 +96,12 @@ export default function DiscoveryFeedScreen() {
   const currentUser = useAuthStore((s) => s.user)
   const { storyMap, openViewerForUser } = useStories()
 
+  const showGate = useAuthGateStore((s) => s.show)
+
   const handleMessage = useCallback(async (worker: WorkerCardData) => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     if (!currentUser) {
-      router.push('/(auth)/login')
+      showGate('/(tabs)', 'Sign in to message this professional')
       return
     }
     try {
@@ -114,7 +118,7 @@ export default function DiscoveryFeedScreen() {
     } catch (e: unknown) {
       Alert.alert('Couldn\'t start chat', parseApiError(e))
     }
-  }, [currentUser])
+  }, [currentUser, showGate])
 
   const specialtyFilter = selectedSpecialty === 'All' ? undefined : selectedSpecialty
 
@@ -768,26 +772,35 @@ function SuggestedStylists({ theme }: { theme: Theme }) {
   const { suggestions, isLoading } = useSuggestedUsers()
   const { storyMap, openViewerForUser } = useStories()
   const [followedIds, setFollowedIds] = React.useState<Set<string>>(new Set())
-  const currentUser = useAuthStore((s) => s.user)
+  const gate = useAuthGate()
 
   const workers = React.useMemo(() => suggestions.filter((s) => s.type === 'worker'), [suggestions])
 
   if (!isLoading && workers.length === 0) return null
 
-  const handleFollow = async (userId: string) => {
-    setFollowedIds((prev) => new Set([...prev, userId]))
-    const { followsApi } = await import('@salonin/api-client')
-    await followsApi.follow(userId).catch(() => {
-      setFollowedIds((prev) => { const next = new Set(prev); next.delete(userId); return next })
-    })
+  const handleFollow = (userId: string) => {
+    gate(
+      async () => {
+        setFollowedIds((prev) => new Set([...prev, userId]))
+        const { followsApi } = await import('@salonin/api-client')
+        await followsApi.follow(userId).catch(() => {
+          setFollowedIds((prev) => { const next = new Set(prev); next.delete(userId); return next })
+        })
+      },
+      { message: 'Sign in to follow this professional' },
+    )
   }
 
-  const handleMessage = async (userId: string, name: string, photoUrl: string | null) => {
-    if (!currentUser) { router.push('/(auth)/login'); return }
-    try {
-      const conv = await messagesApi.createConversation(userId)
-      router.push({ pathname: '/chat/[id]', params: { id: conv.id, name, otherUserId: userId, otherPhotoUrl: photoUrl ?? '' } } as never)
-    } catch { /* silent */ }
+  const handleMessage = (userId: string, name: string, photoUrl: string | null) => {
+    gate(
+      async () => {
+        try {
+          const conv = await messagesApi.createConversation(userId)
+          router.push({ pathname: '/chat/[id]', params: { id: conv.id, name, otherUserId: userId, otherPhotoUrl: photoUrl ?? '' } } as never)
+        } catch { /* silent */ }
+      },
+      { message: 'Sign in to message this professional' },
+    )
   }
 
   return (
@@ -829,26 +842,35 @@ export function SuggestedSalons({ theme }: { theme: Theme }) {
   const { suggestions, isLoading } = useSuggestedUsers()
   const { storyMap, openViewerForUser } = useStories()
   const [followedIds, setFollowedIds] = React.useState<Set<string>>(new Set())
-  const currentUser = useAuthStore((s) => s.user)
+  const gate = useAuthGate()
 
   const salons = React.useMemo(() => suggestions.filter((s) => s.type === 'salon'), [suggestions])
 
   if (!isLoading && salons.length === 0) return null
 
-  const handleFollow = async (userId: string) => {
-    setFollowedIds((prev) => new Set([...prev, userId]))
-    const { followsApi } = await import('@salonin/api-client')
-    await followsApi.follow(userId).catch(() => {
-      setFollowedIds((prev) => { const next = new Set(prev); next.delete(userId); return next })
-    })
+  const handleFollow = (userId: string) => {
+    gate(
+      async () => {
+        setFollowedIds((prev) => new Set([...prev, userId]))
+        const { followsApi } = await import('@salonin/api-client')
+        await followsApi.follow(userId).catch(() => {
+          setFollowedIds((prev) => { const next = new Set(prev); next.delete(userId); return next })
+        })
+      },
+      { message: 'Sign in to follow this salon' },
+    )
   }
 
-  const handleMessage = async (userId: string, name: string, photoUrl: string | null) => {
-    if (!currentUser) { router.push('/(auth)/login'); return }
-    try {
-      const conv = await messagesApi.createConversation(userId)
-      router.push({ pathname: '/chat/[id]', params: { id: conv.id, name, otherUserId: userId, otherPhotoUrl: photoUrl ?? '' } } as never)
-    } catch { /* silent */ }
+  const handleMessage = (userId: string, name: string, photoUrl: string | null) => {
+    gate(
+      async () => {
+        try {
+          const conv = await messagesApi.createConversation(userId)
+          router.push({ pathname: '/chat/[id]', params: { id: conv.id, name, otherUserId: userId, otherPhotoUrl: photoUrl ?? '' } } as never)
+        } catch { /* silent */ }
+      },
+      { message: 'Sign in to message this salon' },
+    )
   }
 
   return (

@@ -21,6 +21,7 @@ import { useJobFeed } from '../../hooks/useJobFeed'
 import { useLocationStore } from '../../store/locationStore'
 import { LocationModal } from '../../components/LocationModal'
 import { useAuthStore } from '../../store/authStore'
+import { useAuthGateStore } from '../../store/authGateStore'
 import { NotificationBell } from '../../components/NotificationBell'
 import { jobsApi, messagesApi, parseApiError } from '@salonin/api-client'
 import { useStories } from '../../contexts/StoriesContext'
@@ -94,13 +95,12 @@ export default function JobFeedScreen() {
   const [applyingId, setApplyingId] = useState<string | null>(null)
   const [messagingId, setMessagingId] = useState<string | null>(null)
 
+  const showGate = useAuthGateStore((s) => s.show)
+
   const handleApplyJob = useCallback(async (job: JobPostCardData) => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     if (!user) {
-      Alert.alert('Sign in required', 'Sign in to apply for jobs.', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Sign in', onPress: () => router.push('/(auth)/login' as never) },
-      ])
+      showGate('/(tabs)/jobs', 'Sign in to apply for jobs')
       return
     }
     setApplyingId(job.id)
@@ -122,15 +122,12 @@ export default function JobFeedScreen() {
     } finally {
       setApplyingId(null)
     }
-  }, [user])
+  }, [user, showGate])
 
   const handleMessageSalon = useCallback(async (job: JobPostCardData) => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     if (!user) {
-      Alert.alert('Sign in required', 'Sign in to message salons.', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Sign in', onPress: () => router.push('/(auth)/login' as never) },
-      ])
+      showGate('/(tabs)/messages', 'Sign in to message this salon')
       return
     }
     setMessagingId(job.id)
@@ -151,7 +148,7 @@ export default function JobFeedScreen() {
     } finally {
       setMessagingId(null)
     }
-  }, [user])
+  }, [user, showGate])
 
   const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set())
 

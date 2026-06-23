@@ -9,6 +9,7 @@ import { useAuthStore } from '../src/store/authStore'
 import { Logo } from '@salonin/ui'
 import { StoriesProvider } from '../src/contexts/StoriesContext'
 import { ErrorBoundary } from '../src/components/ErrorBoundary'
+import { AuthGateModal } from '../src/components/AuthGateModal'
 
 // Sentry temporarily disabled due to iOS 26.5 SDK compatibility issues
 // import * as Sentry from '@sentry/react-native'
@@ -58,9 +59,9 @@ function RootLayout() {
   useEffect(() => {
     if (isLoading) return
     const inAuthGroup = segments[0] === '(auth)'
-    if (!user && !inAuthGroup) {
-      router.replace('/(auth)/login')
-    } else if (user && inAuthGroup) {
+    // Only redirect logged-in users away from auth screens.
+    // Unauthenticated users can freely browse Discovery and Jobs.
+    if (user && inAuthGroup) {
       router.replace('/(tabs)')
     }
   }, [user, isLoading, segments, router])
@@ -69,6 +70,7 @@ function RootLayout() {
     <StoriesProvider>
       <StatusBar style="auto" />
       <Stack screenOptions={{ headerShown: false }} />
+      <AuthGateModal />
       {isLoading && (
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#0A0A0A', justifyContent: 'center', alignItems: 'center', gap: 16 }}>
           <Logo size={100} />
