@@ -36,13 +36,13 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
-import { Video, ResizeMode } from 'expo-av'
+import { Audio, Video, ResizeMode } from 'expo-av'
 import { Text } from '@salonin/ui'
 import { storiesApi } from '@salonin/api-client'
 import type { Story, StoryGroup } from '@salonin/api-client'
 import { useAuthStore } from '../store/authStore'
 
-const { width: SW, height: SH } = Dimensions.get('window')
+const { height: SH } = Dimensions.get('window')
 const IMAGE_DURATION = 5000
 
 // ─── Progress bars ────────────────────────────────────────────────────────────
@@ -150,6 +150,11 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose, onViewe
       setShowReply(false)
       setPaused(false)
       translateY.setValue(0)
+      void Audio.setAudioModeAsync({
+        playsInSilentModeIOS: true,
+        allowsRecordingIOS: false,
+        staysActiveInBackground: false,
+      })
     }
   }, [visible, startGroupIndex])
 
@@ -355,15 +360,16 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose, onViewe
 
   if (!visible || !group || !story) return null
 
-  const isMine = story.userId === user?.id
+  const isMine = story.userId === user?.id || group.userId === user?.id
   const authorName = group.name
   const photoUrl = group.photoUrl
 
   const timeSince = (() => {
     const diff = Date.now() - new Date(story.createdAt).getTime()
-    const h = Math.floor(diff / 3600000)
-    const m = Math.floor((diff % 3600000) / 60000)
-    return h > 0 ? `${h}h` : `${m}m`
+    const m = Math.floor(diff / 60000)
+    if (m < 1) return 'just now'
+    const h = Math.floor(m / 60)
+    return h > 0 ? `${h}h ago` : `${m}m ago`
   })()
 
   return (
@@ -383,11 +389,13 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose, onViewe
           <Image source={{ uri: story.mediaUrl }} style={styles.media} resizeMode="cover" />
         ) : story.type === 'VIDEO' && story.mediaUrl ? (
           <Video
+            key={story.id}
             source={{ uri: story.mediaUrl }}
             style={styles.media}
             resizeMode={ResizeMode.COVER}
             shouldPlay={!paused}
             isLooping={false}
+            volume={1.0}
             onPlaybackStatusUpdate={(s) => {
               if ('didJustFinish' in s && s.didJustFinish) goToNext()
               if (
@@ -396,9 +404,6 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose, onViewe
               ) {
                 progress.setValue(s.positionMillis / s.durationMillis)
               }
-            }}
-            onLoad={(s) => {
-              if ('durationMillis' in s) startProgress(s.durationMillis ?? IMAGE_DURATION)
             }}
           />
         ) : (
@@ -506,7 +511,7 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose, onViewe
             activeOpacity={0.8}
           >
             <Ionicons name="eye-outline" size={14} color="rgba(255,255,255,0.8)" />
-            <Text style={styles.viewerCountText}>{story._count.views}</Text>
+            <Text style={styles.viewerCountText}>{story._count.views} views</Text>
           </TouchableOpacity>
         )}
 
@@ -590,7 +595,7 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose, onViewe
                   style={styles.analyticsBtn}
                 >
                   <Ionicons name="bar-chart-outline" size={22} color="#fff" />
-                  <Text style={styles.analyticsCount}>{story._count.views}</Text>
+                  <Text style={styles.analyticsCount}>{story._count.views} views</Text>
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity onPress={() => void handleLike()} style={styles.likeBtn}>
@@ -616,11 +621,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
   },
   media: {
-    width: SW,
-    height: SH,
     position: 'absolute',
     top: 0,
     left: 0,
+    right: 0,
+    bottom: 0,
   },
   topGradient: {
     position: 'absolute',
