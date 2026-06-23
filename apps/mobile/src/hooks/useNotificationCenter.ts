@@ -23,9 +23,10 @@ export function useNotificationCenter(): UseNotificationCenterResult {
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(false)
-  const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // Use a ref for page so fetchList doesn't recreate on every page change
+  const pageRef = useRef(1)
 
   const fetchCount = useCallback(async () => {
     if (!user) return
@@ -40,13 +41,13 @@ export function useNotificationCenter(): UseNotificationCenterResult {
 
   const fetchList = useCallback(async (reset = false) => {
     if (!user) return
-    const nextPage = reset ? 1 : page
+    const nextPage = reset ? 1 : pageRef.current
     setLoading(true)
     try {
       const res = await notificationsApi.list(nextPage)
       setNotifications((prev) => (reset ? res.data : [...prev, ...res.data]))
       setHasMore(res.hasMore)
-      setPage(reset ? 2 : nextPage + 1)
+      pageRef.current = reset ? 2 : nextPage + 1
       const unread = res.data.filter((n) => !n.isRead).length
       if (reset) {
         const countRes = await notificationsApi.unreadCount()
@@ -60,10 +61,10 @@ export function useNotificationCenter(): UseNotificationCenterResult {
     } finally {
       setLoading(false)
     }
-  }, [user, page])
+  }, [user])
 
   const refresh = useCallback(async () => {
-    setPage(1)
+    pageRef.current = 1
     await fetchList(true)
   }, [fetchList])
 

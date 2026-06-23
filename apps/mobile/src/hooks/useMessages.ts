@@ -166,10 +166,17 @@ export function useMessages(conversationId: string, otherUserId?: string) {
       .finally(() => setIsLoading(false))
   }, [conversationId])
 
+  // Guard: only mark-as-read once per conversation open, not on every message update
+  const markedReadRef = useRef(false)
   useEffect(() => {
-    if (!userId || messages.length === 0) return
+    markedReadRef.current = false
+  }, [conversationId])
+
+  useEffect(() => {
+    if (!userId || messages.length === 0 || markedReadRef.current) return
     const hasUnreadFromOther = messages.some((m) => m.senderId !== userId && m.status !== 'read')
     if (!hasUnreadFromOther) return
+    markedReadRef.current = true
     const timeout = setTimeout(() => {
       void messagesApi.markAsRead(conversationId).then(() => {
         socketRef.current?.emit('conversation:read', { conversationId })
@@ -279,10 +286,6 @@ export function useMessages(conversationId: string, otherUserId?: string) {
             ? { ...prev, messageCount: (prev.messageCount ?? 0) + 1 }
             : prev,
         )
-        void chatRequestsApi
-          .getForConversation(conversationId)
-          .then((cr) => { if (cr) setChatRequest(cr) })
-          .catch(() => undefined)
         return serverMsg
       } catch (e) {
         setMessages((prev) =>

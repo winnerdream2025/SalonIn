@@ -37,7 +37,6 @@ export const linkingConfig = {
 function RootLayout() {
   const isLoading = useAuthStore((s) => s.isLoading)
   const refreshAccessToken = useAuthStore((s) => s.refreshAccessToken)
-  const accessToken = useAuthStore((s) => s.accessToken)
   const user = useAuthStore((s) => s.user)
   const segments = useSegments()
   const router = useRouter()
@@ -52,7 +51,8 @@ function RootLayout() {
     configureClient({
       baseURL: process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000',
     })
-  }, [accessToken])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     if (isLoading) return

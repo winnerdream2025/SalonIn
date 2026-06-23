@@ -4,7 +4,7 @@ import { Tabs, router } from 'expo-router'
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuthStore } from '../../src/store/authStore'
-import { useConversations } from '../../src/hooks/useConversations'
+import { useChatStore } from '../../src/store/chatStore'
 import { useChatRequests } from '../../src/hooks/useChatRequests'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTheme, Avatar } from '@salonin/ui'
@@ -218,9 +218,8 @@ export default function TabsLayout() {
   const isLoggedIn = user != null
   const isSalon = role === Role.SALON
   const { theme } = useTheme()
-  const { conversations } = useConversations()
+  const unreadCount = useChatStore((s) => s.unreadCount)
   const { pendingCount, isLoaded: chatRequestsLoaded } = useChatRequests()
-  const unreadCount = conversations.reduce((sum, c) => sum + c.unreadCount, 0)
   const messagesBadge = useMemo(
     () => (isLoggedIn && chatRequestsLoaded ? unreadCount + pendingCount : 0),
     [isLoggedIn, chatRequestsLoaded, unreadCount, pendingCount],

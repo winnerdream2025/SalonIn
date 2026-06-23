@@ -4,6 +4,7 @@ import type { Socket } from 'socket.io-client'
 import { messagesApi } from '@salonin/api-client'
 import type { ConversationPreview, MessageStatus, UserPresence } from '@salonin/types'
 import { useAuthStore } from '../store/authStore'
+import { useChatStore } from '../store/chatStore'
 
 const WS_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000'
 
@@ -39,6 +40,8 @@ export function useConversations(search?: string) {
     try {
       const data = await messagesApi.getConversations(searchTerm)
       setConversations(data)
+      const total = data.reduce((s, c) => s + c.unreadCount, 0)
+      useChatStore.getState().setUnreadCount(total)
     } catch (e: unknown) {
       setError(e instanceof Error ? e : new Error('Failed to load conversations'))
     } finally {
@@ -78,6 +81,11 @@ export function useConversations(search?: string) {
             return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
           }),
       )
+      // Sync badge count
+      setConversations((latest) => {
+        useChatStore.getState().setUnreadCount(latest.reduce((s, c) => s + c.unreadCount, 0))
+        return latest
+      })
     },
     [],
   )
@@ -176,16 +184,22 @@ export function useConversations(search?: string) {
             return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
           })
       })
+      setConversations((latest) => {
+        useChatStore.getState().setUnreadCount(latest.reduce((s, c) => s + c.unreadCount, 0))
+        return latest
+      })
     })
 
     socket.on('conversation:read', (payload: ConversationReadPayload) => {
       if (payload.userId !== currentUserId) return
 
-      setConversations((prev) =>
-        prev.map((conv) =>
+      setConversations((prev) => {
+        const next = prev.map((conv) =>
           conv.id === payload.conversationId ? { ...conv, unreadCount: 0 } : conv,
-        ),
-      )
+        )
+        useChatStore.getState().setUnreadCount(next.reduce((s, c) => s + c.unreadCount, 0))
+        return next
+      })
     })
 
     socket.on('presence:update', (updated: UserPresence) => {
