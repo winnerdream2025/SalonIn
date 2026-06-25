@@ -196,6 +196,36 @@ export function MessageBubble({
           <Image source={{ uri: message.mediaUrl }} style={styles.media} resizeMode="cover" />
         </Pressable>
       )}
+      {message.type === 'STORY_REPLY' && !isDeleted && (
+        <View style={[
+          styles.storyPreviewBox,
+          { backgroundColor: isSelf ? 'rgba(0,0,0,0.18)' : theme.bg.elevated },
+        ]}>
+          <View style={styles.storyPreviewHeader}>
+            <Text style={[styles.storyPreviewLabel, { color: isSelf ? 'rgba(255,255,255,0.7)' : theme.text.tertiary }]}>
+              📷  Story
+            </Text>
+          </View>
+          {message.mediaUrl != null && message.mimeType !== 'TEXT' ? (
+            <Image
+              source={{ uri: message.mediaUrl }}
+              style={styles.storyPreviewImg}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={[styles.storyPreviewTextBg, { backgroundColor: isSelf ? 'rgba(0,0,0,0.25)' : theme.bg.card }]}>
+              <Text style={[styles.storyPreviewTextContent, { color: isSelf ? 'rgba(255,255,255,0.8)' : theme.text.secondary }]} numberOfLines={3}>
+                {message.locationName ?? 'Story'}
+              </Text>
+            </View>
+          )}
+          {message.locationName != null && message.mediaUrl != null && (
+            <Text style={[styles.storyPreviewCaption, { color: isSelf ? 'rgba(255,255,255,0.65)' : theme.text.secondary }]} numberOfLines={2}>
+              {message.locationName}
+            </Text>
+          )}
+        </View>
+      )}
       {isDeleted ? (
         <Text style={[styles.content, { color: isSelf ? 'rgba(255,255,255,0.65)' : theme.text.secondary, fontStyle: 'italic' }]}>
           This message was deleted
@@ -389,4 +419,45 @@ const styles = StyleSheet.create({
   },
   reactionEmoji: { fontSize: 13 },
   reactionCount: { fontSize: 11, fontWeight: '600' },
+
+  storyPreviewBox: {
+    borderRadius: 10,
+    overflow: 'hidden',
+    marginBottom: 4,
+    maxWidth: 220,
+  },
+  storyPreviewHeader: {
+    paddingHorizontal: 10,
+    paddingTop: 7,
+    paddingBottom: 4,
+  },
+  storyPreviewLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.2,
+  },
+  storyPreviewImg: {
+    width: 220,
+    height: 140,
+  },
+  storyPreviewTextBg: {
+    width: 220,
+    minHeight: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+  },
+  storyPreviewTextContent: {
+    fontSize: 14,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  storyPreviewCaption: {
+    fontSize: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    lineHeight: 16,
+  },
 })

@@ -7,6 +7,7 @@ export interface RegisterPayload {
   role: string
   name: string
   phone?: string | undefined
+  accountType?: 'CLIENT' | 'PROFESSIONAL' | 'SALON'
 }
 
 export interface LoginPayload {

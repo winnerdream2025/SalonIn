@@ -12,6 +12,7 @@ import {
   Image,
   ActivityIndicator,
   PanResponder,
+  Switch,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -20,7 +21,8 @@ import * as Haptics from 'expo-haptics'
 import { Text, Button, useTheme } from '@salonin/ui'
 import { Availability } from '@salonin/types'
 import type { AvailabilitySchedule } from '@salonin/types'
-import { workersApi, parseApiError } from '@salonin/api-client'
+import { workersApi, bookingProfileApi, parseApiError } from '@salonin/api-client'
+import { useAuthStore } from '../../store/authStore'
 import { SPECIALTY_CATEGORIES, SPECIALTIES_BY_CATEGORY, specialtyLabel, WORKER_PAY_TYPES, PERCENTAGE_PRESETS, SEAT_RATE_PRESETS, buildWorkerPayString } from '@salonin/config'
 import type { WorkerPayType } from '@salonin/config'
 import { useMyWorkerProfile } from '../../hooks/useWorkerProfile'
@@ -258,6 +260,7 @@ const accordionStyles = StyleSheet.create({
 export default function EditProfileScreen() {
   const { top, bottom } = useSafeAreaInsets()
   const { profile, isLoading } = useMyWorkerProfile()
+  const user = useAuthStore((s) => s.user)
   const { theme } = useTheme()
   const { pickAndUpload: pickAvatar, isUploading: isUploadingPhoto } = useMediaUpload({
     folder: 'avatars',
@@ -284,6 +287,13 @@ export default function EditProfileScreen() {
   const [rateNote,         setRateNote]         = useState('')
   const [isSaving,         setIsSaving]         = useState(false)
   const [openSection,      setOpenSection]      = useState<string | null>(null)
+  // Booking settings
+  const [acceptsBookings,     setAcceptsBookings]     = useState(false)
+  const [homeServiceEnabled,  setHomeServiceEnabled]  = useState(false)
+  const [travelServiceEnabled,setTravelServiceEnabled]= useState(false)
+  const [travelRadius,        setTravelRadius]        = useState('')
+  const [travelFee,           setTravelFee]           = useState('')
+  const [availabilityEnabled, setAvailabilityEnabled] = useState(false)
   const [availScheduleDays, setAvailScheduleDays] = useState<string[]>([])
   const [availStartTime,    setAvailStartTime]    = useState('09:00')
   const [availEndTime,      setAvailEndTime]      = useState('17:00')
@@ -318,6 +328,22 @@ export default function EditProfileScreen() {
       setAvailStartTime(sched.startTime)
       setAvailEndTime(sched.endTime)
     }
+    // Booking settings
+    const bp = profile as {
+      acceptsBookings?: boolean
+      homeServiceEnabled?: boolean
+      travelServiceEnabled?: boolean
+      travelRadius?: number | null
+      travelFee?: number | null
+      availabilityEnabled?: boolean
+    }
+    setAcceptsBookings(bp.acceptsBookings ?? false)
+    setHomeServiceEnabled(bp.homeServiceEnabled ?? false)
+    setTravelServiceEnabled(bp.travelServiceEnabled ?? false)
+    setTravelRadius(bp.travelRadius != null ? String(bp.travelRadius) : '')
+    setTravelFee(bp.travelFee != null ? String(bp.travelFee) : '')
+    setAvailabilityEnabled(bp.availabilityEnabled ?? false)
+
     const firstIncomplete =
       profile.specialties.length === 0 ? 'specialties'
       : profile.experienceYears === 0  ? 'experience'
@@ -392,7 +418,22 @@ export default function EditProfileScreen() {
         availabilitySchedule: availScheduleDays.length > 0
           ? { days: availScheduleDays, startTime: availStartTime, endTime: availEndTime }
           : undefined,
+        // Booking settings
+        acceptsBookings,
+        homeServiceEnabled,
+        travelServiceEnabled,
+        travelRadius: travelRadius ? Number(travelRadius) : undefined,
+        travelFee:    travelFee    ? Number(travelFee)    : undefined,
+        availabilityEnabled,
       })
+      if (acceptsBookings && profile?.id && user?.email) {
+        await bookingProfileApi.autoSetup({
+          providerId: profile.id,
+          providerType: 'professional',
+          businessName: name.trim(),
+          email: user.email,
+        })
+      }
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
       router.back()
     } catch (e) {
@@ -400,7 +441,7 @@ export default function EditProfileScreen() {
     } finally {
       setIsSaving(false)
     }
-  }, [name, bio, specialties, experienceYears, licenseNumber, radiusMiles, workerPayType, payMin, payMax, payPercentage, seatRate, payCustomText, rateNote, availability, availScheduleDays, availStartTime, availEndTime])
+  }, [name, bio, specialties, experienceYears, licenseNumber, radiusMiles, workerPayType, payMin, payMax, payPercentage, seatRate, payCustomText, rateNote, availability, availScheduleDays, availStartTime, availEndTime, acceptsBookings, homeServiceEnabled, travelServiceEnabled, travelRadius, travelFee, availabilityEnabled])
 
   const handleSave = useCallback(async () => {
     if (!name.trim()) {
@@ -1032,6 +1073,105 @@ export default function EditProfileScreen() {
             />
           </AccordionSection>
 
+          {/* ── Booking Settings ─────────────────────────────── */}
+          <View style={[styles.sectionCard, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle, marginHorizontal: 16, marginTop: 8 }]}>
+            <View style={styles.sectionCardHeader}>
+              <View style={[styles.sectionIconBadge, { backgroundColor: 'rgba(216,90,48,0.10)' }]}>
+                <Ionicons name="calendar-outline" size={18} color="#D85A30" />
+              </View>
+              <Text style={[styles.sectionCardTitle, { color: theme.text.primary }]}>Booking Settings</Text>
+            </View>
+
+            {/* Accept bookings */}
+            <View style={[styles.settingRow, { borderTopColor: theme.border.subtle }]}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text.primary }}>Accept Bookings</Text>
+                <Text style={{ fontSize: 12, color: theme.text.tertiary, marginTop: 2 }}>Let clients book appointments with you</Text>
+              </View>
+              <Switch
+                value={acceptsBookings}
+                onValueChange={setAcceptsBookings}
+                trackColor={{ false: '#E8E4DF', true: '#D85A30' }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            {/* Home service */}
+            <View style={[styles.settingRow, { borderTopColor: theme.border.subtle }]}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text.primary }}>Home Service</Text>
+                <Text style={{ fontSize: 12, color: theme.text.tertiary, marginTop: 2 }}>You can travel to the client</Text>
+              </View>
+              <Switch
+                value={homeServiceEnabled}
+                onValueChange={setHomeServiceEnabled}
+                trackColor={{ false: '#E8E4DF', true: '#D85A30' }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            {/* Travel service */}
+            <View style={[styles.settingRow, { borderTopColor: theme.border.subtle }]}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text.primary }}>Travel Service</Text>
+                <Text style={{ fontSize: 12, color: theme.text.tertiary, marginTop: 2 }}>Extended travel (outside home area)</Text>
+              </View>
+              <Switch
+                value={travelServiceEnabled}
+                onValueChange={setTravelServiceEnabled}
+                trackColor={{ false: '#E8E4DF', true: '#D85A30' }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            {/* Travel radius */}
+            {(homeServiceEnabled || travelServiceEnabled) && (
+              <>
+                <View style={[styles.settingRow, { borderTopColor: theme.border.subtle }]}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text.primary }}>Travel Radius (mi)</Text>
+                  </View>
+                  <TextInput
+                    value={travelRadius}
+                    onChangeText={setTravelRadius}
+                    keyboardType="numeric"
+                    placeholder="e.g. 20"
+                    placeholderTextColor={theme.text.tertiary}
+                    style={[styles.settingInput, { backgroundColor: theme.bg.input, borderColor: theme.border.default, color: theme.text.primary }]}
+                  />
+                </View>
+                <View style={[styles.settingRow, { borderTopColor: theme.border.subtle }]}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text.primary }}>Travel Fee ($)</Text>
+                    <Text style={{ fontSize: 12, color: theme.text.tertiary, marginTop: 2 }}>Additional charge for travel</Text>
+                  </View>
+                  <TextInput
+                    value={travelFee}
+                    onChangeText={setTravelFee}
+                    keyboardType="numeric"
+                    placeholder="e.g. 15"
+                    placeholderTextColor={theme.text.tertiary}
+                    style={[styles.settingInput, { backgroundColor: theme.bg.input, borderColor: theme.border.default, color: theme.text.primary }]}
+                  />
+                </View>
+              </>
+            )}
+
+            {/* Availability calendar */}
+            <View style={[styles.settingRow, { borderTopColor: theme.border.subtle }]}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text.primary }}>Show Availability</Text>
+                <Text style={{ fontSize: 12, color: theme.text.tertiary, marginTop: 2 }}>Display your calendar to clients</Text>
+              </View>
+              <Switch
+                value={availabilityEnabled}
+                onValueChange={setAvailabilityEnabled}
+                trackColor={{ false: '#E8E4DF', true: '#D85A30' }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+          </View>
+
           {/* ── Save button ─────────────────────────────────── */}
           <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
             <Button variant="primary" fullWidth loading={isSaving || isLoading} onPress={() => void handleSave()}>
@@ -1268,6 +1408,24 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     letterSpacing: -0.2,
+  },
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: 12,
+  },
+  settingInput: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 14,
+    fontWeight: '600',
+    minWidth: 70,
+    textAlign: 'right',
   },
   fieldGroup: {
     borderTopWidth: StyleSheet.hairlineWidth,

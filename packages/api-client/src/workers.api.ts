@@ -34,6 +34,13 @@ export interface UpdateWorkerPayload {
     startTime: string
     endTime: string
   } | undefined
+  // Booking settings
+  acceptsBookings?: boolean | undefined
+  homeServiceEnabled?: boolean | undefined
+  travelServiceEnabled?: boolean | undefined
+  travelRadius?: number | undefined
+  travelFee?: number | undefined
+  availabilityEnabled?: boolean | undefined
 }
 
 export interface AddPortfolioItemInput {
@@ -70,6 +77,18 @@ export const workersApi = {
   addPortfolioItem: (data: AddPortfolioItemInput): Promise<PortfolioItem> =>
     api.post<PortfolioItem>('/workers/portfolio', data).then((r) => r.data),
 
+  deletePortfolioItem: (itemId: string): Promise<{ deleted: boolean }> =>
+    api.delete<{ deleted: boolean }>(`/workers/portfolio/${itemId}`).then((r) => r.data),
+
   getMyApplications: (): Promise<JobApplicationWithJob[]> =>
     api.get<JobApplicationWithJob[]>('/workers/me/applications').then((r) => r.data),
+
+  toggleSaveWorker: (workerId: string): Promise<{ saved: boolean }> =>
+    api.post<{ saved: boolean }>(`/workers/${workerId}/save`).then((r) => r.data),
+
+  getSavedWorkerIds: (): Promise<string[]> =>
+    api.get<string[]>('/workers/saved/ids').then((r) => r.data),
+
+  getSavedWorkers: (): Promise<WorkerProfileFull[]> =>
+    api.get<WorkerProfileFull[]>('/workers/saved').then((r) => r.data),
 }

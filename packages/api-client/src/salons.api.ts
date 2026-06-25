@@ -7,6 +7,7 @@ export interface UpdateSalonPayload {
   photoUrls?: string[] | undefined
   specialties?: string[] | undefined
   isHiring?: boolean | undefined
+  acceptsBookings?: boolean | undefined
 }
 
 export const salonsApi = {

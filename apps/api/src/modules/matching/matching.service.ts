@@ -31,6 +31,9 @@ interface RawWorker {
   rateNote: string | null
   rating: number
   reviewCount: number
+  acceptsBookings: boolean
+  homeServiceEnabled: boolean
+  travelServiceEnabled: boolean
 }
 
 interface WorkerCursor {
@@ -179,6 +182,9 @@ export class MatchingService {
           wp."rateNote",
           wp.rating,
           wp."reviewCount",
+          wp."acceptsBookings",
+          wp."homeServiceEnabled",
+          wp."travelServiceEnabled",
           ROUND(ST_Distance(
             wp.location::geography,
             ST_SetSRID(ST_MakePoint(${params.lng}, ${params.lat}), 4326)::geography
@@ -277,6 +283,9 @@ export class MatchingService {
         wp."rateNote",
         wp.rating,
         wp."reviewCount",
+        wp."acceptsBookings",
+        wp."homeServiceEnabled",
+        wp."travelServiceEnabled",
         CASE
           WHEN wp.location IS NOT NULL THEN ROUND(ST_Distance(
             wp.location::geography,
@@ -319,6 +328,9 @@ export class MatchingService {
       rateNote: raw.rateNote ?? undefined,
       rating: Number(raw.rating) > 0 ? Number(raw.rating) : undefined,
       reviewCount: Number(raw.reviewCount) > 0 ? Number(raw.reviewCount) : undefined,
+      acceptsBookings: Boolean(raw.acceptsBookings),
+      homeServiceEnabled: Boolean(raw.homeServiceEnabled),
+      travelServiceEnabled: Boolean(raw.travelServiceEnabled),
     }
   }
 

@@ -35,8 +35,14 @@ export type MessageType =
   | 'CONTACT'  // contact card; uses contactName + contactPhone
   | 'LOCATION' // location pin; uses latitude + longitude + locationName
   | 'VOICE'    // voice note; uses audioUrl + duration + waveformData
-  | 'MEDIA'    // legacy single-image via mediaUrl
+  | 'MEDIA'        // legacy single-image via mediaUrl
+  | 'STORY_REPLY'  // reply to a story; mediaUrl=storyMedia, mimeType=story type, locationName=caption
   | 'SYSTEM'
+  // Booking system messages
+  | 'BOOKING_REQUEST'
+  | 'BOOKING_CONFIRMED'
+  | 'BOOKING_CANCELLED'
+  | 'BOOKING_RESCHEDULED'
   | string
 
 export interface Message {
@@ -93,6 +99,15 @@ export interface TypingEvent {
 // ─── Enum re-exports (runtime values) ────────────────────────────────────────
 
 export { Role, Availability, EmploymentType, ListingType, MediaType, AppStatus, ReportType, ReportStatus, Platform, ChatRequestStatus } from '@prisma/client'
+
+// AccountType is defined here (not re-exported from @prisma/client) because the
+// Prisma client must be regenerated after the schema migration before it appears there.
+export const AccountType = {
+  CLIENT: 'CLIENT',
+  PROFESSIONAL: 'PROFESSIONAL',
+  SALON: 'SALON',
+} as const
+export type AccountType = (typeof AccountType)[keyof typeof AccountType]
 export type { WorkerPayType, JobPayType } from '@salonin/config'
 
 export interface AvailabilitySchedule {
@@ -228,6 +243,10 @@ export interface WorkerCardData {
   seatRate?: number | null
   isSaved?: boolean
   bio: string | null
+  // Booking
+  acceptsBookings?: boolean
+  homeServiceEnabled?: boolean
+  travelServiceEnabled?: boolean
 }
 
 export interface SalonCardData {
@@ -244,6 +263,8 @@ export interface SalonCardData {
   country?: string | null
   followersCount?: number
   followingCount?: number
+  // Booking
+  acceptsBookings?: boolean
 }
 
 export interface JobPostCardData {
@@ -359,6 +380,12 @@ export interface WorkerProfileFull {
     role: Role
     createdAt: string
   }
+  // Booking capabilities (optional — returned when feature is enabled)
+  acceptsBookings?: boolean
+  homeServiceEnabled?: boolean
+  travelServiceEnabled?: boolean
+  travelRadius?: number | null
+  travelFee?: number | null
 }
 
 // ─── Full salon profile (GET /salons/:id response) ───────────────────────────
@@ -395,6 +422,8 @@ export interface SalonProfileFull {
     createdAt: string
   }>
   user: { id: string; role: Role; createdAt: string }
+  // Booking
+  acceptsBookings?: boolean
 }
 
 // ─── Job detail type (getById response) ──────────────────────────────────────
@@ -556,4 +585,38 @@ export interface ApiError {
   error: string
   code: string
   statusCode: number
+}
+
+// ─── Booking bridge types ─────────────────────────────────────────────────────
+
+export type BookingProviderType = 'professional' | 'salon'
+
+export interface ProviderBookingProfile {
+  id: string
+  providerId: string
+  providerType: BookingProviderType
+  tenantSlug: string
+  externalBookingSystemId: string | null
+  isActive: boolean
+  providerEmail: string | null
+  providerPassword: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ClientBookingItem {
+  id: string
+  status: 'pending_payment' | 'pending' | 'confirmed' | 'cancelled' | 'completed'
+  serviceId: string
+  serviceName: string
+  date: string       // YYYY-MM-DD
+  startTime: string  // HH:mm
+  endTime?: string   // HH:mm
+  price: number
+  currency: string
+  confirmationCode?: string | null
+  tenantSlug: string
+  providerType: BookingProviderType
+  providerName: string
+  providerPhoto: string | null
 }

@@ -29,4 +29,8 @@ export class RegisterDto {
   @IsOptional()
   @IsString()
   phone?: string | undefined
+
+  @IsOptional()
+  @IsIn(['CLIENT', 'PROFESSIONAL', 'SALON'])
+  accountType?: 'CLIENT' | 'PROFESSIONAL' | 'SALON'
 }

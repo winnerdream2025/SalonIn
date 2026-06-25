@@ -7,15 +7,18 @@ import { Skeleton } from '../primitives/Skeleton'
 export interface PortfolioItemProps {
   item: PortfolioItemData
   onPress: (item: PortfolioItemData) => void
+  onLongPress?: (item: PortfolioItemData) => void
 }
 
-export function PortfolioItem({ item, onPress }: PortfolioItemProps) {
+export function PortfolioItem({ item, onPress, onLongPress }: PortfolioItemProps) {
   const isVideo = item.type === 'VIDEO'
 
   return (
     <TouchableOpacity
       style={WRAP}
       onPress={() => onPress(item)}
+      onLongPress={onLongPress ? () => onLongPress(item) : undefined}
+      delayLongPress={400}
       activeOpacity={0.8}
     >
       <Image source={{ uri: item.mediaUrl }} style={MEDIA} resizeMode="cover" />

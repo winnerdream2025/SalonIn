@@ -321,7 +321,11 @@ export class StoriesService {
 
     // Route reply into chat as a message (creates conv if needed)
     if (story.userId !== userId) {
-      void this.routeReplyToChat(userId, story.userId, storyId, dto.content).catch(() => {})
+      void this.routeReplyToChat(userId, story.userId, storyId, dto.content, {
+        mediaUrl: story.mediaUrl,
+        type: story.type,
+        caption: story.caption,
+      }).catch(() => {})
     }
 
     // Notify story owner
@@ -348,7 +352,13 @@ export class StoriesService {
     return reply
   }
 
-  private async routeReplyToChat(senderId: string, recipientId: string, _storyId: string, content: string) {
+  private async routeReplyToChat(
+    senderId: string,
+    recipientId: string,
+    _storyId: string,
+    content: string,
+    storyMeta: { mediaUrl: string | null; type: string; caption: string | null },
+  ) {
     // Find or create conversation
     let conv = await this.prisma.conversation.findFirst({
       where: {
@@ -366,7 +376,10 @@ export class StoriesService {
 
     await this.messaging.sendMessage(conv.id, senderId, {
       content,
-      type: 'story_reply',
+      type: 'STORY_REPLY',
+      mediaUrl: storyMeta.mediaUrl ?? undefined,
+      mimeType: storyMeta.type,          // 'IMAGE' | 'VIDEO' | 'TEXT'
+      locationName: storyMeta.caption ?? undefined, // reused field: story caption
     })
   }
 

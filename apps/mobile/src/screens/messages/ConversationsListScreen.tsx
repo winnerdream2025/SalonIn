@@ -26,8 +26,8 @@ const SKELETON_COUNT = 6
 
 // ─── Tabs ────────────────────────────────────────────────────────────────────
 
-type InboxTab = 'Main' | 'Requests' | 'Unread' | 'Starred'
-const TABS: InboxTab[] = ['Main', 'Requests', 'Unread', 'Starred']
+type InboxTab = 'Main' | 'Requests' | 'Unread' | 'Starred' | 'Archived'
+const TABS: InboxTab[] = ['Main', 'Requests', 'Unread', 'Starred', 'Archived']
 
 // ─── Notification row types shown at top of Main tab ─────────────────────────
 
@@ -50,12 +50,14 @@ const PillTabBar = React.memo(function PillTabBar({
   mainCount,
   unreadCount,
   requestCount,
+  archivedCount,
 }: {
   activeTab: InboxTab
   onSelect: (t: InboxTab) => void
   mainCount: number
   unreadCount: number
   requestCount: number
+  archivedCount: number
 }) {
   const { theme } = useTheme()
 
@@ -69,6 +71,8 @@ const PillTabBar = React.memo(function PillTabBar({
         return unreadCount > 0 ? `Unread ${unreadCount > 99 ? '99+' : unreadCount}` : 'Unread'
       case 'Starred':
         return 'Starred'
+      case 'Archived':
+        return archivedCount > 0 ? `Archived ${archivedCount}` : 'Archived'
     }
   }
 
@@ -213,6 +217,7 @@ export default function ConversationsListScreen() {
 
   // ── Derived counts ────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
+    if (activeTab === 'Archived') return conversations.filter((c) => c.isArchived)
     const base = conversations.filter((c) => !c.isArchived)
     if (activeTab === 'Main') return base
     if (activeTab === 'Unread') return base.filter((c) => c.unreadCount > 0)
@@ -223,6 +228,10 @@ export default function ConversationsListScreen() {
   const mainCount = useMemo(
     () => conversations.filter((c) => !c.isArchived).length + notifUnread,
     [conversations, notifUnread],
+  )
+  const archivedCount = useMemo(
+    () => conversations.filter((c) => c.isArchived).length,
+    [conversations],
   )
   const unreadConvCount = useMemo(
     () => conversations.filter((c) => !c.isArchived && c.unreadCount > 0).length,
@@ -397,18 +406,22 @@ export default function ConversationsListScreen() {
               ? 'No starred chats'
               : activeTab === 'Unread'
                 ? "You're all caught up"
-                : search.length > 0
-                  ? 'No matches found'
-                  : 'No conversations yet'}
+                : activeTab === 'Archived'
+                  ? 'No archived chats'
+                  : search.length > 0
+                    ? 'No matches found'
+                    : 'No conversations yet'}
           </Text>
           <Text style={[styles.emptySub, { color: theme.text.secondary }]}>
             {activeTab === 'Starred'
               ? 'Pin conversations to star them'
               : activeTab === 'Unread'
                 ? 'All messages are read'
-                : search.length > 0
-                  ? 'Try a different search term'
-                  : 'Visit a worker or salon profile\nto start a conversation'}
+                : activeTab === 'Archived'
+                  ? 'Archived chats will appear here'
+                  : search.length > 0
+                    ? 'Try a different search term'
+                    : 'Visit a worker or salon profile\nto start a conversation'}
           </Text>
         </View>
       ),
@@ -489,6 +502,7 @@ export default function ConversationsListScreen() {
         mainCount={mainCount}
         unreadCount={unreadConvCount}
         requestCount={pendingCount}
+        archivedCount={archivedCount}
       />
 
       {/* ── List ── */}

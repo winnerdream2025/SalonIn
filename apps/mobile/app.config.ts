@@ -6,7 +6,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   slug: config.slug ?? 'salonin',
   android: {
     ...config.android,
-    versionCode: 11,
+    versionCode: 13,
     config: {
       googleMaps: {
         // Set GOOGLE_MAPS_API_KEY in EAS secrets:
@@ -19,6 +19,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   ios: {
     ...config.ios,
-    buildNumber: '10',
+    buildNumber: '11',
   },
 })

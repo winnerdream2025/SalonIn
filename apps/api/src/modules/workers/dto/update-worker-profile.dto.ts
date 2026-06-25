@@ -1,6 +1,7 @@
 import {
   ArrayMaxSize,
   IsArray,
+  IsBoolean,
   IsIn,
   IsInt,
   IsNumber,
@@ -118,4 +119,34 @@ export class UpdateWorkerProfileDto {
   @Min(0)
   @Max(10000)
   seatRate?: number
+
+  // ── Booking settings ─────────────────────────────────────────────────────
+
+  @IsOptional()
+  @IsBoolean()
+  acceptsBookings?: boolean
+
+  @IsOptional()
+  @IsBoolean()
+  homeServiceEnabled?: boolean
+
+  @IsOptional()
+  @IsBoolean()
+  travelServiceEnabled?: boolean
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(200)
+  travelRadius?: number
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(500)
+  travelFee?: number
+
+  @IsOptional()
+  @IsBoolean()
+  availabilityEnabled?: boolean
 }

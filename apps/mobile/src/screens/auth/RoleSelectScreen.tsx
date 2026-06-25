@@ -24,18 +24,34 @@ export default function RoleSelectScreen() {
         <View style={styles.accentPill} />
       </View>
 
-      <Text variant="heading" style={styles.title}>How do you beautify?</Text>
+      <Text variant="heading" style={styles.title}>How do you use SalonIn?</Text>
       <Text variant="body" color="secondary" style={styles.subtitle}>
-        Pick the path that fits you today. You can always switch roles later.
+        Pick the path that fits you today.
       </Text>
 
       <View style={[styles.card, { backgroundColor: theme.bg.surface, borderColor: theme.border.subtle }]}>
-        <Text variant="body" style={styles.cardTitle}>For creators</Text>
+        <Text variant="body" style={styles.cardTitle}>Book beauty services</Text>
         <Text variant="body" color="secondary" style={styles.cardSubtitle}>
-          Showcase your artistry, get discovered by salons, and secure bookings.
+          Find and book appointments with professionals and salons near you.
         </Text>
         <Button
           variant="primary"
+          fullWidth
+          onPress={() =>
+            router.push({ pathname: '/(auth)/register', params: { role: 'WORKER', accountType: 'CLIENT' } })
+          }
+        >
+          I&apos;m a Client
+        </Button>
+      </View>
+
+      <View style={[styles.card, { backgroundColor: theme.bg.surface, borderColor: theme.border.subtle }]}>
+        <Text variant="body" style={styles.cardTitle}>For professionals</Text>
+        <Text variant="body" color="secondary" style={styles.cardSubtitle}>
+          Showcase your artistry, get discovered by salons, and accept bookings.
+        </Text>
+        <Button
+          variant="secondary"
           fullWidth
           onPress={() =>
             router.push({ pathname: '/(auth)/register', params: { role: 'WORKER' } })

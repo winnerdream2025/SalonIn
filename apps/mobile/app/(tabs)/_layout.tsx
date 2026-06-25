@@ -217,6 +217,7 @@ export default function TabsLayout() {
   const role = user?.role
   const isLoggedIn = user != null
   const isSalon = role === Role.SALON
+  const isClient = (user as any)?.accountType === 'CLIENT'
   const { theme } = useTheme()
   const unreadCount = useChatStore((s) => s.unreadCount)
   const notifUnreadCount = useChatStore((s) => s.notifUnreadCount)
@@ -262,7 +263,7 @@ export default function TabsLayout() {
 
   const profileOptions = useMemo(
     () => ({
-      tabBarLabel: isSalon ? 'My Salon' : 'Profile',
+      tabBarLabel: isClient ? 'Bookings' : isSalon ? 'My Salon' : 'Profile',
       tabBarIcon: ({ color, size, focused }: { color: string; size: number; focused: boolean }) => (
         <ProfileTabIcon
           color={color}
@@ -274,7 +275,7 @@ export default function TabsLayout() {
         />
       ),
     }),
-    [isSalon, photoUrl, theme],
+    [isClient, isSalon, photoUrl, theme],
   )
 
   return (

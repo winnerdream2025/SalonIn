@@ -4,7 +4,6 @@ import {
   View,
   FlatList,
   Image,
-  Modal,
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
@@ -24,7 +23,7 @@ import { useStories, type UserStoryState } from '../../contexts/StoriesContext'
 import type { Theme } from '@salonin/ui'
 import type { WorkerCardData } from '@salonin/types'
 import { Availability } from '@salonin/types'
-import { reportsApi, messagesApi, parseApiError } from '@salonin/api-client'
+import { reportsApi, messagesApi, workersApi, parseApiError } from '@salonin/api-client'
 import type { SuggestedUser } from '@salonin/api-client'
 import { ALL_SPECIALTIES, specialtyLabel } from '@salonin/config'
 import { useAuthStore } from '../../store/authStore'
@@ -38,54 +37,9 @@ import { useSuggestedUsers } from '../../hooks/useFollow'
 import { LocationModal } from '../../components/LocationModal'
 import { WorkerFilterModal, activeWorkerFilterCount, EMPTY_WORKER_FILTERS } from '../../components/WorkerFilterModal'
 import type { WorkerFilters } from '../../components/WorkerFilterModal'
+import { RadiusPickerSheet } from '../../components/RadiusPickerSheet'
 
 const SPECIALTIES = [{ id: 'All', label: 'All' }, ...ALL_SPECIALTIES]
-const RADIUS_PRESETS = [5, 10, 25, 50, 100]
-
-function RadiusPickerSheet({
-  visible, current, onSelect, onClose, theme,
-}: {
-  visible: boolean
-  current: number
-  onSelect: (miles: number) => void
-  onClose: () => void
-  theme: Theme
-}) {
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableOpacity style={radiusStyles.backdrop} onPress={onClose} activeOpacity={1} />
-      <View style={[radiusStyles.sheet, { backgroundColor: theme.bg.card }]}>
-        <View style={[radiusStyles.handle, { backgroundColor: theme.border.default }]} />
-        <Text style={[radiusStyles.title, { color: theme.text.primary }]}>Search radius</Text>
-        <Text style={[radiusStyles.sub, { color: theme.text.secondary }]}>
-          Show professionals within
-        </Text>
-        <View style={radiusStyles.presets}>
-          {RADIUS_PRESETS.map((r) => {
-            const active = r === current
-            return (
-              <TouchableOpacity
-                key={r}
-                onPress={() => { onSelect(r); onClose() }}
-                activeOpacity={0.75}
-                style={[
-                  radiusStyles.chip,
-                  active
-                    ? { backgroundColor: '#D85A30', borderColor: '#D85A30' }
-                    : { backgroundColor: theme.bg.elevated, borderColor: theme.border.default },
-                ]}
-              >
-                <Text style={[radiusStyles.chipText, { color: active ? '#fff' : theme.text.secondary }]}>
-                  {r} mi
-                </Text>
-              </TouchableOpacity>
-            )
-          })}
-        </View>
-      </View>
-    </Modal>
-  )
-}
 
 const SKELETON_COUNT = 6
 
@@ -130,7 +84,6 @@ export default function DiscoveryFeedScreen() {
   const isGPSLocation = useLocationStore((s) => s.isGPSLocation)
   const radiusMiles = useLocationStore((s) => s.radiusMiles)
   const radiusMode = useLocationStore((s) => s.radiusMode)
-  const setRadius = useLocationStore((s) => s.setRadius)
   const hasLocation = lat != null && lng != null
 
   const { requestLocation, status } = useDeviceLocation()
@@ -142,9 +95,18 @@ export default function DiscoveryFeedScreen() {
   const [showFilterModal, setShowFilterModal] = useState(false)
   const [showRadiusPicker, setShowRadiusPicker] = useState(false)
   const [workerFilters, setWorkerFilters] = useState<WorkerFilters>(EMPTY_WORKER_FILTERS)
+  const [activeDiscoverTab, setActiveDiscoverTab] = useState<'All' | 'Saved'>('All')
+  const [savedWorkerIds, setSavedWorkerIds] = useState<Set<string>>(new Set())
   const filterCount = activeWorkerFilterCount(workerFilters)
   const currentUser = useAuthStore((s) => s.user)
   const { storyMap, openViewerForUser } = useStories()
+
+  React.useEffect(() => {
+    if (!currentUser) return
+    workersApi.getSavedWorkerIds()
+      .then((ids: string[]) => setSavedWorkerIds(new Set(ids)))
+      .catch(() => {})
+  }, [currentUser])
 
   const showGate = useAuthGateStore((s) => s.show)
 
@@ -180,13 +142,27 @@ export default function DiscoveryFeedScreen() {
     })
 
   const filteredWorkers = useMemo(() => {
+    let result = workers
     const q = search.trim().toLowerCase()
-    if (!q) return workers
-    return workers.filter((w) =>
-      w.name.toLowerCase().includes(q) ||
-      w.specialties.some((s) => s.toLowerCase().includes(q))
-    )
-  }, [workers, search])
+    if (q) {
+      result = result.filter((w) =>
+        w.name.toLowerCase().includes(q) ||
+        w.specialties.some((s) => s.toLowerCase().includes(q))
+      )
+    }
+    if (activeDiscoverTab === 'Saved') {
+      result = result.filter((w) => savedWorkerIds.has(w.id))
+    }
+    // Bookable filter — client-side until API supports the param
+    if (workerFilters.bookable) {
+      result = result.filter((w) => w.acceptsBookings === true)
+    }
+    // Freelance filter — client-side: FREELANCE employment type indicates freelance
+    if (workerFilters.freelance) {
+      result = result.filter((w) => w.homeServiceEnabled === true || w.travelServiceEnabled === true)
+    }
+    return result
+  }, [workers, search, activeDiscoverTab, savedWorkerIds, workerFilters.bookable, workerFilters.freelance])
 
   const handlePressWorker = useCallback((worker: WorkerCardData) => {
     router.push(`/worker/${worker.id}`)
@@ -275,8 +251,35 @@ export default function DiscoveryFeedScreen() {
           </View>
         </View>
         <SuggestedStylists theme={theme} />
+        {/* ── All / Saved tab toggle ── */}
+        <View style={[styles.discoverTabRow, { borderBottomColor: theme.border.subtle }]}>
+          {(['All', 'Saved'] as const).map((t) => {
+            const active = activeDiscoverTab === t
+            return (
+              <TouchableOpacity
+                key={t}
+                onPress={() => {
+                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                  setActiveDiscoverTab(t)
+                }}
+                style={[
+                  styles.discoverTab,
+                  active
+                    ? { borderBottomColor: theme.brand.primary, borderBottomWidth: 2 }
+                    : { borderBottomColor: 'transparent', borderBottomWidth: 2 },
+                ]}
+              >
+                <Text style={[styles.discoverTabText, { color: active ? theme.brand.primary : theme.text.tertiary }]}>
+                  {t === 'Saved' && savedWorkerIds.size > 0 ? `Saved (${savedWorkerIds.size})` : t}
+                </Text>
+              </TouchableOpacity>
+            )
+          })}
+        </View>
         <View style={styles.sectionRow}>
-          <Text style={[styles.sectionLabel, { color: theme.text.primary }]}>Professionals near you</Text>
+          <Text style={[styles.sectionLabel, { color: theme.text.primary }]}>
+            {activeDiscoverTab === 'Saved' ? 'Saved professionals' : 'Professionals near you'}
+          </Text>
           <TouchableOpacity
             style={[
               styles.expandedBadge,
@@ -288,16 +291,11 @@ export default function DiscoveryFeedScreen() {
             activeOpacity={0.75}
             hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
           >
-            <Ionicons
-              name="location-outline"
-              size={11}
-              color={(isExpanded || radiusMode === 'custom') ? '#D85A30' : theme.text.tertiary}
-            />
             <Text style={[
               styles.expandedNote,
               { color: (isExpanded || radiusMode === 'custom') ? '#D85A30' : theme.text.tertiary },
             ]}>
-              {usedRadius} mi
+              {radiusMiles} mi
             </Text>
             <Ionicons
               name="chevron-down"
@@ -309,7 +307,7 @@ export default function DiscoveryFeedScreen() {
       </>
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [theme, isExpanded, usedRadius, isGPSLocation, cityLabel, openLocationModal, radiusMode],
+    [theme, isExpanded, usedRadius, isGPSLocation, cityLabel, openLocationModal, radiusMode, radiusMiles, activeDiscoverTab, savedWorkerIds],
   )
 
   const listEmpty = useMemo(
@@ -337,16 +335,20 @@ export default function DiscoveryFeedScreen() {
         <View style={styles.centerPane}>
           <View style={[styles.emptyIcon, { backgroundColor: 'rgba(29,158,117,0.10)' }]}>
             <Ionicons
-              name={search.trim().length > 0 ? 'search-outline' : 'people-outline'}
+              name={activeDiscoverTab === 'Saved' ? 'bookmark-outline' : search.trim().length > 0 ? 'search-outline' : 'people-outline'}
               size={28}
               color="#1D9E75"
             />
           </View>
           <Text style={[styles.emptyTitle, { color: theme.text.primary }]}>
-            {search.trim().length > 0 ? 'No matching professionals' : `No pros in ${cityLabel} yet`}
+            {activeDiscoverTab === 'Saved'
+              ? 'No saved professionals'
+              : search.trim().length > 0 ? 'No matching professionals' : `No pros in ${cityLabel} yet`}
           </Text>
           <Text style={[styles.stateText, { color: theme.text.secondary }]}>
-            {search.trim().length > 0
+            {activeDiscoverTab === 'Saved'
+              ? 'Tap the bookmark icon on any worker profile to save them'
+              : search.trim().length > 0
               ? 'Try different keywords or adjust your filters'
               : 'Be the first to join My Salon In in your area'}
           </Text>
@@ -566,10 +568,7 @@ export default function DiscoveryFeedScreen() {
 
         <RadiusPickerSheet
           visible={showRadiusPicker}
-          current={usedRadius}
-          onSelect={(miles) => setRadius(miles, 'custom')}
           onClose={() => setShowRadiusPicker(false)}
-          theme={theme}
         />
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -663,6 +662,20 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: '#D85A30',
   },
+  discoverTabRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  discoverTab: {
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    marginRight: 8,
+  },
+  discoverTabText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
   chipsScroll: {
     flexGrow: 0,
     flexShrink: 0,
@@ -690,8 +703,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 4,
-    paddingBottom: 6,
+    paddingTop: 2,
+    paddingBottom: 4,
   },
   sectionLabel: {
     fontSize: 16,
@@ -765,7 +778,7 @@ interface SuggestedCardProps {
   onStoryPress?: () => void
 }
 
-function SuggestedCard({ user, theme, isFollowed, storyState, onFollow, onMessage, onStoryPress }: SuggestedCardProps) {
+function SuggestedCard({ user, theme, isFollowed, storyState, onFollow, onMessage: _onMessage, onStoryPress }: SuggestedCardProps) {
   const name = user.name ?? ''
   const specialties = user.specialties ?? []
   const specialty = specialtyLabel(specialties[0]) || (user.type === 'salon' ? 'Salon' : 'Stylist')
@@ -1025,7 +1038,7 @@ export function SuggestedSalons({ theme }: { theme: Theme }) {
 }
 
 const suggestStyles = StyleSheet.create({
-  section: { paddingTop: 4, paddingBottom: 4 },
+  section: { paddingTop: 4, paddingBottom: 0 },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1035,7 +1048,7 @@ const suggestStyles = StyleSheet.create({
   },
   sectionTitle: { fontSize: 16, fontWeight: '800', letterSpacing: -0.2 },
   seeAll: { fontSize: 13, fontWeight: '600' },
-  row: { paddingHorizontal: 12, gap: 8, paddingBottom: 8 },
+  row: { paddingHorizontal: 12, gap: 8, paddingBottom: 2 },
 
   card: {
     width: 86,
@@ -1097,48 +1110,3 @@ const suggestStyles = StyleSheet.create({
   skeletonBtn: { width: 60, height: 9, borderRadius: 5, marginTop: 3 },
 })
 
-const radiusStyles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-  },
-  sheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingTop: 12,
-    paddingBottom: 40,
-    paddingHorizontal: 20,
-  },
-  handle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: -0.3,
-    marginBottom: 4,
-  },
-  sub: {
-    fontSize: 13,
-    marginBottom: 20,
-  },
-  presets: {
-    flexDirection: 'row',
-    gap: 10,
-    flexWrap: 'wrap',
-  },
-  chip: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 22,
-    borderWidth: 1,
-  },
-  chipText: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-})

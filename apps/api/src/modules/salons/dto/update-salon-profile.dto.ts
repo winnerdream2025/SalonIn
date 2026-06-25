@@ -27,4 +27,10 @@ export class UpdateSalonProfileDto {
   @IsOptional()
   @IsBoolean()
   isHiring?: boolean
+
+  // ── Booking settings ─────────────────────────────────────────────────────
+
+  @IsOptional()
+  @IsBoolean()
+  acceptsBookings?: boolean
 }

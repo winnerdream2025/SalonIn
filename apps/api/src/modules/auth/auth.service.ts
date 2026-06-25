@@ -43,17 +43,29 @@ export class AuthService {
 
     const passwordHash = await bcrypt.hash(dto.password, SALT_ROUNDS)
 
-    const user = await this.prisma.user.create({
+    const accountType =
+      dto.role === Role.SALON ? 'SALON' :
+      dto.accountType === 'CLIENT' ? 'CLIENT' :
+      'PROFESSIONAL'
+
+    const profileData =
+      accountType === 'CLIENT'
+        ? {}
+        : dto.role === Role.SALON
+          ? { salonProfile: { create: { name: dto.name } } }
+          : { workerProfile: { create: { name: dto.name } } }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const user = await (this.prisma.user.create as any)({
       data: {
         email: dto.email,
         phone: dto.phone,
         role: dto.role,
+        accountType,
         passwordHash,
-        ...(dto.role === Role.WORKER
-          ? { workerProfile: { create: { name: dto.name } } }
-          : { salonProfile: { create: { name: dto.name } } }),
+        ...profileData,
       },
-    })
+    }) as Awaited<ReturnType<typeof this.prisma.user.create>>
 
     const tokens = await this.issueTokens(user.id, user.email, user.role)
     const { passwordHash: _pw, ...safeUser } = user

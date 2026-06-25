@@ -58,6 +58,8 @@ export default function JobFeedScreen() {
   const [search, setSearch] = useState('')
   const [showFilterModal, setShowFilterModal] = useState(false)
   const [jobFilters, setJobFilters] = useState<JobFilters>(EMPTY_JOB_FILTERS)
+  const [activeJobTab, setActiveJobTab] = useState<'All' | 'Saved'>('All')
+  const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set())
   const filterCount = activeFilterCount(jobFilters)
 
   const cityLabel = city ?? 'Set location'
@@ -85,8 +87,11 @@ export default function JobFeedScreen() {
         j.payStructure?.toLowerCase().includes(jobFilters.payType!.toLowerCase())
       )
     }
+    if (activeJobTab === 'Saved') {
+      result = result.filter((j) => savedJobIds.has(j.id))
+    }
     return result
-  }, [jobs, search, jobFilters])
+  }, [jobs, search, jobFilters, activeJobTab, savedJobIds])
 
   const handlePressJob = useCallback((job: JobPostCardData) => {
     router.push(`/jobs/${job.id}`)
@@ -150,8 +155,6 @@ export default function JobFeedScreen() {
     }
   }, [user, showGate])
 
-  const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set())
-
   useEffect(() => {
     if (!user) return
     jobsApi.getSavedJobIds()
@@ -202,6 +205,31 @@ export default function JobFeedScreen() {
   // ── Search + filter chips (FlatList list header) ──────────────────────────
   const SearchAndFilters = (
     <View style={styles.filtersWrap}>
+      {/* ── All / Saved tab toggle ── */}
+      <View style={styles.jobTabRow}>
+        {(['All', 'Saved'] as const).map((t) => {
+          const active = activeJobTab === t
+          return (
+            <TouchableOpacity
+              key={t}
+              onPress={() => {
+                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                setActiveJobTab(t)
+              }}
+              style={[
+                styles.jobTab,
+                active
+                  ? { borderBottomColor: theme.brand.primary, borderBottomWidth: 2 }
+                  : { borderBottomColor: 'transparent', borderBottomWidth: 2 },
+              ]}
+            >
+              <Text style={[styles.jobTabText, { color: active ? theme.brand.primary : theme.text.tertiary }]}>
+                {t === 'Saved' && savedJobIds.size > 0 ? `Saved (${savedJobIds.size})` : t}
+              </Text>
+            </TouchableOpacity>
+          )
+        })}
+      </View>
       <View style={styles.searchPad}>
         <View style={[styles.searchWrap, { backgroundColor: theme.bg.input }]}>
           <Ionicons name="search" size={18} color={theme.text.tertiary} />
@@ -285,6 +313,7 @@ export default function JobFeedScreen() {
   )
 
   // ── No location state ─────────────────────────────────────────────────────
+
   if (!hasLocation) {
     return (
       <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]} edges={['top']}>
@@ -435,7 +464,9 @@ export default function JobFeedScreen() {
                   />
                 </View>
                 <Text style={[styles.emptyTitle, { color: theme.text.primary }]}>
-                  {search.trim().length > 0
+                  {activeJobTab === 'Saved'
+                    ? 'No saved jobs'
+                    : search.trim().length > 0
                     ? 'No matching results'
                     : selectedListingType === 'RENTAL'
                     ? `No booth rentals in ${cityLabel}`
@@ -444,7 +475,9 @@ export default function JobFeedScreen() {
                     : `No open positions in ${cityLabel}`}
                 </Text>
                 <Text style={[styles.stateText, { color: theme.text.secondary }]}>
-                  {search.trim().length > 0
+                  {activeJobTab === 'Saved'
+                    ? 'Tap the bookmark icon on any job to save it'
+                    : search.trim().length > 0
                     ? 'Try different keywords or clear your filters'
                     : selectedListingType === 'RENTAL' || selectedListingType === 'SPACE'
                     ? 'New listings are added regularly — check back soon'
@@ -640,6 +673,24 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center' as const,
     width: '100%',
+  },
+
+  // ── All / Saved tab bar ───────────────────────────────────────────────────
+  jobTabRow: {
+    flexDirection: 'row',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'transparent',
+    paddingHorizontal: 16,
+    marginBottom: 4,
+  },
+  jobTab: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginRight: 8,
+  },
+  jobTabText: {
+    fontSize: 14,
+    fontWeight: '700',
   },
 
   // ── FAB ──────────────────────────────────────────────────────────────────

@@ -28,6 +28,28 @@ export default function PortfolioUploadScreen() {
     router.push(`/worker/portfolio-view?url=${encodeURIComponent(item.mediaUrl)}` as never)
   }, [])
 
+  const handleLongPressItem = useCallback((item: PortfolioItem) => {
+    Alert.alert(
+      'Remove from Portfolio',
+      'Delete this item from your portfolio?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await workersApi.deletePortfolioItem(item.id)
+              refetch()
+            } catch (e) {
+              Alert.alert('Error', parseApiError(e))
+            }
+          },
+        },
+      ],
+    )
+  }, [refetch])
+
   const handleAddImage = useCallback(async () => {
     try {
       const url = await pickImage()
@@ -67,6 +89,7 @@ export default function PortfolioUploadScreen() {
         <PortfolioGrid
           items={profile?.portfolioItems ?? []}
           onPressItem={handlePressItem}
+          onLongPressItem={handleLongPressItem}
           isLoading={isLoading}
         />
 

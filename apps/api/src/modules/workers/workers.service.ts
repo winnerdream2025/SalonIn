@@ -119,6 +119,56 @@ export class WorkersService {
     })
   }
 
+  async deletePortfolioItem(userId: string, itemId: string) {
+    const profile = await this.prisma.workerProfile.findUnique({
+      where: { userId },
+      select: { id: true },
+    })
+    if (!profile) throw new NotFoundException('Worker profile not found')
+    const item = await this.prisma.portfolioItem.findUnique({ where: { id: itemId } })
+    if (!item || item.workerId !== profile.id) throw new NotFoundException('Portfolio item not found')
+    await this.prisma.portfolioItem.delete({ where: { id: itemId } })
+    return { deleted: true }
+  }
+
+  async toggleSaveWorker(userId: string, workerId: string): Promise<{ saved: boolean }> {
+    const existing = await this.prisma.savedWorker.findUnique({
+      where: { userId_workerId: { userId, workerId } },
+    })
+    if (existing) {
+      await this.prisma.savedWorker.delete({ where: { id: existing.id } })
+      return { saved: false }
+    }
+    await this.prisma.savedWorker.create({ data: { userId, workerId } })
+    return { saved: true }
+  }
+
+  async getSavedWorkerIds(userId: string): Promise<string[]> {
+    const rows = await this.prisma.savedWorker.findMany({
+      where: { userId },
+      select: { workerId: true },
+    })
+    return rows.map((r) => r.workerId)
+  }
+
+  async getSavedWorkers(userId: string) {
+    const rows = await this.prisma.savedWorker.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        worker: {
+          include: {
+            user: { select: { followersCount: true } },
+          },
+        },
+      },
+    })
+    return rows.map((r) => ({
+      ...r.worker,
+      followersCount: r.worker.user.followersCount,
+    }))
+  }
+
   private async assertExists(userId: string): Promise<void> {
     const exists = await this.prisma.workerProfile.findUnique({
       where: { userId },

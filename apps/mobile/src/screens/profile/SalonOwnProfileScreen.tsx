@@ -295,6 +295,46 @@ export default function SalonOwnProfileScreen() {
             <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Post a Job</Text>
             <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
           </TouchableOpacity>
+
+          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
+
+          <TouchableOpacity style={styles.menuRow} onPress={() => router.push('/provider-bookings' as never)} activeOpacity={0.7}>
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}>
+              <Ionicons name="calendar-outline" size={18} color="#D85A30" />
+            </View>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Manage Bookings</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
+          </TouchableOpacity>
+
+          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
+
+          <TouchableOpacity style={styles.menuRow} onPress={() => router.push('/manage-services' as never)} activeOpacity={0.7}>
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}>
+              <Ionicons name="cut-outline" size={18} color="#D85A30" />
+            </View>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>My Services</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
+          </TouchableOpacity>
+
+          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
+
+          <TouchableOpacity style={styles.menuRow} onPress={() => router.push('/provider-availability' as never)} activeOpacity={0.7}>
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}>
+              <Ionicons name="time-outline" size={18} color="#D85A30" />
+            </View>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Booking Hours</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
+          </TouchableOpacity>
+
+          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
+
+          <TouchableOpacity style={styles.menuRow} onPress={() => router.push('/stripe-connect' as never)} activeOpacity={0.7}>
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(99,91,255,0.10)' }]}>
+              <Ionicons name="card-outline" size={18} color="#635BFF" />
+            </View>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Accept Payments</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
+          </TouchableOpacity>
         </View>
 
         {/* ── Account ── */}

@@ -44,3 +44,5 @@ export type { Story, StoryGroup, StoriesFeed, StoryUser, StoryAnalytics, CreateS
 export { followsApi } from './follows.api'
 
 export type { FollowUser, FollowListResponse, SuggestedUser } from './follows.api'
+
+export { bookingProfileApi } from './booking.api'

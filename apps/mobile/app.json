@@ -20,7 +20,7 @@
     },
     "android": {
       "package": "com.salonin.app",
-      "versionCode": 12,
+      "versionCode": 13,
       "compileSdkVersion": 35,
       "targetSdkVersion": 35,
       "minSdkVersion": 24,
@@ -44,7 +44,7 @@
     },
     "ios": {
       "bundleIdentifier": "com.winnerdream.salonin",
-      "buildNumber": "10",
+      "buildNumber": "11",
       "supportsTablet": true,
       "minimumOsVersion": "15.1",
       "infoPlist": {

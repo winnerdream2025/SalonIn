@@ -25,6 +25,8 @@ import { ReviewsModule } from './modules/reviews/reviews.module'
 import { PlacesModule } from './modules/places/places.module'
 import { StoriesModule } from './modules/stories/stories.module'
 import { FollowsModule } from './modules/follows/follows.module'
+import { BookingProfilesModule } from './modules/booking-profiles/booking-profiles.module'
+import { IntegrationsModule } from './modules/integrations/integrations.module'
 
 @Module({
   imports: [
@@ -81,6 +83,8 @@ import { FollowsModule } from './modules/follows/follows.module'
     PlacesModule,
     StoriesModule,
     FollowsModule,
+    BookingProfilesModule,
+    IntegrationsModule,
   ],
   providers: [
     {

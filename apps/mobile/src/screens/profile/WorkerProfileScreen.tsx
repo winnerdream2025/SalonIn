@@ -17,7 +17,7 @@ import type { PortfolioItem, AvailabilitySchedule } from '@salonin/types'
 import { formatExperience } from '@salonin/utils'
 import { useWorkerProfile } from '../../hooks/useWorkerProfile'
 import { useAuthStore } from '../../store/authStore'
-import { messagesApi } from '@salonin/api-client'
+import { messagesApi, workersApi } from '@salonin/api-client'
 import { useCanReview } from '../../hooks/useReviews'
 import { useStories } from '../../contexts/StoriesContext'
 import { StoryRing } from '../../components/StoryRing'
@@ -39,11 +39,37 @@ export default function WorkerProfileScreen() {
 
   const isOwner = Boolean(currentUser && profile && currentUser.id === profile.userId)
   const [isMessaging, setIsMessaging] = useState(false)
+  const [isSaved, setIsSaved] = useState(false)
   const { openViewerForUser } = useStories()
   const { canReview, existingReview } = useCanReview(
     !isOwner && currentUser ? profile?.userId : undefined
   )
   const [bioExpanded, setBioExpanded] = useState(false)
+
+  const handleToggleSave = useCallback(async () => {
+    if (!currentUser) {
+      Alert.alert('Sign in to save', 'Create a free account to save workers.', [
+        { text: 'Sign in', onPress: () => router.push('/(auth)/login') },
+        { text: 'Cancel', style: 'cancel' },
+      ])
+      return
+    }
+    if (!profile) return
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    setIsSaved((prev) => !prev)
+    try {
+      await workersApi.toggleSaveWorker(profile.id)
+    } catch {
+      setIsSaved((prev) => !prev)
+    }
+  }, [currentUser, profile])
+
+  React.useEffect(() => {
+    if (!currentUser || !profile) return
+    workersApi.getSavedWorkerIds()
+      .then((ids) => setIsSaved(ids.includes(profile.id)))
+      .catch(() => {})
+  }, [currentUser, profile])
 
   const handleMessage = useCallback(async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
@@ -82,6 +108,29 @@ export default function WorkerProfileScreen() {
   const handlePressItem = useCallback((item: PortfolioItem) => {
     router.push((`/worker/portfolio-view?url=${encodeURIComponent(item.mediaUrl)}`) as never)
   }, [])
+
+  const handleBookNow = useCallback(() => {
+    if (!currentUser) {
+      Alert.alert(
+        'Sign in to book',
+        'Create a free account to book appointments on My Salon In.',
+        [
+          { text: 'Create account', onPress: () => router.push('/(auth)/register') },
+          { text: 'Sign in', onPress: () => router.push('/(auth)/login') },
+          { text: 'Cancel', style: 'cancel' },
+        ],
+      )
+      return
+    }
+    router.push({
+      pathname: '/booking/services',
+      params: {
+        providerId: profile!.id,
+        providerType: 'professional',
+        providerName: profile!.name,
+      },
+    } as never)
+  }, [currentUser, profile])
 
   if (isLoading) {
     return (
@@ -300,19 +349,37 @@ export default function WorkerProfileScreen() {
           paddingBottom: Math.max(bottom, 16),
         }]}>
           <View style={styles.ctaRow}>
+            {profile.acceptsBookings && (
+              <Pressable
+                onPress={handleBookNow}
+                style={({ pressed }) => [
+                  styles.ctaBtn,
+                  pressed && { opacity: 0.85 },
+                  { flex: 1 },
+                ]}
+              >
+                <Text style={[styles.ctaBtnText, { color: theme.text.inverse }]}>Book Now</Text>
+              </Pressable>
+            )}
             <Pressable
               onPress={() => void handleMessage()}
               disabled={isMessaging}
               style={({ pressed }) => [
-                styles.ctaBtn,
+                profile.acceptsBookings ? styles.ctaBtnSecondary : styles.ctaBtn,
                 isMessaging && styles.ctaBtnDisabled,
                 pressed && { opacity: 0.85 },
-                { flex: 1 },
+                profile.acceptsBookings
+                  ? { borderColor: theme.border.default }
+                  : { flex: 1 },
               ]}
             >
               {isMessaging
                 ? <ActivityIndicator color="#FFFFFF" />
-                : <Text style={[styles.ctaBtnText, { color: theme.text.inverse }]}>Message</Text>
+                : <Text style={profile.acceptsBookings
+                    ? [styles.ctaBtnSecondaryText, { color: theme.text.primary }]
+                    : [styles.ctaBtnText, { color: theme.text.inverse }]}>
+                    Message
+                  </Text>
               }
             </Pressable>
             {canReview && !existingReview && (
@@ -325,14 +392,23 @@ export default function WorkerProfileScreen() {
               </Pressable>
             )}
             <Pressable
+              onPress={() => void handleToggleSave()}
               style={({ pressed }) => [
                 styles.ctaBtnSecondary,
-                { borderColor: theme.border.default },
+                isSaved
+                  ? { borderColor: '#D85A30', backgroundColor: 'rgba(216,90,48,0.08)' }
+                  : { borderColor: theme.border.default },
                 pressed && { opacity: 0.85 },
               ]}
             >
-              <Ionicons name="bookmark-outline" size={15} color={theme.text.secondary} />
-              <Text style={[styles.ctaBtnSecondaryText, { color: theme.text.secondary }]}>Save</Text>
+              <Ionicons
+                name={isSaved ? 'bookmark' : 'bookmark-outline'}
+                size={15}
+                color={isSaved ? '#D85A30' : theme.text.secondary}
+              />
+              <Text style={[styles.ctaBtnSecondaryText, { color: isSaved ? '#D85A30' : theme.text.secondary }]}>
+                {isSaved ? 'Saved' : 'Save'}
+              </Text>
             </Pressable>
           </View>
         </View>

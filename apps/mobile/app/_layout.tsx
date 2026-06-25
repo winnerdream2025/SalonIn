@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
+import { StripeProvider } from '@stripe/stripe-react-native'
 import { View, Text } from 'react-native'
 import { Stack, useRouter, useSegments } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
@@ -82,10 +83,29 @@ function RootLayout() {
   )
 }
 
+const ENV_STRIPE_KEY = (process.env as Record<string, string | undefined>)['EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY'] ?? ''
+const isPlaceholder = !ENV_STRIPE_KEY || ENV_STRIPE_KEY.startsWith('pk_test_placeholder')
+
 export default function RootLayoutWithBoundary() {
+  const [stripeKey, setStripeKey] = useState(isPlaceholder ? '' : ENV_STRIPE_KEY)
+
+  useEffect(() => {
+    if (!isPlaceholder) return
+    const apiUrl = (process.env as Record<string, string | undefined>)['EXPO_PUBLIC_API_URL'] ?? 'http://localhost:4000'
+    fetch(`${apiUrl}/booking-profiles/stripe-key`)
+      .then((r) => r.json())
+      .then((body: { data?: { stripePublishableKey?: string } }) => {
+        const key = body.data?.stripePublishableKey
+        if (key && key.startsWith('pk_')) setStripeKey(key)
+      })
+      .catch(() => { /* silent — payment sheet will warn if key missing */ })
+  }, [])
+
   return (
     <ErrorBoundary>
-      <RootLayout />
+      <StripeProvider publishableKey={stripeKey} merchantIdentifier="merchant.com.mysalonin">
+        <RootLayout />
+      </StripeProvider>
     </ErrorBoundary>
   )
 }

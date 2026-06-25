@@ -38,7 +38,7 @@ import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { Audio, Video, ResizeMode } from 'expo-av'
 import { Text } from '@salonin/ui'
-import { storiesApi } from '@salonin/api-client'
+import { storiesApi, messagesApi } from '@salonin/api-client'
 import type { Story, StoryGroup } from '@salonin/api-client'
 import { useAuthStore } from '../store/authStore'
 
@@ -284,12 +284,24 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose, onViewe
   }
 
   const handleReply = async () => {
-    if (!story || !replyText.trim()) return
+    if (!story || !group || !replyText.trim()) return
+    const text = replyText.trim()
+    setReplyText('')
+    setShowReply(false)
     try {
-      await storiesApi.reply(story.id, replyText.trim())
-      setReplyText('')
-      setShowReply(false)
-      resumeProgress()
+      await storiesApi.reply(story.id, text)
+      // Open chat — WhatsApp style: reply lands in conversation
+      const conv = await messagesApi.createConversation(group.userId)
+      onClose()
+      router.push({
+        pathname: '/chat/[id]',
+        params: {
+          id: conv.id,
+          name: group.name,
+          otherUserId: group.userId,
+          otherPhotoUrl: group.photoUrl ?? '',
+        },
+      } as never)
     } catch {
       Alert.alert('Error', 'Failed to send reply. Try again.')
     }

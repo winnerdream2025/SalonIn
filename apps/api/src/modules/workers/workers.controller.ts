@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -86,5 +87,34 @@ export class WorkersController {
   @HttpCode(HttpStatus.CREATED)
   addPortfolioItem(@CurrentUser() user: User, @Body() dto: AddPortfolioItemDto) {
     return this.workersService.addPortfolioItem(user.id, dto)
+  }
+
+  @Delete('portfolio/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('WORKER')
+  deletePortfolioItem(@CurrentUser() user: User, @Param('id') itemId: string) {
+    return this.workersService.deletePortfolioItem(user.id, itemId)
+  }
+
+  @Get('saved/ids')
+  @UseGuards(JwtAuthGuard)
+  getSavedWorkerIds(@CurrentUser() user: User) {
+    return this.workersService.getSavedWorkerIds(user.id)
+  }
+
+  @Get('saved')
+  @UseGuards(JwtAuthGuard)
+  getSavedWorkers(@CurrentUser() user: User) {
+    return this.workersService.getSavedWorkers(user.id)
+  }
+
+  @Post(':id/save')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  toggleSaveWorker(
+    @CurrentUser() user: User,
+    @Param('id', ParseUUIDPipe) workerId: string,
+  ) {
+    return this.workersService.toggleSaveWorker(user.id, workerId)
   }
 }

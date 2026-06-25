@@ -7,10 +7,11 @@ import { PortfolioItem } from './PortfolioItem'
 export interface PortfolioGridProps {
   items: PortfolioItemData[]
   onPressItem: (item: PortfolioItemData) => void
+  onLongPressItem?: (item: PortfolioItemData) => void
   isLoading?: boolean
 }
 
-export function PortfolioGrid({ items, onPressItem, isLoading = false }: PortfolioGridProps) {
+export function PortfolioGrid({ items, onPressItem, onLongPressItem, isLoading = false }: PortfolioGridProps) {
   if (isLoading) return <PortfolioGridSkeleton />
 
   return (
@@ -20,7 +21,7 @@ export function PortfolioGrid({ items, onPressItem, isLoading = false }: Portfol
       numColumns={3}
       scrollEnabled={false}
       renderItem={({ item }: ListRenderItemInfo<PortfolioItemData>) => (
-        <PortfolioItem item={item} onPress={onPressItem} />
+        <PortfolioItem item={item} onPress={onPressItem} onLongPress={onLongPressItem} />
       )}
       columnWrapperStyle={COL_WRAPPER}
       ListEmptyComponent={<EmptyPortfolio />}

@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { Text, Button, Skeleton, JobPostCard, useTheme } from '@salonin/ui'
 import type { Theme } from '@salonin/ui'
 import type { JobPostCardData } from '@salonin/types'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useSalonProfile } from '../../src/hooks/useSalonProfile'
 import { useAuthStore } from '../../src/store/authStore'
 import { messagesApi } from '@salonin/api-client'
@@ -29,6 +30,8 @@ export default function SalonProfileScreen() {
   const { theme } = useTheme()
   const { storyMap, openViewerForUser } = useStories()
 
+  const { bottom } = useSafeAreaInsets()
+
   const isOwner = Boolean(
     currentUser &&
     salon &&
@@ -37,6 +40,25 @@ export default function SalonProfileScreen() {
   )
 
   const [isMessaging, setIsMessaging] = useState(false)
+
+  const handleBookNow = useCallback(() => {
+    if (!currentUser) {
+      Alert.alert('Sign in required', 'Sign in to book an appointment.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Sign in', onPress: () => router.push('/(auth)/login' as never) },
+      ])
+      return
+    }
+    if (!salon) return
+    router.push({
+      pathname: '/booking/services',
+      params: {
+        providerId: salon.id,
+        providerType: 'salon',
+        providerName: salon.name,
+      },
+    } as never)
+  }, [currentUser, salon])
   const { canReview, existingReview } = useCanReview(
     !isOwner && currentUser ? salon?.userId : undefined
   )
@@ -126,7 +148,7 @@ export default function SalonProfileScreen() {
         )}
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.content, salon?.acceptsBookings ? { paddingBottom: 90 + bottom } : undefined]} showsVerticalScrollIndicator={false}>
         {/* Hero photo */}
         <View style={[styles.hero, { backgroundColor: theme.bg.elevated }]}>
           {firstPhoto ? (
@@ -245,6 +267,38 @@ export default function SalonProfileScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* Book Now CTA bar — only shown when salon accepts online bookings */}
+      {!isOwner && salon?.acceptsBookings && (
+        <View
+          style={[
+            styles.ctaBar,
+            { paddingBottom: Math.max(bottom, 16), borderTopColor: theme.border.default, backgroundColor: theme.bg.base },
+          ]}
+        >
+          <Button
+            variant="primary"
+            size="lg"
+            onPress={handleBookNow}
+            fullWidth
+          >
+            Book Now
+          </Button>
+          <View style={styles.ctaSecondaryRow}>
+            <TouchableOpacity
+              onPress={() => void handleMessage()}
+              disabled={isMessaging}
+              style={[styles.ctaSecondaryBtn, { borderColor: theme.border.default, flex: 1 }]}
+              activeOpacity={0.75}
+            >
+              {isMessaging
+                ? <ActivityIndicator size="small" color={theme.brand.primary} />
+                : <Text style={{ fontSize: 14, fontWeight: '600', color: theme.brand.primary, textAlign: 'center' }}>Message</Text>
+              }
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   )
 }
@@ -377,4 +431,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   errorText: { textAlign: 'center' },
+  ctaBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    gap: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  ctaSecondaryRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  ctaSecondaryBtn: {
+    borderWidth: 1,
+    borderRadius: 22,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 })

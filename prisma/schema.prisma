@@ -82,6 +82,12 @@ enum ChatRequestStatus {
   DECLINED
 }
 
+enum AccountType {
+  CLIENT
+  PROFESSIONAL
+  SALON
+}
+
 enum NotificationType {
   NEW_MESSAGE
   NEW_APPLICATION
@@ -96,19 +102,27 @@ enum NotificationType {
   NEW_FOLLOWER
   NEW_STORY
   SYSTEM
+  // Booking notifications
+  BOOKING_CREATED
+  BOOKING_CONFIRMED
+  BOOKING_REMINDER
+  BOOKING_CANCELLED
+  BOOKING_RESCHEDULED
 }
 
 // ─── Models ───────────────────────────────────────────────────────────────────
 
 model User {
-  id           String    @id @default(uuid())
-  email        String    @unique
-  passwordHash String?
-  phone        String?
-  role         Role      @default(WORKER)
-  createdAt    DateTime  @default(now())
-  isOnline     Boolean   @default(false)
-  lastSeenAt   DateTime?
+  id               String      @id @default(uuid())
+  email            String      @unique
+  passwordHash     String?
+  phone            String?
+  role             Role        @default(WORKER)
+  accountType      AccountType?
+  bookingProfileId String?
+  createdAt        DateTime    @default(now())
+  isOnline         Boolean     @default(false)
+  lastSeenAt       DateTime?
 
   workerProfile WorkerProfile?
   salonProfile  SalonProfile?
@@ -126,6 +140,7 @@ model User {
   reviewsReceived  Review[]      @relation("ReviewsReceived")
   notifications    Notification[]
   savedJobs        SavedJob[]
+  savedWorkers     SavedWorker[]
   stories          Story[]
   storyViews       StoryView[]
   storyLikes       StoryLike[]
@@ -169,12 +184,21 @@ model WorkerProfile {
   formattedAddress String?
   rating          Float            @default(0)
   reviewCount     Int              @default(0)
+  // Booking capabilities
+  acceptsBookings        Boolean  @default(false)
+  homeServiceEnabled     Boolean  @default(false)
+  travelServiceEnabled   Boolean  @default(false)
+  travelRadius           Int?
+  travelFee              Float?
+  availabilityEnabled    Boolean  @default(false)
 
   portfolioItems  PortfolioItem[]
   jobApplications JobApplication[]
+  savedBy         SavedWorker[]
 
   @@index([availability])
   @@index([isVerified])
+  @@index([acceptsBookings])
 }
 
 model SalonProfile {
@@ -196,6 +220,9 @@ model SalonProfile {
   location    Unsupported("geography(Point, 4326)")?
   rating      Float    @default(0)
   reviewCount Int      @default(0)
+  // Booking capabilities
+  acceptsBookings  Boolean @default(false)
+  bookingProfileId String?
 
   jobPosts JobPost[]
 }
@@ -249,6 +276,18 @@ model SavedJob {
   createdAt DateTime @default(now())
 
   @@unique([userId, jobId])
+  @@index([userId])
+}
+
+model SavedWorker {
+  id        String        @id @default(uuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workerId  String
+  worker    WorkerProfile @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  createdAt DateTime      @default(now())
+
+  @@unique([userId, workerId])
   @@index([userId])
 }
 
@@ -522,4 +561,24 @@ model Follow {
   @@unique([followerId, followingId])
   @@index([followerId])
   @@index([followingId])
+}
+
+// ─── Booking bridge ────────────────────────────────────────────────────────────
+
+/// Maps a SalonIn provider (professional or salon) to an external booking tenant.
+/// providerId references WorkerProfile.id OR SalonProfile.id depending on providerType.
+model ProviderBookingProfile {
+  id                      String   @id @default(uuid())
+  providerId              String
+  providerType            String   // "professional" | "salon"
+  tenantSlug              String
+  externalBookingSystemId String?
+  isActive                Boolean  @default(true)
+  providerEmail           String?
+  providerPassword        String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  @@unique([providerId, providerType])
+  @@index([tenantSlug])
 }

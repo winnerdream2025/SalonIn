@@ -10,13 +10,15 @@ import {
   TextInput,
   Image,
   ActivityIndicator,
+  Switch,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import { Text, Button, useTheme } from '@salonin/ui'
-import { salonsApi, parseApiError } from '@salonin/api-client'
+import { salonsApi, bookingProfileApi, parseApiError } from '@salonin/api-client'
+import { useAuthStore } from '../../store/authStore'
 import { SPECIALTY_CATEGORIES, SPECIALTIES_BY_CATEGORY, specialtyLabel } from '@salonin/config'
 import { useMySalonProfile } from '../../hooks/useMySalonProfile'
 import { useMediaUpload } from '../../hooks/useMediaUpload'
@@ -57,6 +59,7 @@ function SectionHeader({
 export default function SalonEditScreen() {
   const { top, bottom } = useSafeAreaInsets()
   const { salon, isLoading } = useMySalonProfile()
+  const user = useAuthStore((s) => s.user)
   const { theme } = useTheme()
 
   const { pickAndUpload: pickLogo, isUploading: isUploadingLogo } = useMediaUpload({
@@ -75,6 +78,7 @@ export default function SalonEditScreen() {
   const [specialties, setSpecialties] = useState<string[]>([])
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [isHiring, setIsHiring] = useState(false)
+  const [acceptsBookings, setAcceptsBookings] = useState(false)
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
   const [coverUrl, setCoverUrl] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
@@ -86,6 +90,7 @@ export default function SalonEditScreen() {
     setDescription((salon as { description?: string }).description ?? '')
     setSpecialties(salon.specialties)
     setIsHiring((salon as { isHiring?: boolean }).isHiring ?? false)
+    setAcceptsBookings((salon as { acceptsBookings?: boolean }).acceptsBookings ?? false)
     const photos = (salon as { photoUrls?: string[] }).photoUrls ?? []
     setLogoUrl(photos[0] ?? null)
     setCoverUrl(photos[1] ?? null)
@@ -129,7 +134,16 @@ export default function SalonEditScreen() {
         specialties,
         photoUrls: photoUrls.length ? photoUrls : undefined,
         isHiring,
+        acceptsBookings,
       })
+      if (acceptsBookings && salon?.id && user?.email) {
+        await bookingProfileApi.autoSetup({
+          providerId: salon.id,
+          providerType: 'salon',
+          businessName: name.trim(),
+          email: user.email,
+        })
+      }
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
       router.back()
     } catch (e) {
@@ -137,7 +151,7 @@ export default function SalonEditScreen() {
     } finally {
       setIsSaving(false)
     }
-  }, [name, description, specialties, logoUrl, coverUrl, isHiring])
+  }, [name, description, specialties, logoUrl, coverUrl, isHiring, acceptsBookings])
 
   return (
     <View style={[styles.screen, { backgroundColor: theme.bg.base, paddingTop: top }]}>
@@ -393,6 +407,27 @@ export default function SalonEditScreen() {
             </TouchableOpacity>
           </View>
 
+          {/* ─── BOOKING SETTINGS ─── */}
+          <View style={[styles.sectionCard, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
+            <View style={styles.sectionHeader}>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: theme.text.primary }}>Booking Settings</Text>
+            </View>
+            <View style={[styles.bookingRow, { borderTopColor: theme.border.subtle }]}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text.primary }}>Accept Bookings</Text>
+                <Text style={{ fontSize: 12, color: theme.text.tertiary, marginTop: 2 }}>
+                  Let clients book appointments at your salon
+                </Text>
+              </View>
+              <Switch
+                value={acceptsBookings}
+                onValueChange={setAcceptsBookings}
+                trackColor={{ false: '#E8E4DF', true: '#D85A30' }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+          </View>
+
           {/* ─── Save button ─── */}
           <View style={{ paddingHorizontal: 16, paddingTop: 24 }}>
             <Button variant="primary" fullWidth loading={isSaving || isLoading} onPress={() => void handleSave()}>
@@ -447,6 +482,14 @@ const styles = StyleSheet.create({
   },
   sectionBody: {
     padding: 16,
+  },
+  bookingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: 12,
   },
   coverPhoto: {
     height: 160,

@@ -25,6 +25,12 @@ export default function WorkerOwnProfileScreen() {
   const pendingCount = applications.filter((a) => a.status === 'PENDING').length
   const { theme } = useTheme()
   const { bottom } = useSafeAreaInsets()
+  const [savedCount, setSavedCount] = useState(0)
+  React.useEffect(() => {
+    workersApi.getSavedWorkerIds()
+      .then((ids) => setSavedCount(ids.length))
+      .catch(() => {})
+  }, [])
 
   const AVAIL_OPTIONS: Array<{ value: Availability; label: string; color: string }> = [
     { value: Availability.NOW,           label: 'Available now',   color: theme.avail.now    },
@@ -269,6 +275,14 @@ export default function WorkerOwnProfileScreen() {
               <Text style={[styles.statLabel, { color: theme.text.tertiary }]}>Following</Text>
             </TouchableOpacity>
             <View style={[styles.statDivider, { backgroundColor: theme.border.subtle }]} />
+            <TouchableOpacity
+              style={styles.statCell}
+              onPress={() => router.push('/worker/saved' as never)}
+            >
+              <Text style={[styles.statValue, { color: theme.text.primary }]}>{savedCount}</Text>
+              <Text style={[styles.statLabel, { color: theme.text.tertiary }]}>Saved</Text>
+            </TouchableOpacity>
+            <View style={[styles.statDivider, { backgroundColor: theme.border.subtle }]} />
             <View style={styles.statCell}>
               <Text style={[styles.statValue, { color: theme.text.primary }]}>{applications.length}</Text>
               <Text style={[styles.statLabel, { color: theme.text.tertiary }]}>Applied</Text>
@@ -380,6 +394,76 @@ export default function WorkerOwnProfileScreen() {
                 <Text style={styles.pendingBadgeText}>{pendingCount}</Text>
               </View>
             )}
+            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
+          </TouchableOpacity>
+
+          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
+
+          <TouchableOpacity
+            style={styles.menuRow}
+            onPress={() => router.push('/provider-bookings' as never)}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}>
+              <Ionicons name="calendar-outline" size={18} color="#D85A30" />
+            </View>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Manage Bookings</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
+          </TouchableOpacity>
+
+          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
+
+          <TouchableOpacity
+            style={styles.menuRow}
+            onPress={() => router.push('/manage-services' as never)}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}>
+              <Ionicons name="cut-outline" size={18} color="#D85A30" />
+            </View>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>My Services</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
+          </TouchableOpacity>
+
+          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
+
+          <TouchableOpacity
+            style={styles.menuRow}
+            onPress={() => router.push('/provider-availability' as never)}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}>
+              <Ionicons name="time-outline" size={18} color="#D85A30" />
+            </View>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Booking Hours</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
+          </TouchableOpacity>
+
+          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
+
+          <TouchableOpacity
+            style={styles.menuRow}
+            onPress={() => router.push('/stripe-connect' as never)}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(99,91,255,0.10)' }]}>
+              <Ionicons name="card-outline" size={18} color="#635BFF" />
+            </View>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Accept Payments</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
+          </TouchableOpacity>
+
+          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
+
+          <TouchableOpacity
+            style={styles.menuRow}
+            onPress={() => router.push('/worker/saved' as never)}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}>
+              <Ionicons name="bookmark-outline" size={18} color="#D85A30" />
+            </View>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Saved Workers</Text>
             <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
           </TouchableOpacity>
         </View>

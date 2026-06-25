@@ -11,8 +11,10 @@ export default function RegisterScreen() {
   const { register, isLoading } = useAuth()
   const { theme } = useTheme()
   const insets = useSafeAreaInsets()
-  const params = useLocalSearchParams<{ role?: string }>()
+  const params = useLocalSearchParams<{ role?: string; accountType?: string }>()
   const role = (params.role ?? 'WORKER') as Role
+  const accountType = params.accountType as 'CLIENT' | 'PROFESSIONAL' | 'SALON' | undefined
+  const isClient = accountType === 'CLIENT'
 
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -22,8 +24,10 @@ export default function RegisterScreen() {
   const handleRegister = useCallback(async () => {
     setError(undefined)
     try {
-      await register({ name, email: email.trim(), password, role })
-      if (role === 'WORKER') {
+      await register({ name, email: email.trim(), password, role, accountType })
+      if (isClient) {
+        router.replace('/(tabs)')
+      } else if (role === 'WORKER') {
         router.replace('/onboarding')
       } else {
         router.replace('/salon-onboarding' as never)
@@ -31,7 +35,7 @@ export default function RegisterScreen() {
     } catch (e) {
       setError(parseApiError(e))
     }
-  }, [register, name, email, password, role])
+  }, [register, name, email, password, role, accountType, isClient])
 
   return (
     <KeyboardAvoidingView
@@ -57,9 +61,11 @@ export default function RegisterScreen() {
           <View style={styles.heroText}>
             <Text variant="body" style={styles.kicker}>Join the SalonIn collective</Text>
             <Text variant="body" color="secondary" style={styles.heroSubtitle}>
-              {role === 'WORKER'
-                ? 'Get discovered by salons and showcase your artistry.'
-                : 'Find verified talent and keep your chairs beautifully booked.'}
+              {isClient
+                ? 'Book appointments with top beauty professionals near you.'
+                : role === 'WORKER'
+                  ? 'Get discovered by salons and showcase your artistry.'
+                  : 'Find verified talent and keep your chairs beautifully booked.'}
             </Text>
           </View>
         </View>
@@ -68,7 +74,7 @@ export default function RegisterScreen() {
           <View style={[styles.roleTag, { backgroundColor: theme.bg.input, borderColor: theme.border.subtle }]}>
             <RNText style={[styles.roleTagText, { color: theme.text.primary }]}>You&apos;re signing up as</RNText>
             <RNText style={[styles.roleTagBadge, { color: theme.brand.primary }]}>
-              {role === 'WORKER' ? 'Beauty Professional' : 'Salon Owner'}
+              {isClient ? 'Client' : role === 'WORKER' ? 'Beauty Professional' : 'Salon Owner'}
             </RNText>
           </View>
 
