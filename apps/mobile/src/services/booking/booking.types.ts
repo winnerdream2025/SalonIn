@@ -50,6 +50,7 @@ export interface BookingResult {
   currency: string
   confirmationCode?: string | null
   cancelToken?: string | null
+  rescheduleToken?: string | null
 }
 
 /** Havanabook service record returned by GET/POST /api/mobile/services */

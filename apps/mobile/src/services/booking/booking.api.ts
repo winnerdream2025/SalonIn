@@ -365,16 +365,17 @@ export const externalBookingApi = {
       body: JSON.stringify({ bookingId, cancelToken }),
     }),
 
-  /** Client reschedules their own booking using bookingId + cancelToken. */
+  /** Client reschedules their own booking. Accepts rescheduleToken (one-time) or cancelToken. */
   clientRescheduleBooking: (
     tenantSlug: string,
     bookingId: string,
-    cancelToken: string,
-    newDate: string,
-    newStartTime: string,
-  ): Promise<{ success: boolean }> =>
-    externalFetch<{ success: boolean }>('/api/mobile/appointments/reschedule', tenantSlug, {
+    token: string,
+    date: string,
+    startTime: string,
+    tokenType: 'rescheduleToken' | 'cancelToken' = 'cancelToken',
+  ): Promise<{ success: boolean; status?: string }> =>
+    externalFetch<{ success: boolean; status?: string }>('/api/reschedule', tenantSlug, {
       method: 'POST',
-      body: JSON.stringify({ bookingId, cancelToken, newDate, newStartTime }),
+      body: JSON.stringify({ bookingId, [tokenType]: token, date, startTime }),
     }),
 }

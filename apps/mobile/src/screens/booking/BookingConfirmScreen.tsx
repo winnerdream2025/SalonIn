@@ -147,6 +147,9 @@ export default function BookingConfirmScreen() {
     if (booking.cancelToken) {
       AsyncStorage.setItem(`cancelToken:${booking.id}`, booking.cancelToken).catch(() => {})
     }
+    if (booking.rescheduleToken) {
+      AsyncStorage.setItem(`rescheduleToken:${booking.id}`, booking.rescheduleToken).catch(() => {})
+    }
 
     if (price > 0) {
       const payment = await processPayment({ bookingId: booking.id })

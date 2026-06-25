@@ -298,7 +298,10 @@ export default function BookingsScreen() {
       Alert.alert('Missing info', 'Enter a date (YYYY-MM-DD) and time (e.g. 10:00 AM).')
       return
     }
-    const token = await AsyncStorage.getItem(`cancelToken:${rescheduleTarget.id}`)
+    const rescheduleToken = await AsyncStorage.getItem(`rescheduleToken:${rescheduleTarget.id}`)
+    const cancelToken     = await AsyncStorage.getItem(`cancelToken:${rescheduleTarget.id}`)
+    const token     = rescheduleToken ?? cancelToken
+    const tokenType = rescheduleToken ? 'rescheduleToken' as const : 'cancelToken' as const
     if (!token) {
       Alert.alert('Cannot reschedule', 'Please message the provider to reschedule.')
       setRescheduleTarget(null)
@@ -306,7 +309,10 @@ export default function BookingsScreen() {
     }
     setIsActioning(true)
     try {
-      await externalBookingApi.clientRescheduleBooking(rescheduleTarget.tenantSlug, rescheduleTarget.id, token, rescheduleDate.trim(), rescheduleTime.trim())
+      await externalBookingApi.clientRescheduleBooking(rescheduleTarget.tenantSlug, rescheduleTarget.id, token, rescheduleDate.trim(), rescheduleTime.trim(), tokenType)
+      if (rescheduleToken) {
+        await AsyncStorage.removeItem(`rescheduleToken:${rescheduleTarget.id}`)
+      }
       setRescheduleTarget(null)
       load()
     } catch {
