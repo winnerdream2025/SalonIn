@@ -40,11 +40,13 @@ interface HavanaPaymentPayload {
 }
 
 type HavanaEvent =
-  | { event: 'booking.created';      payload: HavanaBookingPayload }
-  | { event: 'booking.confirmed';    payload: HavanaBookingPayload }
-  | { event: 'booking.cancelled';    payload: HavanaBookingPayload }
-  | { event: 'booking.rescheduled';  payload: HavanaBookingPayload }
-  | { event: 'payment.completed';    payload: HavanaPaymentPayload }
+  | { event: 'booking.created';      payload: HavanaBookingPayload; timestamp?: string }
+  | { event: 'booking.confirmed';    payload: HavanaBookingPayload; timestamp?: string }
+  | { event: 'booking.cancelled';    payload: HavanaBookingPayload; timestamp?: string }
+  | { event: 'booking.rescheduled';  payload: HavanaBookingPayload; timestamp?: string }
+  | { event: 'payment.completed';    payload: HavanaPaymentPayload; timestamp?: string }
+
+const REPLAY_WINDOW_MS = 5 * 60 * 1000 // 5 minutes
 
 // ─── Service ──────────────────────────────────────────────────────────────────
 
@@ -81,6 +83,15 @@ export class HavanabookWebhookService {
   async handleEvent(parsed: unknown): Promise<void> {
     const webhookEvent = parsed as HavanaEvent
     const { event, payload: data } = webhookEvent
+
+    // Replay protection — reject events older than 5 minutes
+    if (webhookEvent.timestamp) {
+      const age = Date.now() - new Date(webhookEvent.timestamp).getTime()
+      if (age > REPLAY_WINDOW_MS) {
+        this.logger.warn(`Stale webhook rejected: ${event} age=${age}ms`)
+        return
+      }
+    }
 
     this.logger.log(`Havana webhook: ${event} for tenant=${data.tenantSlug}`)
 

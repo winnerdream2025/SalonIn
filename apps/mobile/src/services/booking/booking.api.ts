@@ -29,9 +29,53 @@ function getBaseUrl(): string {
 
 const providerTokenCache = new Map<string, { token: string; expiresAt: number }>()
 
+/** Decode the `exp` Unix timestamp from a JWT without verifying signature. */
+function jwtExp(token: string): number | null {
+  try {
+    const payload = token.split('.')[1]
+    if (!payload) return null
+    const json = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')))
+    return typeof json.exp === 'number' ? json.exp * 1000 : null // convert to ms
+  } catch {
+    return null
+  }
+}
+
+const REFRESH_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000 // 7 days in ms
+
+async function refreshProviderToken(tenantSlug: string, currentToken: string): Promise<string> {
+  const res = await fetch(`${getBaseUrl()}/api/mobile/auth/refresh`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-tenant-slug': tenantSlug,
+      'Authorization': `Bearer ${currentToken}`,
+    },
+  })
+  if (!res.ok) throw new Error(`Token refresh failed (${res.status})`)
+  const body = (await res.json()) as { token: string }
+  return body.token
+}
+
 async function providerLogin(tenantSlug: string, email: string, password: string): Promise<string> {
   const cached = providerTokenCache.get(tenantSlug)
-  if (cached && cached.expiresAt > Date.now()) return cached.token
+
+  if (cached && cached.expiresAt > Date.now()) {
+    const exp = jwtExp(cached.token)
+    if (exp !== null && exp - Date.now() <= REFRESH_THRESHOLD_MS) {
+      // Proactively refresh — token within 7 days of expiry
+      try {
+        const refreshed = await refreshProviderToken(tenantSlug, cached.token)
+        const newExp = jwtExp(refreshed) ?? (Date.now() + 30 * 24 * 60 * 60 * 1000)
+        providerTokenCache.set(tenantSlug, { token: refreshed, expiresAt: newExp - REFRESH_THRESHOLD_MS })
+        return refreshed
+      } catch {
+        // Refresh failed — fall through to full re-login
+      }
+    } else {
+      return cached.token
+    }
+  }
 
   const res = await fetch(`${getBaseUrl()}/api/mobile/auth/login`, {
     method: 'POST',
@@ -43,8 +87,9 @@ async function providerLogin(tenantSlug: string, email: string, password: string
 
   const body = (await res.json()) as { token: string }
   const token = body.token
-  // Cache for 55 minutes (JWT typically expires in 1h)
-  providerTokenCache.set(tenantSlug, { token, expiresAt: Date.now() + 55 * 60 * 1000 })
+  const exp = jwtExp(token) ?? (Date.now() + 30 * 24 * 60 * 60 * 1000)
+  // Store in cache; evict REFRESH_THRESHOLD_MS before real expiry so we always refresh in time
+  providerTokenCache.set(tenantSlug, { token, expiresAt: exp - REFRESH_THRESHOLD_MS })
   return token
 }
 
@@ -299,35 +344,37 @@ export const externalBookingApi = {
 
   // ── Stripe Connect ────────────────────────────────────────────────────────
 
-  /** Get the Stripe Connect onboarding URL for this tenant. */
-  getStripeConnectUrl: (
+  /** Get the Stripe Connect status (and onboarding URL if not yet connected). */
+  getStripeConnectStatus: (
     tenantSlug: string,
     email: string,
     password: string,
-  ): Promise<{ url: string }> =>
-    providerFetch<{ url: string }>('/api/mobile/provider/stripe/connect', tenantSlug, email, password),
+  ): Promise<{ connected: boolean; accountId?: string; onboardingUrl?: string }> =>
+    providerFetch<{ connected: boolean; accountId?: string; onboardingUrl?: string }>('/api/mobile/stripe-connect', tenantSlug, email, password),
 
   // ── Client self-serve cancel / reschedule ─────────────────────────────────
 
-  /** Client cancels their own booking using the cancelToken from booking creation. */
+  /** Client cancels their own booking using bookingId + cancelToken. */
   clientCancelBooking: (
     tenantSlug: string,
+    bookingId: string,
     cancelToken: string,
   ): Promise<{ success: boolean }> =>
-    externalFetch<{ success: boolean }>('/api/public/bookings/cancel', tenantSlug, {
+    externalFetch<{ success: boolean }>('/api/cancel', tenantSlug, {
       method: 'POST',
-      body: JSON.stringify({ cancelToken }),
+      body: JSON.stringify({ bookingId, cancelToken }),
     }),
 
-  /** Client reschedules their own booking using the cancelToken. */
+  /** Client reschedules their own booking using bookingId + cancelToken. */
   clientRescheduleBooking: (
     tenantSlug: string,
+    bookingId: string,
     cancelToken: string,
     newDate: string,
     newStartTime: string,
   ): Promise<{ success: boolean }> =>
-    externalFetch<{ success: boolean }>('/api/public/bookings/reschedule', tenantSlug, {
+    externalFetch<{ success: boolean }>('/api/mobile/appointments/reschedule', tenantSlug, {
       method: 'POST',
-      body: JSON.stringify({ cancelToken, newDate, newStartTime }),
+      body: JSON.stringify({ bookingId, cancelToken, newDate, newStartTime }),
     }),
 }

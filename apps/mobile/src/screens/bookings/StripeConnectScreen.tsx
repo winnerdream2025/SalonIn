@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   View,
   TouchableOpacity,
@@ -20,12 +20,21 @@ export default function StripeConnectScreen() {
   const { theme } = useTheme()
   const { top, bottom } = useSafeAreaInsets()
   const { user } = useAuthStore()
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading]   = useState(false)
+  const [isConnected, setIsConnected] = useState<boolean | null>(null)
+  const [accountId, setAccountId]   = useState<string | null>(null)
 
   const providerType: BookingProviderType = (user as any)?.role === 'SALON' ? 'salon' : 'professional'
   const providerId = (user as any)?.profileId ?? user?.id ?? ''
 
   const { tenantSlug, providerEmail, providerPassword } = useProviderProfile(providerId, providerType)
+
+  useEffect(() => {
+    if (!tenantSlug || !providerEmail || !providerPassword) return
+    externalBookingApi.getStripeConnectStatus(tenantSlug, providerEmail, providerPassword)
+      .then((s) => { setIsConnected(s.connected); setAccountId(s.accountId ?? null) })
+      .catch(() => setIsConnected(false))
+  }, [tenantSlug, providerEmail, providerPassword])
 
   const handleConnect = async () => {
     if (!tenantSlug || !providerEmail || !providerPassword) {
@@ -34,15 +43,20 @@ export default function StripeConnectScreen() {
     }
     setIsLoading(true)
     try {
-      const { url } = await externalBookingApi.getStripeConnectUrl(tenantSlug, providerEmail, providerPassword)
-      if (url) {
-        await Linking.openURL(url)
+      const status = await externalBookingApi.getStripeConnectStatus(tenantSlug, providerEmail, providerPassword)
+      if (status.connected) {
+        setIsConnected(true)
+        setAccountId(status.accountId ?? null)
+        Alert.alert('Already connected', `Your Stripe account is linked.${status.accountId ? `\nID: ${status.accountId}` : ''}`)
+        return
+      }
+      if (status.onboardingUrl) {
+        await Linking.openURL(status.onboardingUrl)
+      } else {
+        Alert.alert('Coming Soon', 'Stripe Connect setup will be available shortly.')
       }
     } catch {
-      Alert.alert(
-        'Coming Soon',
-        'Stripe Connect setup will be available shortly. In the meantime, contact support to manually connect your Stripe account.',
-      )
+      Alert.alert('Coming Soon', 'Stripe Connect setup will be available shortly. Contact support to connect manually.')
     } finally {
       setIsLoading(false)
     }
@@ -59,15 +73,26 @@ export default function StripeConnectScreen() {
       </View>
 
       <View style={[styles.content, { paddingBottom: bottom + 20 }]}>
-        <View style={[styles.iconRing, { backgroundColor: 'rgba(99,91,255,0.1)' }]}>
-          <Ionicons name="card" size={40} color="#635BFF" />
+        <View style={[styles.iconRing, { backgroundColor: isConnected ? 'rgba(29,158,117,0.1)' : 'rgba(99,91,255,0.1)' }]}>
+          <Ionicons name={isConnected ? 'checkmark-circle' : 'card'} size={40} color={isConnected ? '#1D9E75' : '#635BFF'} />
         </View>
 
-        <Text style={{ fontSize: 22, fontWeight: '800', color: theme.text.primary, marginTop: 20, textAlign: 'center' }}>
-          Connect Stripe to Get Paid
+        {isConnected && (
+          <View style={[styles.connectedBadge, { backgroundColor: 'rgba(29,158,117,0.12)' }]}>
+            <Ionicons name="checkmark-circle" size={14} color="#1D9E75" />
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#1D9E75', marginLeft: 5 }}>
+              Stripe Connected{accountId ? ` · ${accountId.slice(0, 12)}…` : ''}
+            </Text>
+          </View>
+        )}
+
+        <Text style={{ fontSize: 22, fontWeight: '800', color: theme.text.primary, marginTop: 16, textAlign: 'center' }}>
+          {isConnected ? 'Payments Enabled' : 'Connect Stripe to Get Paid'}
         </Text>
         <Text style={{ fontSize: 15, color: theme.text.secondary, textAlign: 'center', marginTop: 12, lineHeight: 22, paddingHorizontal: 16 }}>
-          Clients will be able to pay a deposit when booking. Funds go directly to your Stripe account after each appointment.
+          {isConnected
+            ? 'Clients can pay deposits when booking. Payouts go directly to your linked Stripe account.'
+            : 'Clients will be able to pay a deposit when booking. Funds go directly to your Stripe account after each appointment.'}
         </Text>
 
         <View style={[styles.benefitsList, { backgroundColor: theme.bg.surface, borderColor: theme.border.subtle }]}>
@@ -120,6 +145,10 @@ const styles = StyleSheet.create({
   iconRing: {
     width: 88, height: 88, borderRadius: 44,
     alignItems: 'center', justifyContent: 'center',
+  },
+  connectedBadge: {
+    flexDirection: 'row', alignItems: 'center',
+    borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6, marginTop: 12,
   },
   benefitsList: {
     width: '100%', borderRadius: 14, borderWidth: 1,

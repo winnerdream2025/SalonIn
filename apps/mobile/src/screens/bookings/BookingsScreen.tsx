@@ -275,7 +275,7 @@ export default function BookingsScreen() {
             }
             setIsActioning(true)
             try {
-              await externalBookingApi.clientCancelBooking(item.tenantSlug, token)
+              await externalBookingApi.clientCancelBooking(item.tenantSlug, item.id, token)
               await AsyncStorage.removeItem(`cancelToken:${item.id}`)
               load()
             } catch {
@@ -306,7 +306,7 @@ export default function BookingsScreen() {
     }
     setIsActioning(true)
     try {
-      await externalBookingApi.clientRescheduleBooking(rescheduleTarget.tenantSlug, token, rescheduleDate.trim(), rescheduleTime.trim())
+      await externalBookingApi.clientRescheduleBooking(rescheduleTarget.tenantSlug, rescheduleTarget.id, token, rescheduleDate.trim(), rescheduleTime.trim())
       setRescheduleTarget(null)
       load()
     } catch {
