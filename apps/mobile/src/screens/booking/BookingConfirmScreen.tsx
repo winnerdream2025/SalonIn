@@ -1,6 +1,5 @@
 import React, { useState, useCallback } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { useStripe } from '@stripe/stripe-react-native'
 import {
   View,
   ScrollView,
@@ -20,6 +19,18 @@ import {
   useCreateBooking,
   useBookingPayment,
 } from '../../services/booking/booking.hooks'
+
+// Stripe hook guard — falls back to no-ops in Expo Go (StripeSdk native module absent)
+type UseStripeResult = Pick<ReturnType<typeof import('@stripe/stripe-react-native').useStripe>, 'initPaymentSheet' | 'presentPaymentSheet'>
+let _useStripe: () => UseStripeResult
+try {
+  _useStripe = (require('@stripe/stripe-react-native') as { useStripe: () => UseStripeResult }).useStripe
+} catch {
+  _useStripe = () => ({
+    initPaymentSheet: async () => ({}),
+    presentPaymentSheet: async () => ({ error: undefined }),
+  })
+}
 
 function formatTime12(hhmm: string): string {
   const [hStr = '0', mStr = '00'] = hhmm.split(':')
@@ -103,7 +114,7 @@ export default function BookingConfirmScreen() {
   const [clientPhone, setClientPhone] = useState('')
   const [notes, setNotes] = useState('')
 
-  const { initPaymentSheet, presentPaymentSheet } = useStripe()
+  const { initPaymentSheet, presentPaymentSheet } = _useStripe()
   const { createBooking, isSubmitting, error: bookingError } = useCreateBooking(tenantSlug ?? null)
   const { processPayment, isProcessing, error: paymentError } = useBookingPayment(
     tenantSlug ?? null,

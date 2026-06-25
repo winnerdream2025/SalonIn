@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react'
-import { StripeProvider } from '@stripe/stripe-react-native'
 import { View, Text } from 'react-native'
 import { Stack, useRouter, useSegments } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
@@ -81,6 +80,18 @@ function RootLayout() {
       )}
     </StoriesProvider>
   )
+}
+
+// ── Stripe guard ─────────────────────────────────────────────────────────────
+// @stripe/stripe-react-native calls TurboModuleRegistry.getEnforcing at load
+// time and crashes in Expo Go (StripeSdk not in native binary). Use try/catch
+// require so the app degrades gracefully; a dev-client build has the native module.
+type StripeProviderProps = { publishableKey: string; merchantIdentifier?: string; children: React.ReactNode }
+let StripeProvider: React.ComponentType<StripeProviderProps>
+try {
+  StripeProvider = (require('@stripe/stripe-react-native') as { StripeProvider: React.ComponentType<StripeProviderProps> }).StripeProvider
+} catch {
+  StripeProvider = ({ children }: StripeProviderProps) => React.createElement(React.Fragment, null, children)
 }
 
 const ENV_STRIPE_KEY = (process.env as Record<string, string | undefined>)['EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY'] ?? ''
