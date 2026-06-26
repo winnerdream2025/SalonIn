@@ -1,6 +1,6 @@
 -- Phase A: Native booking system extensions
 -- Task 2: AvailabilityException model
-CREATE TABLE "AvailabilityException" (
+CREATE TABLE IF NOT EXISTS "AvailabilityException" (
     "id" TEXT NOT NULL,
     "providerId" TEXT NOT NULL,
     "providerType" TEXT NOT NULL,
@@ -12,7 +12,7 @@ CREATE TABLE "AvailabilityException" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "AvailabilityException_pkey" PRIMARY KEY ("id")
 );
-CREATE INDEX "AvailabilityException_providerId_providerType_date_idx" ON "AvailabilityException"("providerId", "providerType", "date");
+CREATE INDEX IF NOT EXISTS "AvailabilityException_providerId_providerType_date_idx" ON "AvailabilityException"("providerId", "providerType", "date");
 
 -- Task 5: Extend ProviderService
 ALTER TABLE "ProviderService" ADD COLUMN IF NOT EXISTS "depositAmount" DOUBLE PRECISION;
