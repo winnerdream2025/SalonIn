@@ -199,14 +199,13 @@ export function useBookingActions() {
     finally { setIsWorking(false) }
   }, [])
 
-  return {
-    isWorking,
-    confirm:   (id: string) => run(() => bookingsApi.confirm(id)),
-    cancel:    (id: string, reason?: string) => run(() => bookingsApi.cancelByProvider(id, reason)),
-    reschedule:(id: string, date: string, time: string) => run(() => bookingsApi.rescheduleByProvider(id, date, time)),
-    complete:  (id: string) => run(() => bookingsApi.complete(id)),
-    noShow:    (id: string) => run(() => bookingsApi.noShow(id)),
-  }
+  const confirm    = useCallback((id: string) => run(() => bookingsApi.confirm(id)), [run])
+  const cancel     = useCallback((id: string, reason?: string) => run(() => bookingsApi.cancelByProvider(id, reason)), [run])
+  const reschedule = useCallback((id: string, date: string, time: string) => run(() => bookingsApi.rescheduleByProvider(id, date, time)), [run])
+  const complete   = useCallback((id: string) => run(() => bookingsApi.complete(id)), [run])
+  const noShow     = useCallback((id: string) => run(() => bookingsApi.noShow(id)), [run])
+
+  return { isWorking, confirm, cancel, reschedule, complete, noShow }
 }
 
 // ─── Analytics ────────────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react'
+import React, { useState, useCallback, useEffect, useMemo } from 'react'
 import {
   View,
   FlatList,
@@ -56,12 +56,13 @@ function formatTime12(t: string): string {
   return `${h12}:${mStr} ${period}`
 }
 
-function formatPrice(price: number, currency: string): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 0,
-  }).format(price)
+const priceFormatter = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  minimumFractionDigits: 0,
+})
+function formatPrice(price: number, _currency: string): string {
+  return priceFormatter.format(price)
 }
 
 // ─── Reschedule modal ─────────────────────────────────────────────────────────
@@ -166,7 +167,7 @@ const STATUS_COLOR: Record<BookingStatus, string> = {
   NO_SHOW:         '#9CA3AF',
 }
 
-function StatusPill({ status }: { status: BookingStatus }) {
+const StatusPill = React.memo(function StatusPill({ status }: { status: BookingStatus }) {
   const label = status === 'PENDING_PAYMENT' ? 'Awaiting Payment'
     : status === 'PENDING' ? 'Pending'
     : status === 'CONFIRMED' ? 'Confirmed'
@@ -178,11 +179,11 @@ function StatusPill({ status }: { status: BookingStatus }) {
       <Text style={{ fontSize: 10, fontWeight: '700', color: STATUS_COLOR[status] }}>{label}</Text>
     </View>
   )
-}
+})
 
 // ─── Booking card ─────────────────────────────────────────────────────────────
 
-function ProviderBookingCard({
+const ProviderBookingCard = React.memo(function ProviderBookingCard({
   item,
   onConfirm,
   onCancel,
@@ -307,11 +308,11 @@ function ProviderBookingCard({
       )}
     </View>
   )
-}
+})
 
 // ─── Tab bar ──────────────────────────────────────────────────────────────────
 
-function TabBar({
+const TabBar = React.memo(function TabBar({
   active,
   onSelect,
   counts,
@@ -379,7 +380,7 @@ function TabBar({
       ))}
     </ScrollView>
   )
-}
+})
 
 // ─── Inner screen ─────────────────────────────────────────────────────────────
 
@@ -401,81 +402,81 @@ function ProviderBookingsInner({
     return () => clearTimeout(t)
   }, [search])
 
-  const today = new Date().toISOString().slice(0, 10)
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10)
+  const today    = useMemo(() => new Date().toISOString().slice(0, 10), [])
+  const tomorrow  = useMemo(() => new Date(Date.now() + 86400000).toISOString().slice(0, 10), [])
 
-  const queryOpts = {
+  const queryOpts = useMemo(() => ({
     dateFilter: activeTab === 'today' ? 'today' as DateFilter
       : activeTab === 'upcoming' ? 'week' as DateFilter
       : dateFilter,
     search: debouncedSearch || undefined,
-  }
+  }), [activeTab, dateFilter, debouncedSearch])
 
   const { bookings, isLoading, error, refetch } = useProviderBookings(queryOpts)
-  const actions = useBookingActions()
+  const { isWorking: isActionWorking, confirm: confirmAction, cancel: cancelAction, reschedule: rescheduleAction, complete: completeAction, noShow: noShowAction } = useBookingActions()
 
-  const filtered = bookings.filter((b) => {
+  const filtered = useMemo(() => bookings.filter((b) => {
     const statuses = STATUS_FOR_TAB[activeTab] as BookingStatus[]
     if (!statuses.includes(b.status)) return false
     if (activeTab === 'today') return b.date === today
     if (activeTab === 'upcoming') return b.date >= tomorrow
     return true
-  })
+  }), [bookings, activeTab, today, tomorrow])
 
-  const counts: Record<ProviderTab, number> = {
+  const counts = useMemo<Record<ProviderTab, number>>(() => ({
     new:       bookings.filter(b => (STATUS_FOR_TAB.new as BookingStatus[]).includes(b.status)).length,
     today:     bookings.filter(b => (STATUS_FOR_TAB.today as BookingStatus[]).includes(b.status) && b.date === today).length,
     upcoming:  bookings.filter(b => (STATUS_FOR_TAB.upcoming as BookingStatus[]).includes(b.status) && b.date >= tomorrow).length,
     confirmed: bookings.filter(b => b.status === 'CONFIRMED').length,
     completed: bookings.filter(b => b.status === 'COMPLETED').length,
     cancelled: bookings.filter(b => b.status === 'CANCELLED' || b.status === 'NO_SHOW').length,
-  }
+  }), [bookings, today, tomorrow])
 
   const handleConfirm = useCallback(async (b: BookingResult) => {
-    const ok = await actions.confirm(b.id)
+    const ok = await confirmAction(b.id)
     if (!ok) Alert.alert('Error', 'Could not confirm booking.')
     else refetch()
-  }, [actions, refetch])
+  }, [confirmAction, refetch])
 
   const handleComplete = useCallback(async (b: BookingResult) => {
     Alert.alert('Mark Complete', `Mark ${b.clientName}'s appointment as completed?`, [
       { text: 'Not yet', style: 'cancel' },
       { text: 'Complete', onPress: async () => {
-        const ok = await actions.complete(b.id)
+        const ok = await completeAction(b.id)
         if (!ok) Alert.alert('Error', 'Could not mark as complete.')
         else refetch()
       }},
     ])
-  }, [actions, refetch])
+  }, [completeAction, refetch])
 
   const handleNoShow = useCallback(async (b: BookingResult) => {
     Alert.alert('Mark No-show', `${b.clientName} didn't show up?`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Mark No-show', style: 'destructive', onPress: async () => {
-        const ok = await actions.noShow(b.id)
+        const ok = await noShowAction(b.id)
         if (!ok) Alert.alert('Error', 'Could not mark as no-show.')
         else refetch()
       }},
     ])
-  }, [actions, refetch])
+  }, [noShowAction, refetch])
 
   const handleCancel = useCallback((b: BookingResult) => {
     Alert.alert('Cancel Booking', `Cancel ${b.clientName}'s ${b.service?.name ?? 'booking'}?`, [
       { text: 'Keep', style: 'cancel' },
       { text: 'Cancel Booking', style: 'destructive', onPress: async () => {
-        const ok = await actions.cancel(b.id)
+        const ok = await cancelAction(b.id)
         if (!ok) Alert.alert('Error', 'Could not cancel booking.')
         else refetch()
       }},
     ])
-  }, [actions, refetch])
+  }, [cancelAction, refetch])
 
   const handleRescheduleConfirm = useCallback(async (date: string, time: string) => {
     if (!rescheduleTarget) return
-    const ok = await actions.reschedule(rescheduleTarget.id, date, time)
+    const ok = await rescheduleAction(rescheduleTarget.id, date, time)
     if (!ok) Alert.alert('Error', 'Could not reschedule booking.')
     else { setRescheduleTarget(null); refetch() }
-  }, [actions, rescheduleTarget, refetch])
+  }, [rescheduleAction, rescheduleTarget, refetch])
 
   if (isLoading) {
     return (
@@ -576,7 +577,7 @@ function ProviderBookingsInner({
         booking={rescheduleTarget}
         onConfirm={handleRescheduleConfirm}
         onClose={() => setRescheduleTarget(null)}
-        isWorking={actions.isWorking}
+        isWorking={isActionWorking}
         theme={theme}
       />
     </>
