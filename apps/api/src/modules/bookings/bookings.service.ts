@@ -10,23 +10,7 @@ import { NotificationType } from '@prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
 import { NotificationsService } from '../notifications/notifications.service'
 import type { User } from '@salonin/types'
-
-export interface CreateBookingDto {
-  providerId:   string
-  providerType: string
-  serviceId:    string
-  clientName:   string
-  clientEmail:  string
-  clientPhone?: string
-  date:         string  // YYYY-MM-DD
-  startTime:    string  // HH:mm
-  notes?:       string
-}
-
-export interface RescheduleDto {
-  date:      string
-  startTime: string
-}
+import type { CreateBookingDto, RescheduleDto } from './dto/booking.dto'
 
 @Injectable()
 export class BookingsService {
@@ -297,7 +281,7 @@ export class BookingsService {
         'Appointment Completed',
         `Thank you for visiting! We hope to see you again soon.`,
         { bookingId, event: 'booking.completed' },
-        'BOOKING_COMPLETED' as unknown as NotificationType,
+        NotificationType.BOOKING_COMPLETED,
       )
     }
     return updated

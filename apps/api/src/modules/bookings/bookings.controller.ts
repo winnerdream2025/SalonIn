@@ -2,8 +2,9 @@ import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post, Query,
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
 import { CurrentUser } from '../../common/decorators/current-user.decorator'
 import type { User } from '@salonin/types'
-import { BookingsService, type CreateBookingDto, type RescheduleDto } from './bookings.service'
+import { BookingsService } from './bookings.service'
 import { OptionalJwtAuthGuard } from '../../common/guards/optional-jwt-auth.guard'
+import { CreateBookingDto, ProviderRescheduleDto, ClientRescheduleDto, ClientCancelDto } from './dto/booking.dto'
 
 type DateFilter = 'today' | 'tomorrow' | 'week' | 'month'
 
@@ -44,20 +45,15 @@ export class BookingsController {
 
   @Post('cancel')
   @HttpCode(HttpStatus.OK)
-  async cancelByClient(@Body('bookingId') bookingId: string, @Body('cancelToken') cancelToken: string) {
-    return { data: await this.svc.cancelByClient(cancelToken, bookingId) }
+  async cancelByClient(@Body() dto: ClientCancelDto) {
+    return { data: await this.svc.cancelByClient(dto.cancelToken, dto.bookingId) }
   }
 
   @Post('reschedule')
   @HttpCode(HttpStatus.OK)
-  async rescheduleByClient(
-    @Body('bookingId') bookingId: string,
-    @Body('cancelToken') cancelToken: string,
-    @Body('rescheduleToken') rescheduleToken: string,
-    @Body() dto: RescheduleDto,
-  ) {
-    const token = rescheduleToken ?? cancelToken
-    return { data: await this.svc.rescheduleByClient(token, bookingId, dto) }
+  async rescheduleByClient(@Body() dto: ClientRescheduleDto) {
+    const token = dto.rescheduleToken ?? dto.cancelToken ?? ''
+    return { data: await this.svc.rescheduleByClient(token, dto.bookingId, dto) }
   }
 
   @Patch(':id/reschedule')
@@ -65,11 +61,9 @@ export class BookingsController {
   async rescheduleByProvider(
     @CurrentUser() user: User,
     @Param('id') id: string,
-    @Body('date') date: string,
-    @Body('startTime') startTime: string,
-    @Body('reason') reason?: string,
+    @Body() dto: ProviderRescheduleDto,
   ) {
-    return { data: await this.svc.rescheduleByProvider(user, id, date, startTime, reason) }
+    return { data: await this.svc.rescheduleByProvider(user, id, dto.date, dto.startTime, dto.reason) }
   }
 
   @Patch(':id/complete')

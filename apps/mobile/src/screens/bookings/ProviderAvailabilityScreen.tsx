@@ -99,7 +99,7 @@ export default function ProviderAvailabilityScreen() {
   const { theme } = useTheme()
   const { top, bottom } = useSafeAreaInsets()
 
-  const { providerId, providerType } = useMyProviderId()
+  const { providerId, providerType, isLoading: providerLoading } = useMyProviderId()
   const { rules, isLoading, isSaving, error, save } = useAvailabilityHours(providerId, providerType)
 
   const [local, setLocal] = useState<DayAvailabilityRule[]>(DEFAULT_RULES)
@@ -139,7 +139,7 @@ export default function ProviderAvailabilityScreen() {
         </TouchableOpacity>
       </View>
 
-      {isLoading ? (
+      {isLoading || providerLoading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#D85A30" />
         </View>

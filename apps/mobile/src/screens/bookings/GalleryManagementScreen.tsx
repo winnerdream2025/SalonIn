@@ -79,7 +79,7 @@ export default function GalleryManagementScreen() {
   const { theme } = useTheme()
   const { top } = useSafeAreaInsets()
   const user = useAuthStore((s) => s.user)
-  const { providerId, providerType } = useMyProviderId()
+  const { providerId, providerType, isLoading: providerLoading } = useMyProviderId()
 
   const { services } = useProviderServices(providerId, providerType)
 
@@ -227,7 +227,7 @@ export default function GalleryManagementScreen() {
           </View>
         )}
 
-        {!isLoaded ? (
+        {!isLoaded || providerLoading ? (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             {[1,2,3,4,5,6].map(k => <Skeleton key={k} height={THUMB_SIZE} width={THUMB_SIZE} radius={12} />)}
           </View>

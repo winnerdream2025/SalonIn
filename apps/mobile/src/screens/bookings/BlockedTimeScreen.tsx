@@ -257,7 +257,7 @@ function ExceptionRow({
 export default function BlockedTimeScreen() {
   const { theme } = useTheme()
   const { top, bottom } = useSafeAreaInsets()
-  const { providerId, providerType } = useMyProviderId()
+  const { providerId, providerType, isLoading: providerLoading } = useMyProviderId()
 
   const today = new Date().toISOString().slice(0, 10)
   const futureDate = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
@@ -308,7 +308,7 @@ export default function BlockedTimeScreen() {
         </TouchableOpacity>
       </View>
 
-      {isLoading ? (
+      {isLoading || providerLoading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#D85A30" />
         </View>

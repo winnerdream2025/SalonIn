@@ -257,7 +257,7 @@ export default function ManageServicesScreen() {
   const { theme } = useTheme()
   const { top, bottom } = useSafeAreaInsets()
 
-  const { providerId, providerType } = useMyProviderId()
+  const { providerId, providerType, isLoading: providerLoading } = useMyProviderId()
   const { services, isLoading, error, refetch } = useProviderServices(providerId, providerType)
   const { create, update, remove, isWorking } = useServiceActions()
 
@@ -337,7 +337,7 @@ export default function ManageServicesScreen() {
         </TouchableOpacity>
       </View>
 
-      {isLoading ? (
+      {isLoading || providerLoading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#D85A30" />
         </View>

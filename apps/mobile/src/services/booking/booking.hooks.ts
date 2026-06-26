@@ -3,6 +3,7 @@
  */
 import { useState, useEffect, useCallback } from 'react'
 import { useAuthStore } from '../../store/authStore'
+import { workersApi, salonsApi } from '@salonin/api-client'
 import {
   servicesApi,
   availabilityApi,
@@ -28,11 +29,36 @@ import type {
 
 // ─── Provider profile ID helper ───────────────────────────────────────────────
 
-export function useMyProviderId(): { providerId: string | null; providerType: string } {
+export function useMyProviderId(): { providerId: string | null; providerType: string; isLoading: boolean } {
   const user = useAuthStore((s) => s.user)
-  const providerId = (user as Record<string, unknown> | null)?.['profileId'] as string | null ?? null
   const providerType = user?.role === 'SALON' ? 'salon' : 'professional'
-  return { providerId, providerType }
+  const [providerId, setProviderId] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+
+  useEffect(() => {
+    if (!user) { setProviderId(null); return }
+    let cancelled = false
+    setIsLoading(true)
+    const load = async () => {
+      try {
+        if (providerType === 'salon') {
+          const profile = await salonsApi.getMe()
+          if (!cancelled) setProviderId(profile.id)
+        } else {
+          const profile = await workersApi.getMe()
+          if (!cancelled) setProviderId(profile.id)
+        }
+      } catch (e: unknown) {
+        if (!cancelled) setProviderId(null)
+      } finally {
+        if (!cancelled) setIsLoading(false)
+      }
+    }
+    void load()
+    return () => { cancelled = true }
+  }, [user, providerType])
+
+  return { providerId, providerType, isLoading }
 }
 
 // ─── Services ─────────────────────────────────────────────────────────────────
