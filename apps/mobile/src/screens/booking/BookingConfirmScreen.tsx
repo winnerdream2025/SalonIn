@@ -83,6 +83,8 @@ export default function BookingConfirmScreen() {
     endTime,
     staffName,
     providerName,
+    intakeFormId,
+    intakeAnswers,
   } = useLocalSearchParams<{
     providerId: string
     providerType: string
@@ -96,6 +98,8 @@ export default function BookingConfirmScreen() {
     endTime: string
     staffName: string
     providerName: string
+    intakeFormId?: string
+    intakeAnswers?: string
   }>()
 
   const { theme } = useTheme()
@@ -106,9 +110,11 @@ export default function BookingConfirmScreen() {
   const currency = serviceCurrency ?? 'USD'
   const duration = parseInt(serviceDuration ?? '60', 10)
 
-  // User model has no `name` field — pre-fill from email prefix if available
-  const [clientName, setClientName] = useState('')
-  const [clientPhone, setClientPhone] = useState('')
+  // Pre-fill name from email prefix (User has no dedicated name field) and phone from profile
+  const [clientName, setClientName] = useState(() =>
+    user?.email ? user.email.split('@')[0].replace(/[._\-+]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : ''
+  )
+  const [clientPhone, setClientPhone] = useState(() => (user as any)?.phone ?? '')
   const [notes, setNotes] = useState('')
 
   const { initPaymentSheet, presentPaymentSheet } = _useStripe()
@@ -131,6 +137,11 @@ export default function BookingConfirmScreen() {
       return
     }
 
+    const parsedAnswers = (() => {
+      try { return intakeAnswers ? (JSON.parse(intakeAnswers) as { questionId: string; answer: unknown }[]) : undefined }
+      catch { return undefined }
+    })()
+
     const booking = await createBooking({
       providerId: providerId ?? '',
       providerType: providerType ?? 'professional',
@@ -141,6 +152,7 @@ export default function BookingConfirmScreen() {
       date: date ?? '',
       startTime: startTime ?? '',
       notes: notes.trim() || undefined,
+      ...(intakeFormId && parsedAnswers ? { intakeFormId, intakeAnswers: parsedAnswers } : {}),
     })
 
     if (!booking) return // error shown by hook

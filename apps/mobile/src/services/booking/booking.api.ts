@@ -18,6 +18,8 @@ import type {
   ClientSummary,
   PaymentIntent,
   StripeConnectStatus,
+  IntakeForm,
+  WaitlistEntry,
 } from './booking.types'
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
@@ -134,6 +136,35 @@ export const bookingsApi = {
 
   getClientHistory: (clientEmail: string): Promise<BookingResult[]> =>
     api.get(`/bookings/clients/${encodeURIComponent(clientEmail)}`).then(unwrap<BookingResult[]>),
+
+  rebook: (bookingId: string, date: string, startTime: string): Promise<BookingResult> =>
+    api.post('/bookings/rebook', { bookingId, date, startTime }).then(unwrap<BookingResult>),
+
+  joinWaitlist: (payload: {
+    providerId: string
+    providerType: string
+    serviceId: string
+    date: string
+    startTime: string
+    clientName: string
+    clientEmail: string
+    clientPhone?: string
+  }): Promise<{ id: string }> =>
+    api.post('/bookings/waitlist', payload).then(unwrap<{ id: string }>),
+
+  getWaitlist: (): Promise<WaitlistEntry[]> =>
+    api.get('/bookings/waitlist').then(unwrap<WaitlistEntry[]>),
+
+  removeFromWaitlist: (id: string): Promise<void> =>
+    api.delete(`/bookings/waitlist/${id}`).then(() => undefined),
+}
+
+// ─── Intake Forms ─────────────────────────────────────────────────────────────
+
+export const intakeFormsApi = {
+  forProvider: (providerId: string, providerType: string): Promise<IntakeForm[]> =>
+    api.get('/intake-forms/for-provider', { params: { providerId, providerType } })
+      .then(unwrap<IntakeForm[]>),
 }
 
 // ─── Payments ─────────────────────────────────────────────────────────────────

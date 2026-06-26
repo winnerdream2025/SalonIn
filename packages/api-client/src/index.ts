@@ -46,3 +46,6 @@ export { followsApi } from './follows.api'
 export type { FollowUser, FollowListResponse, SuggestedUser } from './follows.api'
 
 export { bookingProfileApi } from './booking.api'
+
+export { postsApi } from './posts.api'
+export type { PostData, CreatePostPayload, PostType, PostVisibility } from './posts.api'

@@ -35,40 +35,47 @@ export class ReviewsService {
       }
     }
 
-    // Worker reviewing Salon: must have applied to one of the salon's jobs
+    // Worker reviewing Salon: accepted job application grants eligibility
     if (author.role === 'WORKER' && subject.role === 'SALON') {
-      const salonProfile = await this.prisma.salonProfile.findUnique({
-        where: { userId: subjectId },
-        select: { id: true },
-      })
-      if (!salonProfile) return { canReview: false, existingReview: null }
-      const workerProfile = await this.prisma.workerProfile.findUnique({
-        where: { userId: authorId },
-        select: { id: true },
-      })
-      if (!workerProfile) return { canReview: false, existingReview: null }
-      const application = await this.prisma.jobApplication.findFirst({
-        where: { workerId: workerProfile.id, job: { salonId: salonProfile.id }, status: 'ACCEPTED' },
-      })
-      return { canReview: !!application, existingReview: null }
+      const salonProfile = await this.prisma.salonProfile.findUnique({ where: { userId: subjectId }, select: { id: true } })
+      const workerProfile = await this.prisma.workerProfile.findUnique({ where: { userId: authorId }, select: { id: true } })
+      if (salonProfile && workerProfile) {
+        const application = await this.prisma.jobApplication.findFirst({
+          where: { workerId: workerProfile.id, job: { salonId: salonProfile.id }, status: 'ACCEPTED' },
+        })
+        if (application) return { canReview: true, existingReview: null }
+      }
     }
 
-    // Salon reviewing Worker: must have accepted an application from that worker
+    // Salon reviewing Worker: accepted application from that worker grants eligibility
     if (author.role === 'SALON' && subject.role === 'WORKER') {
-      const salonProfile = await this.prisma.salonProfile.findUnique({
-        where: { userId: authorId },
-        select: { id: true },
+      const salonProfile = await this.prisma.salonProfile.findUnique({ where: { userId: authorId }, select: { id: true } })
+      const workerProfile = await this.prisma.workerProfile.findUnique({ where: { userId: subjectId }, select: { id: true } })
+      if (salonProfile && workerProfile) {
+        const application = await this.prisma.jobApplication.findFirst({
+          where: { workerId: workerProfile.id, job: { salonId: salonProfile.id }, status: 'ACCEPTED' },
+        })
+        if (application) return { canReview: true, existingReview: null }
+      }
+    }
+
+    // Fallback for all roles: any user who has a COMPLETED booking with subject as provider can review
+    const db = this.prisma as any
+    const subjectWorkerProfile = await this.prisma.workerProfile
+      .findUnique({ where: { userId: subjectId }, select: { id: true } })
+      .catch(() => null)
+    const subjectSalonProfile = await this.prisma.salonProfile
+      .findUnique({ where: { userId: subjectId }, select: { id: true } })
+      .catch(() => null)
+    if (subjectWorkerProfile || subjectSalonProfile) {
+      const orClauses = [
+        ...(subjectWorkerProfile ? [{ providerId: subjectWorkerProfile.id, providerType: 'professional' }] : []),
+        ...(subjectSalonProfile  ? [{ providerId: subjectSalonProfile.id,  providerType: 'salon'         }] : []),
+      ]
+      const completedBooking = await db.booking.findFirst({
+        where: { clientUserId: authorId, status: 'COMPLETED', OR: orClauses },
       })
-      if (!salonProfile) return { canReview: false, existingReview: null }
-      const workerProfile = await this.prisma.workerProfile.findUnique({
-        where: { userId: subjectId },
-        select: { id: true },
-      })
-      if (!workerProfile) return { canReview: false, existingReview: null }
-      const application = await this.prisma.jobApplication.findFirst({
-        where: { workerId: workerProfile.id, job: { salonId: salonProfile.id }, status: 'ACCEPTED' },
-      })
-      return { canReview: !!application, existingReview: null }
+      if (completedBooking) return { canReview: true, existingReview: null }
     }
 
     return { canReview: false, existingReview: null }

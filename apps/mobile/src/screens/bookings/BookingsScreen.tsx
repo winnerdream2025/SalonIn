@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { Text, Skeleton, useTheme } from '@salonin/ui'
+import { messagesApi, workersApi, salonsApi, parseApiError } from '@salonin/api-client'
 import { bookingsApi } from '../../services/booking/booking.api'
 import type { BookingResult } from '../../services/booking/booking.types'
 import { useAuthStore } from '../../store/authStore'
@@ -84,16 +85,19 @@ function BookingCard({
   onMessage,
   onCancel,
   onReschedule,
+  onRebook,
   theme,
 }: {
   item: BookingResult
   onMessage: (item: BookingResult) => void
   onCancel: (item: BookingResult) => void
   onReschedule: (item: BookingResult) => void
+  onRebook: (item: BookingResult) => void
   theme: ReturnType<typeof useTheme>['theme']
 }) {
   const tab = classifyStatus(item.status)
   const isUpcoming = tab === 'upcoming'
+  const isCompleted = tab === 'completed'
 
   return (
     <View style={[styles.card, { backgroundColor: theme.bg.surface, borderColor: theme.border.subtle }]}>
@@ -159,6 +163,18 @@ function BookingCard({
             activeOpacity={0.75}
           >
             <Text style={{ fontSize: 12, fontWeight: '600', color: '#E24B4A' }}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      {isCompleted && (
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            onPress={() => onRebook(item)}
+            style={[styles.actionBtn, { borderColor: '#D85A3040', flex: 1 }]}
+            activeOpacity={0.75}
+          >
+            <Ionicons name="refresh-outline" size={13} color="#D85A30" style={{ marginRight: 4 }} />
+            <Text style={{ fontSize: 12, fontWeight: '600', color: '#D85A30' }}>Book Again</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -253,11 +269,35 @@ export default function BookingsScreen() {
   const [rescheduleTarget, setRescheduleTarget] = useState<BookingResult | null>(null)
   const [rescheduleDate,    setRescheduleDate]   = useState('')
   const [rescheduleTime,    setRescheduleTime]   = useState('')
+  const [rebookTarget,     setRebookTarget]      = useState<BookingResult | null>(null)
+  const [rebookDate,       setRebookDate]        = useState('')
+  const [rebookTime,       setRebookTime]        = useState('')
   const [isActioning,      setIsActioning]       = useState(false)
 
-  const handleMessage = useCallback((_item: BookingResult) => {
+  const handleMessage = useCallback(async (item: BookingResult) => {
     if (!currentUser) return
-    router.push('/inbox' as never)
+    try {
+      // Resolve provider's User.id from their profile ID
+      let providerUserId: string | null = null
+      if (item.providerType === 'salon') {
+        const salon = await salonsApi.getById(item.providerId).catch(() => null)
+        providerUserId = (salon as any)?.userId ?? null
+      } else {
+        const worker = await workersApi.getById(item.providerId).catch(() => null)
+        providerUserId = (worker as any)?.userId ?? null
+      }
+      if (providerUserId) {
+        const conv = await messagesApi.createConversation(providerUserId)
+        router.push({
+          pathname: '/chat/[id]',
+          params: { id: conv.id, name: item.service?.name ?? 'Provider', otherUserId: providerUserId, otherPhotoUrl: '' },
+        } as never)
+      } else {
+        router.push('/(tabs)/messages' as never)
+      }
+    } catch (e) {
+      Alert.alert('Could not open chat', parseApiError(e))
+    }
   }, [currentUser])
 
   const handleCancel = useCallback((item: BookingResult) => {
@@ -292,6 +332,30 @@ export default function BookingsScreen() {
     setRescheduleDate('')
     setRescheduleTime('')
   }, [])
+
+  const handleRebook = useCallback((item: BookingResult) => {
+    setRebookTarget(item)
+    setRebookDate('')
+    setRebookTime('')
+  }, [])
+
+  const handleRebookConfirm = useCallback(async () => {
+    if (!rebookTarget || !rebookDate.trim() || !rebookTime.trim()) {
+      Alert.alert('Missing info', 'Enter a date (YYYY-MM-DD) and time (e.g. 14:30).')
+      return
+    }
+    setIsActioning(true)
+    try {
+      await bookingsApi.rebook(rebookTarget.id, rebookDate.trim(), rebookTime.trim())
+      setRebookTarget(null)
+      Alert.alert('Booking requested', 'Your new appointment has been submitted.')
+      load()
+    } catch (e) {
+      Alert.alert('Error', e instanceof Error ? e.message : 'Could not create booking.')
+    } finally {
+      setIsActioning(false)
+    }
+  }, [rebookTarget, rebookDate, rebookTime, load])
 
   const handleRescheduleConfirm = useCallback(async () => {
     if (!rescheduleTarget || !rescheduleDate.trim() || !rescheduleTime.trim()) {
@@ -387,6 +451,7 @@ export default function BookingsScreen() {
               onMessage={handleMessage}
               onCancel={handleCancel}
               onReschedule={handleReschedule}
+              onRebook={handleRebook}
               theme={theme}
             />
           )}
@@ -394,6 +459,53 @@ export default function BookingsScreen() {
           showsVerticalScrollIndicator={false}
         />
       )}
+
+      {/* Rebook modal */}
+      <Modal
+        visible={rebookTarget !== null}
+        animationType="slide"
+        presentationStyle="formSheet"
+        onRequestClose={() => setRebookTarget(null)}
+      >
+        <View style={[styles.modalRoot, { backgroundColor: theme.bg.base }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: theme.border.subtle }]}>
+            <TouchableOpacity onPress={() => setRebookTarget(null)}>
+              <Text style={{ color: theme.text.secondary, fontSize: 15 }}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={{ fontSize: 17, fontWeight: '700', color: theme.text.primary }}>Book Again</Text>
+            <TouchableOpacity onPress={handleRebookConfirm} disabled={isActioning}>
+              {isActioning
+                ? <ActivityIndicator size="small" color="#D85A30" />
+                : <Text style={{ color: '#D85A30', fontSize: 15, fontWeight: '700' }}>Confirm</Text>}
+            </TouchableOpacity>
+          </View>
+          <View style={{ padding: 24, gap: 16 }}>
+            <Text style={{ fontSize: 14, color: theme.text.secondary, lineHeight: 20 }}>
+              Rebook {rebookTarget?.service?.name ?? 'this service'} with the same provider. Pick a new date and time.
+            </Text>
+            <View>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: theme.text.secondary, marginBottom: 6, textTransform: 'uppercase' }}>Date</Text>
+              <TextInput
+                value={rebookDate}
+                onChangeText={setRebookDate}
+                placeholder="YYYY-MM-DD  e.g. 2026-07-20"
+                placeholderTextColor={theme.text.tertiary}
+                style={[styles.modalInput, { backgroundColor: theme.bg.surface, borderColor: theme.border.default, color: theme.text.primary }]}
+              />
+            </View>
+            <View>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: theme.text.secondary, marginBottom: 6, textTransform: 'uppercase' }}>Time</Text>
+              <TextInput
+                value={rebookTime}
+                onChangeText={setRebookTime}
+                placeholder="HH:MM  e.g. 10:00"
+                placeholderTextColor={theme.text.tertiary}
+                style={[styles.modalInput, { backgroundColor: theme.bg.surface, borderColor: theme.border.default, color: theme.text.primary }]}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Reschedule modal */}
       <Modal
@@ -433,7 +545,7 @@ export default function BookingsScreen() {
               <TextInput
                 value={rescheduleTime}
                 onChangeText={setRescheduleTime}
-                placeholder="e.g. 10:00 AM"
+                placeholder="HH:MM  e.g. 14:30"
                 placeholderTextColor={theme.text.tertiary}
                 style={[styles.modalInput, { backgroundColor: theme.bg.surface, borderColor: theme.border.default, color: theme.text.primary }]}
               />

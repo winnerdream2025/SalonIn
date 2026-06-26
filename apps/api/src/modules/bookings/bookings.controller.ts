@@ -1,10 +1,10 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post, Query, UseGuards } from '@nestjs/common'
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Query, UseGuards } from '@nestjs/common'
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
 import { CurrentUser } from '../../common/decorators/current-user.decorator'
 import type { User } from '@salonin/types'
 import { BookingsService } from './bookings.service'
 import { OptionalJwtAuthGuard } from '../../common/guards/optional-jwt-auth.guard'
-import { CreateBookingDto, ProviderRescheduleDto, ClientRescheduleDto, ClientCancelDto } from './dto/booking.dto'
+import { CreateBookingDto, ProviderRescheduleDto, ClientRescheduleDto, ClientCancelDto, WaitlistDto, RebookDto } from './dto/booking.dto'
 
 type DateFilter = 'today' | 'tomorrow' | 'week' | 'month'
 
@@ -112,5 +112,48 @@ export class BookingsController {
     @Param('email') clientEmail: string,
   ) {
     return { data: await this.svc.getClientHistory(user, decodeURIComponent(clientEmail)) }
+  }
+
+  // ─── Intake ───────────────────────────────────────────────────────────────
+
+  @Get(':id/intake')
+  @UseGuards(JwtAuthGuard)
+  async getBookingIntake(@CurrentUser() user: User, @Param('id') id: string) {
+    return { data: await this.svc.getBookingIntake(user, id) }
+  }
+
+  // ─── Waitlist ─────────────────────────────────────────────────────────────
+
+  @Post('waitlist')
+  @UseGuards(OptionalJwtAuthGuard)
+  @HttpCode(HttpStatus.CREATED)
+  async addToWaitlist(@Body() dto: WaitlistDto, @CurrentUser() user?: User) {
+    return { data: await this.svc.addToWaitlist(dto, user?.id) }
+  }
+
+  @Get('waitlist')
+  @UseGuards(JwtAuthGuard)
+  async getWaitlist(@CurrentUser() user: User) {
+    return { data: await this.svc.getWaitlist(user) }
+  }
+
+  @Delete('waitlist/:id')
+  @UseGuards(OptionalJwtAuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async removeFromWaitlist(
+    @Param('id') id: string,
+    @CurrentUser() user?: User,
+    @Query('email') email?: string,
+  ) {
+    await this.svc.removeFromWaitlist(id, user?.id, email)
+  }
+
+  // ─── Rebook ───────────────────────────────────────────────────────────────
+
+  @Post('rebook')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.CREATED)
+  async rebook(@CurrentUser() user: User, @Body() dto: RebookDto) {
+    return { data: await this.svc.rebook(user, dto) }
   }
 }

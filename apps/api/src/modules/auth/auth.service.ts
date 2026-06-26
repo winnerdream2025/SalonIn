@@ -50,7 +50,7 @@ export class AuthService {
 
     const profileData =
       accountType === 'CLIENT'
-        ? {}
+        ? { clientProfile: { create: { name: dto.name, phone: dto.phone ?? null } } }
         : dto.role === Role.SALON
           ? { salonProfile: { create: { name: dto.name } } }
           : { workerProfile: { create: { name: dto.name } } }

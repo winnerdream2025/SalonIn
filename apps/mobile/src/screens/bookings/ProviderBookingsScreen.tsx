@@ -15,6 +15,7 @@ import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { Text, Skeleton, useTheme } from '@salonin/ui'
 import { Role } from '@salonin/types'
+import { messagesApi, parseApiError } from '@salonin/api-client'
 import { useAuthStore } from '../../store/authStore'
 import { useProviderBookings, useBookingActions } from '../../services/booking/booking.hooks'
 import type { BookingResult, BookingStatus } from '../../services/booking/booking.types'
@@ -432,6 +433,22 @@ function ProviderBookingsInner({
     cancelled: bookings.filter(b => b.status === 'CANCELLED' || b.status === 'NO_SHOW').length,
   }), [bookings, today, tomorrow])
 
+  const handleMessage = useCallback(async (b: BookingResult) => {
+    if (!b.clientUserId) {
+      Alert.alert('Guest booking', `Contact ${b.clientName} directly at ${b.clientEmail}`)
+      return
+    }
+    try {
+      const conv = await messagesApi.createConversation(b.clientUserId)
+      router.push({
+        pathname: '/chat/[id]',
+        params: { id: conv.id, name: b.clientName, otherUserId: b.clientUserId, otherPhotoUrl: '' },
+      } as never)
+    } catch (e) {
+      Alert.alert('Could not open chat', parseApiError(e))
+    }
+  }, [])
+
   const handleConfirm = useCallback(async (b: BookingResult) => {
     const ok = await confirmAction(b.id)
     if (!ok) Alert.alert('Error', 'Could not confirm booking.')
@@ -563,7 +580,7 @@ function ProviderBookingsInner({
               onReschedule={(b) => setRescheduleTarget(b)}
               onComplete={handleComplete}
               onNoShow={handleNoShow}
-              onMessage={() => router.push('/inbox' as never)}
+              onMessage={handleMessage}
               theme={theme}
             />
           )}

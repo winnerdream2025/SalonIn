@@ -5,12 +5,18 @@ import {
   TouchableOpacity,
   StyleSheet,
   FlatList,
+  Modal,
+  TextInput,
+  Alert,
+  ActivityIndicator,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { Text, Skeleton, useTheme } from '@salonin/ui'
 import { useAvailabilitySlots } from '../../services/booking/booking.hooks'
+import { bookingsApi, intakeFormsApi } from '../../services/booking/booking.api'
+import { useAuthStore } from '../../store/authStore'
 import type { AvailabilitySlot } from '../../services/booking/booking.types'
 
 // Generate the next 14 days for the date strip
@@ -66,8 +72,47 @@ export default function BookingSlotScreen() {
 
   const { theme } = useTheme()
   const { top, bottom } = useSafeAreaInsets()
+  const user = useAuthStore((s) => s.user)
 
   const [selectedDate, setSelectedDate] = useState<string>(DATE_RANGE[0] ?? '')
+
+  // Waitlist sheet state
+  const [waitlistOpen,  setWaitlistOpen]  = useState(false)
+  const [waitlistName,  setWaitlistName]  = useState('')
+  const [waitlistEmail, setWaitlistEmail] = useState((user as any)?.email ?? '')
+  const [waitlistPhone, setWaitlistPhone] = useState('')
+  const [waitlistTime,  setWaitlistTime]  = useState('09:00')
+  const [waitlistBusy,  setWaitlistBusy]  = useState(false)
+
+  const handleJoinWaitlist = useCallback(async () => {
+    if (!waitlistName.trim() || !waitlistEmail.trim()) {
+      Alert.alert('Required', 'Please enter your name and email.')
+      return
+    }
+    if (!/^\d{2}:\d{2}$/.test(waitlistTime.trim())) {
+      Alert.alert('Invalid time', 'Enter preferred start time as HH:MM (e.g. 14:00)')
+      return
+    }
+    setWaitlistBusy(true)
+    try {
+      await bookingsApi.joinWaitlist({
+        providerId: providerId ?? '',
+        providerType: providerType ?? 'professional',
+        serviceId: serviceId ?? '',
+        date: selectedDate,
+        startTime: waitlistTime.trim(),
+        clientName: waitlistName.trim(),
+        clientEmail: waitlistEmail.trim(),
+        clientPhone: waitlistPhone.trim() || undefined,
+      })
+      setWaitlistOpen(false)
+      Alert.alert("You're on the list", "We'll notify you when a slot opens up.")
+    } catch (e) {
+      Alert.alert('Error', e instanceof Error ? e.message : 'Could not join waitlist.')
+    } finally {
+      setWaitlistBusy(false)
+    }
+  }, [providerId, providerType, serviceId, selectedDate, waitlistName, waitlistEmail, waitlistPhone, waitlistTime])
 
   const { slots, isLoading } = useAvailabilitySlots(
     providerId ?? null,
@@ -79,22 +124,39 @@ export default function BookingSlotScreen() {
   const availableSlots = slots.filter((s) => s.available !== false)
 
   const handleSelectSlot = useCallback(
-    (slot: AvailabilitySlot) => {
-      router.push({
-        pathname: '/booking/confirm',
-        params: {
-          providerId,
-          providerType: providerType ?? 'professional',
-          serviceId,
-          serviceName,
-          servicePrice,
-          serviceCurrency,
-          serviceDuration,
-          date: selectedDate,
-          startTime: slot.time,
-          providerName: providerName ?? '',
-        },
-      } as never)
+    async (slot: AvailabilitySlot) => {
+      const baseParams = {
+        providerId,
+        providerType: providerType ?? 'professional',
+        serviceId,
+        serviceName,
+        servicePrice,
+        serviceCurrency,
+        serviceDuration,
+        date: selectedDate,
+        startTime: slot.time,
+        providerName: providerName ?? '',
+      }
+
+      // Check if provider has an active intake form for this service
+      let intakeForm = null
+      try {
+        const forms = await intakeFormsApi.forProvider(providerId ?? '', providerType ?? 'professional')
+        intakeForm = forms.find(
+          (f) => f.serviceIds.length === 0 || f.serviceIds.includes(serviceId ?? ''),
+        ) ?? null
+      } catch {
+        // Non-fatal — proceed without intake form
+      }
+
+      if (intakeForm) {
+        router.push({
+          pathname: '/booking/intake',
+          params: { ...baseParams, intakeFormRaw: JSON.stringify(intakeForm) },
+        } as never)
+      } else {
+        router.push({ pathname: '/booking/confirm', params: baseParams } as never)
+      }
     },
     [providerId, providerType, serviceId, serviceName, servicePrice, serviceCurrency, serviceDuration, selectedDate, providerName],
   )
@@ -160,7 +222,19 @@ export default function BookingSlotScreen() {
       ) : availableSlots.length === 0 ? (
         <View style={styles.centeredState}>
           <Ionicons name="calendar-outline" size={36} color={theme.text.tertiary} />
-          <Text style={{ color: theme.text.secondary, marginTop: 10 }}>No available slots on this day.</Text>
+          <Text style={{ color: theme.text.secondary, marginTop: 10, textAlign: 'center' }}>
+            No available slots on this day.
+          </Text>
+          <TouchableOpacity
+            onPress={() => setWaitlistOpen(true)}
+            activeOpacity={0.8}
+            style={[styles.waitlistBtn, { backgroundColor: theme.bg.surface, borderColor: '#D85A3050' }]}
+          >
+            <Ionicons name="notifications-outline" size={16} color="#D85A30" />
+            <Text style={{ fontSize: 14, fontWeight: '600', color: '#D85A30', marginLeft: 6 }}>
+              Join waitlist for {selectedDate}
+            </Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <FlatList
@@ -187,6 +261,65 @@ export default function BookingSlotScreen() {
           ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
         />
       )}
+
+      {/* Waitlist sheet */}
+      <Modal
+        visible={waitlistOpen}
+        animationType="slide"
+        presentationStyle="formSheet"
+        onRequestClose={() => setWaitlistOpen(false)}
+      >
+        <View style={[styles.sheetRoot, { backgroundColor: theme.bg.base }]}>
+          <View style={[styles.sheetHeader, { borderBottomColor: theme.border.subtle }]}>
+            <TouchableOpacity onPress={() => setWaitlistOpen(false)}>
+              <Text style={{ color: theme.text.secondary, fontSize: 15 }}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={{ fontSize: 17, fontWeight: '700', color: theme.text.primary }}>Join Waitlist</Text>
+            <TouchableOpacity onPress={handleJoinWaitlist} disabled={waitlistBusy}>
+              {waitlistBusy
+                ? <ActivityIndicator size="small" color="#D85A30" />
+                : <Text style={{ color: '#D85A30', fontSize: 15, fontWeight: '700' }}>Submit</Text>}
+            </TouchableOpacity>
+          </View>
+          <ScrollView contentContainerStyle={{ padding: 24, gap: 16 }}>
+            <Text style={{ fontSize: 13, color: theme.text.secondary, lineHeight: 20 }}>
+              We'll notify you by push notification when a slot opens for {serviceName} on {selectedDate}.
+            </Text>
+            <TextInput
+              value={waitlistName}
+              onChangeText={setWaitlistName}
+              placeholder="Your name"
+              placeholderTextColor={theme.text.tertiary}
+              style={[styles.sheetInput, { backgroundColor: theme.bg.surface, borderColor: theme.border.default, color: theme.text.primary }]}
+            />
+            <TextInput
+              value={waitlistEmail}
+              onChangeText={setWaitlistEmail}
+              placeholder="Email address"
+              placeholderTextColor={theme.text.tertiary}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              style={[styles.sheetInput, { backgroundColor: theme.bg.surface, borderColor: theme.border.default, color: theme.text.primary }]}
+            />
+            <TextInput
+              value={waitlistPhone}
+              onChangeText={setWaitlistPhone}
+              placeholder="Phone (optional)"
+              placeholderTextColor={theme.text.tertiary}
+              keyboardType="phone-pad"
+              style={[styles.sheetInput, { backgroundColor: theme.bg.surface, borderColor: theme.border.default, color: theme.text.primary }]}
+            />
+            <TextInput
+              value={waitlistTime}
+              onChangeText={setWaitlistTime}
+              placeholder="Preferred start time  e.g. 14:00"
+              placeholderTextColor={theme.text.tertiary}
+              keyboardType="numbers-and-punctuation"
+              style={[styles.sheetInput, { backgroundColor: theme.bg.surface, borderColor: theme.border.default, color: theme.text.primary }]}
+            />
+          </ScrollView>
+        </View>
+      </Modal>
     </View>
   )
 }
@@ -222,5 +355,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 32,
+  },
+  waitlistBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  sheetRoot: { flex: 1 },
+  sheetHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingTop: 20, paddingBottom: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  sheetInput: {
+    borderWidth: 1, borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 12, fontSize: 15,
   },
 })

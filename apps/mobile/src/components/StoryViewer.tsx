@@ -504,7 +504,17 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose, onViewe
             activeOpacity={0.85}
             onPress={() => {
               pauseProgress()
-              Alert.alert('Book Now', 'Booking flow would open here.')
+              const authorProfile = story.user.workerProfile ?? story.user.salonProfile
+              const providerId = authorProfile?.id
+              const providerType = story.user.workerProfile ? 'professional' : 'salon'
+              if (!providerId) {
+                Alert.alert('Unavailable', 'This provider has not set up their booking profile yet.')
+                return
+              }
+              router.push({
+                pathname: '/booking/services',
+                params: { providerId, providerType, providerName: authorProfile?.name ?? '' },
+              } as never)
             }}
           >
             <Ionicons name="calendar" size={15} color="#fff" />

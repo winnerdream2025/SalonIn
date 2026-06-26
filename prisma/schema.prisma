@@ -97,6 +97,13 @@ enum BookingStatus {
   NO_SHOW
 }
 
+enum PostType {
+  PHOTO
+  VIDEO
+  BEFORE_AFTER
+  TEXT
+}
+
 enum NotificationType {
   NEW_MESSAGE
   NEW_APPLICATION
@@ -135,9 +142,10 @@ model User {
   isOnline         Boolean     @default(false)
   lastSeenAt       DateTime?
 
-  workerProfile WorkerProfile?
-  salonProfile  SalonProfile?
-  isActive      Boolean  @default(true)
+  workerProfile  WorkerProfile?
+  salonProfile   SalonProfile?
+  clientProfile  ClientProfile?
+  isActive       Boolean  @default(true)
   sentMessages  Message[]                @relation("SentMessages")
   deletedMessages DeletedMessage[]
   conversations ConversationParticipant[]
@@ -160,6 +168,10 @@ model User {
   followingCount   Int      @default(0)
   followers        Follow[] @relation("FollowTarget")
   following        Follow[] @relation("FollowSource")
+  posts            Post[]
+  postLikes        PostLike[]
+  comments         Comment[]
+  highlights       StoryHighlight[]
 }
 
 model WorkerProfile {
@@ -252,6 +264,26 @@ model SalonProfile {
   lateFeeAmount        Float?
 
   jobPosts JobPost[]
+}
+
+model ClientProfile {
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name             String
+  phone            String?
+  photoUrl         String?
+  bio              String?
+  city             String?
+  state            String?
+  country          String?
+  placeId          String?
+  formattedAddress String?
+  preferredSpecialties String[] @default([])
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model JobPost {
@@ -493,6 +525,9 @@ model Report {
   type       ReportType
   reason     String?
   status     ReportStatus @default(PENDING)
+  adminNote  String?
+  resolvedAt DateTime?
+  resolvedBy String?
   createdAt  DateTime     @default(now())
 
   @@index([reportedId, status])
@@ -590,6 +625,95 @@ model Follow {
   @@index([followingId])
 }
 
+// ─── Social Feed & Posts ──────────────────────────────────────────────────────
+
+model Post {
+  id             String          @id @default(uuid())
+  userId         String
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type           PostType
+  caption        String?
+  mediaUrls      String[]        @default([])
+  beforeUrl      String?
+  afterUrl       String?
+  serviceId      String?
+  visibility     StoryVisibility @default(PUBLIC)
+  bookingEnabled Boolean         @default(false)
+  likesCount     Int             @default(0)
+  commentsCount  Int             @default(0)
+  hashtags       PostHashtag[]
+  likes          PostLike[]
+  comments       Comment[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+  @@index([visibility, createdAt])
+}
+
+model PostLike {
+  id        String   @id @default(uuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([postId, userId])
+  @@index([postId])
+  @@index([userId])
+}
+
+model Comment {
+  id        String    @id @default(uuid())
+  postId    String
+  post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String
+  parentId  String?
+  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[] @relation("CommentReplies")
+  createdAt DateTime  @default(now())
+
+  @@index([postId, createdAt])
+  @@index([parentId])
+}
+
+model Hashtag {
+  id        String      @id @default(uuid())
+  tag       String      @unique
+  postCount Int         @default(0)
+  posts     PostHashtag[]
+
+  @@index([tag])
+  @@index([postCount])
+}
+
+model PostHashtag {
+  postId    String
+  hashtagId String
+  post      Post    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  hashtag   Hashtag @relation(fields: [hashtagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, hashtagId])
+  @@index([hashtagId])
+}
+
+model StoryHighlight {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  coverUrl  String?
+  storyIds  String[] @default([])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
 model AvailabilityException {
   id           String   @id @default(uuid())
   providerId   String
@@ -602,6 +726,58 @@ model AvailabilityException {
   createdAt    DateTime @default(now())
 
   @@index([providerId, providerType, date])
+}
+
+// ─── Phase 5: Booking Enhanced ────────────────────────────────────────────────
+
+model IntakeForm {
+  id           String          @id @default(uuid())
+  providerId   String
+  providerType String
+  title        String
+  description  String?
+  questions    Json
+  serviceIds   String[]        @default([])
+  isActive     Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  responses    IntakeResponse[]
+
+  @@index([providerId, providerType])
+  @@index([providerId, providerType, isActive])
+}
+
+model IntakeResponse {
+  id        String     @id @default(uuid())
+  formId    String
+  form      IntakeForm @relation(fields: [formId], references: [id])
+  bookingId String     @unique
+  booking   Booking    @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  answers   Json
+  createdAt DateTime   @default(now())
+
+  @@index([formId])
+}
+
+model Waitlist {
+  id           String    @id @default(uuid())
+  providerId   String
+  providerType String
+  serviceId    String
+  date         String
+  startTime    String
+  clientUserId String?
+  clientName   String
+  clientEmail  String
+  clientPhone  String?
+  notes        String?
+  notified     Boolean   @default(false)
+  notifiedAt   DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([providerId, providerType, date, startTime])
+  @@index([clientEmail])
 }
 
 // ─── Booking bridge (legacy — kept for migration safety) ──────────────────────
@@ -691,6 +867,7 @@ model Booking {
   updatedAt            DateTime        @updatedAt
 
   payment              BookingPayment?
+  intakeResponse       IntakeResponse?
 
   @@unique([providerId, providerType, date, startTime])
   @@index([providerId, providerType, date])

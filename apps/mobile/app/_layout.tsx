@@ -27,11 +27,13 @@ export const linkingConfig = {
   prefixes: [prefix, 'https://mysalonin.com'],
   config: {
     screens: {
+      '(auth)/reset-password': 'reset-password',
       'worker/[id]': 'worker/:id',
       'salon/[id]': 'salon/:id',
       'jobs/[id]': 'jobs/:id',
       'chat/[id]': 'chat/:id',
       'chat-requests': 'chat-requests',
+      notifications: 'notifications',
     },
   },
 }

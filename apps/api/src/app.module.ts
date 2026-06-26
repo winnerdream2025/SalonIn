@@ -32,6 +32,11 @@ import { ProviderAvailabilityModule } from './modules/provider-availability/prov
 import { BookingsModule } from './modules/bookings/bookings.module'
 import { PaymentsModule } from './modules/payments/payments.module'
 import { StripeConnectModule } from './modules/stripe-connect/stripe-connect.module'
+import { ClientsModule } from './modules/clients/clients.module'
+import { PostsModule } from './modules/posts/posts.module'
+import { SearchModule } from './modules/search/search.module'
+import { IntakeFormsModule } from './modules/intake-forms/intake-forms.module'
+import { AdminModule } from './modules/admin/admin.module'
 
 @Module({
   imports: [
@@ -95,6 +100,11 @@ import { StripeConnectModule } from './modules/stripe-connect/stripe-connect.mod
     BookingsModule,
     PaymentsModule,
     StripeConnectModule,
+    ClientsModule,
+    PostsModule,
+    SearchModule,
+    IntakeFormsModule,
+    AdminModule,
   ],
   providers: [
     {

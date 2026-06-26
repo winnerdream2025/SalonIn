@@ -11,6 +11,10 @@ export interface ServiceDto {
   category?: string
   isActive?: boolean
   sortOrder?: number
+  depositAmount?: number
+  images?: string[]
+  bufferBefore?: number
+  bufferAfter?: number
 }
 
 @Injectable()
@@ -52,6 +56,10 @@ export class ProviderServicesService {
         category: dto.category ?? null,
         isActive: dto.isActive ?? true,
         sortOrder: dto.sortOrder ?? 0,
+        depositAmount: dto.depositAmount ?? null,
+        images: dto.images ?? [],
+        bufferBefore: dto.bufferBefore ?? 0,
+        bufferAfter: dto.bufferAfter ?? 0,
       },
     })
   }

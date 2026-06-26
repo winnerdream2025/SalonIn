@@ -26,9 +26,15 @@ export default function LoginScreen() {
   const handleLogin = useCallback(async () => {
     setError(undefined)
     try {
-      await login({ email: email.trim(), password })
+      const result = await login({ email: email.trim(), password })
+      const accountType = (result.user as unknown as Record<string, unknown>)?.accountType
+      let dest: string = redirect ?? '/(tabs)'
+      if (!redirect) {
+        if (accountType === 'CLIENT') dest = '/(tabs)/profile'
+        else if (result.user?.role === 'SALON') dest = '/(tabs)/jobs'
+      }
       setTimeout(() => {
-        router.replace((redirect ?? '/(tabs)') as Parameters<typeof router.replace>[0])
+        router.replace(dest as Parameters<typeof router.replace>[0])
       }, 100)
     } catch (e) {
       setError(parseApiError(e))

@@ -18,9 +18,9 @@ export class BookingReminderService {
     const now = new Date()
 
     const windows = [
-      { label: '24h', minutesBefore: 1440, toleranceMs: 5 * 60 * 1000 },
-      { label: '2h',  minutesBefore: 120,  toleranceMs: 5 * 60 * 1000 },
-      { label: '30m', minutesBefore: 30,   toleranceMs: 5 * 60 * 1000 },
+      { label: '24h', minutesBefore: 1440, toleranceMs: 2 * 60 * 1000 },
+      { label: '2h',  minutesBefore: 120,  toleranceMs: 2 * 60 * 1000 },
+      { label: '30m', minutesBefore: 30,   toleranceMs: 2 * 60 * 1000 },
     ]
 
     for (const window of windows) {

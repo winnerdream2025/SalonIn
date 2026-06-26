@@ -28,8 +28,8 @@ function storySelect(viewerId: string) {
     user: {
       select: {
         id: true,
-        workerProfile: { select: { name: true, photoUrl: true } },
-        salonProfile: { select: { name: true, photoUrls: true } },
+        workerProfile: { select: { id: true, name: true, photoUrl: true } },
+        salonProfile: { select: { id: true, name: true, photoUrls: true } },
       },
     },
     _count: { select: { views: true, likes: true, replies: true } },

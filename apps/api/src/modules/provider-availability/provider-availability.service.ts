@@ -164,12 +164,23 @@ export class ProviderAvailabilityService {
     const openDays = new Set(rules.filter((r) => r.isOpen).map((r) => r.dayOfWeek))
 
     const daysInMonth = new Date(year, month, 0).getDate()
-    const result: Record<string, boolean> = {}
+    const monthFrom = `${year}-${String(month).padStart(2, '0')}-01`
+    const monthTo   = `${year}-${String(month).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`
 
+    // Pull full-day exception blocks so we can mark those dates closed
+    const blockedExceptions = await this.db.availabilityException.findMany({
+      where: { providerId, providerType, isBlocked: true, date: { gte: monthFrom, lte: monthTo } },
+      select: { date: true, startTime: true },
+    }) as { date: string; startTime: string | null }[]
+    const fullyBlockedDates = new Set(
+      blockedExceptions.filter((e) => !e.startTime).map((e) => e.date),
+    )
+
+    const result: Record<string, boolean> = {}
     for (let day = 1; day <= daysInMonth; day++) {
       const d = new Date(year, month - 1, day)
       const dateStr = d.toISOString().slice(0, 10)
-      result[dateStr] = openDays.has(d.getDay())
+      result[dateStr] = openDays.has(d.getDay()) && !fullyBlockedDates.has(dateStr)
     }
     return result
   }

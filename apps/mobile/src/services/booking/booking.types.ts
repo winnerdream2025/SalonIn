@@ -85,15 +85,17 @@ export interface DayAvailabilityRule {
 }
 
 export interface CreateBookingPayload {
-  providerId:   string
-  providerType: string
-  serviceId:    string
-  clientName:   string
-  clientEmail:  string
-  clientPhone?: string
-  date:         string  // YYYY-MM-DD
-  startTime:    string  // HH:mm
-  notes?:       string
+  providerId:    string
+  providerType:  string
+  serviceId:     string
+  clientName:    string
+  clientEmail:   string
+  clientPhone?:  string
+  date:          string  // YYYY-MM-DD
+  startTime:     string  // HH:mm
+  notes?:        string
+  intakeFormId?: string
+  intakeAnswers?: { questionId: string; answer: unknown }[]
 }
 
 export type BookingStatus =
@@ -165,4 +167,36 @@ export interface StripeConnectStatus {
   connected: boolean
   accountId: string | null
   onboardingUrl: string | null
+}
+
+export interface IntakeQuestion {
+  id: string
+  question: string
+  type: 'text' | 'textarea' | 'radio' | 'checkbox' | 'select'
+  required: boolean
+  options?: string[]
+}
+
+export interface WaitlistEntry {
+  id: string
+  providerId: string
+  providerType: string
+  serviceId: string
+  date: string
+  startTime: string
+  clientUserId: string | null
+  clientName: string
+  clientEmail: string
+  clientPhone: string | null
+  notified: boolean
+  createdAt: string
+  service?: { name: string } | null
+}
+
+export interface IntakeForm {
+  id: string
+  title: string
+  description: string | null
+  questions: IntakeQuestion[]
+  serviceIds: string[]
 }

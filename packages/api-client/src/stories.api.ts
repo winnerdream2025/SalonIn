@@ -2,8 +2,8 @@ import { api } from './client'
 
 export interface StoryUser {
   id: string
-  workerProfile: { name: string; photoUrl: string | null } | null
-  salonProfile: { name: string; photoUrls: string[] } | null
+  workerProfile: { id: string; name: string; photoUrl: string | null } | null
+  salonProfile: { id: string; name: string; photoUrls: string[] } | null
 }
 
 export interface Story {
