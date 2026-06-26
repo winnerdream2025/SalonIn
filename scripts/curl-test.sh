@@ -1,5 +1,5 @@
 #!/bin/bash
-BASE="http://localhost:4000"
+BASE="${BASE_URL:-http://localhost:4000}"
 G='\033[0;32m'; R='\033[0;31m'; B='\033[0;34m'; NC='\033[0m'
 pass=0; fail=0
 
