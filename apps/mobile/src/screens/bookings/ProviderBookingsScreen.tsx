@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import {
   View,
   FlatList,
@@ -14,27 +14,32 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { Text, Skeleton, useTheme } from '@salonin/ui'
-import { workersApi, salonsApi } from '@salonin/api-client'
 import { Role } from '@salonin/types'
 import { useAuthStore } from '../../store/authStore'
-import {
-  useProviderBookings,
-  useProviderBookingActions,
-  useProviderProfile,
-} from '../../services/booking/booking.hooks'
-import type { ProviderBookingItem } from '../../services/booking/booking.types'
-import type { BookingProviderType } from '@salonin/types'
+import { useProviderBookings, useBookingActions } from '../../services/booking/booking.hooks'
+import type { BookingResult, BookingStatus } from '../../services/booking/booking.types'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-type ProviderTab = 'new' | 'confirmed' | 'completed' | 'cancelled'
+type ProviderTab = 'new' | 'today' | 'upcoming' | 'confirmed' | 'completed' | 'cancelled'
 
-const STATUS_FOR_TAB: Record<ProviderTab, ProviderBookingItem['status'][]> = {
-  new:       ['pending_payment'],
-  confirmed: ['confirmed'],
-  completed: ['completed', 'rescheduled'],
-  cancelled: ['cancelled', 'no-show'],
+const STATUS_FOR_TAB: Record<ProviderTab, BookingStatus[]> = {
+  new:       ['PENDING_PAYMENT', 'PENDING'],
+  today:     ['PENDING', 'PENDING_PAYMENT', 'CONFIRMED'],
+  upcoming:  ['PENDING', 'PENDING_PAYMENT', 'CONFIRMED'],
+  confirmed: ['CONFIRMED'],
+  completed: ['COMPLETED'],
+  cancelled: ['CANCELLED', 'NO_SHOW'],
 }
+
+type DateFilter = 'today' | 'tomorrow' | 'week' | 'month'
+
+const DATE_FILTER_LABELS: { key: DateFilter; label: string }[] = [
+  { key: 'today', label: 'Today' },
+  { key: 'tomorrow', label: 'Tomorrow' },
+  { key: 'week', label: 'This Week' },
+  { key: 'month', label: 'This Month' },
+]
 
 function formatDate(iso: string): string {
   const d = new Date(`${iso}T00:00:00`)
@@ -70,7 +75,7 @@ function RescheduleModal({
   theme,
 }: {
   visible: boolean
-  booking: ProviderBookingItem | null
+  booking: BookingResult | null
   onConfirm: (date: string, time: string) => void
   onClose: () => void
   isWorking: boolean
@@ -150,26 +155,55 @@ function RescheduleModal({
   )
 }
 
+// ─── Status pill ──────────────────────────────────────────────────────────────
+
+const STATUS_COLOR: Record<BookingStatus, string> = {
+  PENDING_PAYMENT: '#F59E0B',
+  PENDING:         '#F59E0B',
+  CONFIRMED:       '#1D9E75',
+  COMPLETED:       '#6366F1',
+  CANCELLED:       '#E24B4A',
+  NO_SHOW:         '#9CA3AF',
+}
+
+function StatusPill({ status }: { status: BookingStatus }) {
+  const label = status === 'PENDING_PAYMENT' ? 'Awaiting Payment'
+    : status === 'PENDING' ? 'Pending'
+    : status === 'CONFIRMED' ? 'Confirmed'
+    : status === 'COMPLETED' ? 'Completed'
+    : status === 'NO_SHOW' ? 'No-show'
+    : 'Cancelled'
+  return (
+    <View style={[styles.statusPill, { backgroundColor: STATUS_COLOR[status] + '22', borderColor: STATUS_COLOR[status] + '55' }]}>
+      <Text style={{ fontSize: 10, fontWeight: '700', color: STATUS_COLOR[status] }}>{label}</Text>
+    </View>
+  )
+}
+
 // ─── Booking card ─────────────────────────────────────────────────────────────
 
 function ProviderBookingCard({
   item,
-  tab,
   onConfirm,
   onCancel,
   onReschedule,
+  onComplete,
+  onNoShow,
   onMessage,
   theme,
 }: {
-  item: ProviderBookingItem
-  tab: ProviderTab
-  onConfirm: (b: ProviderBookingItem) => void
-  onCancel: (b: ProviderBookingItem) => void
-  onReschedule: (b: ProviderBookingItem) => void
-  onMessage: (b: ProviderBookingItem) => void
+  item: BookingResult
+  onConfirm: (b: BookingResult) => void
+  onCancel: (b: BookingResult) => void
+  onReschedule: (b: BookingResult) => void
+  onComplete: (b: BookingResult) => void
+  onNoShow: (b: BookingResult) => void
+  onMessage: (b: BookingResult) => void
   theme: ReturnType<typeof useTheme>['theme']
 }) {
-  const isActionable = tab === 'new' || tab === 'confirmed'
+  const isPending   = item.status === 'PENDING' || item.status === 'PENDING_PAYMENT'
+  const isConfirmed = item.status === 'CONFIRMED'
+  const isActive    = isPending || isConfirmed
 
   return (
     <View style={[styles.card, { backgroundColor: theme.bg.surface, borderColor: theme.border.subtle }]}>
@@ -188,15 +222,18 @@ function ProviderBookingCard({
             {item.clientEmail}
           </Text>
         </View>
-        <Text style={{ fontSize: 14, fontWeight: '800', color: '#D85A30' }}>
-          {item.price > 0 ? formatPrice(item.price, item.currency ?? 'USD') : 'Free'}
-        </Text>
+        <View style={{ alignItems: 'flex-end', gap: 4 }}>
+          <Text style={{ fontSize: 14, fontWeight: '800', color: '#D85A30' }}>
+            {item.price > 0 ? formatPrice(item.price, item.currency ?? 'USD') : 'Free'}
+          </Text>
+          <StatusPill status={item.status} />
+        </View>
       </View>
 
       {/* Service / date */}
       <View style={[styles.infoBlock, { borderTopColor: theme.border.subtle }]}>
         <Text numberOfLines={1} style={{ fontSize: 14, fontWeight: '600', color: theme.text.primary }}>
-          {item.serviceName}
+          {item.service?.name ?? 'Appointment'}
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 6 }}>
           <Ionicons name="calendar-outline" size={13} color={theme.text.tertiary} />
@@ -218,15 +255,24 @@ function ProviderBookingCard({
       </View>
 
       {/* Actions */}
-      {isActionable && (
+      {isActive && (
         <View style={styles.actionRow}>
-          {tab === 'new' && (
+          {isPending && (
             <TouchableOpacity
               onPress={() => onConfirm(item)}
               style={[styles.actionBtn, { backgroundColor: 'rgba(29,158,117,0.12)', borderColor: '#1D9E75' }]}
               activeOpacity={0.75}
             >
               <Text style={{ fontSize: 12, fontWeight: '700', color: '#1D9E75' }}>Confirm</Text>
+            </TouchableOpacity>
+          )}
+          {isConfirmed && (
+            <TouchableOpacity
+              onPress={() => onComplete(item)}
+              style={[styles.actionBtn, { backgroundColor: 'rgba(99,102,241,0.12)', borderColor: '#6366F1' }]}
+              activeOpacity={0.75}
+            >
+              <Text style={{ fontSize: 12, fontWeight: '700', color: '#6366F1' }}>Complete</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity
@@ -242,6 +288,13 @@ function ProviderBookingCard({
             activeOpacity={0.75}
           >
             <Text style={{ fontSize: 12, fontWeight: '600', color: '#E24B4A' }}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => onNoShow(item)}
+            style={[styles.actionBtn, { borderColor: theme.border.default }]}
+            activeOpacity={0.75}
+          >
+            <Text style={{ fontSize: 11, fontWeight: '600', color: theme.text.tertiary }}>No-show</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => onMessage(item)}
@@ -271,6 +324,8 @@ function TabBar({
 }) {
   const tabs: { key: ProviderTab; label: string }[] = [
     { key: 'new',       label: 'New' },
+    { key: 'today',     label: 'Today' },
+    { key: 'upcoming',  label: 'Upcoming' },
     { key: 'confirmed', label: 'Confirmed' },
     { key: 'completed', label: 'Done' },
     { key: 'cancelled', label: 'Cancelled' },
@@ -326,74 +381,101 @@ function TabBar({
   )
 }
 
-// ─── Inner screen (knows tenantSlug) ─────────────────────────────────────────
+// ─── Inner screen ─────────────────────────────────────────────────────────────
 
 function ProviderBookingsInner({
-  tenantSlug,
-  providerEmail,
-  providerPassword,
   theme,
   bottom,
 }: {
-  tenantSlug: string
-  providerEmail: string | null
-  providerPassword: string | null
   theme: ReturnType<typeof useTheme>['theme']
   bottom: number
 }) {
   const [activeTab, setActiveTab] = useState<ProviderTab>('new')
-  const [rescheduleTarget, setRescheduleTarget] = useState<ProviderBookingItem | null>(null)
+  const [dateFilter, setDateFilter] = useState<DateFilter | undefined>(undefined)
+  const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [rescheduleTarget, setRescheduleTarget] = useState<BookingResult | null>(null)
 
-  const { bookings, isLoading, error, refetch } = useProviderBookings(tenantSlug, providerEmail, providerPassword)
-  const { confirm, cancel, reschedule, isWorking } = useProviderBookingActions(tenantSlug, providerEmail, providerPassword)
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 400)
+    return () => clearTimeout(t)
+  }, [search])
 
-  const byTab = (tab: ProviderTab) =>
-    bookings.filter((b) => STATUS_FOR_TAB[tab].includes(b.status))
+  const today = new Date().toISOString().slice(0, 10)
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10)
 
-  const counts: Record<ProviderTab, number> = {
-    new:       byTab('new').length,
-    confirmed: byTab('confirmed').length,
-    completed: byTab('completed').length,
-    cancelled: byTab('cancelled').length,
+  const queryOpts = {
+    dateFilter: activeTab === 'today' ? 'today' as DateFilter
+      : activeTab === 'upcoming' ? 'week' as DateFilter
+      : dateFilter,
+    search: debouncedSearch || undefined,
   }
 
-  const filtered = byTab(activeTab)
+  const { bookings, isLoading, error, refetch } = useProviderBookings(queryOpts)
+  const actions = useBookingActions()
 
-  const handleConfirm = useCallback(async (b: ProviderBookingItem) => {
-    const result = await confirm(b.bookingId)
-    if (result) refetch()
-  }, [confirm, refetch])
+  const filtered = bookings.filter((b) => {
+    const statuses = STATUS_FOR_TAB[activeTab] as BookingStatus[]
+    if (!statuses.includes(b.status)) return false
+    if (activeTab === 'today') return b.date === today
+    if (activeTab === 'upcoming') return b.date >= tomorrow
+    return true
+  })
 
-  const handleCancel = useCallback((b: ProviderBookingItem) => {
-    Alert.alert('Cancel Booking', `Cancel ${b.clientName}'s ${b.serviceName}?`, [
-      { text: 'Keep', style: 'cancel' },
-      {
-        text: 'Cancel Booking',
-        style: 'destructive',
-        onPress: async () => {
-          const result = await cancel(b.bookingId)
-          if (result) refetch()
-        },
-      },
+  const counts: Record<ProviderTab, number> = {
+    new:       bookings.filter(b => (STATUS_FOR_TAB.new as BookingStatus[]).includes(b.status)).length,
+    today:     bookings.filter(b => (STATUS_FOR_TAB.today as BookingStatus[]).includes(b.status) && b.date === today).length,
+    upcoming:  bookings.filter(b => (STATUS_FOR_TAB.upcoming as BookingStatus[]).includes(b.status) && b.date >= tomorrow).length,
+    confirmed: bookings.filter(b => b.status === 'CONFIRMED').length,
+    completed: bookings.filter(b => b.status === 'COMPLETED').length,
+    cancelled: bookings.filter(b => b.status === 'CANCELLED' || b.status === 'NO_SHOW').length,
+  }
+
+  const handleConfirm = useCallback(async (b: BookingResult) => {
+    const ok = await actions.confirm(b.id)
+    if (!ok) Alert.alert('Error', 'Could not confirm booking.')
+    else refetch()
+  }, [actions, refetch])
+
+  const handleComplete = useCallback(async (b: BookingResult) => {
+    Alert.alert('Mark Complete', `Mark ${b.clientName}'s appointment as completed?`, [
+      { text: 'Not yet', style: 'cancel' },
+      { text: 'Complete', onPress: async () => {
+        const ok = await actions.complete(b.id)
+        if (!ok) Alert.alert('Error', 'Could not mark as complete.')
+        else refetch()
+      }},
     ])
-  }, [cancel, refetch])
+  }, [actions, refetch])
 
-  const handleReschedule = useCallback((b: ProviderBookingItem) => {
-    setRescheduleTarget(b)
-  }, [])
+  const handleNoShow = useCallback(async (b: BookingResult) => {
+    Alert.alert('Mark No-show', `${b.clientName} didn't show up?`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Mark No-show', style: 'destructive', onPress: async () => {
+        const ok = await actions.noShow(b.id)
+        if (!ok) Alert.alert('Error', 'Could not mark as no-show.')
+        else refetch()
+      }},
+    ])
+  }, [actions, refetch])
+
+  const handleCancel = useCallback((b: BookingResult) => {
+    Alert.alert('Cancel Booking', `Cancel ${b.clientName}'s ${b.service?.name ?? 'booking'}?`, [
+      { text: 'Keep', style: 'cancel' },
+      { text: 'Cancel Booking', style: 'destructive', onPress: async () => {
+        const ok = await actions.cancel(b.id)
+        if (!ok) Alert.alert('Error', 'Could not cancel booking.')
+        else refetch()
+      }},
+    ])
+  }, [actions, refetch])
 
   const handleRescheduleConfirm = useCallback(async (date: string, time: string) => {
     if (!rescheduleTarget) return
-    const result = await reschedule(rescheduleTarget.bookingId, date, time)
-    if (result) {
-      setRescheduleTarget(null)
-      refetch()
-    }
-  }, [rescheduleTarget, reschedule, refetch])
-
-  const handleMessage = useCallback((_b: ProviderBookingItem) => {
-    router.push('/inbox' as never)
-  }, [])
+    const ok = await actions.reschedule(rescheduleTarget.id, date, time)
+    if (!ok) Alert.alert('Error', 'Could not reschedule booking.')
+    else { setRescheduleTarget(null); refetch() }
+  }, [actions, rescheduleTarget, refetch])
 
   if (isLoading) {
     return (
@@ -408,11 +490,7 @@ function ProviderBookingsInner({
       <View style={styles.centeredState}>
         <Ionicons name="alert-circle-outline" size={40} color={theme.text.tertiary} />
         <Text style={{ color: theme.text.secondary, marginTop: 12, textAlign: 'center' }}>{error}</Text>
-        <TouchableOpacity
-          onPress={refetch}
-          style={[styles.retryBtn, { borderColor: theme.border.default }]}
-          activeOpacity={0.75}
-        >
+        <TouchableOpacity onPress={refetch} style={[styles.retryBtn, { borderColor: theme.border.default }]} activeOpacity={0.75}>
           <Text style={{ fontWeight: '600', color: theme.text.primary }}>Retry</Text>
         </TouchableOpacity>
       </View>
@@ -421,37 +499,70 @@ function ProviderBookingsInner({
 
   return (
     <>
-      <TabBar active={activeTab} onSelect={setActiveTab} counts={counts} theme={theme} />
+      {/* Search bar */}
+      <View style={[styles.searchRow, { borderBottomColor: theme.border.subtle }]}>
+        <View style={[styles.searchBox, { backgroundColor: theme.bg.input, borderColor: theme.border.default }]}>
+          <Ionicons name="search-outline" size={16} color={theme.text.tertiary} />
+          <TextInput
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Search client or ref code..."
+            placeholderTextColor={theme.text.tertiary}
+            style={{ flex: 1, fontSize: 14, color: theme.text.primary, marginLeft: 8 }}
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch('')}>
+              <Ionicons name="close-circle" size={16} color={theme.text.tertiary} />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      {/* Date filter chips (shown on non-date-specific tabs) */}
+      {activeTab !== 'today' && activeTab !== 'upcoming' && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+          {DATE_FILTER_LABELS.map((f) => (
+            <TouchableOpacity
+              key={f.key}
+              onPress={() => setDateFilter(dateFilter === f.key ? undefined : f.key)}
+              style={[
+                styles.chip,
+                dateFilter === f.key
+                  ? { backgroundColor: '#D85A30', borderColor: '#D85A30' }
+                  : { backgroundColor: theme.bg.input, borderColor: theme.border.default },
+              ]}
+              activeOpacity={0.75}
+            >
+              <Text style={{ fontSize: 12, fontWeight: '600', color: dateFilter === f.key ? '#FFF' : theme.text.secondary }}>
+                {f.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
+
+      <TabBar active={activeTab} onSelect={(t) => { setActiveTab(t); setDateFilter(undefined) }} counts={counts} theme={theme} />
 
       {filtered.length === 0 ? (
         <View style={styles.centeredState}>
           <Ionicons name="calendar-outline" size={40} color={theme.text.tertiary} />
-          <Text style={{ color: theme.text.secondary, marginTop: 12 }}>
-            {activeTab === 'new'
-              ? 'No new bookings.'
-              : activeTab === 'confirmed'
-              ? 'No confirmed bookings.'
-              : activeTab === 'completed'
-              ? 'No completed bookings yet.'
-              : 'No cancelled bookings.'}
-          </Text>
+          <Text style={{ color: theme.text.secondary, marginTop: 12 }}>No bookings found.</Text>
         </View>
       ) : (
         <FlatList
           data={filtered}
-          keyExtractor={(item) => item.bookingId}
+          keyExtractor={(item) => item.id}
           contentContainerStyle={{ padding: 16, paddingBottom: bottom + 24 }}
-          refreshControl={
-            <RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={theme.text.tertiary} />
-          }
+          refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={theme.text.tertiary} />}
           renderItem={({ item }) => (
             <ProviderBookingCard
               item={item}
-              tab={activeTab}
               onConfirm={handleConfirm}
               onCancel={handleCancel}
-              onReschedule={handleReschedule}
-              onMessage={handleMessage}
+              onReschedule={(b) => setRescheduleTarget(b)}
+              onComplete={handleComplete}
+              onNoShow={handleNoShow}
+              onMessage={() => router.push('/inbox' as never)}
               theme={theme}
             />
           )}
@@ -465,92 +576,13 @@ function ProviderBookingsInner({
         booking={rescheduleTarget}
         onConfirm={handleRescheduleConfirm}
         onClose={() => setRescheduleTarget(null)}
-        isWorking={isWorking}
+        isWorking={actions.isWorking}
         theme={theme}
       />
     </>
   )
 }
 
-// ─── Resolver wrapper ─────────────────────────────────────────────────────────
-
-function ProviderBookingsResolver({
-  theme,
-  bottom,
-}: {
-  theme: ReturnType<typeof useTheme>['theme']
-  bottom: number
-}) {
-  const currentUser = useAuthStore((s) => s.user)
-  const [profileId, setProfileId] = useState<string | null>(null)
-  const [providerType, setProviderType] = useState<BookingProviderType>('professional')
-  const [loadingProfile, setLoadingProfile] = useState(true)
-  const [profileError, setProfileError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!currentUser) return
-    const isWorker = currentUser.role === Role.WORKER
-    const fetchMe = isWorker
-      ? workersApi.getMe().then((p) => ({ id: p.id, type: 'professional' as BookingProviderType }))
-      : salonsApi.getMe().then((p) => ({ id: p.id, type: 'salon' as BookingProviderType }))
-
-    fetchMe
-      .then(({ id, type }) => {
-        setProfileId(id)
-        setProviderType(type)
-      })
-      .catch((e: unknown) => {
-        setProfileError(e instanceof Error ? e.message : 'Could not load profile')
-      })
-      .finally(() => setLoadingProfile(false))
-  }, [currentUser])
-
-  const { tenantSlug, providerEmail, providerPassword, isLoading: isResolvingSlug, error: slugError } = useProviderProfile(
-    profileId ?? undefined,
-    providerType,
-  )
-
-  if (loadingProfile || isResolvingSlug) {
-    return (
-      <View style={{ padding: 16, gap: 12 }}>
-        {[1, 2, 3].map((k) => <Skeleton key={k} height={140} radius={16} />)}
-      </View>
-    )
-  }
-
-  const resolveError = profileError ?? slugError
-  if (resolveError) {
-    return (
-      <View style={styles.centeredState}>
-        <Ionicons name="alert-circle-outline" size={40} color={theme.text.tertiary} />
-        <Text style={{ color: theme.text.secondary, marginTop: 12, textAlign: 'center' }}>{resolveError}</Text>
-      </View>
-    )
-  }
-
-  if (!tenantSlug) {
-    return (
-      <View style={styles.centeredState}>
-        <Ionicons name="link-outline" size={40} color={theme.text.tertiary} />
-        <Text style={{ color: theme.text.secondary, marginTop: 12, textAlign: 'center', fontSize: 15 }}>
-          No booking profile connected.
-        </Text>
-        <Text style={{ color: theme.text.tertiary, marginTop: 8, textAlign: 'center', fontSize: 13 }}>
-          Enable bookings in your profile settings to start receiving appointments.
-        </Text>
-        <TouchableOpacity
-          onPress={() => router.push('/worker/edit' as never)}
-          style={[styles.retryBtn, { borderColor: '#D85A30' }]}
-          activeOpacity={0.75}
-        >
-          <Text style={{ fontWeight: '700', color: '#D85A30' }}>Go to Settings</Text>
-        </TouchableOpacity>
-      </View>
-    )
-  }
-
-  return <ProviderBookingsInner tenantSlug={tenantSlug} providerEmail={providerEmail} providerPassword={providerPassword} theme={theme} bottom={bottom} />
-}
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
@@ -580,7 +612,7 @@ export default function ProviderBookingsScreen() {
       <View style={[styles.header, { paddingTop: top + 8, borderBottomColor: theme.border.subtle }]}>
         <Text style={styles.pageTitle}>Bookings</Text>
       </View>
-      <ProviderBookingsResolver theme={theme} bottom={bottom} />
+      <ProviderBookingsInner theme={theme} bottom={bottom} />
     </View>
   )
 }
@@ -692,5 +724,35 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     paddingVertical: 12,
     paddingHorizontal: 16,
+  },
+  statusPill: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  searchRow: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  chipRow: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 8,
+  },
+  chip: {
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
   },
 })

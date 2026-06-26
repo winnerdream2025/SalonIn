@@ -41,6 +41,12 @@ export interface UpdateWorkerPayload {
   travelRadius?: number | undefined
   travelFee?: number | undefined
   availabilityEnabled?: boolean | undefined
+  instantBooking?: boolean | undefined
+  requiresDeposit?: boolean | undefined
+  cancellationWindowHours?: number | undefined
+  rescheduleWindowHours?: number | undefined
+  lateFeeEnabled?: boolean | undefined
+  lateFeeAmount?: number | undefined
 }
 
 export interface AddPortfolioItemInput {

@@ -225,6 +225,70 @@ else
 fi
 rm -f "$TMP_M4A"
 
+# ── [14] AVAILABILITY EXCEPTIONS ─────────────────
+echo -e "\n${B}[14] AVAILABILITY EXCEPTIONS${NC}"
+
+# GET — empty list is fine
+chk "GET /availability/exceptions (worker)" GET "/availability/exceptions?providerId=$WID&providerType=worker" 200 "" "$WT"
+
+# POST — add a full-day block
+EX_DATE=$(python3 -c "from datetime import datetime,timedelta; print((datetime.utcnow()+timedelta(days=10)).strftime('%Y-%m-%d'))")
+EX_RESP=$(curl -s -w "\n%{http_code}" -X POST "$BASE/availability/exceptions" \
+  -H "Content-Type: application/json" -H "Authorization: Bearer $WT" \
+  -d "{\"date\":\"$EX_DATE\",\"isBlocked\":true,\"reason\":\"Curl test block\"}")
+EX_CODE=$(echo "$EX_RESP" | tail -1)
+EX_BODY=$(echo "$EX_RESP" | sed '$d')
+EX_ID=$(echo "$EX_BODY" | python3 -c 'import sys,json; d=json.load(sys.stdin); print((d.get("data") or d).get("id",""))' 2>/dev/null)
+[ "$EX_CODE" = "201" ] \
+  && { echo -e "${G}✓${NC} [201] POST /availability/exceptions → id=$EX_ID"; ((pass++)); } \
+  || { echo -e "${R}✗${NC} [$EX_CODE vs 201] POST /availability/exceptions"; echo "     ${EX_BODY:0:200}"; ((fail++)); }
+
+# DELETE — remove it
+if [ -n "$EX_ID" ]; then
+  DEL_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE "$BASE/availability/exceptions/$EX_ID" \
+    -H "Authorization: Bearer $WT")
+  [ "$DEL_CODE" = "200" ] || [ "$DEL_CODE" = "204" ] \
+    && { echo -e "${G}✓${NC} [$DEL_CODE] DELETE /availability/exceptions/:id"; ((pass++)); } \
+    || { echo -e "${R}✗${NC} [$DEL_CODE vs 200/204] DELETE /availability/exceptions/:id"; ((fail++)); }
+fi
+
+# ── [15] BOOKINGS — provider reschedule ───────────
+echo -e "\n${B}[15] BOOKINGS — provider reschedule${NC}"
+
+# 404 on non-existent booking
+RESCHEDULE_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X PATCH "$BASE/bookings/nonexistent-id/reschedule" \
+  -H "Content-Type: application/json" -H "Authorization: Bearer $WT" \
+  -d '{"date":"2026-12-01","startTime":"10:00"}')
+[ "$RESCHEDULE_CODE" = "404" ] || [ "$RESCHEDULE_CODE" = "403" ] \
+  && { echo -e "${G}✓${NC} [$RESCHEDULE_CODE] PATCH /bookings/:id/reschedule (not found → 404/403)"; ((pass++)); } \
+  || { echo -e "${R}✗${NC} [$RESCHEDULE_CODE vs 404/403] PATCH /bookings/:id/reschedule (not found)"; ((fail++)); }
+
+# 401 with no auth
+chk "PATCH /bookings/:id/reschedule (no auth → 401)" \
+  PATCH /bookings/nonexistent/reschedule 401 '{"date":"2026-12-01","startTime":"10:00"}'
+
+# ── [16] PHASE B — no-show + filtered bookings + analytics + clients ───────────
+echo -e "\n${B}[16] PHASE B — Provider Operations${NC}"
+
+# no-show on non-existent booking → 404/403
+NS_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X PATCH "$BASE/bookings/nonexistent/no-show" \
+  -H "Authorization: Bearer $WT")
+[ "$NS_CODE" = "404" ] || [ "$NS_CODE" = "403" ] \
+  && { echo -e "${G}✓${NC} [$NS_CODE] PATCH /bookings/:id/no-show (not found → 404/403)"; ((pass++)); } \
+  || { echo -e "${R}✗${NC} [$NS_CODE vs 404/403] PATCH /bookings/:id/no-show"; ((fail++)); }
+
+# no-show without auth → 401
+chk "PATCH /bookings/:id/no-show (no auth → 401)" PATCH /bookings/nonexistent/no-show 401
+
+# filtered provider bookings (authenticated)
+chk "GET /bookings/provider/filtered (worker)" GET "/bookings/provider/filtered?dateFilter=today" 200 "" "$WT"
+
+# analytics (authenticated)
+chk "GET /bookings/analytics (worker, 30d)" GET "/bookings/analytics?period=30d" 200 "" "$WT"
+
+# client list (authenticated)
+chk "GET /bookings/clients (worker)" GET "/bookings/clients" 200 "" "$WT"
+
 # ── SUMMARY ───────────────────────────────────────
 TOTAL=$((pass+fail))
 echo ""

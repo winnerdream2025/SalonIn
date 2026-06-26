@@ -10,14 +10,12 @@ import {
   TextInput,
   ActivityIndicator,
 } from 'react-native'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { Text, Skeleton, useTheme } from '@salonin/ui'
-import { bookingProfileApi } from '@salonin/api-client'
-import { externalBookingApi } from '../../services/booking/booking.api'
-import type { ClientBookingItem } from '@salonin/types'
+import { bookingsApi } from '../../services/booking/booking.api'
+import type { BookingResult } from '../../services/booking/booking.types'
 import { useAuthStore } from '../../store/authStore'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -26,9 +24,9 @@ type BookingTab = 'upcoming' | 'completed' | 'cancelled'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function classifyStatus(status: ClientBookingItem['status']): BookingTab {
-  if (status === 'pending' || status === 'confirmed' || status === 'pending_payment') return 'upcoming'
-  if (status === 'cancelled') return 'cancelled'
+function classifyStatus(status: BookingResult['status']): BookingTab {
+  if (status === 'PENDING' || status === 'CONFIRMED' || status === 'PENDING_PAYMENT') return 'upcoming'
+  if (status === 'CANCELLED') return 'cancelled'
   return 'completed'
 }
 
@@ -55,23 +53,27 @@ function formatPrice(price: number, currency: string): string {
   }).format(price)
 }
 
-function statusColor(status: ClientBookingItem['status']): string {
+function statusColor(status: BookingResult['status']): string {
   switch (status) {
-    case 'confirmed': return '#1D9E75'
-    case 'pending':   return '#EF9F27'
-    case 'cancelled': return '#E24B4A'
-    case 'completed': return '#6B6B6B'
-    default:          return '#6B6B6B'
+    case 'CONFIRMED':      return '#1D9E75'
+    case 'PENDING':        return '#EF9F27'
+    case 'PENDING_PAYMENT':return '#EF9F27'
+    case 'CANCELLED':      return '#E24B4A'
+    case 'COMPLETED':      return '#6B6B6B'
+    case 'NO_SHOW':        return '#6B6B6B'
+    default:               return '#6B6B6B'
   }
 }
 
-function statusLabel(status: ClientBookingItem['status']): string {
+function statusLabel(status: BookingResult['status']): string {
   switch (status) {
-    case 'confirmed': return 'Confirmed'
-    case 'pending':   return 'Pending'
-    case 'cancelled': return 'Cancelled'
-    case 'completed': return 'Completed'
-    default:          return status
+    case 'CONFIRMED':       return 'Confirmed'
+    case 'PENDING':         return 'Pending'
+    case 'PENDING_PAYMENT': return 'Pending Payment'
+    case 'CANCELLED':       return 'Cancelled'
+    case 'COMPLETED':       return 'Completed'
+    case 'NO_SHOW':         return 'No Show'
+    default:                return status
   }
 }
 
@@ -84,10 +86,10 @@ function BookingCard({
   onReschedule,
   theme,
 }: {
-  item: ClientBookingItem
-  onMessage: (item: ClientBookingItem) => void
-  onCancel: (item: ClientBookingItem) => void
-  onReschedule: (item: ClientBookingItem) => void
+  item: BookingResult
+  onMessage: (item: BookingResult) => void
+  onCancel: (item: BookingResult) => void
+  onReschedule: (item: BookingResult) => void
   theme: ReturnType<typeof useTheme>['theme']
 }) {
   const tab = classifyStatus(item.status)
@@ -99,10 +101,10 @@ function BookingCard({
       <View style={styles.cardHeader}>
         <View style={{ flex: 1 }}>
           <Text numberOfLines={1} style={{ fontSize: 15, fontWeight: '800', color: theme.text.primary }}>
-            {item.providerName}
+            {item.service?.name ?? 'Appointment'}
           </Text>
           <Text numberOfLines={1} style={{ fontSize: 13, color: theme.text.secondary, marginTop: 2 }}>
-            {item.serviceName}
+            {item.clientName}
           </Text>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: `${statusColor(item.status)}18` }]}>
@@ -222,7 +224,7 @@ export default function BookingsScreen() {
   const currentUser = useAuthStore((s) => s.user)
 
   const [activeTab, setActiveTab]     = useState<BookingTab>('upcoming')
-  const [allBookings, setAllBookings] = useState<ClientBookingItem[]>([])
+  const [allBookings, setAllBookings] = useState<BookingResult[]>([])
   const [isLoading, setIsLoading]     = useState(true)
   const [error, setError]             = useState<string | null>(null)
 
@@ -231,7 +233,7 @@ export default function BookingsScreen() {
     setIsLoading(true)
     setError(null)
 
-    bookingProfileApi
+    bookingsApi
       .getMyBookings()
       .then((data) => setAllBookings(data))
       .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Failed to load bookings'))
@@ -248,38 +250,36 @@ export default function BookingsScreen() {
     cancelled: allBookings.filter((b) => classifyStatus(b.status) === 'cancelled').length,
   }
 
-  const [rescheduleTarget, setRescheduleTarget] = useState<ClientBookingItem | null>(null)
+  const [rescheduleTarget, setRescheduleTarget] = useState<BookingResult | null>(null)
   const [rescheduleDate,    setRescheduleDate]   = useState('')
   const [rescheduleTime,    setRescheduleTime]   = useState('')
   const [isActioning,      setIsActioning]       = useState(false)
 
-  const handleMessage = useCallback((_item: ClientBookingItem) => {
+  const handleMessage = useCallback((_item: BookingResult) => {
     if (!currentUser) return
     router.push('/inbox' as never)
   }, [currentUser])
 
-  const handleCancel = useCallback((item: ClientBookingItem) => {
+  const handleCancel = useCallback((item: BookingResult) => {
     Alert.alert(
       'Cancel Booking',
-      `Cancel your ${item.serviceName} on ${formatDate(item.date)}?`,
+      `Cancel your ${item.service?.name ?? 'booking'} on ${formatDate(item.date)}?`,
       [
         { text: 'Keep It', style: 'cancel' },
         {
           text: 'Cancel Booking',
           style: 'destructive',
           onPress: async () => {
-            const token = await AsyncStorage.getItem(`cancelToken:${item.id}`)
-            if (!token) {
+            if (!item.cancelToken) {
               Alert.alert('Cannot cancel', 'Please message the provider to cancel.')
               return
             }
             setIsActioning(true)
             try {
-              await externalBookingApi.clientCancelBooking(item.tenantSlug, item.id, token)
-              await AsyncStorage.removeItem(`cancelToken:${item.id}`)
+              await bookingsApi.clientCancel(item.id, item.cancelToken)
               load()
             } catch {
-              Alert.alert('Not available yet', 'Please message the provider to cancel.')
+              Alert.alert('Error', 'Could not cancel booking. Please try again.')
             } finally { setIsActioning(false) }
           },
         },
@@ -287,7 +287,7 @@ export default function BookingsScreen() {
     )
   }, [load])
 
-  const handleReschedule = useCallback((item: ClientBookingItem) => {
+  const handleReschedule = useCallback((item: BookingResult) => {
     setRescheduleTarget(item)
     setRescheduleDate('')
     setRescheduleTime('')
@@ -295,13 +295,11 @@ export default function BookingsScreen() {
 
   const handleRescheduleConfirm = useCallback(async () => {
     if (!rescheduleTarget || !rescheduleDate.trim() || !rescheduleTime.trim()) {
-      Alert.alert('Missing info', 'Enter a date (YYYY-MM-DD) and time (e.g. 10:00 AM).')
+      Alert.alert('Missing info', 'Enter a date (YYYY-MM-DD) and time (e.g. 14:30).')
       return
     }
-    const rescheduleToken = await AsyncStorage.getItem(`rescheduleToken:${rescheduleTarget.id}`)
-    const cancelToken     = await AsyncStorage.getItem(`cancelToken:${rescheduleTarget.id}`)
-    const token     = rescheduleToken ?? cancelToken
-    const tokenType = rescheduleToken ? 'rescheduleToken' as const : 'cancelToken' as const
+    const token     = rescheduleTarget.rescheduleToken ?? rescheduleTarget.cancelToken
+    const tokenType = rescheduleTarget.rescheduleToken ? 'rescheduleToken' as const : 'cancelToken' as const
     if (!token) {
       Alert.alert('Cannot reschedule', 'Please message the provider to reschedule.')
       setRescheduleTarget(null)
@@ -309,14 +307,11 @@ export default function BookingsScreen() {
     }
     setIsActioning(true)
     try {
-      await externalBookingApi.clientRescheduleBooking(rescheduleTarget.tenantSlug, rescheduleTarget.id, token, rescheduleDate.trim(), rescheduleTime.trim(), tokenType)
-      if (rescheduleToken) {
-        await AsyncStorage.removeItem(`rescheduleToken:${rescheduleTarget.id}`)
-      }
+      await bookingsApi.clientReschedule(rescheduleTarget.id, token, tokenType, rescheduleDate.trim(), rescheduleTime.trim())
       setRescheduleTarget(null)
       load()
     } catch {
-      Alert.alert('Not available yet', 'Please message the provider to reschedule.')
+      Alert.alert('Error', 'Could not reschedule booking. Please try again.')
     } finally { setIsActioning(false) }
   }, [rescheduleTarget, rescheduleDate, rescheduleTime, load])
 
@@ -377,7 +372,7 @@ export default function BookingsScreen() {
       ) : (
         <FlatList
           data={filtered}
-          keyExtractor={(item) => `${item.tenantSlug}-${item.id}`}
+          keyExtractor={(item) => item.id}
           contentContainerStyle={{ padding: 16, paddingBottom: bottom + 24 }}
           refreshControl={
             <RefreshControl

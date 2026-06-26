@@ -88,6 +88,15 @@ enum AccountType {
   SALON
 }
 
+enum BookingStatus {
+  PENDING_PAYMENT
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
 enum NotificationType {
   NEW_MESSAGE
   NEW_APPLICATION
@@ -108,6 +117,8 @@ enum NotificationType {
   BOOKING_REMINDER
   BOOKING_CANCELLED
   BOOKING_RESCHEDULED
+  BOOKING_COMPLETED
+  BOOKING_NO_SHOW
 }
 
 // ─── Models ───────────────────────────────────────────────────────────────────
@@ -191,6 +202,14 @@ model WorkerProfile {
   travelRadius           Int?
   travelFee              Float?
   availabilityEnabled    Boolean  @default(false)
+  stripeAccountId        String?
+  stripeConnectEnabled   Boolean  @default(false)
+  instantBooking         Boolean  @default(false)
+  requiresDeposit        Boolean  @default(false)
+  cancellationWindowHours Int?
+  rescheduleWindowHours  Int?
+  lateFeeEnabled         Boolean  @default(false)
+  lateFeeAmount          Float?
 
   portfolioItems  PortfolioItem[]
   jobApplications JobApplication[]
@@ -221,8 +240,16 @@ model SalonProfile {
   rating      Float    @default(0)
   reviewCount Int      @default(0)
   // Booking capabilities
-  acceptsBookings  Boolean @default(false)
-  bookingProfileId String?
+  acceptsBookings      Boolean @default(false)
+  bookingProfileId     String?
+  stripeAccountId      String?
+  stripeConnectEnabled Boolean @default(false)
+  instantBooking       Boolean @default(false)
+  requiresDeposit      Boolean @default(false)
+  cancellationWindowHours Int?
+  rescheduleWindowHours   Int?
+  lateFeeEnabled       Boolean @default(false)
+  lateFeeAmount        Float?
 
   jobPosts JobPost[]
 }
@@ -563,14 +590,26 @@ model Follow {
   @@index([followingId])
 }
 
-// ─── Booking bridge ────────────────────────────────────────────────────────────
+model AvailabilityException {
+  id           String   @id @default(uuid())
+  providerId   String
+  providerType String
+  date         String
+  startTime    String?
+  endTime      String?
+  isBlocked    Boolean  @default(true)
+  reason       String?
+  createdAt    DateTime @default(now())
 
-/// Maps a SalonIn provider (professional or salon) to an external booking tenant.
-/// providerId references WorkerProfile.id OR SalonProfile.id depending on providerType.
+  @@index([providerId, providerType, date])
+}
+
+// ─── Booking bridge (legacy — kept for migration safety) ──────────────────────
+
 model ProviderBookingProfile {
   id                      String   @id @default(uuid())
   providerId              String
-  providerType            String   // "professional" | "salon"
+  providerType            String
   tenantSlug              String
   externalBookingSystemId String?
   isActive                Boolean  @default(true)
@@ -581,4 +620,97 @@ model ProviderBookingProfile {
 
   @@unique([providerId, providerType])
   @@index([tenantSlug])
+}
+
+// ─── Native Booking Engine ────────────────────────────────────────────────────
+
+model ProviderService {
+  id           String    @id @default(uuid())
+  providerId   String
+  providerType String
+  name         String
+  description  String?
+  duration     Int
+  price        Float
+  currency     String    @default("USD")
+  category     String?
+  isActive     Boolean   @default(true)
+  sortOrder    Int       @default(0)
+  depositAmount Float?
+  images       String[]  @default([])
+  bufferBefore Int       @default(0)
+  bufferAfter  Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  bookings     Booking[]
+
+  @@index([providerId, providerType, isActive])
+}
+
+model ProviderAvailabilityRule {
+  id           String   @id @default(uuid())
+  providerId   String
+  providerType String
+  dayOfWeek    Int
+  isOpen       Boolean  @default(true)
+  openTime     String
+  closeTime    String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([providerId, providerType, dayOfWeek])
+  @@index([providerId, providerType])
+}
+
+model Booking {
+  id                   String          @id @default(uuid())
+  providerId           String
+  providerType         String
+  serviceId            String
+  service              ProviderService @relation(fields: [serviceId], references: [id])
+  clientUserId         String?
+  clientName           String
+  clientEmail          String
+  clientPhone          String?
+  date                 String
+  startTime            String
+  endTime              String
+  status               BookingStatus   @default(PENDING)
+  price                Float
+  currency             String          @default("USD")
+  notes                String?
+  cancelToken          String          @unique @default(cuid())
+  rescheduleToken      String?         @unique @default(cuid())
+  cancelTokenExpiresAt DateTime?
+  confirmationCode     String?         @unique
+  cancelReason         String?
+  depositAmount        Float?
+  depositPaid          Boolean         @default(false)
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  payment              BookingPayment?
+
+  @@unique([providerId, providerType, date, startTime])
+  @@index([providerId, providerType, date])
+  @@index([clientEmail, status])
+  @@index([clientUserId, status])
+  @@index([cancelToken])
+  @@index([status, date])
+}
+
+model BookingPayment {
+  id                    String    @id @default(uuid())
+  bookingId             String    @unique
+  booking               Booking   @relation(fields: [bookingId], references: [id])
+  stripePaymentIntentId String?   @unique
+  amount                Float
+  currency              String    @default("USD")
+  status                String    @default("pending")
+  paidAt                DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([stripePaymentIntentId])
 }

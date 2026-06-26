@@ -1,4 +1,4 @@
-import { ArrayMaxSize, IsArray, IsBoolean, IsOptional, IsString, IsUrl, MaxLength } from 'class-validator'
+import { ArrayMaxSize, IsArray, IsBoolean, IsInt, IsNumber, IsOptional, IsString, IsUrl, Max, MaxLength, Min } from 'class-validator'
 
 export class UpdateSalonProfileDto {
   @IsOptional()
@@ -33,4 +33,34 @@ export class UpdateSalonProfileDto {
   @IsOptional()
   @IsBoolean()
   acceptsBookings?: boolean
+
+  @IsOptional()
+  @IsBoolean()
+  instantBooking?: boolean
+
+  @IsOptional()
+  @IsBoolean()
+  requiresDeposit?: boolean
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(720)
+  cancellationWindowHours?: number
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(720)
+  rescheduleWindowHours?: number
+
+  @IsOptional()
+  @IsBoolean()
+  lateFeeEnabled?: boolean
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(500)
+  lateFeeAmount?: number
 }

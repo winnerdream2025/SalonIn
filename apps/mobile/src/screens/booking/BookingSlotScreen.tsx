@@ -10,8 +10,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { Text, Skeleton, useTheme } from '@salonin/ui'
-import { useBookingAvailability } from '../../services/booking/booking.hooks'
-import type { BookingAvailabilitySlot } from '../../services/booking/booking.types'
+import { useAvailabilitySlots } from '../../services/booking/booking.hooks'
+import type { AvailabilitySlot } from '../../services/booking/booking.types'
 
 // Generate the next 14 days for the date strip
 function buildDateRange(): string[] {
@@ -45,25 +45,23 @@ function formatTime12(hhmm: string): string {
 
 export default function BookingSlotScreen() {
   const {
-    tenantSlug,
+    providerId,
+    providerType,
     serviceId,
     serviceName,
     servicePrice,
     serviceCurrency,
     serviceDuration,
     providerName,
-    providerEmail,
-    providerPassword,
   } = useLocalSearchParams<{
-    tenantSlug: string
+    providerId: string
+    providerType: string
     serviceId: string
     serviceName: string
     servicePrice: string
     serviceCurrency: string
     serviceDuration: string
     providerName: string
-    providerEmail: string
-    providerPassword: string
   }>()
 
   const { theme } = useTheme()
@@ -71,37 +69,34 @@ export default function BookingSlotScreen() {
 
   const [selectedDate, setSelectedDate] = useState<string>(DATE_RANGE[0] ?? '')
 
-  const { slots, isLoading, error } = useBookingAvailability(
-    tenantSlug ?? null,
-    serviceId ?? null,
+  const { slots, isLoading } = useAvailabilitySlots(
+    providerId ?? null,
+    providerType ?? 'professional',
     selectedDate,
+    parseInt(serviceDuration ?? '60', 10),
   )
 
   const availableSlots = slots.filter((s) => s.available !== false)
 
   const handleSelectSlot = useCallback(
-    (slot: BookingAvailabilitySlot) => {
+    (slot: AvailabilitySlot) => {
       router.push({
         pathname: '/booking/confirm',
         params: {
-          tenantSlug,
+          providerId,
+          providerType: providerType ?? 'professional',
           serviceId,
           serviceName,
           servicePrice,
           serviceCurrency,
           serviceDuration,
           date: selectedDate,
-          startTime: slot.startTime,
-          endTime: slot.endTime,
-          staffId: slot.staffId ?? '',
-          staffName: slot.staffName ?? '',
-          providerName,
-          providerEmail: providerEmail ?? '',
-          providerPassword: providerPassword ?? '',
+          startTime: slot.time,
+          providerName: providerName ?? '',
         },
       } as never)
     },
-    [tenantSlug, serviceId, serviceName, servicePrice, serviceCurrency, serviceDuration, selectedDate, providerName, providerEmail, providerPassword],
+    [providerId, providerType, serviceId, serviceName, servicePrice, serviceCurrency, serviceDuration, selectedDate, providerName],
   )
 
   return (
@@ -162,11 +157,6 @@ export default function BookingSlotScreen() {
             <Skeleton key={k} height={52} radius={12} />
           ))}
         </View>
-      ) : error ? (
-        <View style={styles.centeredState}>
-          <Ionicons name="alert-circle-outline" size={36} color={theme.text.tertiary} />
-          <Text style={{ color: theme.text.secondary, marginTop: 10, textAlign: 'center' }}>{error}</Text>
-        </View>
       ) : availableSlots.length === 0 ? (
         <View style={styles.centeredState}>
           <Ionicons name="calendar-outline" size={36} color={theme.text.tertiary} />
@@ -175,7 +165,7 @@ export default function BookingSlotScreen() {
       ) : (
         <FlatList
           data={availableSlots}
-          keyExtractor={(item, i) => `${item.date}-${item.startTime}-${i}`}
+          keyExtractor={(item, i) => `${selectedDate}-${item.time}-${i}`}
           contentContainerStyle={{ padding: 16, paddingBottom: bottom + 24 }}
           renderItem={({ item }) => (
             <TouchableOpacity
@@ -184,19 +174,9 @@ export default function BookingSlotScreen() {
               style={[styles.slotRow, { backgroundColor: theme.bg.surface, borderColor: theme.border.subtle }]}
             >
               <Text style={{ fontSize: 15, fontWeight: '700', color: theme.text.primary }}>
-                {formatTime12(item.startTime)}
+                {formatTime12(item.time)}
               </Text>
-              {item.endTime ? (
-                <Text style={{ fontSize: 13, color: theme.text.secondary, marginLeft: 8 }}>
-                  – {formatTime12(item.endTime)}
-                </Text>
-              ) : null}
               <View style={{ flex: 1 }} />
-              {item.staffName ? (
-                <Text style={{ fontSize: 13, color: theme.text.tertiary }}>
-                  {item.staffName}
-                </Text>
-              ) : null}
               <Ionicons
                 name="chevron-forward"
                 size={16}

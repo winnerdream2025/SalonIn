@@ -17,8 +17,7 @@ import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import { Text, Button, useTheme } from '@salonin/ui'
-import { salonsApi, bookingProfileApi, parseApiError } from '@salonin/api-client'
-import { useAuthStore } from '../../store/authStore'
+import { salonsApi, parseApiError } from '@salonin/api-client'
 import { SPECIALTY_CATEGORIES, SPECIALTIES_BY_CATEGORY, specialtyLabel } from '@salonin/config'
 import { useMySalonProfile } from '../../hooks/useMySalonProfile'
 import { useMediaUpload } from '../../hooks/useMediaUpload'
@@ -59,7 +58,6 @@ function SectionHeader({
 export default function SalonEditScreen() {
   const { top, bottom } = useSafeAreaInsets()
   const { salon, isLoading } = useMySalonProfile()
-  const user = useAuthStore((s) => s.user)
   const { theme } = useTheme()
 
   const { pickAndUpload: pickLogo, isUploading: isUploadingLogo } = useMediaUpload({
@@ -136,14 +134,6 @@ export default function SalonEditScreen() {
         isHiring,
         acceptsBookings,
       })
-      if (acceptsBookings && salon?.id && user?.email) {
-        await bookingProfileApi.autoSetup({
-          providerId: salon.id,
-          providerType: 'salon',
-          businessName: name.trim(),
-          email: user.email,
-        })
-      }
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
       router.back()
     } catch (e) {

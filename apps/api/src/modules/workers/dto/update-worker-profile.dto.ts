@@ -149,4 +149,34 @@ export class UpdateWorkerProfileDto {
   @IsOptional()
   @IsBoolean()
   availabilityEnabled?: boolean
+
+  @IsOptional()
+  @IsBoolean()
+  instantBooking?: boolean
+
+  @IsOptional()
+  @IsBoolean()
+  requiresDeposit?: boolean
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(720)
+  cancellationWindowHours?: number
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(720)
+  rescheduleWindowHours?: number
+
+  @IsOptional()
+  @IsBoolean()
+  lateFeeEnabled?: boolean
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(500)
+  lateFeeAmount?: number
 }

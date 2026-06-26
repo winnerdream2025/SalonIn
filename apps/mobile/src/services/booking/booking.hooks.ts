@@ -1,448 +1,338 @@
 /**
- * React hooks for the external booking flow.
- * Pattern: useState + useEffect (matches existing hooks in this app).
+ * React hooks for SalonIn native booking engine.
  */
 import { useState, useEffect, useCallback } from 'react'
-import { resolveTenantSlug, resolveProviderProfile } from './booking.mapper'
-import { externalBookingApi } from './booking.api'
-import type { BookingProviderType } from '@salonin/types'
+import { useAuthStore } from '../../store/authStore'
+import {
+  servicesApi,
+  availabilityApi,
+  exceptionsApi,
+  bookingsApi,
+  paymentsApi,
+  stripeConnectApi,
+} from './booking.api'
 import type {
-  BookingService,
-  BookingAvailabilitySlot,
-  CreateBookingPayload,
-  BookingResult,
-  PaymentPayload,
-  PaymentResult,
-  ProviderBookingStatus,
-  ProviderBookingItem,
-  HavanaService,
+  ProviderService,
   CreateServicePayload,
   UpdateServicePayload,
-  AvailabilityHours,
+  DayAvailabilityRule,
+  AvailabilitySlot,
+  AvailabilityException,
+  CreateExceptionPayload,
+  CreateBookingPayload,
+  BookingResult,
+  BookingAnalytics,
+  ClientSummary,
+  StripeConnectStatus,
 } from './booking.types'
 
-// ─── Tenant slug resolver ─────────────────────────────────────────────────────
+// ─── Provider profile ID helper ───────────────────────────────────────────────
 
-export function useTenantSlug(
-  providerId: string | undefined,
-  providerType: BookingProviderType,
-) {
-  const [tenantSlug, setTenantSlug] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!providerId) return
-    let cancelled = false
-    setIsLoading(true)
-    setError(null)
-
-    resolveTenantSlug(providerId, providerType)
-      .then((slug) => {
-        if (cancelled) return
-        setTenantSlug(slug)
-      })
-      .catch((e: unknown) => {
-        if (cancelled) return
-        setError(e instanceof Error ? e.message : 'Failed to resolve booking profile')
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false)
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [providerId, providerType])
-
-  return { tenantSlug, isLoading, error }
+export function useMyProviderId(): { providerId: string | null; providerType: string } {
+  const user = useAuthStore((s) => s.user)
+  const providerId = (user as Record<string, unknown> | null)?.['profileId'] as string | null ?? null
+  const providerType = user?.role === 'SALON' ? 'salon' : 'professional'
+  return { providerId, providerType }
 }
 
-export function useProviderProfile(
-  providerId: string | undefined,
-  providerType: BookingProviderType,
-) {
-  const [tenantSlug, setTenantSlug] = useState<string | null>(null)
-  const [providerEmail, setProviderEmail] = useState<string | null>(null)
-  const [providerPassword, setProviderPassword] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+// ─── Services ─────────────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    if (!providerId) return
-    let cancelled = false
-    setIsLoading(true)
-    setError(null)
-
-    resolveProviderProfile(providerId, providerType)
-      .then((p) => {
-        if (cancelled) return
-        setTenantSlug(p?.tenantSlug ?? null)
-        setProviderEmail(p?.providerEmail ?? null)
-        setProviderPassword(p?.providerPassword ?? null)
-      })
-      .catch((e: unknown) => {
-        if (cancelled) return
-        setError(e instanceof Error ? e.message : 'Failed to resolve booking profile')
-      })
-      .finally(() => { if (!cancelled) setIsLoading(false) })
-
-    return () => { cancelled = true }
-  }, [providerId, providerType])
-
-  return { tenantSlug, providerEmail, providerPassword, isLoading, error }
-}
-
-// ─── Services list ────────────────────────────────────────────────────────────
-
-export function useBookingServices(tenantSlug: string | null) {
-  const [services, setServices] = useState<BookingService[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const fetch = useCallback(() => {
-    if (!tenantSlug) return
-    let cancelled = false
-    setIsLoading(true)
-    setError(null)
-
-    externalBookingApi
-      .getServices(tenantSlug)
-      .then((data) => { if (!cancelled) setServices(data) })
-      .catch((e: unknown) => {
-        if (!cancelled)
-          setError(e instanceof Error ? e.message : 'Could not load services')
-      })
-      .finally(() => { if (!cancelled) setIsLoading(false) })
-
-    return () => { cancelled = true }
-  }, [tenantSlug])
-
-  useEffect(() => {
-    const cleanup = fetch()
-    return cleanup
-  }, [fetch])
-
-  return { services, isLoading, error, refetch: fetch }
-}
-
-// ─── Availability slots ───────────────────────────────────────────────────────
-
-export function useBookingAvailability(
-  tenantSlug: string | null,
-  serviceId: string | null,
-  date?: string,
-) {
-  const [slots, setSlots] = useState<BookingAvailabilitySlot[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!tenantSlug || !serviceId) return
-    let cancelled = false
-    setIsLoading(true)
-    setError(null)
-
-    externalBookingApi
-      .getAvailability(tenantSlug, serviceId, date)
-      .then((data) => { if (!cancelled) setSlots(data) })
-      .catch((e: unknown) => {
-        if (!cancelled)
-          setError(e instanceof Error ? e.message : 'Could not load availability')
-      })
-      .finally(() => { if (!cancelled) setIsLoading(false) })
-
-    return () => { cancelled = true }
-  }, [tenantSlug, serviceId, date])
-
-  return { slots, isLoading, error }
-}
-
-// ─── Create booking ───────────────────────────────────────────────────────────
-
-export function useCreateBooking(tenantSlug: string | null) {
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const createBooking = useCallback(
-    async (payload: CreateBookingPayload): Promise<BookingResult | null> => {
-      if (!tenantSlug) {
-        setError('No booking profile available')
-        return null
-      }
-      setIsSubmitting(true)
-      setError(null)
-      try {
-        const result = await externalBookingApi.createBooking(tenantSlug, payload)
-        return result
-      } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : 'Booking failed')
-        return null
-      } finally {
-        setIsSubmitting(false)
-      }
-    },
-    [tenantSlug],
-  )
-
-  return { createBooking, isSubmitting, error }
-}
-
-// ─── Payment ──────────────────────────────────────────────────────────────────
-
-export function useBookingPayment(
-  tenantSlug: string | null,
-  providerEmail: string | null,
-  providerPassword: string | null,
-) {
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const processPayment = useCallback(
-    async (payload: PaymentPayload): Promise<PaymentResult | null> => {
-      if (!tenantSlug) {
-        setError('No booking profile available')
-        return null
-      }
-      setIsProcessing(true)
-      setError(null)
-      try {
-        const result = await externalBookingApi.processPayment(
-          tenantSlug,
-          providerEmail,
-          providerPassword,
-          payload,
-        )
-        return result
-      } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : 'Payment failed')
-        return null
-      } finally {
-        setIsProcessing(false)
-      }
-    },
-    [tenantSlug, providerEmail, providerPassword],
-  )
-
-  return { processPayment, isProcessing, error }
-}
-
-// ─── Provider: list bookings ────────────────────────────────────────────────
-
-export function useProviderBookings(
-  tenantSlug: string | null,
-  providerEmail: string | null,
-  providerPassword: string | null,
-  status?: ProviderBookingStatus,
-) {
-  const [bookings, setBookings] = useState<ProviderBookingItem[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const load = useCallback(() => {
-    if (!tenantSlug || !providerEmail || !providerPassword) return
-    let cancelled = false
-    setIsLoading(true)
-    setError(null)
-
-    externalBookingApi
-      .getProviderBookings(tenantSlug, providerEmail, providerPassword, status)
-      .then((data) => { if (!cancelled) setBookings(data) })
-      .catch((e: unknown) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load bookings')
-      })
-      .finally(() => { if (!cancelled) setIsLoading(false) })
-
-    return () => { cancelled = true }
-  }, [tenantSlug, providerEmail, providerPassword, status])
-
-  useEffect(() => {
-    const cleanup = load()
-    return cleanup
-  }, [load])
-
-  return { bookings, isLoading, error, refetch: load }
-}
-
-// ─── Provider: booking actions ────────────────────────────────────────────────
-
-export function useProviderBookingActions(
-  tenantSlug: string | null,
-  providerEmail: string | null,
-  providerPassword: string | null,
-) {
-  const [isWorking, setIsWorking] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const confirm = useCallback(
-    async (bookingId: string): Promise<ProviderBookingItem | null> => {
-      if (!tenantSlug || !providerEmail || !providerPassword) return null
-      setIsWorking(true)
-      setError(null)
-      try {
-        return await externalBookingApi.confirmBooking(tenantSlug, providerEmail, providerPassword, bookingId)
-      } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : 'Failed to confirm booking')
-        return null
-      } finally {
-        setIsWorking(false)
-      }
-    },
-    [tenantSlug, providerEmail, providerPassword],
-  )
-
-  const cancel = useCallback(
-    async (bookingId: string, reason?: string): Promise<ProviderBookingItem | null> => {
-      if (!tenantSlug || !providerEmail || !providerPassword) return null
-      setIsWorking(true)
-      setError(null)
-      try {
-        return await externalBookingApi.cancelBooking(tenantSlug, providerEmail, providerPassword, bookingId, reason)
-      } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : 'Failed to cancel booking')
-        return null
-      } finally {
-        setIsWorking(false)
-      }
-    },
-    [tenantSlug, providerEmail, providerPassword],
-  )
-
-  const reschedule = useCallback(
-    async (
-      bookingId: string,
-      newDate: string,
-      newStartTime: string,
-    ): Promise<ProviderBookingItem | null> => {
-      if (!tenantSlug || !providerEmail || !providerPassword) return null
-      setIsWorking(true)
-      setError(null)
-      try {
-        return await externalBookingApi.rescheduleBooking(tenantSlug, providerEmail, providerPassword, bookingId, newDate, newStartTime)
-      } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : 'Failed to reschedule booking')
-        return null
-      } finally {
-        setIsWorking(false)
-      }
-    },
-    [tenantSlug, providerEmail, providerPassword],
-  )
-
-  return { confirm, cancel, reschedule, isWorking, error }
-}
-
-// ─── Provider Services ────────────────────────────────────────────────────────
-
-export function useProviderServices(
-  tenantSlug: string | null,
-  providerEmail: string | null,
-  providerPassword: string | null,
-) {
-  const [services, setServices] = useState<HavanaService[]>([])
+export function useProviderServices(providerId: string | null, providerType: string) {
+  const [services, setServices] = useState<ProviderService[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
-    if (!tenantSlug || !providerEmail || !providerPassword) return
-    setIsLoading(true)
-    setError(null)
+    if (!providerId) return
+    setIsLoading(true); setError(null)
     try {
-      const data = await externalBookingApi.listServices(tenantSlug, providerEmail, providerPassword)
-      setServices(data)
+      setServices(await servicesApi.list(providerId, providerType))
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to load services')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [tenantSlug, providerEmail, providerPassword])
+    } finally { setIsLoading(false) }
+  }, [providerId, providerType])
 
-  useEffect(() => { load() }, [load])
-
+  useEffect(() => { void load() }, [load])
   return { services, isLoading, error, refetch: load }
 }
 
-export function useServiceActions(
-  tenantSlug: string | null,
-  providerEmail: string | null,
-  providerPassword: string | null,
-) {
+export function useServiceActions() {
   const [isWorking, setIsWorking] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const create = useCallback(async (payload: CreateServicePayload): Promise<HavanaService | null> => {
-    if (!tenantSlug || !providerEmail || !providerPassword) return null
+  const create = useCallback(async (payload: CreateServicePayload): Promise<ProviderService | null> => {
     setIsWorking(true); setError(null)
-    try {
-      return await externalBookingApi.createService(tenantSlug, providerEmail, providerPassword, payload)
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to create service')
-      return null
-    } finally { setIsWorking(false) }
-  }, [tenantSlug, providerEmail, providerPassword])
+    try { return await servicesApi.create(payload) }
+    catch (e: unknown) { setError(e instanceof Error ? e.message : 'Failed'); return null }
+    finally { setIsWorking(false) }
+  }, [])
 
-  const update = useCallback(async (serviceId: number, payload: UpdateServicePayload): Promise<boolean> => {
-    if (!tenantSlug || !providerEmail || !providerPassword) return false
+  const update = useCallback(async (id: string, payload: UpdateServicePayload): Promise<boolean> => {
     setIsWorking(true); setError(null)
-    try {
-      await externalBookingApi.updateService(tenantSlug, providerEmail, providerPassword, serviceId, payload)
-      return true
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to update service')
-      return false
-    } finally { setIsWorking(false) }
-  }, [tenantSlug, providerEmail, providerPassword])
+    try { await servicesApi.update(id, payload); return true }
+    catch (e: unknown) { setError(e instanceof Error ? e.message : 'Failed'); return false }
+    finally { setIsWorking(false) }
+  }, [])
 
-  const remove = useCallback(async (serviceId: number): Promise<boolean> => {
-    if (!tenantSlug || !providerEmail || !providerPassword) return false
+  const remove = useCallback(async (id: string): Promise<boolean> => {
     setIsWorking(true); setError(null)
-    try {
-      await externalBookingApi.deleteService(tenantSlug, providerEmail, providerPassword, serviceId)
-      return true
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to delete service')
-      return false
-    } finally { setIsWorking(false) }
-  }, [tenantSlug, providerEmail, providerPassword])
+    try { await servicesApi.remove(id); return true }
+    catch (e: unknown) { setError(e instanceof Error ? e.message : 'Failed'); return false }
+    finally { setIsWorking(false) }
+  }, [])
 
   return { create, update, remove, isWorking, error }
 }
 
-// ─── Provider Availability Hours ─────────────────────────────────────────────
+// ─── Availability ─────────────────────────────────────────────────────────────
 
-export function useAvailabilityHours(
-  tenantSlug: string | null,
-  providerEmail: string | null,
-  providerPassword: string | null,
-) {
-  const [hours, setHours] = useState<AvailabilityHours | null>(null)
+export function useAvailabilityHours(providerId: string | null, providerType: string) {
+  const [rules, setRules] = useState<DayAvailabilityRule[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!tenantSlug || !providerEmail || !providerPassword) return
+    if (!providerId) return
     let cancelled = false
     setIsLoading(true)
-    externalBookingApi.getAvailabilityHours(tenantSlug, providerEmail, providerPassword)
-      .then((data) => { if (!cancelled) setHours(data) })
-      .catch(() => { if (!cancelled) setHours(null) })
+    availabilityApi.getHours(providerId, providerType)
+      .then((data) => { if (!cancelled) setRules(data) })
+      .catch(() => {})
       .finally(() => { if (!cancelled) setIsLoading(false) })
     return () => { cancelled = true }
-  }, [tenantSlug, providerEmail, providerPassword])
+  }, [providerId, providerType])
 
-  const save = useCallback(async (payload: AvailabilityHours): Promise<boolean> => {
-    if (!tenantSlug || !providerEmail || !providerPassword) return false
+  const save = useCallback(async (payload: DayAvailabilityRule[]): Promise<boolean> => {
     setIsSaving(true); setError(null)
-    try {
-      await externalBookingApi.setAvailabilityHours(tenantSlug, providerEmail, providerPassword, payload)
-      setHours(payload)
-      return true
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to save availability')
-      return false
-    } finally { setIsSaving(false) }
-  }, [tenantSlug, providerEmail, providerPassword])
+    try { setRules(await availabilityApi.setHours(payload)); return true }
+    catch (e: unknown) { setError(e instanceof Error ? e.message : 'Failed to save'); return false }
+    finally { setIsSaving(false) }
+  }, [])
 
-  return { hours, isLoading, isSaving, error, save }
+  return { rules, isLoading, isSaving, error, save }
+}
+
+export function useAvailabilitySlots(
+  providerId: string | null,
+  providerType: string,
+  date: string | null,
+  duration?: number,
+) {
+  const [slots, setSlots] = useState<AvailabilitySlot[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+
+  useEffect(() => {
+    if (!providerId || !date) return
+    let cancelled = false
+    setIsLoading(true)
+    availabilityApi.getSlots(providerId, providerType, date, duration)
+      .then((data) => { if (!cancelled) setSlots(data) })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setIsLoading(false) })
+    return () => { cancelled = true }
+  }, [providerId, providerType, date, duration])
+
+  return { slots, isLoading }
+}
+
+export function useAvailabilityExceptions(providerId: string | null, providerType: string, from?: string, to?: string) {
+  const [exceptions, setExceptions] = useState<AvailabilityException[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+
+  const load = useCallback(async () => {
+    if (!providerId) return
+    setIsLoading(true)
+    exceptionsApi.list(providerId, providerType, from, to)
+      .then(setExceptions)
+      .catch(() => {})
+      .finally(() => setIsLoading(false))
+  }, [providerId, providerType, from, to])
+
+  useEffect(() => { void load() }, [load])
+
+  const add = useCallback(async (payload: CreateExceptionPayload): Promise<boolean> => {
+    try { await exceptionsApi.create(payload); await load(); return true }
+    catch { return false }
+  }, [load])
+
+  const remove = useCallback(async (id: string): Promise<boolean> => {
+    try { await exceptionsApi.remove(id); await load(); return true }
+    catch { return false }
+  }, [load])
+
+  return { exceptions, isLoading, refetch: load, add, remove }
+}
+
+// ─── Bookings ─────────────────────────────────────────────────────────────────
+
+// ─── Provider Bookings (with filters) ────────────────────────────────────────
+
+export function useProviderBookings(opts: {
+  status?: string
+  dateFilter?: 'today' | 'tomorrow' | 'week' | 'month'
+  serviceId?: string
+  search?: string
+} = {}) {
+  const [bookings, setBookings] = useState<BookingResult[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    setIsLoading(true); setError(null)
+    try { setBookings(await bookingsApi.getProviderBookingsFiltered(opts)) }
+    catch (e: unknown) { setError(e instanceof Error ? e.message : 'Failed') }
+    finally { setIsLoading(false) }
+  }, [opts.status, opts.dateFilter, opts.serviceId, opts.search]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { void load() }, [load])
+  return { bookings, isLoading, error, refetch: load }
+}
+
+export function useBookingActions() {
+  const [isWorking, setIsWorking] = useState(false)
+
+  const run = useCallback(async (fn: () => Promise<unknown>): Promise<boolean> => {
+    setIsWorking(true)
+    try { await fn(); return true }
+    catch { return false }
+    finally { setIsWorking(false) }
+  }, [])
+
+  return {
+    isWorking,
+    confirm:   (id: string) => run(() => bookingsApi.confirm(id)),
+    cancel:    (id: string, reason?: string) => run(() => bookingsApi.cancelByProvider(id, reason)),
+    reschedule:(id: string, date: string, time: string) => run(() => bookingsApi.rescheduleByProvider(id, date, time)),
+    complete:  (id: string) => run(() => bookingsApi.complete(id)),
+    noShow:    (id: string) => run(() => bookingsApi.noShow(id)),
+  }
+}
+
+// ─── Analytics ────────────────────────────────────────────────────────────────
+
+export function useBookingAnalytics(period: '7d' | '30d' | '90d' | '1y' = '30d') {
+  const [analytics, setAnalytics] = useState<BookingAnalytics | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    setIsLoading(true); setError(null)
+    try { setAnalytics(await bookingsApi.getAnalytics(period)) }
+    catch (e: unknown) { setError(e instanceof Error ? e.message : 'Failed') }
+    finally { setIsLoading(false) }
+  }, [period])
+
+  useEffect(() => { void load() }, [load])
+  return { analytics, isLoading, error, refetch: load }
+}
+
+// ─── Client CRM ───────────────────────────────────────────────────────────────
+
+export function useClientList() {
+  const [clients, setClients] = useState<ClientSummary[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    setIsLoading(true); setError(null)
+    try { setClients(await bookingsApi.getClients()) }
+    catch (e: unknown) { setError(e instanceof Error ? e.message : 'Failed') }
+    finally { setIsLoading(false) }
+  }, [])
+
+  useEffect(() => { void load() }, [load])
+  return { clients, isLoading, error, refetch: load }
+}
+
+export function useClientHistory(clientEmail: string | null) {
+  const [bookings, setBookings] = useState<BookingResult[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+
+  useEffect(() => {
+    if (!clientEmail) return
+    let cancelled = false
+    setIsLoading(true)
+    bookingsApi.getClientHistory(clientEmail)
+      .then((data) => { if (!cancelled) setBookings(data) })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setIsLoading(false) })
+    return () => { cancelled = true }
+  }, [clientEmail])
+
+  return { bookings, isLoading }
+}
+
+export function useMyBookings() {
+  const [bookings, setBookings] = useState<BookingResult[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    setIsLoading(true); setError(null)
+    try { setBookings(await bookingsApi.getMyBookings()) }
+    catch (e: unknown) { setError(e instanceof Error ? e.message : 'Failed to load bookings') }
+    finally { setIsLoading(false) }
+  }, [])
+
+  useEffect(() => { void load() }, [load])
+  return { bookings, isLoading, error, refetch: load }
+}
+
+export function useCreateBooking() {
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const createBooking = useCallback(async (payload: CreateBookingPayload): Promise<BookingResult | null> => {
+    setIsSubmitting(true); setError(null)
+    try { return await bookingsApi.create(payload) }
+    catch (e: unknown) { setError(e instanceof Error ? e.message : 'Booking failed'); return null }
+    finally { setIsSubmitting(false) }
+  }, [])
+
+  return { createBooking, isSubmitting, error }
+}
+
+export function useBookingPayment() {
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const createIntent = useCallback(async (bookingId: string) => {
+    setIsProcessing(true); setError(null)
+    try { return await paymentsApi.createIntent(bookingId) }
+    catch (e: unknown) { setError(e instanceof Error ? e.message : 'Payment failed'); return null }
+    finally { setIsProcessing(false) }
+  }, [])
+
+  return { createIntent, isProcessing, error }
+}
+
+// ─── Stripe Connect ───────────────────────────────────────────────────────────
+
+export function useStripeConnect() {
+  const [status, setStatus] = useState<StripeConnectStatus | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    setIsLoading(true)
+    stripeConnectApi.getStatus()
+      .then((s) => { if (!cancelled) setStatus(s) })
+      .catch((e: unknown) => { if (!cancelled) setError(e instanceof Error ? e.message : 'Failed') })
+      .finally(() => { if (!cancelled) setIsLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  const startOnboarding = useCallback(async (): Promise<string | null> => {
+    try {
+      const { onboardingUrl } = await stripeConnectApi.startOnboarding()
+      return onboardingUrl
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to start onboarding')
+      return null
+    }
+  }, [])
+
+  return { status, isLoading, error, startOnboarding }
 }

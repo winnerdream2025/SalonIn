@@ -10,12 +10,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { Text, useTheme } from '@salonin/ui'
-import type { BookingProviderType } from '@salonin/types'
-import {
-  useProviderProfile,
-  useBookingServices,
-} from '../../services/booking/booking.hooks'
-import type { BookingService } from '../../services/booking/booking.types'
+import { useProviderServices } from '../../services/booking/booking.hooks'
+import type { ProviderService } from '../../services/booking/booking.types'
 
 function formatPrice(price: number, currency: string): string {
   return new Intl.NumberFormat('en-US', {
@@ -37,7 +33,7 @@ function ServiceCard({
   onPress,
   theme,
 }: {
-  service: BookingService
+  service: ProviderService
   onPress: () => void
   theme: ReturnType<typeof useTheme>['theme']
 }) {
@@ -101,37 +97,31 @@ export default function BookingServicesScreen() {
   const { theme } = useTheme()
   const { top, bottom } = useSafeAreaInsets()
 
-  const { tenantSlug, providerEmail, providerPassword, isLoading: isResolvingSlug, error: slugError } =
-    useProviderProfile(providerId, (providerType as BookingProviderType) ?? 'professional')
-
-  const { services, isLoading: isLoadingServices, error: servicesError, refetch } =
-    useBookingServices(tenantSlug)
-
-  const isLoading = isResolvingSlug || isLoadingServices
-  const error = slugError ?? servicesError
+  const { services, isLoading, error, refetch } = useProviderServices(
+    providerId ?? null,
+    providerType ?? 'professional',
+  )
 
   const handleSelectService = useCallback(
-    (service: BookingService) => {
-      if (!tenantSlug) return
+    (service: ProviderService) => {
       router.push({
         pathname: '/booking/slots',
         params: {
-          tenantSlug,
+          providerId,
+          providerType: providerType ?? 'professional',
           serviceId: service.id,
           serviceName: service.name,
           servicePrice: String(service.price),
           serviceCurrency: service.currency,
           serviceDuration: String(service.duration),
           providerName: providerName ?? '',
-          providerEmail: providerEmail ?? '',
-          providerPassword: providerPassword ?? '',
         },
       } as never)
     },
-    [tenantSlug, providerName, providerEmail, providerPassword],
+    [providerId, providerType, providerName],
   )
 
-  const notBookable = !isLoading && !error && tenantSlug === null
+  const notBookable = !isLoading && !error && services.length === 0
 
   return (
     <View style={[styles.screen, { backgroundColor: theme.bg.base }]}>
@@ -163,7 +153,7 @@ export default function BookingServicesScreen() {
             {error}
           </Text>
           <TouchableOpacity
-            onPress={refetch}
+            onPress={() => void refetch()}
             style={[styles.retryBtn, { borderColor: theme.border.default }]}
             activeOpacity={0.7}
           >
@@ -174,7 +164,7 @@ export default function BookingServicesScreen() {
         <View style={styles.centeredState}>
           <Ionicons name="calendar-outline" size={40} color={theme.text.tertiary} />
           <Text style={{ color: theme.text.secondary, marginTop: 12, textAlign: 'center' }}>
-            Online booking is not available for this provider yet.
+            This provider has no services listed yet.
           </Text>
         </View>
       ) : services.length === 0 ? (

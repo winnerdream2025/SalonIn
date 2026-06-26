@@ -415,6 +415,62 @@ export default function WorkerOwnProfileScreen() {
 
           <TouchableOpacity
             style={styles.menuRow}
+            onPress={() => router.push('/provider-calendar' as never)}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}>
+              <Ionicons name="calendar" size={18} color="#D85A30" />
+            </View>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Calendar</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
+          </TouchableOpacity>
+
+          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
+
+          <TouchableOpacity
+            style={styles.menuRow}
+            onPress={() => router.push('/analytics' as never)}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(99,102,241,0.10)' }]}>
+              <Ionicons name="bar-chart-outline" size={18} color="#6366F1" />
+            </View>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Analytics</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
+          </TouchableOpacity>
+
+          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
+
+          <TouchableOpacity
+            style={styles.menuRow}
+            onPress={() => router.push('/clients' as never)}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(29,158,117,0.10)' }]}>
+              <Ionicons name="people-outline" size={18} color="#1D9E75" />
+            </View>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Clients</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
+          </TouchableOpacity>
+
+          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
+
+          <TouchableOpacity
+            style={styles.menuRow}
+            onPress={() => router.push('/gallery' as never)}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}>
+              <Ionicons name="images-outline" size={18} color="#D85A30" />
+            </View>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Gallery</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
+          </TouchableOpacity>
+
+          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
+
+          <TouchableOpacity
+            style={styles.menuRow}
             onPress={() => router.push('/manage-services' as never)}
             activeOpacity={0.7}
           >
@@ -450,6 +506,20 @@ export default function WorkerOwnProfileScreen() {
               <Ionicons name="card-outline" size={18} color="#635BFF" />
             </View>
             <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Accept Payments</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
+          </TouchableOpacity>
+
+          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
+
+          <TouchableOpacity
+            style={styles.menuRow}
+            onPress={() => router.push('/booking-settings' as never)}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}>
+              <Ionicons name="settings-outline" size={18} color="#D85A30" />
+            </View>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Booking Settings</Text>
             <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
           </TouchableOpacity>
 

@@ -1,5 +1,4 @@
 import React, { useState, useCallback } from 'react'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
   View,
   ScrollView,
@@ -72,7 +71,8 @@ function InfoRow({ label, value, theme }: InfoRowProps) {
 
 export default function BookingConfirmScreen() {
   const {
-    tenantSlug,
+    providerId,
+    providerType,
     serviceId,
     serviceName,
     servicePrice,
@@ -83,10 +83,9 @@ export default function BookingConfirmScreen() {
     endTime,
     staffName,
     providerName,
-    providerEmail,
-    providerPassword,
   } = useLocalSearchParams<{
-    tenantSlug: string
+    providerId: string
+    providerType: string
     serviceId: string
     serviceName: string
     servicePrice: string
@@ -97,8 +96,6 @@ export default function BookingConfirmScreen() {
     endTime: string
     staffName: string
     providerName: string
-    providerEmail: string
-    providerPassword: string
   }>()
 
   const { theme } = useTheme()
@@ -115,12 +112,8 @@ export default function BookingConfirmScreen() {
   const [notes, setNotes] = useState('')
 
   const { initPaymentSheet, presentPaymentSheet } = _useStripe()
-  const { createBooking, isSubmitting, error: bookingError } = useCreateBooking(tenantSlug ?? null)
-  const { processPayment, isProcessing, error: paymentError } = useBookingPayment(
-    tenantSlug ?? null,
-    providerEmail ?? null,
-    providerPassword ?? null,
-  )
+  const { createBooking, isSubmitting, error: bookingError } = useCreateBooking()
+  const { createIntent, isProcessing, error: paymentError } = useBookingPayment()
 
   const displayError = bookingError ?? paymentError
 
@@ -139,42 +132,25 @@ export default function BookingConfirmScreen() {
     }
 
     const booking = await createBooking({
-      bookingData: {
-        name: clientName.trim(),
-        email: user.email,
-        phone: clientPhone.trim() || undefined,
-        serviceId: serviceId ?? '',
-        serviceName: serviceName ?? '',
-        date: date ?? '',
-        timeSlot: formatTime12(startTime ?? ''),
-        price,
-        notes: notes.trim() || undefined,
-      },
-      policyAccepted: true,
+      providerId: providerId ?? '',
+      providerType: providerType ?? 'professional',
+      serviceId: serviceId ?? '',
+      clientName: clientName.trim(),
+      clientEmail: user.email,
+      clientPhone: clientPhone.trim() || undefined,
+      date: date ?? '',
+      startTime: startTime ?? '',
+      notes: notes.trim() || undefined,
     })
 
     if (!booking) return // error shown by hook
 
-    if (booking.cancelToken) {
-      AsyncStorage.setItem(`cancelToken:${booking.id}`, booking.cancelToken).catch(() => {})
-    }
-    if (booking.rescheduleToken) {
-      AsyncStorage.setItem(`rescheduleToken:${booking.id}`, booking.rescheduleToken).catch(() => {})
-    }
-
     if (price > 0) {
-      const payment = await processPayment({ bookingId: booking.id })
+      const intent = await createIntent(booking.id)
 
-      if (!payment || payment.status === 'failed') {
-        Alert.alert('Payment failed', 'Your booking was created but payment could not be processed. Please contact the provider.')
-        return
-      }
-
-      if (payment.status === 'free' || payment.code === 'NO_STRIPE') {
-        // No payment needed — free service or tenant has no Stripe account yet
-      } else if (payment.clientSecret) {
+      if (intent?.clientSecret) {
         const { error: initError } = await initPaymentSheet({
-          paymentIntentClientSecret: payment.clientSecret,
+          paymentIntentClientSecret: intent.clientSecret,
           merchantDisplayName: providerName ?? 'SalonIn',
           allowsDelayedPaymentMethods: false,
         })
@@ -206,7 +182,7 @@ export default function BookingConfirmScreen() {
         },
       ],
     )
-  }, [user, clientName, clientPhone, notes, createBooking, processPayment, serviceId, date, startTime, price, currency, serviceName])
+  }, [user, clientName, clientPhone, notes, createBooking, createIntent, serviceId, date, startTime, price, serviceName, providerId, providerType])
 
   const inputStyle = [
     styles.input,

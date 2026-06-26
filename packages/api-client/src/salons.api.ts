@@ -8,6 +8,12 @@ export interface UpdateSalonPayload {
   specialties?: string[] | undefined
   isHiring?: boolean | undefined
   acceptsBookings?: boolean | undefined
+  instantBooking?: boolean | undefined
+  requiresDeposit?: boolean | undefined
+  cancellationWindowHours?: number | undefined
+  rescheduleWindowHours?: number | undefined
+  lateFeeEnabled?: boolean | undefined
+  lateFeeAmount?: number | undefined
 }
 
 export const salonsApi = {

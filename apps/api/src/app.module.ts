@@ -27,6 +27,11 @@ import { StoriesModule } from './modules/stories/stories.module'
 import { FollowsModule } from './modules/follows/follows.module'
 import { BookingProfilesModule } from './modules/booking-profiles/booking-profiles.module'
 import { IntegrationsModule } from './modules/integrations/integrations.module'
+import { ProviderServicesModule } from './modules/provider-services/provider-services.module'
+import { ProviderAvailabilityModule } from './modules/provider-availability/provider-availability.module'
+import { BookingsModule } from './modules/bookings/bookings.module'
+import { PaymentsModule } from './modules/payments/payments.module'
+import { StripeConnectModule } from './modules/stripe-connect/stripe-connect.module'
 
 @Module({
   imports: [
@@ -85,6 +90,11 @@ import { IntegrationsModule } from './modules/integrations/integrations.module'
     FollowsModule,
     BookingProfilesModule,
     IntegrationsModule,
+    ProviderServicesModule,
+    ProviderAvailabilityModule,
+    BookingsModule,
+    PaymentsModule,
+    StripeConnectModule,
   ],
   providers: [
     {

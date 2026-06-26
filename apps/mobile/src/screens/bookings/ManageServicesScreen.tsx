@@ -15,11 +15,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { Text, useTheme } from '@salonin/ui'
-import { useProviderProfile } from '../../services/booking/booking.hooks'
-import { useProviderServices, useServiceActions } from '../../services/booking/booking.hooks'
-import type { HavanaService } from '../../services/booking/booking.types'
-import { useAuthStore } from '../../store/authStore'
-import type { BookingProviderType } from '@salonin/types'
+import { useMyProviderId, useProviderServices, useServiceActions } from '../../services/booking/booking.hooks'
+import type { ProviderService } from '../../services/booking/booking.types'
 
 const DURATION_PRESETS = [30, 45, 60, 90, 120, 180, 240]
 const CATEGORIES = ['Braids', 'Locs', 'Natural', 'Color', 'Cuts', 'Extensions', 'Nails', 'Skincare', 'Makeup', 'Other']
@@ -29,10 +26,13 @@ interface ServiceFormState {
   description: string
   duration: string
   flatPrice: string
+  depositAmount: string
+  bufferBefore: string
+  bufferAfter: string
   category: string
 }
 
-const EMPTY_FORM: ServiceFormState = { name: '', description: '', duration: '60', flatPrice: '', category: '' }
+const EMPTY_FORM: ServiceFormState = { name: '', description: '', duration: '60', flatPrice: '', depositAmount: '', bufferBefore: '0', bufferAfter: '0', category: '' }
 
 function ServiceCard({
   item,
@@ -40,12 +40,12 @@ function ServiceCard({
   onDelete,
   theme,
 }: {
-  item: HavanaService
-  onEdit: (s: HavanaService) => void
-  onDelete: (s: HavanaService) => void
+  item: ProviderService
+  onEdit: (s: ProviderService) => void
+  onDelete: (s: ProviderService) => void
   theme: ReturnType<typeof useTheme>['theme']
 }) {
-  const mins = parseInt(item.duration, 10)
+  const mins = item.duration
   const durationLabel = mins >= 60
     ? `${Math.floor(mins / 60)}h${mins % 60 ? ` ${mins % 60}m` : ''}`
     : `${mins}m`
@@ -62,12 +62,19 @@ function ServiceCard({
         <View style={styles.cardBadges}>
           <View style={[styles.badge, { backgroundColor: 'rgba(216,90,48,0.1)' }]}>
             <Text style={{ fontSize: 12, fontWeight: '700', color: '#D85A30' }}>
-              {item.flatPrice != null ? `$${item.flatPrice}` : 'Price TBD'}
+              {item.price > 0 ? `$${item.price}` : 'Price TBD'}
             </Text>
           </View>
           <View style={[styles.badge, { backgroundColor: theme.bg.elevated }]}>
             <Text style={{ fontSize: 11, color: theme.text.secondary }}>{durationLabel}</Text>
           </View>
+          {item.depositAmount ? (
+            <View style={[styles.badge, { backgroundColor: 'rgba(29,158,117,0.1)' }]}>
+              <Text style={{ fontSize: 11, fontWeight: '600', color: '#1D9E75' }}>
+                ${item.depositAmount} dep.
+              </Text>
+            </View>
+          ) : null}
         </View>
       </View>
       {item.description ? (
@@ -191,6 +198,42 @@ function ServiceFormModal({
             style={[styles.input, { backgroundColor: theme.bg.surface, borderColor: theme.border.default, color: theme.text.primary }]}
           />
 
+          <Text style={[styles.label, { color: theme.text.secondary }]}>Deposit Amount (optional)</Text>
+          <TextInput
+            value={form.depositAmount}
+            onChangeText={(v) => set('depositAmount', v.replace(/[^0-9.]/g, ''))}
+            placeholder="e.g. 25 (leave blank for none)"
+            placeholderTextColor={theme.text.tertiary}
+            keyboardType="decimal-pad"
+            style={[styles.input, { backgroundColor: theme.bg.surface, borderColor: theme.border.default, color: theme.text.primary }]}
+          />
+
+          <Text style={[styles.label, { color: theme.text.secondary }]}>Buffer Time (minutes)</Text>
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 12, color: theme.text.tertiary, marginBottom: 4 }}>Before</Text>
+              <TextInput
+                value={form.bufferBefore}
+                onChangeText={(v) => set('bufferBefore', v.replace(/[^0-9]/g, ''))}
+                placeholder="0"
+                placeholderTextColor={theme.text.tertiary}
+                keyboardType="number-pad"
+                style={[styles.input, { backgroundColor: theme.bg.surface, borderColor: theme.border.default, color: theme.text.primary }]}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 12, color: theme.text.tertiary, marginBottom: 4 }}>After</Text>
+              <TextInput
+                value={form.bufferAfter}
+                onChangeText={(v) => set('bufferAfter', v.replace(/[^0-9]/g, ''))}
+                placeholder="0"
+                placeholderTextColor={theme.text.tertiary}
+                keyboardType="number-pad"
+                style={[styles.input, { backgroundColor: theme.bg.surface, borderColor: theme.border.default, color: theme.text.primary }]}
+              />
+            </View>
+          </View>
+
           <Text style={[styles.label, { color: theme.text.secondary }]}>Category</Text>
           <View style={styles.chipsRow}>
             {CATEGORIES.map((cat) => (
@@ -213,17 +256,13 @@ function ServiceFormModal({
 export default function ManageServicesScreen() {
   const { theme } = useTheme()
   const { top, bottom } = useSafeAreaInsets()
-  const { user } = useAuthStore()
 
-  const providerType: BookingProviderType = (user as any)?.role === 'SALON' ? 'salon' : 'professional'
-  const providerId = (user as any)?.profileId ?? user?.id ?? ''
-
-  const { tenantSlug, providerEmail, providerPassword } = useProviderProfile(providerId, providerType)
-  const { services, isLoading, error, refetch } = useProviderServices(tenantSlug, providerEmail, providerPassword)
-  const { create, update, remove, isWorking } = useServiceActions(tenantSlug, providerEmail, providerPassword)
+  const { providerId, providerType } = useMyProviderId()
+  const { services, isLoading, error, refetch } = useProviderServices(providerId, providerType)
+  const { create, update, remove, isWorking } = useServiceActions()
 
   const [modalVisible, setModalVisible] = useState(false)
-  const [editingService, setEditingService] = useState<HavanaService | null>(null)
+  const [editingService, setEditingService] = useState<ProviderService | null>(null)
   const [formInitial, setFormInitial] = useState<ServiceFormState>(EMPTY_FORM)
 
   const handleAddNew = () => {
@@ -232,19 +271,22 @@ export default function ManageServicesScreen() {
     setModalVisible(true)
   }
 
-  const handleEdit = (svc: HavanaService) => {
+  const handleEdit = (svc: ProviderService) => {
     setEditingService(svc)
     setFormInitial({
       name: svc.name,
       description: svc.description ?? '',
-      duration: svc.duration,
-      flatPrice: svc.flatPrice != null ? String(svc.flatPrice) : '',
+      duration: String(svc.duration),
+      flatPrice: svc.price > 0 ? String(svc.price) : '',
+      depositAmount: svc.depositAmount ? String(svc.depositAmount) : '',
+      bufferBefore: svc.bufferBefore ? String(svc.bufferBefore) : '0',
+      bufferAfter: svc.bufferAfter ? String(svc.bufferAfter) : '0',
       category: svc.category ?? '',
     })
     setModalVisible(true)
   }
 
-  const handleDelete = useCallback((svc: HavanaService) => {
+  const handleDelete = useCallback((svc: ProviderService) => {
     Alert.alert(
       'Delete Service',
       `Remove "${svc.name}" from your booking menu? This cannot be undone.`,
@@ -267,7 +309,10 @@ export default function ManageServicesScreen() {
       name: form.name.trim(),
       description: form.description.trim() || undefined,
       duration: parseInt(form.duration, 10) || 60,
-      flatPrice: form.flatPrice ? parseFloat(form.flatPrice) : undefined,
+      price: form.flatPrice ? parseFloat(form.flatPrice) : 0,
+      depositAmount: form.depositAmount ? parseFloat(form.depositAmount) : undefined,
+      bufferBefore: parseInt(form.bufferBefore, 10) || 0,
+      bufferAfter: parseInt(form.bufferAfter, 10) || 0,
       category: form.category || undefined,
     }
 

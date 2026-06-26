@@ -21,8 +21,7 @@ import * as Haptics from 'expo-haptics'
 import { Text, Button, useTheme } from '@salonin/ui'
 import { Availability } from '@salonin/types'
 import type { AvailabilitySchedule } from '@salonin/types'
-import { workersApi, bookingProfileApi, parseApiError } from '@salonin/api-client'
-import { useAuthStore } from '../../store/authStore'
+import { workersApi, parseApiError } from '@salonin/api-client'
 import { SPECIALTY_CATEGORIES, SPECIALTIES_BY_CATEGORY, specialtyLabel, WORKER_PAY_TYPES, PERCENTAGE_PRESETS, SEAT_RATE_PRESETS, buildWorkerPayString } from '@salonin/config'
 import type { WorkerPayType } from '@salonin/config'
 import { useMyWorkerProfile } from '../../hooks/useWorkerProfile'
@@ -260,7 +259,6 @@ const accordionStyles = StyleSheet.create({
 export default function EditProfileScreen() {
   const { top, bottom } = useSafeAreaInsets()
   const { profile, isLoading } = useMyWorkerProfile()
-  const user = useAuthStore((s) => s.user)
   const { theme } = useTheme()
   const { pickAndUpload: pickAvatar, isUploading: isUploadingPhoto } = useMediaUpload({
     folder: 'avatars',
@@ -426,14 +424,6 @@ export default function EditProfileScreen() {
         travelFee:    travelFee    ? Number(travelFee)    : undefined,
         availabilityEnabled,
       })
-      if (acceptsBookings && profile?.id && user?.email) {
-        await bookingProfileApi.autoSetup({
-          providerId: profile.id,
-          providerType: 'professional',
-          businessName: name.trim(),
-          email: user.email,
-        })
-      }
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
       router.back()
     } catch (e) {

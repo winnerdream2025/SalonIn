@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React from 'react'
 import {
   View,
   TouchableOpacity,
@@ -11,54 +11,26 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { Text, useTheme } from '@salonin/ui'
-import { useProviderProfile } from '../../services/booking/booking.hooks'
-import { externalBookingApi } from '../../services/booking/booking.api'
-import { useAuthStore } from '../../store/authStore'
-import type { BookingProviderType } from '@salonin/types'
+import { useStripeConnect } from '../../services/booking/booking.hooks'
 
 export default function StripeConnectScreen() {
   const { theme } = useTheme()
   const { top, bottom } = useSafeAreaInsets()
-  const { user } = useAuthStore()
-  const [isLoading, setIsLoading]   = useState(false)
-  const [isConnected, setIsConnected] = useState<boolean | null>(null)
-  const [accountId, setAccountId]   = useState<string | null>(null)
+  const { status, isLoading, startOnboarding } = useStripeConnect()
 
-  const providerType: BookingProviderType = (user as any)?.role === 'SALON' ? 'salon' : 'professional'
-  const providerId = (user as any)?.profileId ?? user?.id ?? ''
-
-  const { tenantSlug, providerEmail, providerPassword } = useProviderProfile(providerId, providerType)
-
-  useEffect(() => {
-    if (!tenantSlug || !providerEmail || !providerPassword) return
-    externalBookingApi.getStripeConnectStatus(tenantSlug, providerEmail, providerPassword)
-      .then((s) => { setIsConnected(s.connected); setAccountId(s.accountId ?? null) })
-      .catch(() => setIsConnected(false))
-  }, [tenantSlug, providerEmail, providerPassword])
+  const isConnected = status?.connected ?? false
+  const accountId   = status?.accountId ?? null
 
   const handleConnect = async () => {
-    if (!tenantSlug || !providerEmail || !providerPassword) {
-      Alert.alert('Not ready', 'Enable bookings on your profile first.')
+    if (isConnected) {
+      Alert.alert('Already connected', `Your Stripe account is linked.${accountId ? `\nID: ${accountId}` : ''}`)
       return
     }
-    setIsLoading(true)
-    try {
-      const status = await externalBookingApi.getStripeConnectStatus(tenantSlug, providerEmail, providerPassword)
-      if (status.connected) {
-        setIsConnected(true)
-        setAccountId(status.accountId ?? null)
-        Alert.alert('Already connected', `Your Stripe account is linked.${status.accountId ? `\nID: ${status.accountId}` : ''}`)
-        return
-      }
-      if (status.onboardingUrl) {
-        await Linking.openURL(status.onboardingUrl)
-      } else {
-        Alert.alert('Coming Soon', 'Stripe Connect setup will be available shortly.')
-      }
-    } catch {
-      Alert.alert('Coming Soon', 'Stripe Connect setup will be available shortly. Contact support to connect manually.')
-    } finally {
-      setIsLoading(false)
+    const url = await startOnboarding()
+    if (url) {
+      await Linking.openURL(url)
+    } else {
+      Alert.alert('Coming Soon', 'Stripe Connect setup will be available shortly.')
     }
   }
 

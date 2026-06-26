@@ -12,19 +12,17 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { Text, useTheme } from '@salonin/ui'
-import { useProviderProfile, useAvailabilityHours } from '../../services/booking/booking.hooks'
-import type { AvailabilityHours, DayHours } from '../../services/booking/booking.types'
-import { useAuthStore } from '../../store/authStore'
-import type { BookingProviderType } from '@salonin/types'
+import { useMyProviderId, useAvailabilityHours } from '../../services/booking/booking.hooks'
+import type { DayAvailabilityRule } from '../../services/booking/booking.types'
 
-const DAYS: { key: keyof AvailabilityHours; label: string }[] = [
-  { key: 'monday',    label: 'Monday' },
-  { key: 'tuesday',   label: 'Tuesday' },
-  { key: 'wednesday', label: 'Wednesday' },
-  { key: 'thursday',  label: 'Thursday' },
-  { key: 'friday',    label: 'Friday' },
-  { key: 'saturday',  label: 'Saturday' },
-  { key: 'sunday',    label: 'Sunday' },
+const DAYS: { dayOfWeek: number; label: string }[] = [
+  { dayOfWeek: 1, label: 'Monday' },
+  { dayOfWeek: 2, label: 'Tuesday' },
+  { dayOfWeek: 3, label: 'Wednesday' },
+  { dayOfWeek: 4, label: 'Thursday' },
+  { dayOfWeek: 5, label: 'Friday' },
+  { dayOfWeek: 6, label: 'Saturday' },
+  { dayOfWeek: 0, label: 'Sunday' },
 ]
 
 const TIME_SLOTS: string[] = []
@@ -42,15 +40,12 @@ function formatTime(t: string): string {
   return `${h12}:${mStr} ${suffix}`
 }
 
-const DEFAULT_HOURS: AvailabilityHours = {
-  monday:    { isOpen: true,  start: '09:00', end: '18:00' },
-  tuesday:   { isOpen: true,  start: '09:00', end: '18:00' },
-  wednesday: { isOpen: true,  start: '09:00', end: '18:00' },
-  thursday:  { isOpen: true,  start: '09:00', end: '18:00' },
-  friday:    { isOpen: true,  start: '09:00', end: '18:00' },
-  saturday:  { isOpen: false, start: '10:00', end: '16:00' },
-  sunday:    { isOpen: false, start: '10:00', end: '16:00' },
-}
+const DEFAULT_RULES: DayAvailabilityRule[] = DAYS.map(({ dayOfWeek }) => ({
+  dayOfWeek,
+  isOpen:    dayOfWeek >= 1 && dayOfWeek <= 5,
+  openTime:  '09:00',
+  closeTime: dayOfWeek >= 1 && dayOfWeek <= 5 ? '18:00' : '16:00',
+}))
 
 function TimePickerRow({
   label,
@@ -103,22 +98,18 @@ function TimePickerRow({
 export default function ProviderAvailabilityScreen() {
   const { theme } = useTheme()
   const { top, bottom } = useSafeAreaInsets()
-  const { user } = useAuthStore()
 
-  const providerType: BookingProviderType = (user as any)?.role === 'SALON' ? 'salon' : 'professional'
-  const providerId = (user as any)?.profileId ?? user?.id ?? ''
+  const { providerId, providerType } = useMyProviderId()
+  const { rules, isLoading, isSaving, error, save } = useAvailabilityHours(providerId, providerType)
 
-  const { tenantSlug, providerEmail, providerPassword } = useProviderProfile(providerId, providerType)
-  const { hours, isLoading, isSaving, error, save } = useAvailabilityHours(tenantSlug, providerEmail, providerPassword)
-
-  const [local, setLocal] = useState<AvailabilityHours>(DEFAULT_HOURS)
+  const [local, setLocal] = useState<DayAvailabilityRule[]>(DEFAULT_RULES)
 
   useEffect(() => {
-    if (hours) setLocal(hours)
-  }, [hours])
+    if (rules.length > 0) setLocal(rules)
+  }, [rules])
 
-  const setDay = (day: keyof AvailabilityHours, patch: Partial<DayHours>) => {
-    setLocal((prev) => ({ ...prev, [day]: { ...prev[day], ...patch } }))
+  const setDay = (dayOfWeek: number, patch: Partial<DayAvailabilityRule>) => {
+    setLocal((prev) => prev.map((r) => r.dayOfWeek === dayOfWeek ? { ...r, ...patch } : r))
   }
 
   const handleSave = async () => {
@@ -157,36 +148,48 @@ export default function ProviderAvailabilityScreen() {
           contentContainerStyle={{ padding: 16, paddingBottom: bottom + 80 }}
           showsVerticalScrollIndicator={false}
         >
-          <Text style={{ fontSize: 13, color: theme.text.secondary, marginBottom: 20, lineHeight: 18 }}>
+          <Text style={{ fontSize: 13, color: theme.text.secondary, marginBottom: 16, lineHeight: 18 }}>
             Set the days and hours clients can book appointments with you.
           </Text>
+          <TouchableOpacity
+            onPress={() => router.push('/provider-availability/blocked' as never)}
+            style={[styles.blockedBtn, { backgroundColor: theme.bg.surface, borderColor: theme.border.subtle }]}
+            activeOpacity={0.75}
+          >
+            <Ionicons name="ban-outline" size={20} color="#E24B4A" />
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: theme.text.primary }}>Blocked Dates</Text>
+              <Text style={{ fontSize: 12, color: theme.text.secondary, marginTop: 1 }}>Vacations, holidays, sick days</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
+          </TouchableOpacity>
 
-          {DAYS.map(({ key, label }) => {
-            const day = local[key]
+          {DAYS.map(({ dayOfWeek, label }) => {
+            const rule = local.find((r) => r.dayOfWeek === dayOfWeek) ?? { dayOfWeek, isOpen: false, openTime: '09:00', closeTime: '18:00' }
             return (
               <View
-                key={key}
-                style={[styles.dayCard, { backgroundColor: theme.bg.surface, borderColor: theme.border.subtle, opacity: day.isOpen ? 1 : 0.65 }]}
+                key={dayOfWeek}
+                style={[styles.dayCard, { backgroundColor: theme.bg.surface, borderColor: theme.border.subtle, opacity: rule.isOpen ? 1 : 0.65 }]}
               >
                 <View style={styles.dayRow}>
                   <Text style={{ fontSize: 15, fontWeight: '700', color: theme.text.primary, flex: 1 }}>{label}</Text>
-                  <Text style={{ fontSize: 13, color: day.isOpen ? '#1D9E75' : theme.text.tertiary, marginRight: 10 }}>
-                    {day.isOpen ? 'Open' : 'Closed'}
+                  <Text style={{ fontSize: 13, color: rule.isOpen ? '#1D9E75' : theme.text.tertiary, marginRight: 10 }}>
+                    {rule.isOpen ? 'Open' : 'Closed'}
                   </Text>
                   <Switch
-                    value={day.isOpen}
-                    onValueChange={(v) => setDay(key, { isOpen: v })}
+                    value={rule.isOpen}
+                    onValueChange={(v) => setDay(dayOfWeek, { isOpen: v })}
                     trackColor={{ false: '#ccc', true: '#D85A30' }}
                     thumbColor="#fff"
                   />
                 </View>
-                {day.isOpen && (
+                {rule.isOpen && (
                   <View style={styles.timeRow}>
                     <View style={{ flex: 1 }}>
                       <TimePickerRow
                         label="Opens"
-                        value={day.start}
-                        onChange={(t) => setDay(key, { start: t })}
+                        value={rule.openTime}
+                        onChange={(t) => setDay(dayOfWeek, { openTime: t })}
                         theme={theme}
                       />
                     </View>
@@ -196,8 +199,8 @@ export default function ProviderAvailabilityScreen() {
                     <View style={{ flex: 1 }}>
                       <TimePickerRow
                         label="Closes"
-                        value={day.end}
-                        onChange={(t) => setDay(key, { end: t })}
+                        value={rule.closeTime}
+                        onChange={(t) => setDay(dayOfWeek, { closeTime: t })}
                         theme={theme}
                       />
                     </View>
@@ -252,5 +255,9 @@ const styles = StyleSheet.create({
   saveBtn: {
     backgroundColor: '#D85A30', borderRadius: 14,
     paddingVertical: 16, alignItems: 'center',
+  },
+  blockedBtn: {
+    flexDirection: 'row', alignItems: 'center', borderRadius: 12, borderWidth: 1,
+    padding: 14, marginBottom: 16,
   },
 })
