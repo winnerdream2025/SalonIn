@@ -407,228 +407,129 @@ export default function WorkerOwnProfileScreen() {
           <PortfolioGrid items={profile.portfolioItems} onPressItem={handlePressItem} isLoading={false} />
         </View>
 
-        {/* ── Profile actions ──────────────────────────────── */}
+        {/* ── BOOKINGS ─────────────────────────────────────── */}
+        <Text style={[styles.menuSectionLabel, { color: theme.text.tertiary }]}>BOOKINGS</Text>
         <View style={[styles.menuGroup, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
-          <TouchableOpacity
-            style={styles.menuRow}
-            onPress={() => router.push('/worker/edit')}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}>
-              <Ionicons name="create-outline" size={18} color="#D85A30" />
-            </View>
-            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Edit Profile</Text>
-            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
-          </TouchableOpacity>
-
-          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
-
-          <TouchableOpacity
-            style={styles.menuRow}
-            onPress={() => router.push('/worker/applications' as never)}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}>
-              <Ionicons name="briefcase-outline" size={18} color="#D85A30" />
-            </View>
-            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>My Applications</Text>
-            {pendingCount > 0 && (
-              <View style={styles.pendingBadge}>
-                <Text style={styles.pendingBadgeText}>{pendingCount}</Text>
-              </View>
-            )}
-            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
-          </TouchableOpacity>
-
-          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
-
-          <TouchableOpacity
-            style={styles.menuRow}
-            onPress={() => router.push('/provider-bookings' as never)}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}>
-              <Ionicons name="calendar-outline" size={18} color="#D85A30" />
-            </View>
+          <TouchableOpacity style={styles.menuRow} onPress={() => router.push('/provider-bookings' as never)} activeOpacity={0.7}>
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}><Ionicons name="calendar-outline" size={18} color="#D85A30" /></View>
             <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Manage Bookings</Text>
             <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
           </TouchableOpacity>
-
           <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
-
-          <TouchableOpacity
-            style={styles.menuRow}
-            onPress={() => router.push('/provider-calendar' as never)}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}>
-              <Ionicons name="calendar" size={18} color="#D85A30" />
-            </View>
+          <TouchableOpacity style={styles.menuRow} onPress={() => router.push('/provider-calendar' as never)} activeOpacity={0.7}>
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}><Ionicons name="calendar" size={18} color="#D85A30" /></View>
             <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Calendar</Text>
             <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
           </TouchableOpacity>
-
           <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
-
-          <TouchableOpacity
-            style={styles.menuRow}
-            onPress={() => router.push('/analytics' as never)}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: 'rgba(99,102,241,0.10)' }]}>
-              <Ionicons name="bar-chart-outline" size={18} color="#6366F1" />
-            </View>
+          <TouchableOpacity style={styles.menuRow} onPress={() => router.push('/analytics' as never)} activeOpacity={0.7}>
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(99,102,241,0.10)' }]}><Ionicons name="bar-chart-outline" size={18} color="#6366F1" /></View>
             <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Analytics</Text>
             <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
           </TouchableOpacity>
-
           <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
-
-          <TouchableOpacity
-            style={styles.menuRow}
-            onPress={() => router.push('/clients' as never)}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: 'rgba(29,158,117,0.10)' }]}>
-              <Ionicons name="people-outline" size={18} color="#1D9E75" />
-            </View>
+          <TouchableOpacity style={styles.menuRow} onPress={() => router.push('/clients' as never)} activeOpacity={0.7}>
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(29,158,117,0.10)' }]}><Ionicons name="people-outline" size={18} color="#1D9E75" /></View>
             <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Clients</Text>
             <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
           </TouchableOpacity>
-
           <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
-
-          <TouchableOpacity
-            style={styles.menuRow}
-            onPress={() => router.push('/posts/create' as never)}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}>
-              <Ionicons name="grid-outline" size={18} color="#D85A30" />
-            </View>
-            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Create Post</Text>
-            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuRow}
-            onPress={() => router.push('/gallery' as never)}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}>
-              <Ionicons name="images-outline" size={18} color="#D85A30" />
-            </View>
-            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Gallery</Text>
-            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuRow}
-            onPress={() => router.push('/highlights' as never)}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}>
-              <Ionicons name="bookmark-outline" size={18} color="#D85A30" />
-            </View>
-            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Highlights</Text>
-            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
-          </TouchableOpacity>
-
-          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
-
-          <TouchableOpacity
-            style={styles.menuRow}
-            onPress={() => router.push('/manage-services' as never)}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}>
-              <Ionicons name="cut-outline" size={18} color="#D85A30" />
-            </View>
-            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>My Services</Text>
-            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
-          </TouchableOpacity>
-
-          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
-
-          <TouchableOpacity
-            style={styles.menuRow}
-            onPress={() => router.push('/waitlist' as never)}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}>
-              <Ionicons name="time-outline" size={18} color="#D85A30" />
-            </View>
+          <TouchableOpacity style={styles.menuRow} onPress={() => router.push('/waitlist' as never)} activeOpacity={0.7}>
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}><Ionicons name="hourglass-outline" size={18} color="#D85A30" /></View>
             <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Waitlist</Text>
             <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
           </TouchableOpacity>
+        </View>
 
-          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
-
-          <TouchableOpacity
-            style={styles.menuRow}
-            onPress={() => router.push('/provider-availability' as never)}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}>
-              <Ionicons name="time-outline" size={18} color="#D85A30" />
-            </View>
-            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Booking Hours</Text>
+        {/* ── PROFILE ─────────────────────────────────────── */}
+        <Text style={[styles.menuSectionLabel, { color: theme.text.tertiary }]}>PROFILE</Text>
+        <View style={[styles.menuGroup, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
+          <TouchableOpacity style={styles.menuRow} onPress={() => router.push('/worker/edit')} activeOpacity={0.7}>
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}><Ionicons name="create-outline" size={18} color="#D85A30" /></View>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Edit Profile</Text>
             <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
           </TouchableOpacity>
-
           <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
-
-          <TouchableOpacity
-            style={styles.menuRow}
-            onPress={() => router.push('/stripe-connect' as never)}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: 'rgba(99,91,255,0.10)' }]}>
-              <Ionicons name="card-outline" size={18} color="#635BFF" />
-            </View>
-            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Accept Payments</Text>
+          <TouchableOpacity style={styles.menuRow} onPress={() => router.push('/worker/applications' as never)} activeOpacity={0.7}>
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}><Ionicons name="briefcase-outline" size={18} color="#D85A30" /></View>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>My Applications</Text>
+            {pendingCount > 0 && (
+              <View style={styles.pendingBadge}><Text style={styles.pendingBadgeText}>{pendingCount}</Text></View>
+            )}
             <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
           </TouchableOpacity>
-
           <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
-
-          <TouchableOpacity
-            style={styles.menuRow}
-            onPress={() => router.push('/booking-settings' as never)}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}>
-              <Ionicons name="settings-outline" size={18} color="#D85A30" />
-            </View>
-            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Booking Settings</Text>
-            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
-          </TouchableOpacity>
-
-          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
-
-          <TouchableOpacity
-            style={styles.menuRow}
-            onPress={() => router.push('/worker-invites' as never)}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: 'rgba(29,158,117,0.10)' }]}>
-              <Ionicons name="mail-unread-outline" size={18} color="#1D9E75" />
-            </View>
+          <TouchableOpacity style={styles.menuRow} onPress={() => router.push('/worker-invites' as never)} activeOpacity={0.7}>
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(29,158,117,0.10)' }]}><Ionicons name="mail-unread-outline" size={18} color="#1D9E75" /></View>
             <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Salon Invites</Text>
             <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
           </TouchableOpacity>
-
           <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
-
-          <TouchableOpacity
-            style={styles.menuRow}
-            onPress={() => router.push('/worker/saved' as never)}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}>
-              <Ionicons name="bookmark-outline" size={18} color="#D85A30" />
-            </View>
+          <TouchableOpacity style={styles.menuRow} onPress={() => router.push('/worker/saved' as never)} activeOpacity={0.7}>
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}><Ionicons name="bookmark-outline" size={18} color="#D85A30" /></View>
             <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Saved Workers</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
+          </TouchableOpacity>
+        </View>
+
+        {/* ── CONTENT ─────────────────────────────────────── */}
+        <Text style={[styles.menuSectionLabel, { color: theme.text.tertiary }]}>CONTENT</Text>
+        <View style={[styles.menuGroup, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
+          <TouchableOpacity style={styles.menuRow} onPress={() => router.push('/posts/create' as never)} activeOpacity={0.7}>
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}><Ionicons name="grid-outline" size={18} color="#D85A30" /></View>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Create Post</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
+          </TouchableOpacity>
+          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
+          <TouchableOpacity style={styles.menuRow} onPress={() => router.push('/gallery' as never)} activeOpacity={0.7}>
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}><Ionicons name="images-outline" size={18} color="#D85A30" /></View>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Gallery</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
+          </TouchableOpacity>
+          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
+          <TouchableOpacity style={styles.menuRow} onPress={() => router.push('/highlights' as never)} activeOpacity={0.7}>
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}><Ionicons name="bookmark-outline" size={18} color="#D85A30" /></View>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Highlights</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
+          </TouchableOpacity>
+        </View>
+
+        {/* ── SETTINGS ─────────────────────────────────────── */}
+        <Text style={[styles.menuSectionLabel, { color: theme.text.tertiary }]}>SETTINGS</Text>
+        <View style={[styles.menuGroup, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
+          <TouchableOpacity style={styles.menuRow} onPress={() => router.push('/manage-services' as never)} activeOpacity={0.7}>
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}><Ionicons name="cut-outline" size={18} color="#D85A30" /></View>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>My Services</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
+          </TouchableOpacity>
+          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
+          <TouchableOpacity style={styles.menuRow} onPress={() => router.push('/intake-forms' as never)} activeOpacity={0.7}>
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}><Ionicons name="document-text-outline" size={18} color="#D85A30" /></View>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Intake Forms</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
+          </TouchableOpacity>
+          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
+          <TouchableOpacity style={styles.menuRow} onPress={() => router.push('/provider-availability' as never)} activeOpacity={0.7}>
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}><Ionicons name="time-outline" size={18} color="#D85A30" /></View>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Booking Hours</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
+          </TouchableOpacity>
+          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
+          <TouchableOpacity style={styles.menuRow} onPress={() => router.push('/provider-availability/blocked' as never)} activeOpacity={0.7}>
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}><Ionicons name="ban-outline" size={18} color="#D85A30" /></View>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Blocked Times</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
+          </TouchableOpacity>
+          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
+          <TouchableOpacity style={styles.menuRow} onPress={() => router.push('/booking-settings' as never)} activeOpacity={0.7}>
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}><Ionicons name="settings-outline" size={18} color="#D85A30" /></View>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Booking Settings</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
+          </TouchableOpacity>
+          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
+          <TouchableOpacity style={styles.menuRow} onPress={() => router.push('/stripe-connect' as never)} activeOpacity={0.7}>
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(99,91,255,0.10)' }]}><Ionicons name="card-outline" size={18} color="#635BFF" /></View>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Accept Payments</Text>
             <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
           </TouchableOpacity>
         </View>
@@ -1070,6 +971,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#D85A30',
+  },
+
+  // Menu section label
+  menuSectionLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 4,
   },
 
   // Menu group

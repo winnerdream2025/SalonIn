@@ -164,10 +164,31 @@ export const bookingsApi = {
 
 // ─── Intake Forms ─────────────────────────────────────────────────────────────
 
+export interface CreateIntakeFormPayload {
+  title: string
+  description?: string
+  questions: { question: string; type: string; required: boolean; options?: string[] }[]
+  serviceIds?: string[]
+}
+
+export type UpdateIntakeFormPayload = Partial<CreateIntakeFormPayload>
+
 export const intakeFormsApi = {
   forProvider: (providerId: string, providerType: string): Promise<IntakeForm[]> =>
     api.get('/intake-forms/for-provider', { params: { providerId, providerType } })
       .then(unwrap<IntakeForm[]>),
+
+  getMyForms: (): Promise<IntakeForm[]> =>
+    api.get('/intake-forms/my').then(unwrap<IntakeForm[]>),
+
+  create: (payload: CreateIntakeFormPayload): Promise<IntakeForm> =>
+    api.post('/intake-forms', payload).then(unwrap<IntakeForm>),
+
+  update: (id: string, payload: UpdateIntakeFormPayload): Promise<IntakeForm> =>
+    api.patch(`/intake-forms/${id}`, payload).then(unwrap<IntakeForm>),
+
+  remove: (id: string): Promise<void> =>
+    api.delete(`/intake-forms/${id}`).then(() => undefined),
 }
 
 // ─── Payments ─────────────────────────────────────────────────────────────────

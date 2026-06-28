@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useAuthStore } from '../../src/store/authStore'
 import { useChatStore } from '../../src/store/chatStore'
 import { useChatRequests } from '../../src/hooks/useChatRequests'
+import { useProviderPendingCount } from '../../src/services/booking/booking.hooks'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTheme, Avatar } from '@salonin/ui'
 import { Role } from '@salonin/types'
@@ -217,7 +218,7 @@ export default function TabsLayout() {
   const role = user?.role
   const isLoggedIn = user != null
   const isSalon = role === Role.SALON
-  const isClient = (user as any)?.accountType === 'CLIENT'
+  const isClient = user?.accountType === 'CLIENT'
   const { theme } = useTheme()
   const unreadCount = useChatStore((s) => s.unreadCount)
   const notifUnreadCount = useChatStore((s) => s.notifUnreadCount)
@@ -246,8 +247,9 @@ export default function TabsLayout() {
       tabBarIcon: ({ color, size, focused }: { color: string; size: number; focused: boolean }) => (
         <Ionicons name={focused ? 'briefcase' : 'briefcase-outline'} size={size} color={color} />
       ),
+      href: isClient ? null : undefined,
     }),
-    [isSalon],
+    [isSalon, isClient],
   )
 
   const messagesOptions = useMemo(
@@ -260,6 +262,8 @@ export default function TabsLayout() {
     }),
     [messagesBadge],
   )
+
+  const providerPendingCount = useProviderPendingCount()
 
   const profileOptions = useMemo(
     () => ({
@@ -274,8 +278,9 @@ export default function TabsLayout() {
           theme={theme}
         />
       ),
+      tabBarBadge: !isClient && providerPendingCount > 0 ? providerPendingCount : undefined,
     }),
-    [isClient, isSalon, photoUrl, theme],
+    [isClient, isSalon, photoUrl, theme, providerPendingCount],
   )
 
   return (

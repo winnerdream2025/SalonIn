@@ -94,7 +94,7 @@ export default function WorkerProfileScreen() {
         'Sign in to message',
         'Create a free account to message beauty professionals on My Salon In.',
         [
-          { text: 'Create account', onPress: () => router.push('/(auth)/register') },
+          { text: 'Create account', onPress: () => router.push({ pathname: '/(auth)/register', params: { role: 'WORKER', accountType: 'CLIENT' } } as never) },
           { text: 'Sign in', onPress: () => router.push('/(auth)/login') },
           { text: 'Cancel', style: 'cancel' },
         ]
@@ -131,7 +131,7 @@ export default function WorkerProfileScreen() {
         'Sign in to book',
         'Create a free account to book appointments on My Salon In.',
         [
-          { text: 'Create account', onPress: () => router.push('/(auth)/register') },
+          { text: 'Create account', onPress: () => router.push({ pathname: '/(auth)/register', params: { role: 'WORKER', accountType: 'CLIENT' } } as never) },
           { text: 'Sign in', onPress: () => router.push('/(auth)/login') },
           { text: 'Cancel', style: 'cancel' },
         ],

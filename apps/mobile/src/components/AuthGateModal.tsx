@@ -27,7 +27,7 @@ export function AuthGateModal() {
 
   const handleRegister = () => {
     hide()
-    router.push('/(auth)/register' as never)
+    router.push({ pathname: '/(auth)/register', params: { role: 'WORKER', accountType: 'CLIENT' } } as never)
   }
 
   return (

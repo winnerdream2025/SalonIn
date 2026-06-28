@@ -191,18 +191,20 @@ export default function BookingConfirmScreen() {
       }
     }
 
-    // Success — show confirmation and navigate back
-    Alert.alert(
-      'Booking Confirmed',
-      `Your appointment for ${serviceName} on ${formatDateDisplay(date ?? '')} at ${formatTime12(startTime ?? '')} has been confirmed.${booking.confirmationCode ? `\n\nConfirmation: ${booking.confirmationCode}` : ''}`,
-      [
-        {
-          text: 'Done',
-          onPress: () => router.dismissAll(),
-        },
-      ],
-    )
-  }, [user, clientName, clientPhone, notes, createBooking, createIntent, serviceId, date, startTime, price, serviceName, providerId, providerType])
+    // Success — navigate to dedicated confirmation screen
+    router.replace({
+      pathname: '/booking/success',
+      params: {
+        confirmationCode: booking.confirmationCode ?? '',
+        serviceName: serviceName ?? '',
+        providerName: providerName ?? '',
+        date: date ?? '',
+        startTime: startTime ?? '',
+        price: String(price),
+        currency,
+      },
+    } as never)
+  }, [user, clientName, clientPhone, notes, createBooking, createIntent, serviceId, date, startTime, price, currency, serviceName, providerId, providerType])
 
   const inputStyle = [
     styles.input,
@@ -298,9 +300,18 @@ export default function BookingConfirmScreen() {
         </View>
 
         {displayError ? (
-          <Text style={{ color: '#E24B4A', fontSize: 13, marginTop: 8, textAlign: 'center' }}>
-            {displayError}
-          </Text>
+          <View style={{ alignItems: 'center', marginTop: 8 }}>
+            <Text style={{ color: '#E24B4A', fontSize: 13, textAlign: 'center' }}>
+              {displayError}
+            </Text>
+            {(displayError.toLowerCase().includes('slot') || displayError.toLowerCase().includes('booked') || displayError.toLowerCase().includes('conflict')) ? (
+              <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7} style={{ marginTop: 8 }}>
+                <Text style={{ color: '#D85A30', fontSize: 13, fontWeight: '700', textDecorationLine: 'underline' }}>
+                  Choose another time →
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
         ) : null}
       </ScrollView>
 

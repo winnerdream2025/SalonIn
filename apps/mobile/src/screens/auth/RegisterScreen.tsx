@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Input, Button, Text, useTheme, Logo } from '@salonin/ui'
 import { useAuth } from '../../hooks/useAuth'
-import { parseApiError } from '@salonin/api-client'
+import { parseApiError, clientProfileApi } from '@salonin/api-client'
 import type { Role } from '@salonin/types'
 
 export default function RegisterScreen() {
@@ -26,6 +26,8 @@ export default function RegisterScreen() {
     try {
       await register({ name, email: email.trim(), password, role, accountType })
       if (isClient) {
+        // Persist the user's real name to ClientProfile (backend lazy-creates with email fallback)
+        clientProfileApi.update({ name: name.trim() || email.split('@')[0] }).catch(() => {})
         router.replace('/(tabs)')
       } else if (role === 'WORKER') {
         router.replace('/onboarding')

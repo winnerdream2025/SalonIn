@@ -110,6 +110,16 @@ export default function DiscoveryFeedScreen() {
       .catch(() => {})
   }, [currentUser])
 
+  // Auto-request GPS for new CLIENT users who haven't set a location yet
+  React.useEffect(() => {
+    const isClient = (currentUser as any)?.accountType === 'CLIENT'
+    if (isClient && !hasLocation && status === 'idle') {
+      void requestLocation()
+    }
+  // Only run once on mount — intentional empty-ish deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const showGate = useAuthGateStore((s) => s.show)
 
   const handleMessage = useCallback(async (worker: WorkerCardData) => {

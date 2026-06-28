@@ -551,13 +551,22 @@ export default function BookingsScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: top + 8, borderBottomColor: theme.border.subtle }]}>
         <Text style={styles.pageTitle}>My Bookings</Text>
-        <TouchableOpacity
-          onPress={() => router.push('/client-settings' as never)}
-          hitSlop={12}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="settings-outline" size={22} color={theme.text.secondary} />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          <TouchableOpacity
+            onPress={() => router.push('/worker/saved' as never)}
+            hitSlop={12}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="bookmark-outline" size={22} color={theme.text.secondary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => router.push('/client-settings' as never)}
+            hitSlop={12}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="settings-outline" size={22} color={theme.text.secondary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Tabs */}
@@ -585,11 +594,21 @@ export default function BookingsScreen() {
       ) : filtered.length === 0 ? (
         <View style={styles.centeredState}>
           <Ionicons name="calendar-outline" size={40} color={theme.text.tertiary} />
-          <Text style={{ color: theme.text.secondary, marginTop: 12 }}>
+          <Text style={{ color: theme.text.secondary, marginTop: 12, textAlign: 'center' }}>
             {activeTab === 'upcoming'  ? 'No upcoming bookings.' :
              activeTab === 'completed' ? 'No completed bookings yet.' :
                                          'No cancelled bookings.'}
           </Text>
+          {activeTab === 'upcoming' && (
+            <TouchableOpacity
+              onPress={() => router.push('/(tabs)' as never)}
+              style={[styles.ctaBtn, { backgroundColor: '#D85A30' }]}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="compass-outline" size={16} color="#fff" />
+              <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700', marginLeft: 6 }}>Find a Professional</Text>
+            </TouchableOpacity>
+          )}
         </View>
       ) : (
         <FlatList
@@ -772,6 +791,15 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     paddingHorizontal: 20,
     paddingVertical: 8,
+  },
+  ctaBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+    borderRadius: 14,
+    paddingHorizontal: 22,
+    paddingVertical: 12,
   },
   modalRoot: { flex: 1 },
   modalHeader: {

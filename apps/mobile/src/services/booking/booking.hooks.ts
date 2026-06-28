@@ -371,3 +371,19 @@ export function useStripeConnect() {
 
   return { status, isLoading, error, startOnboarding, getDashboardUrl }
 }
+
+// ─── Provider pending booking count (for tab badge) ───────────────────────────
+
+export function useProviderPendingCount(): number {
+  const user = useAuthStore((s) => s.user)
+  const [count, setCount] = useState(0)
+
+  useEffect(() => {
+    if (!user || user.accountType === 'CLIENT') return
+    bookingsApi.getProviderBookingsFiltered({ status: 'PENDING' })
+      .then((b) => setCount(b.length))
+      .catch(() => {})
+  }, [user])
+
+  return count
+}

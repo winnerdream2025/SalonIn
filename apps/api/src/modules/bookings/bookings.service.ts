@@ -10,6 +10,7 @@ import { NotificationType } from '@prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
 import { NotificationsService } from '../notifications/notifications.service'
 import { ProviderAvailabilityService } from '../provider-availability/provider-availability.service'
+import { EmailService } from '../email/email.service'
 import type { User } from '@salonin/types'
 import type { CreateBookingDto, RescheduleDto, WaitlistDto, RebookDto } from './dto/booking.dto'
 
@@ -19,6 +20,7 @@ export class BookingsService {
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
     private readonly availability: ProviderAvailabilityService,
+    private readonly email: EmailService,
   ) {}
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -131,12 +133,43 @@ export class BookingsService {
         )
       }
 
+      // Send booking confirmation email (fire-and-forget — non-fatal)
+      void this.sendBookingConfirmationEmail(booking, dto, service).catch(() => {})
+
       return booking
     } catch (err: unknown) {
       const e = err as { code?: string }
       if (e.code === 'P2002') throw new ConflictException('This time slot is already booked')
       throw err
     }
+  }
+
+  private async sendBookingConfirmationEmail(
+    booking: { confirmationCode: string; date: string; startTime: string },
+    dto: CreateBookingDto,
+    service: { name: unknown; price: unknown; currency: unknown },
+  ): Promise<void> {
+    const providerName = await this.resolveProviderDisplayName(dto.providerId, dto.providerType)
+    await this.email.sendBookingConfirmation({
+      toEmail: dto.clientEmail,
+      clientName: dto.clientName,
+      serviceName: String(service.name ?? 'Service'),
+      providerName,
+      date: booking.date,
+      startTime: booking.startTime,
+      confirmationCode: booking.confirmationCode,
+      price: Number(service.price ?? 0),
+      currency: String(service.currency ?? 'USD'),
+    })
+  }
+
+  private async resolveProviderDisplayName(providerId: string, providerType: string): Promise<string> {
+    if (providerType === 'salon') {
+      const s = await this.prisma.salonProfile.findUnique({ where: { id: providerId }, select: { name: true } }).catch(() => null)
+      return s?.name ?? 'Your provider'
+    }
+    const w = await this.prisma.workerProfile.findUnique({ where: { id: providerId }, select: { name: true } }).catch(() => null)
+    return w?.name ?? 'Your provider'
   }
 
   async getMyBookings(clientEmail: string, clientUserId?: string) {

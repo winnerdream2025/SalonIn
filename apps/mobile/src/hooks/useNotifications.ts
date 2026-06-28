@@ -50,7 +50,9 @@ function handleNotificationTap(data: Record<string, unknown>): void {
   } else if (jobId && (type === 'NEW_APPLICATION' || type === 'APPLICATION_ACCEPTED' || type === 'APPLICATION_DECLINED' || type === 'NEW_JOB_MATCH')) {
     router.push(`/jobs/${jobId}` as never)
   } else if (bookingId && (typeof event === 'string' && event.startsWith('booking.'))) {
-    router.push('/provider-bookings' as never)
+    const currentUser = useAuthStore.getState().user
+    const isClient = (currentUser as any)?.accountType === 'CLIENT'
+    router.push((isClient ? '/(tabs)/bookings' : '/provider-bookings') as never)
   } else {
     router.push('/notifications' as never)
   }

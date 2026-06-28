@@ -43,11 +43,6 @@ export class SalonsController {
     return this.salonsService.getMe(user.id)
   }
 
-  @Get(':id')
-  getProfile(@Param('id', ParseUUIDPipe) id: string) {
-    return this.salonsService.getProfile(id)
-  }
-
   @Patch('me')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('SALON')
@@ -73,43 +68,23 @@ export class SalonsController {
     await this.salonsService.updateLocation(user.id, dto)
   }
 
-  // ── SalonStaff — Salon-side ────────────────────────────────────────────────
+  // ── SalonStaff — must be before GET /:id to avoid UUID pipe conflict ────────
 
   @Post('staff/invite/:workerId')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('SALON')
-  inviteWorker(
+  async inviteWorker(
     @CurrentUser() user: User,
     @Param('workerId', ParseUUIDPipe) workerId: string,
   ) {
-    return this.salonsService.inviteWorker(user.id, workerId)
+    return { data: await this.salonsService.inviteWorker(user.id, workerId) }
   }
-
-  @Get('staff')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('SALON')
-  getStaff(@CurrentUser() user: User) {
-    return this.salonsService.getStaff(user.id)
-  }
-
-  @Delete('staff/:staffId')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('SALON')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  async removeStaff(
-    @CurrentUser() user: User,
-    @Param('staffId', ParseUUIDPipe) staffId: string,
-  ): Promise<void> {
-    await this.salonsService.removeStaff(user.id, staffId)
-  }
-
-  // ── SalonStaff — Worker-side ───────────────────────────────────────────────
 
   @Get('staff/invites')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('WORKER')
-  getMyInvites(@CurrentUser() user: User) {
-    return this.salonsService.getWorkerInvites(user.id)
+  async getMyInvites(@CurrentUser() user: User) {
+    return { data: await this.salonsService.getWorkerInvites(user.id) }
   }
 
   @Patch('staff/invites/:staffId/accept')
@@ -130,5 +105,30 @@ export class SalonsController {
     @Param('staffId', ParseUUIDPipe) staffId: string,
   ) {
     return this.salonsService.respondToInvite(user.id, staffId, false)
+  }
+
+  @Get('staff')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SALON')
+  async getStaff(@CurrentUser() user: User) {
+    return { data: await this.salonsService.getStaff(user.id) }
+  }
+
+  @Delete('staff/:staffId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SALON')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async removeStaff(
+    @CurrentUser() user: User,
+    @Param('staffId', ParseUUIDPipe) staffId: string,
+  ): Promise<void> {
+    await this.salonsService.removeStaff(user.id, staffId)
+  }
+
+  // ── Wildcard param — must be last ─────────────────────────────────────────
+
+  @Get(':id')
+  getProfile(@Param('id', ParseUUIDPipe) id: string) {
+    return this.salonsService.getProfile(id)
   }
 }
