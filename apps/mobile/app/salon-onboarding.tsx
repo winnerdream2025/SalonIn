@@ -8,14 +8,17 @@ import {
   Platform,
   Switch,
   Alert,
+  ActivityIndicator,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
+import { Ionicons } from '@expo/vector-icons'
 import { Text, Button, Input, useTheme } from '@salonin/ui'
 import { salonsApi } from '@salonin/api-client'
 import { ALL_SPECIALTIES } from '@salonin/config'
+import * as Location from 'expo-location'
 
-const STEP_COUNT = 2
+const STEP_COUNT = 3
 
 const SPECIALTY_OPTIONS = ALL_SPECIALTIES
 
@@ -26,6 +29,11 @@ export default function SalonOnboardingScreen() {
   const [salonName, setSalonName] = useState('')
   const [bio, setBio] = useState('')
   const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([])
+  const [city, setCity] = useState('')
+  const [state, setState] = useState('')
+  const [locationLat, setLocationLat] = useState<number | null>(null)
+  const [locationLng, setLocationLng] = useState<number | null>(null)
+  const [isDetecting, setIsDetecting] = useState(false)
   const [isHiring, setIsHiring] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
@@ -33,6 +41,32 @@ export default function SalonOnboardingScreen() {
     setSelectedSpecialties((prev) =>
       prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]
     )
+  }, [])
+
+  const handleDetectLocation = useCallback(async () => {
+    setIsDetecting(true)
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync()
+      if (status !== 'granted') {
+        Alert.alert('Permission denied', 'Enter your city and state manually.')
+        return
+      }
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
+      setLocationLat(pos.coords.latitude)
+      setLocationLng(pos.coords.longitude)
+      const [place] = await Location.reverseGeocodeAsync({
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+      })
+      if (place) {
+        if (place.city) setCity(place.city)
+        if (place.region) setState(place.region)
+      }
+    } catch {
+      Alert.alert('Could not detect location', 'Enter your city and state manually.')
+    } finally {
+      setIsDetecting(false)
+    }
   }, [])
 
   const handleFinish = useCallback(async () => {
@@ -43,6 +77,18 @@ export default function SalonOnboardingScreen() {
         description: bio.trim() || undefined,
         specialties: selectedSpecialties,
       })
+      if (locationLat !== null && locationLng !== null) {
+        await salonsApi.updateLocation(
+          locationLat,
+          locationLng,
+          city.trim() || undefined,
+          state.trim() || undefined,
+          'US',
+        )
+      } else if (city.trim()) {
+        await salonsApi.updateLocation(0, 0, city.trim(), state.trim() || undefined, 'US')
+          .catch(() => {})
+      }
       await salonsApi.setHiringStatus(isHiring)
       if (isHiring) {
         router.replace('/jobs/create' as never)
@@ -54,7 +100,7 @@ export default function SalonOnboardingScreen() {
     } finally {
       setIsSaving(false)
     }
-  }, [salonName, bio, selectedSpecialties, isHiring])
+  }, [salonName, bio, selectedSpecialties, locationLat, locationLng, city, state, isHiring])
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]}>
@@ -150,6 +196,58 @@ export default function SalonOnboardingScreen() {
 
           {step === 1 && (
             <>
+              <Text variant="heading" style={styles.heading}>Where is your salon?</Text>
+              <Text variant="body" color="secondary" style={styles.subheading}>
+                Help clients and workers find you nearby.
+              </Text>
+
+              <TouchableOpacity
+                onPress={() => void handleDetectLocation()}
+                disabled={isDetecting}
+                style={[
+                  styles.detectBtn,
+                  { backgroundColor: 'rgba(216,90,48,0.08)', borderColor: 'rgba(216,90,48,0.3)' },
+                ]}
+                activeOpacity={0.75}
+              >
+                {isDetecting ? (
+                  <ActivityIndicator size="small" color="#D85A30" />
+                ) : (
+                  <Ionicons name="location-outline" size={18} color="#D85A30" />
+                )}
+                <Text style={{ fontSize: 14, fontWeight: '600', color: '#D85A30', marginLeft: 8 }}>
+                  {isDetecting ? 'Detecting…' : locationLat ? '📍 Location detected' : 'Use my current location'}
+                </Text>
+              </TouchableOpacity>
+
+              <Text variant="label" color="secondary" style={{ marginTop: 20, marginBottom: 12, letterSpacing: 0.8 }}>
+                OR ENTER MANUALLY
+              </Text>
+
+              <View style={styles.field}>
+                <Input
+                  label="City"
+                  value={city}
+                  onChangeText={setCity}
+                  placeholder="e.g. Miami"
+                  autoCapitalize="words"
+                />
+              </View>
+
+              <View style={styles.field}>
+                <Input
+                  label="State / Province"
+                  value={state}
+                  onChangeText={setState}
+                  placeholder="e.g. FL"
+                  autoCapitalize="characters"
+                />
+              </View>
+            </>
+          )}
+
+          {step === 2 && (
+            <>
               <Text variant="heading" style={styles.heading}>Are you hiring?</Text>
               <Text variant="body" color="secondary" style={styles.subheading}>
                 Let workers know you have open positions right now.
@@ -206,6 +304,17 @@ export default function SalonOnboardingScreen() {
           <>
             <View style={styles.footerBtn}>
               <Button variant="ghost" onPress={() => setStep(0)}>Back</Button>
+            </View>
+            <View style={styles.footerBtn}>
+              <Button variant="primary" onPress={() => setStep(2)}>Continue</Button>
+            </View>
+          </>
+        )}
+
+        {step === 2 && (
+          <>
+            <View style={styles.footerBtn}>
+              <Button variant="ghost" onPress={() => setStep(1)}>Back</Button>
             </View>
             <View style={styles.footerBtn}>
               <Button variant="primary" loading={isSaving} onPress={handleFinish}>
@@ -284,4 +393,13 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   footerBtn: { flex: 1 },
+  detectBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    marginBottom: 4,
+  },
 })

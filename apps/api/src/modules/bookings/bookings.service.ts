@@ -46,33 +46,41 @@ export class BookingsService {
     if (!service) throw new NotFoundException('Service not found')
     if (!service.isActive) throw new BadRequestException('Service is no longer available')
 
-    // Guard: verify the requested slot is within provider working hours and not blocked
-    const slots = await this.availability.getSlots(
-      dto.providerId,
-      dto.providerType,
-      dto.date,
-      service.duration as number,
-    )
-    const requestedSlot = slots.find((s) => s.time === dto.startTime)
-    if (!requestedSlot) {
-      throw new BadRequestException('The requested time is outside provider working hours')
-    }
-    if (!requestedSlot.available) {
-      throw new ConflictException('This time slot is not available')
+    // Walk-ins and provider-created bookings bypass availability/slot checks
+    const policy = await this.resolveProviderPolicy(dto.providerId, dto.providerType)
+    if (!dto.isWalkIn && !dto.isProviderCreated) {
+      if (!policy.acceptsBookings) {
+        throw new BadRequestException('This provider is not currently accepting bookings')
+      }
+      const slots = await this.availability.getSlots(
+        dto.providerId,
+        dto.providerType,
+        dto.date,
+        service.duration as number,
+      )
+      const requestedSlot = slots.find((s) => s.time === dto.startTime)
+      if (!requestedSlot) {
+        throw new BadRequestException('The requested time is outside provider working hours')
+      }
+      if (!requestedSlot.available) {
+        throw new ConflictException('This time slot is not available')
+      }
     }
 
     const endTime = this.computeEndTime(dto.startTime, service.duration as number)
 
-    // Resolve provider booking policy for deposit + instant booking
-    const policy = await this.resolveProviderPolicy(dto.providerId, dto.providerType)
+    // Provider policy already resolved above (acceptsBookings gate)
     const depositAmount = (policy.requiresDeposit && (service.depositAmount as number | null))
       ? (service.depositAmount as number)
       : null
 
     const price = service.price as number
-    const initialStatus = price > 0
-      ? 'PENDING_PAYMENT'
-      : (policy.instantBooking ? 'CONFIRMED' : 'PENDING')
+    // Walk-ins and provider-created bookings are immediately confirmed
+    const initialStatus = (dto.isWalkIn || dto.isProviderCreated)
+      ? 'CONFIRMED'
+      : price > 0
+        ? 'PENDING_PAYMENT'
+        : (policy.instantBooking ? 'CONFIRMED' : 'PENDING')
 
     try {
       const booking = await this.db.booking.create({
@@ -139,7 +147,7 @@ export class BookingsService {
           ...(clientUserId ? [{ clientUserId }] : []),
         ],
       },
-      include: { service: { select: { name: true, category: true } } },
+      include: { service: { select: { name: true, category: true, duration: true } } },
       orderBy: [{ date: 'desc' }, { startTime: 'desc' }],
     })
   }
@@ -468,6 +476,8 @@ export class BookingsService {
     }
     const repeatClients = Object.values(clientEmails).filter(c => c > 1).length
 
+    const platformFees = Math.round(revenue * 0.02 * 100) / 100
+
     return {
       period,
       total,
@@ -475,6 +485,8 @@ export class BookingsService {
       cancelled,
       noShows,
       revenue,
+      platformFees,
+      netRevenue: Math.round((revenue - platformFees) * 100) / 100,
       completionRate: total > 0 ? Math.round((completed / total) * 100) : 0,
       cancellationRate: total > 0 ? Math.round((cancelled / total) * 100) : 0,
       noShowRate: total > 0 ? Math.round((noShows / total) * 100) : 0,
@@ -686,18 +698,28 @@ export class BookingsService {
     return worker?.userId ?? null
   }
 
+  async updateClientNotes(bookingId: string, user: User, notes: string): Promise<void> {
+    const { providerId, providerType } = await this.resolveProviderId(user)
+    const booking = await this.db.booking.findUnique({ where: { id: bookingId }, select: { providerId: true, providerType: true } })
+    if (!booking) throw new NotFoundException('Booking not found')
+    if (booking.providerId !== providerId || booking.providerType !== providerType) {
+      throw new ForbiddenException('You do not own this booking')
+    }
+    await this.db.booking.update({ where: { id: bookingId }, data: { providerNotes: notes } })
+  }
+
   private async resolveProviderPolicy(
     providerId: string,
     providerType: string,
-  ): Promise<{ instantBooking: boolean; requiresDeposit: boolean; cancellationWindowHours: number | null }> {
-    const select = { instantBooking: true, requiresDeposit: true, cancellationWindowHours: true } as never
+  ): Promise<{ acceptsBookings: boolean; instantBooking: boolean; requiresDeposit: boolean; cancellationWindowHours: number | null }> {
+    const select = { acceptsBookings: true, instantBooking: true, requiresDeposit: true, cancellationWindowHours: true } as never
     if (providerType === 'salon') {
       const salon = await this.prisma.salonProfile.findUnique({ where: { id: providerId }, select }) as
-        { instantBooking: boolean; requiresDeposit: boolean; cancellationWindowHours: number | null } | null
-      return { instantBooking: salon?.instantBooking ?? false, requiresDeposit: salon?.requiresDeposit ?? false, cancellationWindowHours: salon?.cancellationWindowHours ?? null }
+        { acceptsBookings: boolean; instantBooking: boolean; requiresDeposit: boolean; cancellationWindowHours: number | null } | null
+      return { acceptsBookings: salon?.acceptsBookings ?? false, instantBooking: salon?.instantBooking ?? false, requiresDeposit: salon?.requiresDeposit ?? false, cancellationWindowHours: salon?.cancellationWindowHours ?? null }
     }
     const worker = await this.prisma.workerProfile.findUnique({ where: { id: providerId }, select }) as
-      { instantBooking: boolean; requiresDeposit: boolean; cancellationWindowHours: number | null } | null
-    return { instantBooking: worker?.instantBooking ?? false, requiresDeposit: worker?.requiresDeposit ?? false, cancellationWindowHours: worker?.cancellationWindowHours ?? null }
+      { acceptsBookings: boolean; instantBooking: boolean; requiresDeposit: boolean; cancellationWindowHours: number | null } | null
+    return { acceptsBookings: worker?.acceptsBookings ?? false, instantBooking: worker?.instantBooking ?? false, requiresDeposit: worker?.requiresDeposit ?? false, cancellationWindowHours: worker?.cancellationWindowHours ?? null }
   }
 }

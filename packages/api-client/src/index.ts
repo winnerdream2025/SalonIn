@@ -9,7 +9,7 @@ export { workersApi } from './workers.api'
 export type { UpdateWorkerPayload, AddPortfolioItemInput } from './workers.api'
 
 export { salonsApi } from './salons.api'
-export type { UpdateSalonPayload } from './salons.api'
+export type { UpdateSalonPayload, SalonStaffRecord } from './salons.api'
 
 export { jobsApi } from './jobs.api'
 export type { ListJobsParams } from './jobs.api'
@@ -57,6 +57,9 @@ export { followsApi } from './follows.api'
 export type { FollowUser, FollowListResponse, SuggestedUser } from './follows.api'
 
 export { bookingProfileApi } from './booking.api'
+
+export { clientProfileApi } from './client-profile.api'
+export type { ClientProfileData, UpdateClientProfilePayload } from './client-profile.api'
 
 export { postsApi } from './posts.api'
 export type {

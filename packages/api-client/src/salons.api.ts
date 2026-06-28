@@ -46,4 +46,34 @@ export const salonsApi = {
     country?: string,
   ): Promise<void> =>
     api.post('/salons/location', { lat, lng, city, state, country }).then(() => undefined),
+
+  inviteWorker: (workerId: string): Promise<SalonStaffRecord> =>
+    api.post<SalonStaffRecord>(`/salons/staff/invite/${workerId}`).then((r) => r.data),
+
+  getStaff: (): Promise<SalonStaffRecord[]> =>
+    api.get<SalonStaffRecord[]>('/salons/staff').then((r) => r.data),
+
+  removeStaff: (staffId: string): Promise<void> =>
+    api.delete(`/salons/staff/${staffId}`).then(() => undefined),
+
+  getMyInvites: (): Promise<SalonStaffRecord[]> =>
+    api.get<SalonStaffRecord[]>('/salons/staff/invites').then((r) => r.data),
+
+  acceptInvite: (staffId: string): Promise<SalonStaffRecord> =>
+    api.patch<SalonStaffRecord>(`/salons/staff/invites/${staffId}/accept`).then((r) => r.data),
+
+  declineInvite: (staffId: string): Promise<SalonStaffRecord> =>
+    api.patch<SalonStaffRecord>(`/salons/staff/invites/${staffId}/decline`).then((r) => r.data),
+}
+
+export interface SalonStaffRecord {
+  id: string
+  salonId: string
+  workerId: string
+  status: 'INVITED' | 'ACTIVE' | 'REMOVED' | 'DECLINED'
+  note: string | null
+  invitedAt: string
+  respondedAt: string | null
+  worker?: { id: string; name: string; photoUrl: string | null; specialties: string[]; city: string | null; state: string | null }
+  salon?: { id: string; name: string; photoUrls: string[]; city: string | null; state: string | null }
 }

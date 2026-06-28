@@ -298,6 +298,16 @@ export default function SalonOwnProfileScreen() {
 
           <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
 
+          <TouchableOpacity style={styles.menuRow} onPress={() => router.push('/salon-staff' as never)} activeOpacity={0.7}>
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(29,158,117,0.10)' }]}>
+              <Ionicons name="people-circle-outline" size={18} color="#1D9E75" />
+            </View>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>My Team</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
+          </TouchableOpacity>
+
+          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
+
           <TouchableOpacity style={styles.menuRow} onPress={() => router.push('/provider-bookings' as never)} activeOpacity={0.7}>
             <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}>
               <Ionicons name="calendar-outline" size={18} color="#D85A30" />

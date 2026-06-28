@@ -694,6 +694,13 @@ export default function ProviderBookingsScreen() {
     <View style={[styles.screen, { backgroundColor: theme.bg.base }]}>
       <View style={[styles.header, { paddingTop: top + 8, borderBottomColor: theme.border.subtle }]}>
         <Text style={styles.pageTitle}>Bookings</Text>
+        <TouchableOpacity
+          onPress={() => router.push('/new-booking' as never)}
+          style={[styles.newBookingBtn, { backgroundColor: '#D85A30' }]}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="add" size={20} color="#FFFFFF" />
+        </TouchableOpacity>
       </View>
       <ProviderBookingsInner theme={theme} bottom={bottom} />
     </View>
@@ -708,6 +715,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  newBookingBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   pageTitle: {
     fontFamily: 'Georgia',

@@ -1,5 +1,6 @@
 import {
   IsArray,
+  IsBoolean,
   IsEmail,
   IsIn,
   IsNotEmpty,
@@ -57,6 +58,14 @@ export class CreateBookingDto {
   @IsOptional()
   @IsArray()
   intakeAnswers?: { questionId: string; answer: unknown }[]
+
+  @IsOptional()
+  @IsBoolean()
+  isWalkIn?: boolean
+
+  @IsOptional()
+  @IsBoolean()
+  isProviderCreated?: boolean
 }
 
 export class WaitlistDto {

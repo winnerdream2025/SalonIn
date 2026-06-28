@@ -17,7 +17,7 @@ import type { PortfolioItem, AvailabilitySchedule } from '@salonin/types'
 import { formatExperience } from '@salonin/utils'
 import { useWorkerProfile } from '../../hooks/useWorkerProfile'
 import { useAuthStore } from '../../store/authStore'
-import { messagesApi, workersApi } from '@salonin/api-client'
+import { messagesApi, workersApi, salonsApi } from '@salonin/api-client'
 import { useCanReview } from '../../hooks/useReviews'
 import { useStories } from '../../contexts/StoriesContext'
 import { StoryRing } from '../../components/StoryRing'
@@ -38,7 +38,9 @@ export default function WorkerProfileScreen() {
   const { top, bottom } = useSafeAreaInsets()
 
   const isOwner = Boolean(currentUser && profile && currentUser.id === profile.userId)
+  const isSalonUser = currentUser?.role === 'SALON'
   const [isMessaging, setIsMessaging] = useState(false)
+  const [isInviting, setIsInviting] = useState(false)
   const [isSaved, setIsSaved] = useState(false)
   const { openViewerForUser } = useStories()
   const { canReview, existingReview } = useCanReview(
@@ -70,6 +72,20 @@ export default function WorkerProfileScreen() {
       .then((ids) => setIsSaved(ids.includes(profile.id)))
       .catch(() => {})
   }, [currentUser, profile])
+
+  const handleInvite = useCallback(async () => {
+    if (!profile) return
+    setIsInviting(true)
+    try {
+      await salonsApi.inviteWorker(profile.id)
+      Alert.alert('Invite sent ✓', `${profile.name} has been invited to your salon team.`)
+    } catch (e: unknown) {
+      const msg = (e as { message?: string })?.message ?? 'Could not send invite.'
+      Alert.alert('Error', msg)
+    } finally {
+      setIsInviting(false)
+    }
+  }, [profile])
 
   const handleMessage = useCallback(async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
@@ -382,6 +398,21 @@ export default function WorkerProfileScreen() {
                   </Text>
               }
             </Pressable>
+            {isSalonUser && !isOwner && (
+              <Pressable
+                onPress={() => void handleInvite()}
+                disabled={isInviting}
+                style={({ pressed }) => [styles.ctaBtnSecondary, { borderColor: '#1D9E75' }, pressed && { opacity: 0.85 }]}
+              >
+                {isInviting
+                  ? <ActivityIndicator size="small" color="#1D9E75" />
+                  : <>
+                    <Ionicons name="person-add-outline" size={14} color="#1D9E75" />
+                    <Text style={[styles.ctaBtnSecondaryText, { color: '#1D9E75' }]}>Invite</Text>
+                  </>
+                }
+              </Pressable>
+            )}
             {canReview && !existingReview && (
               <Pressable
                 onPress={() => router.push(`/review/leave?subjectId=${profile.userId}&subjectName=${encodeURIComponent(profile.name)}&subjectPhoto=${encodeURIComponent(profile.photoUrl ?? '')}` as never)}

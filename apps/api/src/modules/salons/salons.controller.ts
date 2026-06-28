@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -70,5 +71,64 @@ export class SalonsController {
     @Body() dto: UpdateSalonLocationDto,
   ): Promise<void> {
     await this.salonsService.updateLocation(user.id, dto)
+  }
+
+  // ── SalonStaff — Salon-side ────────────────────────────────────────────────
+
+  @Post('staff/invite/:workerId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SALON')
+  inviteWorker(
+    @CurrentUser() user: User,
+    @Param('workerId', ParseUUIDPipe) workerId: string,
+  ) {
+    return this.salonsService.inviteWorker(user.id, workerId)
+  }
+
+  @Get('staff')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SALON')
+  getStaff(@CurrentUser() user: User) {
+    return this.salonsService.getStaff(user.id)
+  }
+
+  @Delete('staff/:staffId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SALON')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async removeStaff(
+    @CurrentUser() user: User,
+    @Param('staffId', ParseUUIDPipe) staffId: string,
+  ): Promise<void> {
+    await this.salonsService.removeStaff(user.id, staffId)
+  }
+
+  // ── SalonStaff — Worker-side ───────────────────────────────────────────────
+
+  @Get('staff/invites')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('WORKER')
+  getMyInvites(@CurrentUser() user: User) {
+    return this.salonsService.getWorkerInvites(user.id)
+  }
+
+  @Patch('staff/invites/:staffId/accept')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('WORKER')
+  acceptInvite(
+    @CurrentUser() user: User,
+    @Param('staffId', ParseUUIDPipe) staffId: string,
+  ) {
+    return this.salonsService.respondToInvite(user.id, staffId, true)
+  }
+
+  @Patch('staff/invites/:staffId/decline')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('WORKER')
+  declineInvite(
+    @CurrentUser() user: User,
+    @Param('staffId', ParseUUIDPipe) staffId: string,
+  ) {
+    return this.salonsService.respondToInvite(user.id, staffId, false)
   }
 }

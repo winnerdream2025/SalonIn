@@ -41,6 +41,13 @@ function typeIcon(type: string): keyof typeof Ionicons.glyphMap {
     case 'REVIEW_RECEIVED': return 'star-outline'
     case 'NEW_FOLLOWER':
     case 'FOLLOW': return 'person-add-outline'
+    case 'BOOKING_CREATED': return 'calendar-outline'
+    case 'BOOKING_CONFIRMED': return 'checkmark-circle-outline'
+    case 'BOOKING_CANCELLED': return 'close-circle-outline'
+    case 'BOOKING_REMINDER': return 'alarm-outline'
+    case 'BOOKING_COMPLETED': return 'checkmark-done-circle-outline'
+    case 'BOOKING_NO_SHOW': return 'warning-outline'
+    case 'NEW_REVIEW': return 'star'
     case 'SYSTEM': return 'megaphone-outline'
     default: return 'notifications-outline'
   }
@@ -57,7 +64,14 @@ function typeIconColor(type: string, accent: string, theme: { text: { secondary:
     case 'CHAT_REQUEST':
     case 'CHAT_REQUEST_ACCEPTED': return '#378ADD'
     case 'NEW_JOB_MATCH': return accent
-    case 'REVIEW_RECEIVED': return '#EF9F27'
+    case 'REVIEW_RECEIVED':
+    case 'NEW_REVIEW': return '#EF9F27'
+    case 'BOOKING_CREATED':
+    case 'BOOKING_REMINDER': return accent
+    case 'BOOKING_CONFIRMED':
+    case 'BOOKING_COMPLETED': return '#1D9E75'
+    case 'BOOKING_CANCELLED':
+    case 'BOOKING_NO_SHOW': return '#E24B4A'
     default: return theme.text.secondary
   }
 }
@@ -170,6 +184,8 @@ export default function NotificationsScreen() {
         router.push(`/chat/${conversationId}` as never)
       } else if (jobId && ['NEW_APPLICATION', 'APPLICATION_ACCEPTED', 'APPLICATION_DECLINED', 'NEW_JOB_MATCH'].includes(item.type)) {
         router.push(`/jobs/${jobId}` as never)
+      } else if (['BOOKING_CREATED', 'BOOKING_CONFIRMED', 'BOOKING_CANCELLED', 'BOOKING_REMINDER', 'BOOKING_COMPLETED', 'BOOKING_NO_SHOW'].includes(item.type)) {
+        router.push('/(tabs)/bookings' as never)
       }
     },
     [markRead],

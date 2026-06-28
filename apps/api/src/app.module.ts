@@ -37,6 +37,7 @@ import { PostsModule } from './modules/posts/posts.module'
 import { SearchModule } from './modules/search/search.module'
 import { IntakeFormsModule } from './modules/intake-forms/intake-forms.module'
 import { AdminModule } from './modules/admin/admin.module'
+import { ClientProfileModule } from './modules/client-profile/client-profile.module'
 
 @Module({
   imports: [
@@ -105,6 +106,7 @@ import { AdminModule } from './modules/admin/admin.module'
     SearchModule,
     IntakeFormsModule,
     AdminModule,
+    ClientProfileModule,
   ],
   providers: [
     {

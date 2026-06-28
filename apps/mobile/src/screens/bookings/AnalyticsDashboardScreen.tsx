@@ -111,6 +111,21 @@ export default function AnalyticsDashboardScreen() {
             </View>
           </View>
 
+          <View style={styles.kpiRow}>
+            <View style={[styles.kpiCard, { backgroundColor: theme.bg.surface, borderColor: theme.border.subtle }]}>
+              <Text style={{ fontSize: 22, fontWeight: '900', color: '#EF4444' }}>
+                -{formatCurrency(analytics.platformFees ?? 0)}
+              </Text>
+              <Text style={{ fontSize: 12, color: theme.text.secondary, marginTop: 2 }}>Platform Fees (2%)</Text>
+            </View>
+            <View style={[styles.kpiCard, { backgroundColor: theme.bg.surface, borderColor: '#1D9E75', borderWidth: 1.5 }]}>
+              <Text style={{ fontSize: 22, fontWeight: '900', color: '#1D9E75' }}>
+                {formatCurrency(analytics.netRevenue ?? analytics.revenue)}
+              </Text>
+              <Text style={{ fontSize: 12, color: theme.text.secondary, marginTop: 2 }}>Net Revenue</Text>
+            </View>
+          </View>
+
           {/* Rate bars */}
           <View style={[styles.section, { backgroundColor: theme.bg.surface, borderColor: theme.border.subtle }]}>
             <Text style={[styles.sectionTitle, { color: theme.text.primary }]}>Performance Rates</Text>

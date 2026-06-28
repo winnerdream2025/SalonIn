@@ -657,6 +657,178 @@ print("ok" if cr == False else "fail")
 # Stripe connect status endpoint still works
 chk "GET /stripe-connect/status (worker)" GET /stripe-connect/status 200 "" "$WT"
 
+# ── [17] New endpoints: walk-in booking, client notes, salon staff ─────────
+echo ""
+echo -e "${B}[17] Walk-in + Client Notes + SalonStaff${NC}"
+
+# Walk-in booking (isWalkIn:true → skips slot check, auto-confirms)
+# We need a service ID to test; reuse if available from earlier context
+WALKIN_BODY=$(curl -s -X POST "$BASE/bookings" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $ST" \
+  -d "{
+    \"providerId\": \"$SID\",
+    \"providerType\": \"salon\",
+    \"serviceId\": \"$SVC_ID\",
+    \"clientName\": \"Walk In\",
+    \"clientEmail\": \"walkin@test.com\",
+    \"date\": \"$(date +%Y-%m-%d)\",
+    \"startTime\": \"14:00\",
+    \"isWalkIn\": true,
+    \"isProviderCreated\": true
+  }" 2>/dev/null)
+WALKIN_STATUS=$(echo "$WALKIN_BODY" | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d.get("data",{}).get("status",""))' 2>/dev/null)
+[ "$WALKIN_STATUS" = "CONFIRMED" ] \
+  && { echo -e "${G}✓${NC} POST /bookings isWalkIn=true → status=CONFIRMED"; ((pass++)); } \
+  || { echo -e "${R}✗${NC} POST /bookings isWalkIn=true → expected CONFIRMED, got: $WALKIN_STATUS"; ((fail++)); }
+
+WALKIN_ID=$(echo "$WALKIN_BODY" | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d.get("data",{}).get("id",""))' 2>/dev/null)
+
+# Client notes endpoint
+if [ -n "$WALKIN_ID" ]; then
+  chk "PATCH /bookings/:id/notes (provider updates notes)" PATCH "/bookings/$WALKIN_ID/notes" 204 '{"notes":"Allergic to sulfates"}' "$ST"
+else
+  echo -e "${R}✗${NC} PATCH /bookings/:id/notes — skipped (no walk-in booking ID)"; ((fail++))
+fi
+
+# Analytics now includes platformFees + netRevenue
+ANALYTICS_BODY=$(curl -s "$BASE/bookings/analytics?period=30d" -H "Authorization: Bearer $ST" 2>/dev/null)
+echo "$ANALYTICS_BODY" | python3 -c '
+import sys, json
+d = json.load(sys.stdin)
+data = d.get("data", d)
+has_fees = "platformFees" in data
+has_net = "netRevenue" in data
+print("ok" if has_fees and has_net else "fail")
+' 2>/dev/null | grep -q ok \
+  && { echo -e "${G}✓${NC} GET /bookings/analytics includes platformFees + netRevenue"; ((pass++)); } \
+  || { echo -e "${R}✗${NC} GET /bookings/analytics missing platformFees/netRevenue"; ((fail++)); }
+
+# SalonStaff — GET /salons/staff (salon)
+chk "GET /salons/staff (salon)" GET /salons/staff 200 "" "$ST"
+
+# SalonStaff — GET /salons/staff/invites (worker)
+chk "GET /salons/staff/invites (worker)" GET /salons/staff/invites 200 "" "$WT"
+
+# SalonStaff — invite worker (POST /salons/staff/invite/:workerId)
+INVITE_BODY=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$BASE/salons/staff/invite/$WID" \
+  -H "Authorization: Bearer $ST" 2>/dev/null)
+[ "$INVITE_BODY" = "201" ] \
+  && { echo -e "${G}✓${NC} [201] POST /salons/staff/invite/:workerId"; ((pass++)); } \
+  || { echo -e "${R}✗${NC} POST /salons/staff/invite/:workerId → $INVITE_BODY (expected 201)"; ((fail++)); }
+
+# SalonStaff — worker accepts invite
+INVITE_ID=$(curl -s "$BASE/salons/staff/invites" -H "Authorization: Bearer $WT" 2>/dev/null \
+  | python3 -c 'import sys,json; d=json.load(sys.stdin); items=d.get("data",d); print(items[0]["id"] if items else "")' 2>/dev/null)
+if [ -n "$INVITE_ID" ]; then
+  chk "PATCH /salons/staff/invites/:id/accept (worker)" PATCH "/salons/staff/invites/$INVITE_ID/accept" 200 "" "$WT"
+else
+  echo -e "${R}✗${NC} PATCH /salons/staff/invites/:id/accept — skipped (no invite ID)"; ((fail++))
+fi
+
+# New booking screen route check (creates provider booking — uses walk-in path above)
+# Already validated via the walk-in booking test above.
+
+# ── [18] BOOKING FLOW BUG FIXES ───────────────────
+echo -e "\n${B}[18] BOOKING FLOW BUG FIXES${NC}"
+
+# 18a. Client login (register test client if needed)
+CLIENT_RESP=$(curl -s -X POST "$BASE/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"testclient@mysalonin.com","password":"Test1234!"}')
+CT=$(echo "$CLIENT_RESP" | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d.get("accessToken",""))' 2>/dev/null)
+if [ -z "$CT" ]; then
+  REG=$(curl -s -X POST "$BASE/auth/register" \
+    -H "Content-Type: application/json" \
+    -d '{"email":"testclient@mysalonin.com","password":"Test1234!","name":"Test Client","role":"WORKER","accountType":"CLIENT"}')
+  CT=$(echo "$REG" | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d.get("accessToken",""))' 2>/dev/null)
+fi
+[ -n "$CT" ] \
+  && { echo -e "${G}✓${NC} [200] Client login/register OK"; ((pass++)); } \
+  || { echo -e "${R}✗${NC} Client login/register FAILED — skipping section [18]"; ((fail++)); }
+
+# 18b. GET /client-profile — returns profile for current CLIENT
+CP_BODY=$(curl -s "$BASE/client-profile" -H "Authorization: Bearer $CT" 2>/dev/null)
+CP_NAME=$(echo "$CP_BODY" | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d.get("data",{}).get("name",""))' 2>/dev/null)
+[ -n "$CP_NAME" ] \
+  && { echo -e "${G}✓${NC} GET /client-profile → name=$CP_NAME"; ((pass++)); } \
+  || { echo -e "${R}✗${NC} GET /client-profile failed or empty: ${CP_BODY:0:200}"; ((fail++)); }
+
+# 18c. PATCH /client-profile — update name + phone
+PATCH_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X PATCH "$BASE/client-profile" \
+  -H "Authorization: Bearer $CT" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Test Client Updated","phone":"+15555550100"}')
+[ "$PATCH_CODE" = "200" ] \
+  && { echo -e "${G}✓${NC} [200] PATCH /client-profile"; ((pass++)); } \
+  || { echo -e "${R}✗${NC} PATCH /client-profile → $PATCH_CODE (expected 200)"; ((fail++)); }
+
+# 18d. GET /client-profile after update — verify name persisted
+CP2_BODY=$(curl -s "$BASE/client-profile" -H "Authorization: Bearer $CT" 2>/dev/null)
+CP2_NAME=$(echo "$CP2_BODY" | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d.get("data",{}).get("name",""))' 2>/dev/null)
+[ "$CP2_NAME" = "Test Client Updated" ] \
+  && { echo -e "${G}✓${NC} GET /client-profile name persisted after PATCH"; ((pass++)); } \
+  || { echo -e "${R}✗${NC} GET /client-profile name mismatch: got '$CP2_NAME'"; ((fail++)); }
+
+# 18e. acceptsBookings gate — booking against provider with acceptsBookings=false should fail
+# Get salon's provider ID
+SALON_PROFILE=$(curl -s "$BASE/salons/me" -H "Authorization: Bearer $ST" 2>/dev/null)
+SALON_PROVIDER_ID=$(echo "$SALON_PROFILE" | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d.get("data",d).get("id",""))' 2>/dev/null)
+
+# Ensure salon has acceptsBookings=false and has a service
+if [ -n "$SALON_PROVIDER_ID" ]; then
+  # Disable bookings temporarily
+  curl -s -X PATCH "$BASE/salons/me" \
+    -H "Authorization: Bearer $ST" \
+    -H "Content-Type: application/json" \
+    -d '{"acceptsBookings":false}' > /dev/null 2>&1
+
+  # Get first active service for this salon
+  SALON_SVC=$(curl -s "$BASE/provider-services?providerId=$SALON_PROVIDER_ID&providerType=salon" \
+    -H "Authorization: Bearer $CT" 2>/dev/null)
+  SALON_SVC_ID=$(echo "$SALON_SVC" | python3 -c '
+import sys,json
+d=json.load(sys.stdin)
+items=d.get("data",d)
+if isinstance(items,list) and items: print(items[0]["id"])
+else: print("")
+' 2>/dev/null)
+
+  if [ -n "$SALON_SVC_ID" ]; then
+    GATE_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$BASE/bookings" \
+      -H "Authorization: Bearer $CT" \
+      -H "Content-Type: application/json" \
+      -d "{\"providerId\":\"$SALON_PROVIDER_ID\",\"providerType\":\"salon\",\"serviceId\":\"$SALON_SVC_ID\",\"date\":\"2099-01-15\",\"startTime\":\"10:00\",\"clientName\":\"Test Client\",\"clientEmail\":\"testclient@mysalonin.com\"}")
+    [ "$GATE_CODE" = "400" ] \
+      && { echo -e "${G}✓${NC} [400] POST /bookings blocked when acceptsBookings=false"; ((pass++)); } \
+      || { echo -e "${R}✗${NC} POST /bookings with acceptsBookings=false → $GATE_CODE (expected 400)"; ((fail++)); }
+
+    # Re-enable bookings
+    curl -s -X PATCH "$BASE/salons/me" \
+      -H "Authorization: Bearer $ST" \
+      -H "Content-Type: application/json" \
+      -d '{"acceptsBookings":true}' > /dev/null 2>&1
+  else
+    echo -e "${R}✗${NC} acceptsBookings gate — skipped (no salon service found)"; ((fail++))
+  fi
+else
+  echo -e "${R}✗${NC} acceptsBookings gate — skipped (no salon provider ID)"; ((fail++))
+fi
+
+# 18f. login response includes clientProfile for CLIENT accounts
+LOGIN_BODY=$(curl -s -X POST "$BASE/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"testclient@mysalonin.com","password":"Test1234!"}')
+HAS_CP=$(echo "$LOGIN_BODY" | python3 -c '
+import sys,json
+d=json.load(sys.stdin)
+u=d.get("user",{})
+print("ok" if "clientProfile" in u else "fail")
+' 2>/dev/null)
+[ "$HAS_CP" = "ok" ] \
+  && { echo -e "${G}✓${NC} POST /auth/login response includes clientProfile for CLIENT"; ((pass++)); } \
+  || { echo -e "${R}✗${NC} POST /auth/login missing clientProfile in user object"; ((fail++)); }
+
 # ── SUMMARY ───────────────────────────────────────
 TOTAL=$((pass+fail))
 echo ""

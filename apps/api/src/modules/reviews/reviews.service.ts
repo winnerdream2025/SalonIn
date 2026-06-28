@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
+import { NotificationType } from '@prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
 import { NotificationsService } from '../notifications/notifications.service'
 import type { CreateReviewDto } from './dto/create-review.dto'
@@ -133,7 +134,7 @@ export class ReviewsService {
       'New Review',
       `${card.authorName} left you a ${dto.rating}★ review.`,
       { reviewId: review.id, event: 'review.created' },
-      'NEW_REVIEW' as never,
+      NotificationType.REVIEW_RECEIVED,
     ).catch(() => {})
 
     return card

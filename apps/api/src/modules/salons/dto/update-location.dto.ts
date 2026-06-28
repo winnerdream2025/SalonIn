@@ -1,4 +1,4 @@
-import { IsNumber, Max, Min } from 'class-validator'
+import { IsNumber, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator'
 
 export class UpdateSalonLocationDto {
   @IsNumber()
@@ -10,4 +10,19 @@ export class UpdateSalonLocationDto {
   @Min(-180)
   @Max(180)
   lng!: number
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  city?: string
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  state?: string
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  country?: string
 }

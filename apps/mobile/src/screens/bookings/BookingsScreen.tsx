@@ -2,12 +2,12 @@ import React, { useState, useEffect, useCallback } from 'react'
 import {
   View,
   FlatList,
+  ScrollView,
   TouchableOpacity,
   StyleSheet,
   RefreshControl,
   Alert,
   Modal,
-  TextInput,
   ActivityIndicator,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -15,8 +15,8 @@ import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { Text, Skeleton, useTheme } from '@salonin/ui'
 import { messagesApi, workersApi, salonsApi, parseApiError } from '@salonin/api-client'
-import { bookingsApi } from '../../services/booking/booking.api'
-import type { BookingResult } from '../../services/booking/booking.types'
+import { availabilityApi, bookingsApi } from '../../services/booking/booking.api'
+import type { AvailabilitySlot, BookingResult } from '../../services/booking/booking.types'
 import { useAuthStore } from '../../store/authStore'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -27,7 +27,7 @@ type BookingTab = 'upcoming' | 'completed' | 'cancelled'
 
 function classifyStatus(status: BookingResult['status']): BookingTab {
   if (status === 'PENDING' || status === 'CONFIRMED' || status === 'PENDING_PAYMENT') return 'upcoming'
-  if (status === 'CANCELLED') return 'cancelled'
+  if (status === 'CANCELLED' || status === 'NO_SHOW') return 'cancelled'
   return 'completed'
 }
 
@@ -76,6 +76,100 @@ function statusLabel(status: BookingResult['status']): string {
     case 'NO_SHOW':         return 'No Show'
     default:                return status
   }
+}
+
+// ─── DateSlotPicker ──────────────────────────────────────────────────────────
+
+function buildPickerDateRange(): string[] {
+  return Array.from({ length: 14 }, (_, i) => {
+    const d = new Date()
+    d.setDate(d.getDate() + i)
+    return d.toISOString().slice(0, 10)
+  })
+}
+
+function DateSlotPicker({
+  title,
+  pickerDate,
+  onDateChange,
+  pickerSelectedTime,
+  onTimeSelect,
+  pickerSlots,
+  pickerSlotsLoading,
+  theme,
+}: {
+  title: string
+  pickerDate: string
+  onDateChange: (d: string) => void
+  pickerSelectedTime: string | null
+  onTimeSelect: (t: string) => void
+  pickerSlots: AvailabilitySlot[]
+  pickerSlotsLoading: boolean
+  theme: ReturnType<typeof useTheme>['theme']
+}) {
+  const dateRange = buildPickerDateRange()
+  return (
+    <View style={{ flex: 1 }}>
+      <Text style={[styles.pickerTitle, { color: theme.text.secondary }]}>{title}</Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 8, gap: 8 }}
+        style={{ flexGrow: 0 }}
+      >
+        {dateRange.map((date) => {
+          const d = new Date(`${date}T00:00:00`)
+          const active = date === pickerDate
+          return (
+            <TouchableOpacity
+              key={date}
+              onPress={() => onDateChange(date)}
+              activeOpacity={0.75}
+              style={[styles.dateChip, {
+                backgroundColor: active ? '#D85A30' : theme.bg.surface,
+                borderColor: active ? '#D85A30' : theme.border.default,
+              }]}
+            >
+              <Text style={{ fontSize: 10, color: active ? '#fff' : theme.text.tertiary, fontWeight: '600' }}>
+                {d.toLocaleDateString('en-US', { weekday: 'short' })}
+              </Text>
+              <Text style={{ fontSize: 16, fontWeight: '800', color: active ? '#fff' : theme.text.primary }}>
+                {d.getDate()}
+              </Text>
+            </TouchableOpacity>
+          )
+        })}
+      </ScrollView>
+      {pickerSlotsLoading ? (
+        <View style={{ alignItems: 'center', padding: 24 }}><ActivityIndicator color="#D85A30" /></View>
+      ) : pickerSlots.length === 0 ? (
+        <Text style={{ color: theme.text.tertiary, textAlign: 'center', padding: 24, fontSize: 13 }}>
+          No available slots on this day
+        </Text>
+      ) : (
+        <View style={styles.slotGrid}>
+          {pickerSlots.map((slot) => {
+            const active = slot.time === pickerSelectedTime
+            return (
+              <TouchableOpacity
+                key={slot.time}
+                onPress={() => onTimeSelect(slot.time)}
+                activeOpacity={0.75}
+                style={[styles.slotChip, {
+                  backgroundColor: active ? '#D85A30' : theme.bg.surface,
+                  borderColor: active ? '#D85A30' : theme.border.default,
+                }]}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '600', color: active ? '#fff' : theme.text.primary }}>
+                  {formatTime12(slot.time)}
+                </Text>
+              </TouchableOpacity>
+            )
+          })}
+        </View>
+      )}
+    </View>
+  )
 }
 
 // ─── Booking card ─────────────────────────────────────────────────────────────
@@ -276,13 +370,13 @@ export default function BookingsScreen() {
     cancelled: allBookings.filter((b) => classifyStatus(b.status) === 'cancelled').length,
   }
 
-  const [rescheduleTarget, setRescheduleTarget] = useState<BookingResult | null>(null)
-  const [rescheduleDate,    setRescheduleDate]   = useState('')
-  const [rescheduleTime,    setRescheduleTime]   = useState('')
-  const [rebookTarget,     setRebookTarget]      = useState<BookingResult | null>(null)
-  const [rebookDate,       setRebookDate]        = useState('')
-  const [rebookTime,       setRebookTime]        = useState('')
-  const [isActioning,      setIsActioning]       = useState(false)
+  const [rescheduleTarget,   setRescheduleTarget]   = useState<BookingResult | null>(null)
+  const [rebookTarget,       setRebookTarget]       = useState<BookingResult | null>(null)
+  const [isActioning,        setIsActioning]        = useState(false)
+  const [pickerDate,         setPickerDate]         = useState<string>(() => new Date().toISOString().slice(0, 10))
+  const [pickerSelectedTime, setPickerSelectedTime] = useState<string | null>(null)
+  const [pickerSlots,        setPickerSlots]        = useState<AvailabilitySlot[]>([])
+  const [pickerSlotsLoading, setPickerSlotsLoading] = useState(false)
 
   const handleMessage = useCallback(async (item: BookingResult) => {
     if (!currentUser) return
@@ -339,14 +433,14 @@ export default function BookingsScreen() {
 
   const handleReschedule = useCallback((item: BookingResult) => {
     setRescheduleTarget(item)
-    setRescheduleDate('')
-    setRescheduleTime('')
+    setPickerSelectedTime(null)
+    setPickerDate(new Date().toISOString().slice(0, 10))
   }, [])
 
   const handleRebook = useCallback((item: BookingResult) => {
     setRebookTarget(item)
-    setRebookDate('')
-    setRebookTime('')
+    setPickerSelectedTime(null)
+    setPickerDate(new Date().toISOString().slice(0, 10))
   }, [])
 
   const handleReview = useCallback(async (item: BookingResult) => {
@@ -379,13 +473,13 @@ export default function BookingsScreen() {
   }, [])
 
   const handleRebookConfirm = useCallback(async () => {
-    if (!rebookTarget || !rebookDate.trim() || !rebookTime.trim()) {
-      Alert.alert('Missing info', 'Enter a date (YYYY-MM-DD) and time (e.g. 14:30).')
+    if (!rebookTarget || !pickerDate || !pickerSelectedTime) {
+      Alert.alert('Missing info', 'Pick a date and available time slot.')
       return
     }
     setIsActioning(true)
     try {
-      await bookingsApi.rebook(rebookTarget.id, rebookDate.trim(), rebookTime.trim())
+      await bookingsApi.rebook(rebookTarget.id, pickerDate, pickerSelectedTime)
       setRebookTarget(null)
       Alert.alert('Booking requested', 'Your new appointment has been submitted.')
       load()
@@ -394,11 +488,29 @@ export default function BookingsScreen() {
     } finally {
       setIsActioning(false)
     }
-  }, [rebookTarget, rebookDate, rebookTime, load])
+  }, [rebookTarget, pickerDate, pickerSelectedTime, load])
+
+  // Load available slots when picker date or active modal target changes
+  const activePickerTarget = rebookTarget ?? rescheduleTarget
+  useEffect(() => {
+    if (!activePickerTarget) { setPickerSlots([]); return }
+    setPickerSlotsLoading(true)
+    setPickerSelectedTime(null)
+    availabilityApi.getSlots(
+      activePickerTarget.providerId,
+      activePickerTarget.providerType,
+      pickerDate,
+      activePickerTarget.service?.duration,
+    )
+      .then((slots) => setPickerSlots(slots.filter((s) => s.available !== false)))
+      .catch(() => setPickerSlots([]))
+      .finally(() => setPickerSlotsLoading(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePickerTarget?.id, pickerDate])
 
   const handleRescheduleConfirm = useCallback(async () => {
-    if (!rescheduleTarget || !rescheduleDate.trim() || !rescheduleTime.trim()) {
-      Alert.alert('Missing info', 'Enter a date (YYYY-MM-DD) and time (e.g. 14:30).')
+    if (!rescheduleTarget || !pickerDate || !pickerSelectedTime) {
+      Alert.alert('Missing info', 'Pick a date and available time slot.')
       return
     }
     const token     = rescheduleTarget.rescheduleToken ?? rescheduleTarget.cancelToken
@@ -410,13 +522,13 @@ export default function BookingsScreen() {
     }
     setIsActioning(true)
     try {
-      await bookingsApi.clientReschedule(rescheduleTarget.id, token, tokenType, rescheduleDate.trim(), rescheduleTime.trim())
+      await bookingsApi.clientReschedule(rescheduleTarget.id, token, tokenType, pickerDate, pickerSelectedTime)
       setRescheduleTarget(null)
       load()
     } catch {
       Alert.alert('Error', 'Could not reschedule booking. Please try again.')
     } finally { setIsActioning(false) }
-  }, [rescheduleTarget, rescheduleDate, rescheduleTime, load])
+  }, [rescheduleTarget, pickerDate, pickerSelectedTime, load])
 
   if (!currentUser) {
     return (
@@ -439,6 +551,13 @@ export default function BookingsScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: top + 8, borderBottomColor: theme.border.subtle }]}>
         <Text style={styles.pageTitle}>My Bookings</Text>
+        <TouchableOpacity
+          onPress={() => router.push('/client-settings' as never)}
+          hitSlop={12}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="settings-outline" size={22} color={theme.text.secondary} />
+        </TouchableOpacity>
       </View>
 
       {/* Tabs */}
@@ -519,31 +638,16 @@ export default function BookingsScreen() {
                 : <Text style={{ color: '#D85A30', fontSize: 15, fontWeight: '700' }}>Confirm</Text>}
             </TouchableOpacity>
           </View>
-          <View style={{ padding: 24, gap: 16 }}>
-            <Text style={{ fontSize: 14, color: theme.text.secondary, lineHeight: 20 }}>
-              Rebook {rebookTarget?.service?.name ?? 'this service'} with the same provider. Pick a new date and time.
-            </Text>
-            <View>
-              <Text style={{ fontSize: 12, fontWeight: '600', color: theme.text.secondary, marginBottom: 6, textTransform: 'uppercase' }}>Date</Text>
-              <TextInput
-                value={rebookDate}
-                onChangeText={setRebookDate}
-                placeholder="YYYY-MM-DD  e.g. 2026-07-20"
-                placeholderTextColor={theme.text.tertiary}
-                style={[styles.modalInput, { backgroundColor: theme.bg.surface, borderColor: theme.border.default, color: theme.text.primary }]}
-              />
-            </View>
-            <View>
-              <Text style={{ fontSize: 12, fontWeight: '600', color: theme.text.secondary, marginBottom: 6, textTransform: 'uppercase' }}>Time</Text>
-              <TextInput
-                value={rebookTime}
-                onChangeText={setRebookTime}
-                placeholder="HH:MM  e.g. 10:00"
-                placeholderTextColor={theme.text.tertiary}
-                style={[styles.modalInput, { backgroundColor: theme.bg.surface, borderColor: theme.border.default, color: theme.text.primary }]}
-              />
-            </View>
-          </View>
+          <DateSlotPicker
+            title={`Rebook ${rebookTarget?.service?.name ?? 'this service'}`}
+            pickerDate={pickerDate}
+            onDateChange={setPickerDate}
+            pickerSelectedTime={pickerSelectedTime}
+            onTimeSelect={setPickerSelectedTime}
+            pickerSlots={pickerSlots}
+            pickerSlotsLoading={pickerSlotsLoading}
+            theme={theme}
+          />
         </View>
       </Modal>
 
@@ -566,31 +670,16 @@ export default function BookingsScreen() {
                 : <Text style={{ color: '#D85A30', fontSize: 15, fontWeight: '700' }}>Confirm</Text>}
             </TouchableOpacity>
           </View>
-          <View style={{ padding: 24, gap: 16 }}>
-            <Text style={{ fontSize: 14, color: theme.text.secondary, lineHeight: 20 }}>
-              Enter your preferred new date and time. The provider will confirm the change.
-            </Text>
-            <View>
-              <Text style={{ fontSize: 12, fontWeight: '600', color: theme.text.secondary, marginBottom: 6, textTransform: 'uppercase' }}>New Date</Text>
-              <TextInput
-                value={rescheduleDate}
-                onChangeText={setRescheduleDate}
-                placeholder="YYYY-MM-DD  e.g. 2026-07-15"
-                placeholderTextColor={theme.text.tertiary}
-                style={[styles.modalInput, { backgroundColor: theme.bg.surface, borderColor: theme.border.default, color: theme.text.primary }]}
-              />
-            </View>
-            <View>
-              <Text style={{ fontSize: 12, fontWeight: '600', color: theme.text.secondary, marginBottom: 6, textTransform: 'uppercase' }}>New Time</Text>
-              <TextInput
-                value={rescheduleTime}
-                onChangeText={setRescheduleTime}
-                placeholder="HH:MM  e.g. 14:30"
-                placeholderTextColor={theme.text.tertiary}
-                style={[styles.modalInput, { backgroundColor: theme.bg.surface, borderColor: theme.border.default, color: theme.text.primary }]}
-              />
-            </View>
-          </View>
+          <DateSlotPicker
+            title="Pick a new date and time"
+            pickerDate={pickerDate}
+            onDateChange={setPickerDate}
+            pickerSelectedTime={pickerSelectedTime}
+            onTimeSelect={setPickerSelectedTime}
+            pickerSlots={pickerSlots}
+            pickerSlotsLoading={pickerSlotsLoading}
+            theme={theme}
+          />
         </View>
       </Modal>
 
@@ -606,6 +695,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   pageTitle: {
     fontFamily: 'Georgia',
@@ -687,8 +779,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingTop: 20, paddingBottom: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  modalInput: {
-    borderWidth: 1, borderRadius: 10,
-    paddingHorizontal: 14, paddingVertical: 12, fontSize: 15,
+  pickerTitle: { fontSize: 13, color: '#6B6B6B', marginBottom: 10, marginTop: 16, paddingHorizontal: 16 },
+  dateChip: {
+    alignItems: 'center', justifyContent: 'center',
+    width: 52, height: 60, borderRadius: 12, borderWidth: 1,
+  },
+  slotGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, padding: 16 },
+  slotChip: {
+    paddingHorizontal: 14, paddingVertical: 8,
+    borderRadius: 10, borderWidth: 1,
   },
 })

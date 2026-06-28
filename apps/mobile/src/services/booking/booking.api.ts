@@ -118,6 +118,9 @@ export const bookingsApi = {
   noShow: (bookingId: string): Promise<BookingResult> =>
     api.patch(`/bookings/${bookingId}/no-show`).then(unwrap<BookingResult>),
 
+  updateNotes: (bookingId: string, notes: string): Promise<void> =>
+    api.patch(`/bookings/${bookingId}/notes`, { notes }).then(() => undefined),
+
   getProviderBookingsFiltered: (params: {
     status?: string
     dateFilter?: 'today' | 'tomorrow' | 'week' | 'month'

@@ -73,7 +73,10 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    const user = await this.prisma.user.findUnique({ where: { email: dto.email } })
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+      include: { clientProfile: { select: { name: true, phone: true, photoUrl: true } } },
+    })
     if (!user?.passwordHash) throw new InvalidCredentialsException()
 
     const valid = await bcrypt.compare(dto.password, user.passwordHash)
@@ -90,7 +93,10 @@ export class AuthService {
     const userId = await this.redis.get(`refresh:${refreshToken}`)
     if (!userId) throw new InvalidCredentialsException()
 
-    const user = await this.prisma.user.findUnique({ where: { id: userId } })
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { clientProfile: { select: { name: true, phone: true, photoUrl: true } } },
+    })
     if (!user) throw new InvalidCredentialsException()
 
     await this.redis.del(`refresh:${refreshToken}`)

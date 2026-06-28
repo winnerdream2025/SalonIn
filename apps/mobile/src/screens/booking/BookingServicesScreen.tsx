@@ -1,16 +1,19 @@
-import React, { useCallback } from 'react'
+import React, { useCallback, useState } from 'react'
 import {
   View,
   ScrollView,
   TouchableOpacity,
   StyleSheet,
   RefreshControl,
+  Alert,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { Text, useTheme } from '@salonin/ui'
+import { messagesApi, workersApi, salonsApi } from '@salonin/api-client'
 import { useProviderServices } from '../../services/booking/booking.hooks'
+import { useAuthStore } from '../../store/authStore'
 import type { ProviderService } from '../../services/booking/booking.types'
 
 function formatPrice(price: number, currency: string): string {
@@ -97,10 +100,50 @@ export default function BookingServicesScreen() {
   const { theme } = useTheme()
   const { top, bottom } = useSafeAreaInsets()
 
+  const currentUser = useAuthStore((s) => s.user)
+  const [isMessaging, setIsMessaging] = useState(false)
+
   const { services, isLoading, error, refetch } = useProviderServices(
     providerId ?? null,
     providerType ?? 'professional',
   )
+
+  const handleMessage = useCallback(async () => {
+    if (!currentUser) {
+      Alert.alert('Sign in required', 'Please sign in to message this provider.', [
+        { text: 'Sign in', onPress: () => router.push('/(auth)/login' as never) },
+        { text: 'Cancel', style: 'cancel' },
+      ])
+      return
+    }
+    setIsMessaging(true)
+    try {
+      let providerUserId: string | null = null
+      let providerDisplayName = providerName ?? 'Provider'
+      if (providerType === 'salon') {
+        const salon = await salonsApi.getById(providerId ?? '').catch(() => null)
+        providerUserId = (salon as any)?.userId ?? null
+        providerDisplayName = (salon as any)?.name ?? providerDisplayName
+      } else {
+        const worker = await workersApi.getById(providerId ?? '').catch(() => null)
+        providerUserId = (worker as any)?.userId ?? null
+        providerDisplayName = (worker as any)?.name ?? providerDisplayName
+      }
+      if (!providerUserId) {
+        Alert.alert('Error', 'Could not find this provider. Please try again.')
+        return
+      }
+      const conv = await messagesApi.createConversation(providerUserId)
+      router.push({
+        pathname: '/chat/[id]',
+        params: { id: conv.id, name: providerDisplayName, otherUserId: providerUserId, otherPhotoUrl: '' },
+      } as never)
+    } catch {
+      Alert.alert('Error', 'Could not start conversation. Please try again.')
+    } finally {
+      setIsMessaging(false)
+    }
+  }, [currentUser, providerId, providerType, providerName])
 
   const handleSelectService = useCallback(
     (service: ProviderService) => {
@@ -166,11 +209,35 @@ export default function BookingServicesScreen() {
           <Text style={{ color: theme.text.secondary, marginTop: 12, textAlign: 'center' }}>
             This provider has no services listed yet.
           </Text>
+          <TouchableOpacity
+            onPress={() => void handleMessage()}
+            disabled={isMessaging}
+            style={[styles.messageBtn, { borderColor: theme.border.default }]}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="chatbubble-outline" size={16} color={theme.text.primary} style={{ marginRight: 6 }} />
+            <Text style={{ color: theme.text.primary, fontWeight: '600', fontSize: 14 }}>
+              {isMessaging ? 'Opening chat…' : 'Message Provider'}
+            </Text>
+          </TouchableOpacity>
         </View>
       ) : services.length === 0 ? (
         <View style={styles.centeredState}>
           <Ionicons name="list-outline" size={40} color={theme.text.tertiary} />
-          <Text style={{ color: theme.text.secondary, marginTop: 12 }}>No services listed yet.</Text>
+          <Text style={{ color: theme.text.secondary, marginTop: 12, textAlign: 'center' }}>
+            No services listed yet.
+          </Text>
+          <TouchableOpacity
+            onPress={() => void handleMessage()}
+            disabled={isMessaging}
+            style={[styles.messageBtn, { borderColor: theme.border.default }]}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="chatbubble-outline" size={16} color={theme.text.primary} style={{ marginRight: 6 }} />
+            <Text style={{ color: theme.text.primary, fontWeight: '600', fontSize: 14 }}>
+              {isMessaging ? 'Opening chat…' : 'Message Provider'}
+            </Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <ScrollView
@@ -235,5 +302,14 @@ const styles = StyleSheet.create({
   skeletonLine: {
     height: 14,
     borderRadius: 7,
+  },
+  messageBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 20,
+    borderWidth: 1,
+    borderRadius: 22,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
   },
 })

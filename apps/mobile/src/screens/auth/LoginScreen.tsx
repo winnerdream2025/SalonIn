@@ -111,6 +111,9 @@ export default function LoginScreen() {
           <Button variant="ghost" fullWidth onPress={() => router.push('/(auth)/role-select')}>
             Create an account
           </Button>
+          <Button variant="ghost" fullWidth onPress={() => router.replace('/(tabs)')}>
+            Browse without account
+          </Button>
 
           <View style={styles.footer}>
             <RNText style={[styles.footerText, { color: theme.text.secondary }]}>

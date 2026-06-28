@@ -148,6 +148,19 @@ export class BookingsController {
     await this.svc.removeFromWaitlist(id, user?.id, email)
   }
 
+  // ─── Client notes ─────────────────────────────────────────────────────────
+
+  @Patch(':id/notes')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async updateNotes(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Body('notes') notes: string,
+  ) {
+    await this.svc.updateClientNotes(id, user, notes ?? '')
+  }
+
   // ─── Rebook ───────────────────────────────────────────────────────────────
 
   @Post('rebook')

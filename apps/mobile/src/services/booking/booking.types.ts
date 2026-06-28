@@ -96,6 +96,8 @@ export interface CreateBookingPayload {
   notes?:        string
   intakeFormId?: string
   intakeAnswers?: { questionId: string; answer: unknown }[]
+  isWalkIn?: boolean
+  isProviderCreated?: boolean
 }
 
 export type BookingStatus =
@@ -111,7 +113,7 @@ export interface BookingResult {
   providerId: string
   providerType: string
   serviceId: string
-  service?: { name: string; category: string | null }
+  service?: { name: string; category: string | null; duration?: number }
   clientUserId: string | null
   clientName: string
   clientEmail: string
@@ -123,6 +125,7 @@ export interface BookingResult {
   price: number
   currency: string
   notes: string | null
+  providerNotes: string | null
   cancelToken: string
   rescheduleToken: string | null
   confirmationCode: string | null
@@ -145,6 +148,8 @@ export interface BookingAnalytics {
   cancellationRate: number
   noShowRate: number
   repeatClients: number
+  platformFees: number
+  netRevenue: number
   topServices: { name: string; count: number; revenue: number }[]
 }
 

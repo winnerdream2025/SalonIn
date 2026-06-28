@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import {
   View,
   ScrollView,
@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { Text, Button, useTheme } from '@salonin/ui'
+import { clientProfileApi } from '@salonin/api-client'
 import { useAuthStore } from '../../store/authStore'
 import {
   useCreateBooking,
@@ -110,11 +111,18 @@ export default function BookingConfirmScreen() {
   const currency = serviceCurrency ?? 'USD'
   const duration = parseInt(serviceDuration ?? '60', 10)
 
-  // Pre-fill name from email prefix (User has no dedicated name field) and phone from profile
   const [clientName, setClientName] = useState(() =>
     user?.email ? user.email.split('@')[0].replace(/[._\-+]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : ''
   )
-  const [clientPhone, setClientPhone] = useState(() => (user as any)?.phone ?? '')
+  const [clientPhone, setClientPhone] = useState('')
+
+  // Hydrate name/phone from stored ClientProfile (overrides email-derived default)
+  useEffect(() => {
+    clientProfileApi.getMe().then((p) => {
+      if (p.name) setClientName(p.name)
+      if (p.phone) setClientPhone(p.phone)
+    }).catch(() => {})
+  }, [])
   const [notes, setNotes] = useState('')
 
   const { initPaymentSheet, presentPaymentSheet } = _useStripe()

@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { Text, useTheme } from '@salonin/ui'
 import { useAuthStore } from '../../store/authStore'
 import { workersApi, salonsApi } from '@salonin/api-client'
-import { stripeConnectApi, servicesApi } from '../../services/booking/booking.api'
+import { availabilityApi, stripeConnectApi, servicesApi } from '../../services/booking/booking.api'
 
 interface PolicyState {
   acceptsBookings: boolean
@@ -141,9 +141,28 @@ export default function BookingSettingsScreen() {
   const [isSaving, setIsSaving] = useState(false)
   const [serviceCount, setServiceCount] = useState(0)
   const [stripeConnected, setStripeConnected] = useState(false)
+  const [hasAvailability, setHasAvailability] = useState(false)
 
-  const set = <K extends keyof PolicyState>(key: K, value: PolicyState[K]) =>
+  const set = <K extends keyof PolicyState>(key: K, value: PolicyState[K]) => {
+    if (key === 'acceptsBookings' && value === true) {
+      if (serviceCount === 0) {
+        Alert.alert('No Services', 'Add at least one service before accepting bookings.')
+        return
+      }
+      if (!hasAvailability) {
+        Alert.alert(
+          'No Booking Hours Set',
+          'You have no open days configured. Clients cannot book slots. Set your hours in "Booking Hours".',
+          [
+            { text: 'Set Hours', onPress: () => router.push('/provider-availability' as never) },
+            { text: 'Enable Anyway', onPress: () => setState((s) => ({ ...s, [key]: value })) },
+          ],
+        )
+        return
+      }
+    }
     setState((s) => ({ ...s, [key]: value }))
+  }
 
   useEffect(() => {
     const load = async () => {
@@ -158,8 +177,12 @@ export default function BookingSettingsScreen() {
         if (isWorker) {
           const me = await workersApi.getMe()
           const p = me as unknown as Record<string, unknown>
-          const services = await servicesApi.list(p.id as string, 'professional').catch(() => [])
+          const [services, avRules] = await Promise.all([
+            servicesApi.list(p.id as string, 'professional').catch(() => []),
+            availabilityApi.getHours(p.id as string, 'professional').catch(() => []),
+          ])
           setServiceCount(services.length)
+          setHasAvailability(avRules.some((r: { isOpen?: boolean }) => r.isOpen))
           setState({
             acceptsBookings: (p.acceptsBookings as boolean | undefined) ?? false,
             instantBooking: (p.instantBooking as boolean | undefined) ?? false,
@@ -177,8 +200,12 @@ export default function BookingSettingsScreen() {
         } else {
           const me = await salonsApi.getMe()
           const p = me as unknown as Record<string, unknown>
-          const services = await servicesApi.list(p.id as string, 'salon').catch(() => [])
+          const [services, avRules] = await Promise.all([
+            servicesApi.list(p.id as string, 'salon').catch(() => []),
+            availabilityApi.getHours(p.id as string, 'salon').catch(() => []),
+          ])
           setServiceCount(services.length)
+          setHasAvailability(avRules.some((r: { isOpen?: boolean }) => r.isOpen))
           setState({
             acceptsBookings: (p.acceptsBookings as boolean | undefined) ?? false,
             instantBooking: (p.instantBooking as boolean | undefined) ?? false,
