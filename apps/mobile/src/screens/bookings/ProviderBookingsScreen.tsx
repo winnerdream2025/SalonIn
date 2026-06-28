@@ -18,6 +18,7 @@ import { Role } from '@salonin/types'
 import { messagesApi, parseApiError } from '@salonin/api-client'
 import { useAuthStore } from '../../store/authStore'
 import { useProviderBookings, useBookingActions } from '../../services/booking/booking.hooks'
+import { paymentsApi } from '../../services/booking/booking.api'
 import type { BookingResult, BookingStatus } from '../../services/booking/booking.types'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -191,6 +192,7 @@ const ProviderBookingCard = React.memo(function ProviderBookingCard({
   onReschedule,
   onComplete,
   onNoShow,
+  onRefund,
   onMessage,
   theme,
 }: {
@@ -200,12 +202,14 @@ const ProviderBookingCard = React.memo(function ProviderBookingCard({
   onReschedule: (b: BookingResult) => void
   onComplete: (b: BookingResult) => void
   onNoShow: (b: BookingResult) => void
+  onRefund: (b: BookingResult) => void
   onMessage: (b: BookingResult) => void
   theme: ReturnType<typeof useTheme>['theme']
 }) {
   const isPending   = item.status === 'PENDING' || item.status === 'PENDING_PAYMENT'
   const isConfirmed = item.status === 'CONFIRMED'
   const isActive    = isPending || isConfirmed
+  const isRefundable = !isActive && item.price > 0 && (item.status === 'CANCELLED' || item.status === 'NO_SHOW')
 
   return (
     <View style={[styles.card, { backgroundColor: theme.bg.surface, borderColor: theme.border.subtle }]}>
@@ -254,6 +258,29 @@ const ProviderBookingCard = React.memo(function ProviderBookingCard({
             Ref: {item.confirmationCode}
           </Text>
         ) : null}
+        {(() => {
+          const answers = item.intakeResponse?.answers
+          const questions = item.intakeResponse?.form?.questions
+          if (!answers || answers.length === 0) return null
+          return (
+            <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.border.subtle }}>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: theme.text.tertiary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
+                Intake Form
+              </Text>
+              {answers.map((a, i) => {
+                const q = questions?.find((q) => q.id === a.questionId)
+                return (
+                  <View key={i} style={{ marginBottom: 4 }}>
+                    {q && (
+                      <Text style={{ fontSize: 11, fontWeight: '600', color: theme.text.secondary }}>{q.question}</Text>
+                    )}
+                    <Text style={{ fontSize: 12, color: theme.text.primary }}>{String(a.answer ?? '')}</Text>
+                  </View>
+                )
+              })}
+            </View>
+          )
+        })()}
       </View>
 
       {/* Actions */}
@@ -304,6 +331,20 @@ const ProviderBookingCard = React.memo(function ProviderBookingCard({
             activeOpacity={0.75}
           >
             <Ionicons name="chatbubble-outline" size={14} color={theme.text.secondary} />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Refund (paid bookings that were cancelled or no-showed) */}
+      {isRefundable && (
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            onPress={() => onRefund(item)}
+            style={[styles.actionBtn, { backgroundColor: 'rgba(226,75,74,0.08)', borderColor: '#E24B4A', flex: 1 }]}
+            activeOpacity={0.75}
+          >
+            <Ionicons name="card-outline" size={14} color="#E24B4A" style={{ marginRight: 4 }} />
+            <Text style={{ fontSize: 12, fontWeight: '700', color: '#E24B4A' }}>Issue Refund</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -495,6 +536,29 @@ function ProviderBookingsInner({
     else { setRescheduleTarget(null); refetch() }
   }, [rescheduleAction, rescheduleTarget, refetch])
 
+  const handleRefund = useCallback((b: BookingResult) => {
+    Alert.alert(
+      'Issue Refund',
+      `Refund ${formatPrice(b.price, b.currency ?? 'USD')} to ${b.clientName} for ${b.service?.name ?? 'this booking'}?`,
+      [
+        { text: 'Not now', style: 'cancel' },
+        {
+          text: 'Refund',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await paymentsApi.refund(b.id)
+              Alert.alert('Refund issued', 'The payment has been refunded to the client.')
+              refetch()
+            } catch (e) {
+              Alert.alert('Refund failed', parseApiError(e))
+            }
+          },
+        },
+      ],
+    )
+  }, [refetch])
+
   if (isLoading) {
     return (
       <View style={{ padding: 16, gap: 12 }}>
@@ -580,6 +644,7 @@ function ProviderBookingsInner({
               onReschedule={(b) => setRescheduleTarget(b)}
               onComplete={handleComplete}
               onNoShow={handleNoShow}
+              onRefund={handleRefund}
               onMessage={handleMessage}
               theme={theme}
             />

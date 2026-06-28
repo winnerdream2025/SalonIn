@@ -38,8 +38,19 @@ export { reviewsApi } from './reviews.api'
 export { notificationsApi } from './notifications.api'
 export type { NotificationItem, NotificationsListResponse } from './notifications.api'
 
-export { storiesApi } from './stories.api'
-export type { Story, StoryGroup, StoriesFeed, StoryUser, StoryAnalytics, CreateStoryPayload, UpdateStoryPayload } from './stories.api'
+export { storiesApi, highlightsApi } from './stories.api'
+export type {
+  Story,
+  StoryGroup,
+  StoriesFeed,
+  StoryUser,
+  StoryAnalytics,
+  CreateStoryPayload,
+  UpdateStoryPayload,
+  StoryHighlight,
+  CreateHighlightPayload,
+  UpdateHighlightPayload,
+} from './stories.api'
 
 export { followsApi } from './follows.api'
 
@@ -48,4 +59,16 @@ export type { FollowUser, FollowListResponse, SuggestedUser } from './follows.ap
 export { bookingProfileApi } from './booking.api'
 
 export { postsApi } from './posts.api'
-export type { PostData, CreatePostPayload, PostType, PostVisibility } from './posts.api'
+export type {
+  PostData,
+  PostAuthor,
+  PostComment,
+  CreatePostPayload,
+  PostType,
+  PostVisibility,
+  TrendingHashtag,
+  FeedResponse,
+  ExploreResponse,
+  UserPostsResponse,
+  CommentsResponse,
+} from './posts.api'

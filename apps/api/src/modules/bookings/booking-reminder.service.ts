@@ -13,6 +13,41 @@ export class BookingReminderService {
     private readonly notifications: NotificationsService,
   ) {}
 
+  @Cron(CronExpression.EVERY_HOUR)
+  async autoCancelStalePending(): Promise<void> {
+    const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000)
+    const db = this.db as unknown as {
+      booking: {
+        findMany: (a: unknown) => Promise<{ id: string; clientUserId: string | null; clientName: string; date: string }[]>
+        update: (a: unknown) => Promise<void>
+      }
+    }
+    const stale = await db.booking.findMany({
+      where: { status: 'PENDING', createdAt: { lt: cutoff } },
+      select: { id: true, clientUserId: true, clientName: true, date: true },
+    })
+    for (const booking of stale) {
+      try {
+        await db.booking.update({
+          where: { id: booking.id },
+          data: { status: 'CANCELLED', cancelReason: 'Auto-cancelled: provider did not respond within 48 hours' },
+        })
+        if (booking.clientUserId) {
+          await this.notifications.sendPush(
+            booking.clientUserId,
+            'Booking Not Confirmed',
+            'Your booking request was not confirmed. The time slot has been released.',
+            { bookingId: booking.id, event: 'booking.auto_cancelled' },
+            'BOOKING_CANCELLED' as unknown as NotificationType,
+          )
+        }
+        this.logger.log(`Auto-cancelled stale PENDING booking ${booking.id}`)
+      } catch (err) {
+        this.logger.warn(`Failed to auto-cancel booking ${booking.id}: ${String(err)}`)
+      }
+    }
+  }
+
   @Cron(CronExpression.EVERY_5_MINUTES)
   async sendReminders(): Promise<void> {
     const now = new Date()

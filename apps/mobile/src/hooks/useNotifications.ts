@@ -40,13 +40,17 @@ export function useNotifications(): void {
 
 function handleNotificationTap(data: Record<string, unknown>): void {
   const type = data.type as string | undefined
+  const event = data.event as string | undefined
   const conversationId = data.conversationId as string | undefined
   const jobId = data.jobId as string | undefined
+  const bookingId = data.bookingId as string | undefined
 
   if (conversationId && (type === 'NEW_MESSAGE' || type === 'CHAT_REQUEST' || type === 'CHAT_REQUEST_ACCEPTED')) {
     router.push(`/chat/${conversationId}` as never)
   } else if (jobId && (type === 'NEW_APPLICATION' || type === 'APPLICATION_ACCEPTED' || type === 'APPLICATION_DECLINED' || type === 'NEW_JOB_MATCH')) {
     router.push(`/jobs/${jobId}` as never)
+  } else if (bookingId && (typeof event === 'string' && event.startsWith('booking.'))) {
+    router.push('/provider-bookings' as never)
   } else {
     router.push('/notifications' as never)
   }

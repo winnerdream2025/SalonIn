@@ -86,6 +86,7 @@ function BookingCard({
   onCancel,
   onReschedule,
   onRebook,
+  onReview,
   theme,
 }: {
   item: BookingResult
@@ -93,6 +94,7 @@ function BookingCard({
   onCancel: (item: BookingResult) => void
   onReschedule: (item: BookingResult) => void
   onRebook: (item: BookingResult) => void
+  onReview: (item: BookingResult) => void
   theme: ReturnType<typeof useTheme>['theme']
 }) {
   const tab = classifyStatus(item.status)
@@ -168,6 +170,14 @@ function BookingCard({
       )}
       {isCompleted && (
         <View style={styles.actionRow}>
+          <TouchableOpacity
+            onPress={() => onReview(item)}
+            style={[styles.actionBtn, { borderColor: '#EF9F2740', flex: 1 }]}
+            activeOpacity={0.75}
+          >
+            <Ionicons name="star-outline" size={13} color="#EF9F27" style={{ marginRight: 4 }} />
+            <Text style={{ fontSize: 12, fontWeight: '600', color: '#EF9F27' }}>Leave Review</Text>
+          </TouchableOpacity>
           <TouchableOpacity
             onPress={() => onRebook(item)}
             style={[styles.actionBtn, { borderColor: '#D85A3040', flex: 1 }]}
@@ -339,6 +349,35 @@ export default function BookingsScreen() {
     setRebookTime('')
   }, [])
 
+  const handleReview = useCallback(async (item: BookingResult) => {
+    try {
+      let providerUserId: string | null = null
+      let providerName = item.service?.name ?? 'Provider'
+      let providerPhoto = ''
+      if (item.providerType === 'salon') {
+        const salon = await salonsApi.getById(item.providerId).catch(() => null)
+        providerUserId = (salon as any)?.userId ?? null
+        providerName = (salon as any)?.name ?? providerName
+        providerPhoto = (salon as any)?.photoUrls?.[0] ?? ''
+      } else {
+        const worker = await workersApi.getById(item.providerId).catch(() => null)
+        providerUserId = (worker as any)?.userId ?? null
+        providerName = (worker as any)?.name ?? providerName
+        providerPhoto = (worker as any)?.photoUrl ?? ''
+      }
+      if (!providerUserId) {
+        Alert.alert('Cannot review', 'Could not find this provider. Please try again later.')
+        return
+      }
+      router.push({
+        pathname: '/review/leave',
+        params: { subjectId: providerUserId, subjectName: providerName, subjectPhoto: providerPhoto },
+      } as never)
+    } catch (e) {
+      Alert.alert('Cannot review', parseApiError(e))
+    }
+  }, [])
+
   const handleRebookConfirm = useCallback(async () => {
     if (!rebookTarget || !rebookDate.trim() || !rebookTime.trim()) {
       Alert.alert('Missing info', 'Enter a date (YYYY-MM-DD) and time (e.g. 14:30).')
@@ -452,6 +491,7 @@ export default function BookingsScreen() {
               onCancel={handleCancel}
               onReschedule={handleReschedule}
               onRebook={handleRebook}
+              onReview={handleReview}
               theme={theme}
             />
           )}

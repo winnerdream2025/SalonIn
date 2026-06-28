@@ -3,6 +3,7 @@ import {
   View, ScrollView, Image, TouchableOpacity, Pressable,
   StyleSheet, Alert, Modal, ActivityIndicator, Linking, Platform,
 } from 'react-native'
+import { specialtyLabel } from '@salonin/config'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
@@ -245,7 +246,7 @@ export default function WorkerOwnProfileScreen() {
           )}
 
           <Text style={[styles.profileSpec, { color: theme.text.secondary }]} numberOfLines={1}>
-            {profile.specialties[0] ?? 'Beauty Professional'}
+            {profile.specialties[0] ? specialtyLabel(profile.specialties[0]) : 'Beauty Professional'}
           </Text>
 
           <Pressable
@@ -297,6 +298,48 @@ export default function WorkerOwnProfileScreen() {
           </View>
         </View>
 
+        {/* ── Discoverability status banner ─────────────── */}
+        {(() => {
+          const hasLocation = !!profile.city
+          const hasSpecialties = profile.specialties.length > 0
+          const isActive = profile.availability !== Availability.NOT_AVAILABLE
+          const isDiscoverable = hasLocation && hasSpecialties && isActive
+
+          if (!hasLocation) {
+            return (
+              <TouchableOpacity
+                onPress={() => router.push('/worker/edit')}
+                activeOpacity={0.8}
+                style={[styles.statusBanner, { backgroundColor: 'rgba(226,75,74,0.1)', borderColor: '#E24B4A' }]}
+              >
+                <Ionicons name="location-outline" size={15} color="#E24B4A" />
+                <Text style={{ fontSize: 13, fontWeight: '600', color: '#E24B4A', flex: 1, marginLeft: 8 }}>
+                  No location set — you won't appear in nearby searches
+                </Text>
+                <Ionicons name="chevron-forward" size={14} color="#E24B4A" />
+              </TouchableOpacity>
+            )
+          }
+          if (!isDiscoverable) {
+            return (
+              <View style={[styles.statusBanner, { backgroundColor: 'rgba(245,158,11,0.1)', borderColor: '#F59E0B' }]}>
+                <Ionicons name="eye-off-outline" size={15} color="#F59E0B" />
+                <Text style={{ fontSize: 13, fontWeight: '600', color: '#F59E0B', flex: 1, marginLeft: 8 }}>
+                  {!hasSpecialties ? 'Add specialties to appear in search' : 'Set availability to appear in search'}
+                </Text>
+              </View>
+            )
+          }
+          return (
+            <View style={[styles.statusBanner, { backgroundColor: 'rgba(29,158,117,0.08)', borderColor: '#1D9E75' }]}>
+              <Ionicons name="eye-outline" size={15} color="#1D9E75" />
+              <Text style={{ fontSize: 13, fontWeight: '600', color: '#1D9E75', flex: 1, marginLeft: 8 }}>
+                Visible in nearby search
+              </Text>
+            </View>
+          )
+        })()}
+
         {/* ── About + Specialties merged card ─────────────── */}
         {(hasBio || hasSpecialties) ? (
           <View style={[styles.card, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
@@ -322,7 +365,7 @@ export default function WorkerOwnProfileScreen() {
                 <View style={styles.chipsWrap}>
                   {profile.specialties.map((s) => (
                     <View key={s} style={styles.specialtyChip}>
-                      <Text style={styles.specialtyChipText}>{s}</Text>
+                      <Text style={styles.specialtyChipText}>{specialtyLabel(s)}</Text>
                     </View>
                   ))}
                 </View>
@@ -476,6 +519,18 @@ export default function WorkerOwnProfileScreen() {
               <Ionicons name="images-outline" size={18} color="#D85A30" />
             </View>
             <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Gallery</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.menuRow}
+            onPress={() => router.push('/highlights' as never)}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}>
+              <Ionicons name="bookmark-outline" size={18} color="#D85A30" />
+            </View>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Highlights</Text>
             <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
           </TouchableOpacity>
 
@@ -714,6 +769,16 @@ function ProfileSkeleton({ theme }: { theme: Theme }) {
 const styles = StyleSheet.create({
   screen:     { flex: 1 },
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  statusBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginBottom: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
 
   // Title bar
   titleBar: {

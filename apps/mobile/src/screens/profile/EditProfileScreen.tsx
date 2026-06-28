@@ -844,6 +844,17 @@ export default function EditProfileScreen() {
                 </View>
               )}
             </View>
+            <TouchableOpacity
+              onPress={() => router.push('/provider-availability' as never)}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, paddingVertical: 6, paddingHorizontal: 2 }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="information-circle-outline" size={14} color={theme.text.tertiary} />
+              <Text style={{ fontSize: 12, color: theme.text.tertiary, flex: 1 }}>
+                This shows on your public profile. To set actual bookable time slots, go to{' '}
+              </Text>
+              <Text style={{ fontSize: 12, color: '#D85A30', fontWeight: '700' }}>Booking Hours →</Text>
+            </TouchableOpacity>
           </AccordionSection>
 
           {/* ── Rate accordion ─────────────────────────────── */}

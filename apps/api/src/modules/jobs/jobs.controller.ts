@@ -41,6 +41,12 @@ export class JobsController {
     return this.jobsService.list(dto)
   }
 
+  @Get('saved')
+  @UseGuards(JwtAuthGuard)
+  getSavedJobs(@CurrentUser() user: User) {
+    return this.jobsService.getSavedJobs(user.id)
+  }
+
   @Get(':id')
   getById(@Param('id', ParseUUIDPipe) id: string) {
     return this.jobsService.getById(id)

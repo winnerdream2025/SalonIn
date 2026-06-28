@@ -100,3 +100,43 @@ export const storiesApi = {
   getAnalytics: (storyId: string): Promise<StoryAnalytics> =>
     api.get<StoryAnalytics>(`/stories/${storyId}/analytics`).then((r) => r.data),
 }
+
+// ─── Story Highlights ───────────────────────────────────────────────────────
+// Backed by the posts controller (`/posts/highlights`), whose responses are
+// wrapped as `{ data: <payload> }`, so the axios body is `{ data: { data } }`.
+
+export interface StoryHighlight {
+  id: string
+  userId: string
+  title: string
+  coverUrl: string | null
+  storyIds: string[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateHighlightPayload {
+  title: string
+  coverUrl?: string
+  storyIds?: string[]
+}
+
+export type UpdateHighlightPayload = Partial<CreateHighlightPayload>
+
+function unwrapHighlight<T>(r: { data: { data: T } }): T {
+  return r.data.data
+}
+
+export const highlightsApi = {
+  getForUser: (userId: string): Promise<StoryHighlight[]> =>
+    api.get(`/posts/highlights/user/${userId}`).then(unwrapHighlight<StoryHighlight[]>),
+
+  create: (payload: CreateHighlightPayload): Promise<StoryHighlight> =>
+    api.post('/posts/highlights', payload).then(unwrapHighlight<StoryHighlight>),
+
+  update: (highlightId: string, payload: UpdateHighlightPayload): Promise<StoryHighlight> =>
+    api.patch(`/posts/highlights/${highlightId}`, payload).then(unwrapHighlight<StoryHighlight>),
+
+  remove: (highlightId: string): Promise<void> =>
+    api.delete(`/posts/highlights/${highlightId}`).then(() => undefined),
+}

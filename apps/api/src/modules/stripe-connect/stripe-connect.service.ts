@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
 import Stripe from 'stripe'
 import { PrismaService } from '../../prisma/prisma.service'
 import type { User } from '@salonin/types'
@@ -75,6 +75,15 @@ export class StripeConnectService {
     })
 
     return { onboardingUrl: link.url }
+  }
+
+  async getDashboardUrl(user: User): Promise<{ url: string }> {
+    const { stripeAccountId, stripeConnectEnabled } = await this.resolveProfile(user)
+    if (!stripeAccountId || !stripeConnectEnabled) {
+      throw new BadRequestException('No connected Stripe account found')
+    }
+    const loginLink = await this.stripe.accounts.createLoginLink(stripeAccountId)
+    return { url: loginLink.url }
   }
 
   async handleConnectWebhook(rawBody: Buffer, sig: string): Promise<void> {

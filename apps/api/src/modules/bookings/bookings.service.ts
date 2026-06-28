@@ -429,7 +429,10 @@ export class BookingsService {
         ...dateWhere,
         ...searchWhere,
       },
-      include: { service: { select: { id: true, name: true, category: true, duration: true } } },
+      include: {
+        service: { select: { id: true, name: true, category: true, duration: true } },
+        intakeResponse: { include: { form: { select: { questions: true } } } },
+      },
       orderBy: [{ date: 'asc' }, { startTime: 'asc' }],
     })
   }

@@ -16,21 +16,26 @@ import { useStripeConnect } from '../../services/booking/booking.hooks'
 export default function StripeConnectScreen() {
   const { theme } = useTheme()
   const { top, bottom } = useSafeAreaInsets()
-  const { status, isLoading, startOnboarding } = useStripeConnect()
+  const { status, isLoading, startOnboarding, getDashboardUrl } = useStripeConnect()
 
   const isConnected = status?.connected ?? false
   const accountId   = status?.accountId ?? null
 
   const handleConnect = async () => {
-    if (isConnected) {
-      Alert.alert('Already connected', `Your Stripe account is linked.${accountId ? `\nID: ${accountId}` : ''}`)
-      return
-    }
     const url = await startOnboarding()
     if (url) {
       await Linking.openURL(url)
     } else {
       Alert.alert('Coming Soon', 'Stripe Connect setup will be available shortly.')
+    }
+  }
+
+  const handleOpenDashboard = async () => {
+    const url = await getDashboardUrl()
+    if (url) {
+      await Linking.openURL(url)
+    } else {
+      Alert.alert('Error', 'Could not open Stripe dashboard. Please try again.')
     }
   }
 
@@ -81,24 +86,44 @@ export default function StripeConnectScreen() {
           ))}
         </View>
 
-        <TouchableOpacity
-          onPress={handleConnect}
-          disabled={isLoading}
-          style={[styles.connectBtn, { opacity: isLoading ? 0.7 : 1 }]}
-          activeOpacity={0.85}
-        >
-          {isLoading
-            ? <ActivityIndicator size="small" color="#fff" />
-            : (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Ionicons name="card-outline" size={20} color="#fff" />
-                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>Connect with Stripe</Text>
-              </View>
-            )}
-        </TouchableOpacity>
+        {isConnected ? (
+          <TouchableOpacity
+            onPress={handleOpenDashboard}
+            disabled={isLoading}
+            style={[styles.connectBtn, { opacity: isLoading ? 0.7 : 1 }]}
+            activeOpacity={0.85}
+          >
+            {isLoading
+              ? <ActivityIndicator size="small" color="#fff" />
+              : (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Ionicons name="open-outline" size={20} color="#fff" />
+                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>Open Stripe Dashboard</Text>
+                </View>
+              )}
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            onPress={handleConnect}
+            disabled={isLoading}
+            style={[styles.connectBtn, { opacity: isLoading ? 0.7 : 1 }]}
+            activeOpacity={0.85}
+          >
+            {isLoading
+              ? <ActivityIndicator size="small" color="#fff" />
+              : (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Ionicons name="card-outline" size={20} color="#fff" />
+                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>Connect with Stripe</Text>
+                </View>
+              )}
+          </TouchableOpacity>
+        )}
 
         <Text style={{ fontSize: 12, color: theme.text.tertiary, textAlign: 'center', marginTop: 16, paddingHorizontal: 24 }}>
-          You'll be redirected to Stripe's secure onboarding. This takes about 5 minutes.
+          {isConnected
+            ? 'View your payouts, balance, and account settings.'
+            : "You'll be redirected to Stripe's secure onboarding. This takes about 5 minutes."}
         </Text>
       </View>
     </View>

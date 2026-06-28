@@ -172,6 +172,9 @@ export const intakeFormsApi = {
 export const paymentsApi = {
   createIntent: (bookingId: string): Promise<PaymentIntent> =>
     api.post('/payments/intent', { bookingId }).then(unwrap<PaymentIntent>),
+
+  refund: (bookingId: string, reason?: string): Promise<{ id?: string; status?: string }> =>
+    api.post('/payments/refund', { bookingId, reason }).then(unwrap<{ id?: string; status?: string }>),
 }
 
 // ─── Stripe Connect ───────────────────────────────────────────────────────────
@@ -182,4 +185,7 @@ export const stripeConnectApi = {
 
   startOnboarding: (returnUrl?: string): Promise<{ onboardingUrl: string }> =>
     api.post('/stripe-connect/onboard', { returnUrl }).then(unwrap<{ onboardingUrl: string }>),
+
+  getDashboardUrl: (): Promise<{ url: string }> =>
+    api.get('/stripe-connect/dashboard-url').then(unwrap<{ url: string }>),
 }

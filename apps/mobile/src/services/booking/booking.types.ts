@@ -128,6 +128,10 @@ export interface BookingResult {
   confirmationCode: string | null
   createdAt: string
   updatedAt: string
+  intakeResponse?: {
+    answers: { questionId: string; answer: unknown }[]
+    form?: { questions: { id: string; question: string; type: string; options?: string[] }[] } | null
+  } | null
 }
 
 export interface BookingAnalytics {

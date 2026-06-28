@@ -8,20 +8,33 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common'
+import { Throttle } from '@nestjs/throttler'
 import type { User } from '@salonin/types'
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
 import { RolesGuard, Roles } from '../../common/guards/roles.guard'
 import { CurrentUser } from '../../common/decorators/current-user.decorator'
 import { SalonsService } from './salons.service'
+import { MatchingService } from '../matching/matching.service'
+import { FindNearbyWorkersDto } from '../matching/dto/find-nearby-workers.dto'
 import { UpdateSalonProfileDto } from './dto/update-salon-profile.dto'
 import { UpdateHiringStatusDto } from './dto/update-hiring-status.dto'
 import { UpdateSalonLocationDto } from './dto/update-location.dto'
 
 @Controller('salons')
 export class SalonsController {
-  constructor(private readonly salonsService: SalonsService) {}
+  constructor(
+    private readonly salonsService: SalonsService,
+    private readonly matchingService: MatchingService,
+  ) {}
+
+  @Get('nearby')
+  @Throttle({ short: { limit: 30, ttl: 60000 } })
+  findNearby(@Query() dto: FindNearbyWorkersDto) {
+    return this.matchingService.findNearbySalons(dto)
+  }
 
   @Get('me')
   @UseGuards(JwtAuthGuard)

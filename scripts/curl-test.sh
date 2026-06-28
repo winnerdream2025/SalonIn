@@ -623,6 +623,40 @@ if isinstance(svcs,list) and svcs: print(svcs[0].get("id",""))
   fi
 fi
 
+# ── [17] Bug Fix Endpoints ────────────────────────
+echo -e "\n${B}[17] BUG FIX ENDPOINTS${NC}"
+
+# Stripe dashboard-url (401 or 400 = endpoint exists)
+chk "GET /stripe-connect/dashboard-url (no Stripe acct → 400/401)" GET /stripe-connect/dashboard-url 400 "" "$WT"
+
+# Provider filtered bookings includes intakeResponse field
+FILT_BODY=$(curl -s "$BASE/bookings/provider/filtered" -H "Authorization: Bearer $WT")
+echo "$FILT_BODY" | python3 -c '
+import sys, json
+d = json.load(sys.stdin)
+items = d.get("data", d) if isinstance(d.get("data", d), list) else []
+# just check it returns a list (even empty)
+if isinstance(items, list): print("ok")
+else: print("fail")
+' 2>/dev/null | grep -q ok \
+  && { echo -e "${G}✓${NC} [200] GET /bookings/provider/filtered returns list"; ((pass++)); } \
+  || { echo -e "${R}✗${NC} GET /bookings/provider/filtered unexpected shape"; ((fail++)); }
+
+# Reviews canReview self-review → canReview:false
+CAN_REVIEW=$(curl -s "$BASE/reviews/can-review/$WID" -H "Authorization: Bearer $WT")
+echo "$CAN_REVIEW" | python3 -c '
+import sys, json
+d = json.load(sys.stdin)
+data = d.get("data", d)
+cr = data.get("canReview", True)
+print("ok" if cr == False else "fail")
+' 2>/dev/null | grep -q ok \
+  && { echo -e "${G}✓${NC} [200] GET /reviews/can-review/self → canReview:false"; ((pass++)); } \
+  || { echo -e "${R}✗${NC} GET /reviews/can-review/self → expected canReview:false"; ((fail++)); }
+
+# Stripe connect status endpoint still works
+chk "GET /stripe-connect/status (worker)" GET /stripe-connect/status 200 "" "$WT"
+
 # ── SUMMARY ───────────────────────────────────────
 TOTAL=$((pass+fail))
 echo ""

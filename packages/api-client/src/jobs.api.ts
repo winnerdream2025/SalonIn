@@ -61,4 +61,7 @@ export const jobsApi = {
 
   getSavedJobIds: (): Promise<string[]> =>
     api.get<string[]>('/jobs/saved/ids').then((r) => r.data),
+
+  getSavedJobs: (): Promise<JobPostCardData[]> =>
+    api.get<JobPostCardData[]>('/jobs/saved').then((r) => r.data),
 }

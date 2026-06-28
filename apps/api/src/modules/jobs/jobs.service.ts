@@ -608,6 +608,44 @@ export class JobsService {
     return rows.map((r: { jobId: string }) => r.jobId)
   }
 
+  async getSavedJobs(userId: string): Promise<JobPostCardData[]> {
+    const saved = await this.prisma.savedJob.findMany({
+      where: { userId },
+      select: { jobId: true },
+      orderBy: { createdAt: 'desc' },
+    })
+    const jobIds = saved.map((r: { jobId: string }) => r.jobId)
+    if (jobIds.length === 0) return []
+
+    const rows = await this.prisma.jobPost.findMany({
+      where: { id: { in: jobIds }, isActive: true },
+      include: {
+        salon: {
+          select: {
+            id: true,
+            userId: true,
+            name: true,
+            photoUrls: true,
+            city: true,
+            state: true,
+            country: true,
+            isVerified: true,
+            rating: true,
+            reviewCount: true,
+            _count: { select: { jobPosts: { where: { isActive: true } } } },
+          },
+        },
+        _count: { select: { applications: true } },
+      },
+    })
+
+    // Preserve the saved order (most recently saved first)
+    const order = new Map(jobIds.map((id, i) => [id, i]))
+    return rows
+      .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0))
+      .map((r) => this.toJobPostCardData(r))
+  }
+
   async remove(id: string, userId: string): Promise<void> {
     await this.assertOwnership(id, userId)
     await this.prisma.jobPost.update({

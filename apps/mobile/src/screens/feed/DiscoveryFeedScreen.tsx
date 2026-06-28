@@ -18,10 +18,10 @@ import { Ionicons } from '@expo/vector-icons'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import * as Haptics from 'expo-haptics'
-import { WorkerCard, WorkerCardSkeleton, Text, Button, useTheme, ReportModal } from '@salonin/ui'
+import { WorkerCard, WorkerCardSkeleton, SalonCard, SalonCardSkeleton, Text, Button, useTheme, ReportModal } from '@salonin/ui'
 import { useStories, type UserStoryState } from '../../contexts/StoriesContext'
 import type { Theme } from '@salonin/ui'
-import type { WorkerCardData } from '@salonin/types'
+import type { WorkerCardData, SalonCardData } from '@salonin/types'
 import { Availability } from '@salonin/types'
 import { reportsApi, messagesApi, workersApi, parseApiError } from '@salonin/api-client'
 import type { SuggestedUser } from '@salonin/api-client'
@@ -30,6 +30,7 @@ import { useAuthStore } from '../../store/authStore'
 import { useAuthGateStore } from '../../store/authGateStore'
 import { useAuthGate } from '../../hooks/useAuthGate'
 import { useNearbyWorkers } from '../../hooks/useNearbyWorkers'
+import { useNearbySalons } from '../../hooks/useNearbySalons'
 import { useLocationStore } from '../../store/locationStore'
 import { useDeviceLocation } from '../../hooks/useDeviceLocation'
 import { NotificationBell } from '../../components/NotificationBell'
@@ -96,6 +97,7 @@ export default function DiscoveryFeedScreen() {
   const [showRadiusPicker, setShowRadiusPicker] = useState(false)
   const [workerFilters, setWorkerFilters] = useState<WorkerFilters>(EMPTY_WORKER_FILTERS)
   const [activeDiscoverTab, setActiveDiscoverTab] = useState<'All' | 'Saved'>('All')
+  const [discoverMode, setDiscoverMode] = useState<'workers' | 'salons'>('workers')
   const [savedWorkerIds, setSavedWorkerIds] = useState<Set<string>>(new Set())
   const filterCount = activeWorkerFilterCount(workerFilters)
   const currentUser = useAuthStore((s) => s.user)
@@ -176,6 +178,52 @@ export default function DiscoveryFeedScreen() {
     openViewerForUser(userId)
   }, [openViewerForUser])
 
+  // ── Salons discovery (only fetches while the Salons tab is active) ──
+  const {
+    salons,
+    isLoading: salonsLoading,
+    isRefreshing: salonsRefreshing,
+    isLoadingMore: salonsLoadingMore,
+    hasMore: salonsHasMore,
+    error: salonsError,
+    refresh: refreshSalons,
+    loadMore: loadMoreSalons,
+  } = useNearbySalons({
+    specialty: specialtyFilter,
+    radiusMiles,
+    enabled: discoverMode === 'salons',
+  })
+
+  const filteredSalons = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return salons
+    return salons.filter((s) =>
+      s.name.toLowerCase().includes(q) ||
+      s.specialties.some((sp) => sp.toLowerCase().includes(q))
+    )
+  }, [salons, search])
+
+  const handlePressSalon = useCallback((salon: SalonCardData) => {
+    router.push(`/salon/${salon.id}`)
+  }, [])
+
+  const renderSalonItem = useCallback(
+    ({ item }: { item: SalonCardData }) => {
+      const uid = item.userId
+      const ss = uid ? storyMap.get(uid) : undefined
+      const storyState = ss?.hasStory ? (ss.hasUnseen ? 'unseen' : 'seen') : 'none'
+      return (
+        <SalonCard
+          salon={item}
+          onPress={() => handlePressSalon(item)}
+          storyState={storyState}
+          onStoryPress={uid && ss?.hasStory ? () => handleStoryPress(uid) : undefined}
+        />
+      )
+    },
+    [storyMap, handlePressSalon, handleStoryPress],
+  )
+
   const handleToggleSpecialty = useCallback((specialty: string) => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     setSelectedSpecialty((prev) => (prev === specialty ? 'All' : specialty))
@@ -238,6 +286,14 @@ export default function DiscoveryFeedScreen() {
                   {cityLabel}
                 </Text>
                 <Ionicons name="chevron-down" size={14} color={isGPSLocation ? '#1D9E75' : theme.text.tertiary} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => router.push('/feed' as never)}
+                style={styles.networkBtn}
+                activeOpacity={0.8}
+                accessibilityLabel="Posts feed"
+              >
+                <Ionicons name="images-outline" size={20} color={theme.text.secondary} />
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => router.push('/find-people' as never)}
@@ -528,20 +584,88 @@ export default function DiscoveryFeedScreen() {
           })}
         </ScrollView>
 
-        <FlatList
-          data={filteredWorkers}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          contentContainerStyle={contentContainerStyle}
-          ListHeaderComponent={listHeader}
-          ListEmptyComponent={listEmpty}
-          ListFooterComponent={listFooter}
-          refreshing={isRefreshing}
-          onRefresh={refresh}
-          onEndReached={loadMore}
-          onEndReachedThreshold={0.5}
-          showsVerticalScrollIndicator={false}
-        />
+        {/* ── Workers / Salons mode toggle ── */}
+        <View style={[styles.modeRow, { borderBottomColor: theme.border.subtle }]}>
+          {(['workers', 'salons'] as const).map((m) => {
+            const active = discoverMode === m
+            return (
+              <TouchableOpacity
+                key={m}
+                onPress={() => {
+                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                  setDiscoverMode(m)
+                }}
+                style={[styles.modeTab, active && { borderBottomColor: theme.brand.primary, borderBottomWidth: 2 }]}
+                activeOpacity={0.7}
+              >
+                <Text style={{ fontSize: 14, fontWeight: active ? '700' : '500', color: active ? theme.text.primary : theme.text.secondary }}>
+                  {m === 'workers' ? 'Professionals' : 'Salons'}
+                </Text>
+              </TouchableOpacity>
+            )
+          })}
+        </View>
+
+        {discoverMode === 'workers' ? (
+          <FlatList
+            data={filteredWorkers}
+            keyExtractor={(item) => item.id}
+            renderItem={renderItem}
+            contentContainerStyle={contentContainerStyle}
+            ListHeaderComponent={listHeader}
+            ListEmptyComponent={listEmpty}
+            ListFooterComponent={listFooter}
+            refreshing={isRefreshing}
+            onRefresh={refresh}
+            onEndReached={loadMore}
+            onEndReachedThreshold={0.5}
+            showsVerticalScrollIndicator={false}
+          />
+        ) : (
+          <FlatList
+            data={filteredSalons}
+            keyExtractor={(item) => item.id}
+            renderItem={renderSalonItem}
+            contentContainerStyle={contentContainerStyle}
+            ListEmptyComponent={
+              salonsLoading ? (
+                <View style={styles.skeletonList}>
+                  {Array.from({ length: SKELETON_COUNT }).map((_, i) => (
+                    <SalonCardSkeleton key={i} />
+                  ))}
+                </View>
+              ) : salonsError != null ? (
+                <View style={styles.centerPane}>
+                  <Text style={[styles.emptyTitle, { color: theme.text.primary }]}>Couldn&apos;t load salons</Text>
+                  <Text style={[styles.stateText, { color: theme.text.secondary }]}>{salonsError.message}</Text>
+                  <Button variant="secondary" onPress={refreshSalons}>Try again</Button>
+                </View>
+              ) : (
+                <View style={styles.centerPane}>
+                  <View style={[styles.emptyIcon, { backgroundColor: 'rgba(29,158,117,0.10)' }]}>
+                    <Ionicons name="business-outline" size={28} color="#1D9E75" />
+                  </View>
+                  <Text style={[styles.emptyTitle, { color: theme.text.primary }]}>No salons in {cityLabel} yet</Text>
+                  <Text style={[styles.stateText, { color: theme.text.secondary }]}>
+                    Try a different specialty or widen your search radius.
+                  </Text>
+                </View>
+              )
+            }
+            ListFooterComponent={
+              salonsHasMore && salonsLoadingMore ? (
+                <View style={styles.footer}>
+                  <ActivityIndicator color={theme.brand.primary} />
+                </View>
+              ) : null
+            }
+            refreshing={salonsRefreshing}
+            onRefresh={refreshSalons}
+            onEndReached={loadMoreSalons}
+            onEndReachedThreshold={0.5}
+            showsVerticalScrollIndicator={false}
+          />
+        )}
 
         <ReportModal
           isVisible={reportTarget !== null}
@@ -666,6 +790,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  modeRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  modeTab: {
+    paddingVertical: 10,
+    marginRight: 20,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
   },
   discoverTab: {
     paddingVertical: 6,

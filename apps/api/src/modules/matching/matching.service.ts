@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
 import type { Availability } from '@salonin/types'
-import type { WorkerCardData, CursorResponse } from '@salonin/types'
+import type { WorkerCardData, SalonCardData, CursorResponse } from '@salonin/types'
 import { specialtyLabel } from '@salonin/config'
 import { PrismaService } from '../../prisma/prisma.service'
 import { RedisService } from '../../redis/redis.service'
@@ -34,6 +34,21 @@ interface RawWorker {
   acceptsBookings: boolean
   homeServiceEnabled: boolean
   travelServiceEnabled: boolean
+}
+
+interface RawSalon {
+  id: string
+  userId: string
+  name: string
+  photoUrls: string[] | string
+  specialties: string[] | string
+  isHiring: boolean
+  isVerified: boolean
+  city: string | null
+  state: string | null
+  country: string | null
+  acceptsBookings: boolean
+  distanceMeters: number | null
 }
 
 interface WorkerCursor {
@@ -362,5 +377,150 @@ export class MatchingService {
     } catch {
       return null
     }
+  }
+
+  // ─── Nearby Salons ──────────────────────────────────────────────────────────
+
+  async findNearbySalons(params: FindNearbyWorkersDto): Promise<CursorResponse<SalonCardData>> {
+    const cacheKey = this.buildSalonCacheKey(params, params.radiusMiles)
+    const cached = await this.redis.get(cacheKey)
+    if (cached) {
+      this.metrics.increment('cache.hit', [`salons-geo:${params.lat.toFixed(2)},${params.lng.toFixed(2)}`])
+      return JSON.parse(cached) as CursorResponse<SalonCardData>
+    }
+    this.metrics.increment('cache.miss', [`salons-geo:${params.lat.toFixed(2)},${params.lng.toFixed(2)}`])
+
+    let rows: RawSalon[] = []
+    let usedRadius = params.radiusMiles
+
+    if (params.cursor) {
+      rows = await this.queryNearbySalons(params)
+    } else {
+      for (const radius of RADIUS_STEPS) {
+        if (radius < params.radiusMiles) continue
+        rows = await this.queryNearbySalons({ ...params, radiusMiles: radius })
+        usedRadius = radius
+        if (rows.length >= MIN_RESULTS) break
+      }
+    }
+
+    const isExpanded = usedRadius > params.radiusMiles
+    const hasMore = rows.length > 50
+    const slice = rows.slice(0, 50)
+    const last = slice[49]
+    const nextCursor = hasMore && last
+      ? Buffer.from(JSON.stringify({ dm: last.distanceMeters ?? 0, id: last.id })).toString('base64')
+      : null
+
+    const result: CursorResponse<SalonCardData> = {
+      data: slice.map((r) => this.toSalonCardData(r)),
+      nextCursor,
+      hasMore,
+      usedRadius,
+      isExpanded,
+    }
+
+    const finalCacheKey = this.buildSalonCacheKey(params, usedRadius)
+    await this.redis.set(finalCacheKey, JSON.stringify(result), 'EX', CACHE_TTL)
+    return result
+  }
+
+  private async queryNearbySalons(params: FindNearbyWorkersDto): Promise<RawSalon[]> {
+    const radiusMeters = params.radiusMiles * 1609.344
+    const cursor = params.cursor ? this.decodeCursor(params.cursor) : null
+
+    const specialtyFilter = params.specialty != null
+      ? Prisma.sql`AND ${params.specialty} = ANY(sp.specialties)`
+      : Prisma.sql``
+
+    const cursorFilter = cursor != null
+      ? Prisma.sql`WHERE "distanceMeters" > ${cursor.dm}
+          OR ("distanceMeters" = ${cursor.dm} AND id > ${cursor.id})`
+      : Prisma.sql``
+
+    const queryStart = Date.now()
+    const timeout = new Promise<never>((_, reject) => {
+      const t = setTimeout(() => reject(new Error('GEO_QUERY_TIMEOUT')), GEO_QUERY_TIMEOUT_MS)
+      t.unref()
+    })
+    let rows: RawSalon[]
+    try {
+      rows = await Promise.race([
+        this.prisma.$queryRaw<RawSalon[]>(Prisma.sql`
+      WITH distances AS (
+        SELECT
+          sp.id,
+          sp."userId",
+          sp.name,
+          sp."photoUrls",
+          sp.specialties,
+          sp."isHiring",
+          sp."isVerified",
+          sp.city,
+          sp.state,
+          sp.country,
+          sp."acceptsBookings",
+          ROUND(ST_Distance(
+            sp.location::geography,
+            ST_SetSRID(ST_MakePoint(${params.lng}, ${params.lat}), 4326)::geography
+          ))::integer AS "distanceMeters"
+        FROM "SalonProfile" sp
+        WHERE
+          sp.location IS NOT NULL
+          AND ST_DWithin(
+            sp.location::geography,
+            ST_SetSRID(ST_MakePoint(${params.lng}, ${params.lat}), 4326)::geography,
+            ${radiusMeters}
+          )
+          AND EXISTS (
+            SELECT 1 FROM "User" u
+            WHERE u.id = sp."userId"
+            AND u."isActive" = true
+          )
+          ${specialtyFilter}
+      )
+      SELECT * FROM distances
+      ${cursorFilter}
+      ORDER BY "distanceMeters" ASC, id ASC
+      LIMIT 51
+    `),
+        timeout,
+      ])
+    } catch (err) {
+      if (err instanceof Error && err.message === 'GEO_QUERY_TIMEOUT') {
+        this.metrics.increment('geo_query_timeout', [`salons-geo:${params.lat.toFixed(2)},${params.lng.toFixed(2)}`])
+        return []
+      }
+      throw err
+    }
+
+    this.metrics.timing('geo_query_duration', Date.now() - queryStart, [`salons-geo:${params.lat.toFixed(2)},${params.lng.toFixed(2)}`])
+    return rows
+  }
+
+  private toSalonCardData(raw: RawSalon): SalonCardData {
+    return {
+      id: raw.id,
+      userId: raw.userId,
+      name: raw.name,
+      photoUrls: parsePostgresArray(raw.photoUrls),
+      specialties: parsePostgresArray(raw.specialties).map(specialtyLabel),
+      isHiring: Boolean(raw.isHiring),
+      isVerified: Boolean(raw.isVerified),
+      distanceMiles: raw.distanceMeters != null
+        ? Math.round((raw.distanceMeters / 1609.344) * 100) / 100
+        : null,
+      city: raw.city ?? null,
+      state: raw.state ?? undefined,
+      country: raw.country ?? undefined,
+      acceptsBookings: Boolean(raw.acceptsBookings),
+    }
+  }
+
+  private buildSalonCacheKey(params: FindNearbyWorkersDto, radius: number): string {
+    const { lat, lng, specialty, cursor } = params
+    const latRound = Math.round(lat * 1000) / 1000
+    const lngRound = Math.round(lng * 1000) / 1000
+    return `nearby-salons:${latRound}:${lngRound}:${radius}:${specialty ?? 'all'}:${cursor ?? ''}`
   }
 }

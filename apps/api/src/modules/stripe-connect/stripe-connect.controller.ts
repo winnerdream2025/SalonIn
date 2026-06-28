@@ -15,6 +15,12 @@ export class StripeConnectController {
     return { data: await this.svc.getStatus(user) }
   }
 
+  @Get('dashboard-url')
+  @UseGuards(JwtAuthGuard)
+  async dashboardUrl(@CurrentUser() user: User) {
+    return { data: await this.svc.getDashboardUrl(user) }
+  }
+
   @Post('onboard')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.CREATED)

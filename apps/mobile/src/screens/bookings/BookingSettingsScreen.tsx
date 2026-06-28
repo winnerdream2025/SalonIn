@@ -14,8 +14,8 @@ import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { Text, useTheme } from '@salonin/ui'
 import { useAuthStore } from '../../store/authStore'
-import { workersApi } from '@salonin/api-client'
-import { salonsApi } from '@salonin/api-client'
+import { workersApi, salonsApi } from '@salonin/api-client'
+import { stripeConnectApi, servicesApi } from '../../services/booking/booking.api'
 
 interface PolicyState {
   acceptsBookings: boolean
@@ -139,6 +139,8 @@ export default function BookingSettingsScreen() {
   const [state, setState] = useState<PolicyState>(DEFAULTS)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [serviceCount, setServiceCount] = useState(0)
+  const [stripeConnected, setStripeConnected] = useState(false)
 
   const set = <K extends keyof PolicyState>(key: K, value: PolicyState[K]) =>
     setState((s) => ({ ...s, [key]: value }))
@@ -147,9 +149,17 @@ export default function BookingSettingsScreen() {
     const load = async () => {
       setIsLoading(true)
       try {
+        const [stripeStatus] = await Promise.allSettled([
+          stripeConnectApi.getStatus(),
+        ])
+        if (stripeStatus.status === 'fulfilled') {
+          setStripeConnected(stripeStatus.value.connected)
+        }
         if (isWorker) {
           const me = await workersApi.getMe()
           const p = me as unknown as Record<string, unknown>
+          const services = await servicesApi.list(p.id as string, 'professional').catch(() => [])
+          setServiceCount(services.length)
           setState({
             acceptsBookings: (p.acceptsBookings as boolean | undefined) ?? false,
             instantBooking: (p.instantBooking as boolean | undefined) ?? false,
@@ -167,6 +177,8 @@ export default function BookingSettingsScreen() {
         } else {
           const me = await salonsApi.getMe()
           const p = me as unknown as Record<string, unknown>
+          const services = await servicesApi.list(p.id as string, 'salon').catch(() => [])
+          setServiceCount(services.length)
           setState({
             acceptsBookings: (p.acceptsBookings as boolean | undefined) ?? false,
             instantBooking: (p.instantBooking as boolean | undefined) ?? false,
@@ -250,7 +262,20 @@ export default function BookingSettingsScreen() {
             label="Accept Bookings"
             sublabel="Allow clients to book appointments with you"
             value={state.acceptsBookings}
-            onChange={(v) => set('acceptsBookings', v)}
+            onChange={(v) => {
+              if (v && serviceCount === 0) {
+                Alert.alert(
+                  'No Services Added',
+                  'Add at least one service before accepting bookings.',
+                  [
+                    { text: 'Go to My Services', onPress: () => router.push('/manage-services' as never) },
+                    { text: 'Cancel', style: 'cancel' },
+                  ],
+                )
+                return
+              }
+              set('acceptsBookings', v)
+            }}
             theme={theme}
           />
 
@@ -291,7 +316,21 @@ export default function BookingSettingsScreen() {
             label="Require Deposit"
             sublabel="Clients must pay a deposit to confirm their booking"
             value={state.requiresDeposit}
-            onChange={(v) => set('requiresDeposit', v)}
+            onChange={(v) => {
+              if (v && !stripeConnected) {
+                Alert.alert(
+                  'Stripe Not Connected',
+                  'Connect your Stripe account to collect deposits. Deposits will not be charged until Stripe is set up.',
+                  [
+                    { text: 'Set Up Stripe', onPress: () => router.push('/stripe-connect' as never) },
+                    { text: 'Enable Anyway', onPress: () => set('requiresDeposit', true) },
+                    { text: 'Cancel', style: 'cancel' },
+                  ],
+                )
+                return
+              }
+              set('requiresDeposit', v)
+            }}
             theme={theme}
           />
 

@@ -1,11 +1,15 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../../prisma/prisma.service'
+import { NotificationsService } from '../notifications/notifications.service'
 import type { CreateReviewDto } from './dto/create-review.dto'
 import type { ReviewCardData, CanReviewResponse } from '@salonin/types'
 
 @Injectable()
 export class ReviewsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   async canReview(authorId: string, subjectId: string): Promise<CanReviewResponse> {
     if (authorId === subjectId) {
@@ -122,7 +126,17 @@ export class ReviewsService {
     // Recalculate and persist subject's rating
     await this.recalcRating(dto.subjectId, subject.role)
 
-    return this.toCard(review)
+    // Notify the reviewed user
+    const card = this.toCard(review)
+    await this.notifications.sendPush(
+      dto.subjectId,
+      'New Review',
+      `${card.authorName} left you a ${dto.rating}★ review.`,
+      { reviewId: review.id, event: 'review.created' },
+      'NEW_REVIEW' as never,
+    ).catch(() => {})
+
+    return card
   }
 
   async deleteReview(reviewId: string, userId: string, userRole: string): Promise<void> {

@@ -1,5 +1,11 @@
 import { api } from './client'
-import type { SalonCardData, SalonProfile, SalonProfileFull } from '@salonin/types'
+import type {
+  SalonCardData,
+  SalonProfile,
+  SalonProfileFull,
+  FindNearbyWorkersDto,
+  CursorResponse,
+} from '@salonin/types'
 
 export interface UpdateSalonPayload {
   name?: string | undefined
@@ -17,6 +23,9 @@ export interface UpdateSalonPayload {
 }
 
 export const salonsApi = {
+  findNearby: (params: FindNearbyWorkersDto): Promise<CursorResponse<SalonCardData>> =>
+    api.get<CursorResponse<SalonCardData>>('/salons/nearby', { params }).then((r) => r.data),
+
   getMe: (): Promise<SalonCardData> =>
     api.get<SalonCardData>('/salons/me').then((r) => r.data),
 

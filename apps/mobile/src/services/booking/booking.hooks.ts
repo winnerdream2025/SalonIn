@@ -359,5 +359,15 @@ export function useStripeConnect() {
     }
   }, [])
 
-  return { status, isLoading, error, startOnboarding }
+  const getDashboardUrl = useCallback(async (): Promise<string | null> => {
+    try {
+      const { url } = await stripeConnectApi.getDashboardUrl()
+      return url
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to get dashboard URL')
+      return null
+    }
+  }, [])
+
+  return { status, isLoading, error, startOnboarding, getDashboardUrl }
 }

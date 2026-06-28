@@ -377,6 +377,19 @@ export default function JobFeedScreen() {
             </Text>
             <Ionicons name="chevron-down" size={14} color={theme.text.tertiary} />
           </TouchableOpacity>
+          {!isSalon && (
+            <TouchableOpacity
+              onPress={() => {
+                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                router.push('/saved-jobs' as never)
+              }}
+              style={[styles.locationPill, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default, paddingHorizontal: 10 }]}
+              activeOpacity={0.7}
+              accessibilityLabel="Saved jobs"
+            >
+              <Ionicons name="bookmark-outline" size={16} color="#D85A30" />
+            </TouchableOpacity>
+          )}
           <NotificationBell />
         </View>
       </View>
