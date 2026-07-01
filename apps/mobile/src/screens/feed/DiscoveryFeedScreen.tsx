@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useMemo } from 'react'
+import React, { useState, useCallback, useMemo, useRef } from 'react'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 import {
   View,
@@ -25,7 +26,7 @@ import type { WorkerCardData, SalonCardData } from '@salonin/types'
 import { Availability } from '@salonin/types'
 import { reportsApi, messagesApi, workersApi, parseApiError } from '@salonin/api-client'
 import type { SuggestedUser } from '@salonin/api-client'
-import { ALL_SPECIALTIES, specialtyLabel } from '@salonin/config'
+import { ALL_SPECIALTIES, specialtyLabel, SPECIALTY_CATEGORIES } from '@salonin/config'
 import { useAuthStore } from '../../store/authStore'
 import { useAuthGateStore } from '../../store/authGateStore'
 import { useAuthGate } from '../../hooks/useAuthGate'
@@ -40,7 +41,14 @@ import { WorkerFilterModal, activeWorkerFilterCount, EMPTY_WORKER_FILTERS } from
 import type { WorkerFilters } from '../../components/WorkerFilterModal'
 import { RadiusPickerSheet } from '../../components/RadiusPickerSheet'
 
-const SPECIALTIES = [{ id: 'All', label: 'All' }, ...ALL_SPECIALTIES]
+const CATEGORY_EMOJIS: Record<string, string> = {
+  hair: '💇🏽‍♀️',
+  nails: '💅🏽',
+  lashes: '👁️',
+  makeup: '💄',
+  barber: '✂️',
+  skincare: '🧴',
+}
 
 const SKELETON_COUNT = 6
 
@@ -92,6 +100,7 @@ export default function DiscoveryFeedScreen() {
   const [selectedSpecialty, setSelectedSpecialty] = useState<string>('All')
   const [reportTarget, setReportTarget] = useState<WorkerCardData | null>(null)
   const [locationModalVisible, setLocationModalVisible] = useState(false)
+  const afterLocationSetRef = useRef(false)
   const [search, setSearch] = useState('')
   const [showFilterModal, setShowFilterModal] = useState(false)
   const [showRadiusPicker, setShowRadiusPicker] = useState(false)
@@ -101,6 +110,8 @@ export default function DiscoveryFeedScreen() {
   const [savedWorkerIds, setSavedWorkerIds] = useState<Set<string>>(new Set())
   const filterCount = activeWorkerFilterCount(workerFilters)
   const currentUser = useAuthStore((s) => s.user)
+  const isSalonUser = currentUser?.role === 'SALON'
+  const isClientUser = (currentUser as any)?.accountType === 'CLIENT'
   const { storyMap, openViewerForUser } = useStories()
 
   React.useEffect(() => {
@@ -274,7 +285,7 @@ export default function DiscoveryFeedScreen() {
                 adjustsFontSizeToFit
                 minimumFontScale={0.75}
               >
-                Discover
+                {isSalonUser ? 'Find Talent' : 'Discover'}
               </Text>
             </View>
             <View style={[styles.headerRight, { marginTop: 6 }]}>
@@ -316,7 +327,10 @@ export default function DiscoveryFeedScreen() {
             </View>
           </View>
         </View>
-        <SuggestedStylists theme={theme} />
+        <SuggestedStylists
+          theme={theme}
+          label={isSalonUser ? 'Workers near you' : 'Suggested stylists'}
+        />
         {/* ── All / Saved tab toggle ── */}
         <View style={[styles.discoverTabRow, { borderBottomColor: theme.border.subtle }]}>
           {(['All', 'Saved'] as const).map((t) => {
@@ -343,9 +357,22 @@ export default function DiscoveryFeedScreen() {
           })}
         </View>
         <View style={styles.sectionRow}>
-          <Text style={[styles.sectionLabel, { color: theme.text.primary }]}>
-            {activeDiscoverTab === 'Saved' ? 'Saved professionals' : 'Professionals near you'}
-          </Text>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={[styles.sectionLabel, { color: theme.text.primary }]}>
+              {activeDiscoverTab === 'Saved'
+                ? 'Saved professionals'
+                : isSalonUser
+                  ? 'Workers near you'
+                  : isClientUser
+                    ? (discoverMode === 'salons' ? 'Salons & studios' : 'Stylists & freelancers')
+                    : 'Professionals near you'}
+            </Text>
+            {!isSalonUser && activeDiscoverTab !== 'Saved' && discoverMode === 'workers' && (
+              <Text style={{ fontSize: 11, color: theme.text.tertiary, marginTop: 1 }}>
+                Mobile · home studio · freelance
+              </Text>
+            )}
+          </View>
           <TouchableOpacity
             style={[
               styles.expandedBadge,
@@ -373,7 +400,7 @@ export default function DiscoveryFeedScreen() {
       </>
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [theme, isExpanded, usedRadius, isGPSLocation, cityLabel, openLocationModal, radiusMode, radiusMiles, activeDiscoverTab, savedWorkerIds],
+    [theme, isExpanded, usedRadius, isGPSLocation, cityLabel, openLocationModal, radiusMode, radiusMiles, activeDiscoverTab, savedWorkerIds, isSalonUser, isClientUser, discoverMode],
   )
 
   const listEmpty = useMemo(
@@ -409,34 +436,50 @@ export default function DiscoveryFeedScreen() {
           <Text style={[styles.emptyTitle, { color: theme.text.primary }]}>
             {activeDiscoverTab === 'Saved'
               ? 'No saved professionals'
-              : search.trim().length > 0 ? 'No matching professionals' : `No pros in ${cityLabel} yet`}
+              : search.trim().length > 0
+                ? 'No matching results'
+                : isSalonUser
+                  ? `No workers in ${cityLabel} yet`
+                  : `No pros in ${cityLabel} yet`}
           </Text>
           <Text style={[styles.stateText, { color: theme.text.secondary }]}>
             {activeDiscoverTab === 'Saved'
               ? 'Tap the bookmark icon on any worker profile to save them'
               : search.trim().length > 0
-              ? 'Try different keywords or adjust your filters'
-              : 'Be the first to join My Salon In in your area'}
+                ? 'Try different keywords or adjust your filters'
+                : isSalonUser
+                  ? 'Post a job to attract workers in your area'
+                  : 'Be the first to join My Salon In in your area'}
           </Text>
           {search.trim().length === 0 && (
-            <TouchableOpacity
-              style={[styles.emptyCtaBtn, { backgroundColor: theme.brand.primary }]}
-              onPress={() => {
-                void Share.share({
-                  message: 'Join me on My Salon In — the app connecting beauty pros with top salons! https://mysalonin.com',
-                })
-              }}
-              activeOpacity={0.8}
-            >
-              <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>Invite a pro</Text>
-            </TouchableOpacity>
+            isSalonUser ? (
+              <TouchableOpacity
+                style={[styles.emptyCtaBtn, { backgroundColor: theme.brand.primary }]}
+                onPress={() => router.push('/jobs/create' as never)}
+                activeOpacity={0.8}
+              >
+                <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>Post a job</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[styles.emptyCtaBtn, { backgroundColor: theme.brand.primary }]}
+                onPress={() => {
+                  void Share.share({
+                    message: 'Join me on My Salon In — the app connecting beauty pros with top salons! https://mysalonin.com',
+                  })
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>Invite a pro</Text>
+              </TouchableOpacity>
+            )
           )}
           <TouchableOpacity onPress={() => setLocationModalVisible(true)} activeOpacity={0.8}>
             <Text style={{ fontSize: 14, color: theme.text.tertiary, textDecorationLine: 'underline' }}>Change location</Text>
           </TouchableOpacity>
         </View>
       ),
-    [isLoading, error, search, cityLabel, theme, refresh, setLocationModalVisible],
+    [isLoading, error, search, cityLabel, theme, refresh, setLocationModalVisible, isSalonUser, activeDiscoverTab],
   )
 
   const listFooter = useMemo(
@@ -457,40 +500,82 @@ export default function DiscoveryFeedScreen() {
   if (!hasLocation) {
     return (
       <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]}>
-        <View style={styles.headerSection}>
-          <Text style={[styles.serifTitle, { color: theme.text.primary }]}>Discover</Text>
-        </View>
-        <View style={styles.centerPane}>
-          <Text style={[styles.locTitle, { color: theme.text.primary }]}>Where are you?</Text>
-          <Text style={[styles.locSubtitle, { color: theme.text.secondary }]}>
-            Find talented beauty professionals near you
+        {/* Booksy-style "Find beauty near you" location gate */}
+        <View style={styles.locGateWrap}>
+          {/* Map pin illustration */}
+          <View style={styles.locIllustration}>
+            <View style={[styles.locMapBg, { backgroundColor: theme.bg.surface }]}>
+              <View style={styles.locPinLg}>
+                <Ionicons name="location" size={36} color="#D85A30" />
+              </View>
+              <View style={[styles.locPinSm, { top: 20, left: 24 }]}>
+                <Ionicons name="location" size={20} color={theme.text.tertiary} />
+              </View>
+              <View style={[styles.locPinSm, { top: 30, right: 30 }]}>
+                <Ionicons name="location" size={16} color={theme.text.tertiary} />
+              </View>
+              <View style={[styles.locPinSm, { bottom: 18, left: 40 }]}>
+                <Ionicons name="location" size={14} color={theme.text.tertiary} />
+              </View>
+            </View>
+          </View>
+
+          <Text style={[styles.locGateTitle, { color: theme.text.primary }]}>
+            Find beauty near you
+          </Text>
+          <Text style={[styles.locGateSub, { color: theme.text.secondary }]}>
+            {isSalonUser
+              ? 'Connect with available talent in your area'
+              : 'Discover top-rated beauty pros and salons near you'}
           </Text>
 
           {status === 'requesting' ? (
             <View style={styles.gpsLoading}>
-              <ActivityIndicator color={theme.brand.primary} />
-              <Text style={{ fontSize: 13, color: theme.text.secondary }}>Getting your location…</Text>
+              <ActivityIndicator color="#D85A30" />
+              <Text style={{ fontSize: 13, color: theme.text.secondary, marginLeft: 8 }}>
+                Getting your location…
+              </Text>
             </View>
           ) : (
             <TouchableOpacity
-              style={[styles.gpsBtn, { backgroundColor: theme.brand.primary }]}
-              onPress={() => { void requestLocation() }}
+              style={styles.locGpsBtn}
+              onPress={async () => {
+                const granted = await requestLocation()
+                if (granted) {
+                  try {
+                    const cats = await AsyncStorage.getItem('salonin-preferred-categories')
+                    if (!cats) {
+                      router.push('/category-select' as never)
+                    }
+                  } catch { /* ignore */ }
+                }
+              }}
+              activeOpacity={0.85}
             >
-              <Text style={{ fontSize: 15, fontWeight: '600', color: '#FFFFFF' }}>
-                <Ionicons name="location" size={16} color="#FFFFFF" />  Use my location
-              </Text>
+              <Ionicons name="location" size={18} color="#fff" />
+              <Text style={styles.locGpsBtnText}>Use my location</Text>
             </TouchableOpacity>
           )}
 
           {status !== 'requesting' && (
             <>
-              <Text style={[styles.orLabel, { color: theme.text.secondary }]}>or</Text>
+              <View style={styles.locOrRow}>
+                <View style={[styles.locOrLine, { backgroundColor: theme.border.subtle }]} />
+                <Text style={[styles.locOrText, { color: theme.text.tertiary }]}>or</Text>
+                <View style={[styles.locOrLine, { backgroundColor: theme.border.subtle }]} />
+              </View>
               <TouchableOpacity
-                style={[styles.searchCityBtn, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}
-                onPress={() => setLocationModalVisible(true)}
+                style={[styles.locSearchBtn, { backgroundColor: theme.bg.surface, borderColor: theme.border.default }]}
+                onPress={() => {
+                  afterLocationSetRef.current = true
+                  setLocationModalVisible(true)
+                }}
+                activeOpacity={0.8}
               >
-                <Ionicons name="search" size={16} color={theme.text.secondary} />
-                <Text style={{ fontSize: 15, color: theme.text.secondary }}>Search a city…</Text>
+                <Ionicons name="search-outline" size={16} color={theme.text.tertiary} />
+                <Text style={[styles.locSearchText, { color: theme.text.tertiary }]}>
+                  Search a city…
+                </Text>
               </TouchableOpacity>
             </>
           )}
@@ -498,7 +583,22 @@ export default function DiscoveryFeedScreen() {
 
         <LocationModal
           visible={locationModalVisible}
-          onClose={() => setLocationModalVisible(false)}
+          onClose={async () => {
+            setLocationModalVisible(false)
+            if (afterLocationSetRef.current) {
+              afterLocationSetRef.current = false
+              // Check if categories were already chosen
+              try {
+                const cats = await AsyncStorage.getItem('salonin-preferred-categories')
+                if (!cats) {
+                  router.push('/category-select' as never)
+                  return
+                }
+              } catch {
+                // ignore
+              }
+            }
+          }}
         />
       </SafeAreaView>
     )
@@ -514,7 +614,7 @@ export default function DiscoveryFeedScreen() {
             <TextInput
               value={search}
               onChangeText={setSearch}
-              placeholder="Search workers, specialties..."
+              placeholder={isSalonUser ? 'Search workers, skills...' : isClientUser ? 'Search stylists, services...' : 'Search workers, specialties...'}
               placeholderTextColor={theme.text.tertiary}
               style={[styles.searchInput, { color: theme.text.primary }]}
               returnKeyType="search"
@@ -539,14 +639,14 @@ export default function DiscoveryFeedScreen() {
           </View>
         </View>
 
-        {/* ── Availability toggle + Specialty chips ── */}
+        {/* ── Booksy-style category category pills (emoji + label) ── */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           style={styles.chipsScroll}
           contentContainerStyle={[styles.chipsRow, { backgroundColor: theme.bg.base }]}
         >
-          {/* Availability quick-filter — separate from specialty */}
+          {/* Available Now quick-filter */}
           {(() => {
             const availActive = workerFilters.availability === 'NOW'
             return (
@@ -559,62 +659,95 @@ export default function DiscoveryFeedScreen() {
                   }))
                 }}
                 style={[
-                  styles.chip,
+                  styles.categoryPill,
                   {
                     backgroundColor: availActive ? '#1D9E75' : theme.bg.card,
                     borderColor: availActive ? '#1D9E75' : theme.border.default,
                   },
                 ]}
               >
-                <Text style={{ fontSize: 13, fontWeight: '600', color: availActive ? '#FFFFFF' : theme.text.secondary }}>
+                <Text style={styles.categoryPillEmoji}>⚡</Text>
+                <Text style={[styles.categoryPillLabel, { color: availActive ? '#FFFFFF' : theme.text.secondary }]}>
                   Available Now
                 </Text>
               </TouchableOpacity>
             )
           })()}
-          {SPECIALTIES.map((sp) => {
-            const active = selectedSpecialty === sp.id
+          {/* All button */}
+          {(() => {
+            const active = selectedSpecialty === 'All'
             return (
               <TouchableOpacity
-                key={sp.id}
-                onPress={() => handleToggleSpecialty(sp.id)}
+                onPress={() => handleToggleSpecialty('All')}
                 style={[
-                  styles.chip,
+                  styles.categoryPill,
                   {
-                    backgroundColor: active ? theme.brand.primary : theme.bg.card,
-                    borderColor: active ? theme.brand.primary : theme.border.default,
+                    backgroundColor: active ? '#D85A30' : theme.bg.card,
+                    borderColor: active ? '#D85A30' : theme.border.default,
                   },
                 ]}
               >
-                <Text style={{ fontSize: 13, fontWeight: '600', color: active ? '#FFFFFF' : theme.text.secondary }}>
-                  {sp.label}
+                <Text style={styles.categoryPillEmoji}>✨</Text>
+                <Text style={[styles.categoryPillLabel, { color: active ? '#fff' : theme.text.secondary }]}>All</Text>
+              </TouchableOpacity>
+            )
+          })()}
+          {/* Category pills from SPECIALTY_CATEGORIES */}
+          {SPECIALTY_CATEGORIES.map((cat) => {
+            const active = selectedSpecialty !== 'All' &&
+              ALL_SPECIALTIES.some((sp) => sp.categoryId === cat.id && sp.id === selectedSpecialty)
+            const emoji = CATEGORY_EMOJIS[cat.id] ?? '🌟'
+            return (
+              <TouchableOpacity
+                key={cat.id}
+                onPress={() => {
+                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                  // Select the first specialty of this category
+                  const first = ALL_SPECIALTIES.find((sp) => sp.categoryId === cat.id)
+                  handleToggleSpecialty(first?.id ?? 'All')
+                }}
+                style={[
+                  styles.categoryPill,
+                  {
+                    backgroundColor: active ? '#D85A30' : theme.bg.card,
+                    borderColor: active ? '#D85A30' : theme.border.default,
+                  },
+                ]}
+              >
+                <Text style={styles.categoryPillEmoji}>{emoji}</Text>
+                <Text style={[styles.categoryPillLabel, { color: active ? '#fff' : theme.text.secondary }]}>
+                  {cat.label}
                 </Text>
               </TouchableOpacity>
             )
           })}
         </ScrollView>
 
-        {/* ── Workers / Salons mode toggle ── */}
-        <View style={[styles.modeRow, { borderBottomColor: theme.border.subtle }]}>
-          {(['workers', 'salons'] as const).map((m) => {
-            const active = discoverMode === m
-            return (
-              <TouchableOpacity
-                key={m}
-                onPress={() => {
-                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                  setDiscoverMode(m)
-                }}
-                style={[styles.modeTab, active && { borderBottomColor: theme.brand.primary, borderBottomWidth: 2 }]}
-                activeOpacity={0.7}
-              >
-                <Text style={{ fontSize: 14, fontWeight: active ? '700' : '500', color: active ? theme.text.primary : theme.text.secondary }}>
-                  {m === 'workers' ? 'Professionals' : 'Salons'}
-                </Text>
-              </TouchableOpacity>
-            )
-          })}
-        </View>
+        {/* ── Workers / Salons mode toggle — hidden for salons (they only browse workers) ── */}
+        {!isSalonUser && (
+          <View style={[styles.modeRow, { borderBottomColor: theme.border.subtle }]}>
+            {(['workers', 'salons'] as const).map((m) => {
+              const active = discoverMode === m
+              return (
+                <TouchableOpacity
+                  key={m}
+                  onPress={() => {
+                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                    setDiscoverMode(m)
+                  }}
+                  style={[styles.modeTab, active && { borderBottomColor: theme.brand.primary, borderBottomWidth: 2 }]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: active ? '700' : '500', color: active ? theme.text.primary : theme.text.secondary }}>
+                    {m === 'workers'
+                      ? (isClientUser ? 'Stylists' : 'Professionals')
+                      : 'Salons & Studios'}
+                  </Text>
+                </TouchableOpacity>
+              )
+            })}
+          </View>
+        )}
 
         {discoverMode === 'workers' ? (
           <FlatList
@@ -899,6 +1032,107 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     width: '100%',
   },
+  // ── Booksy-style location gate ─────────────────────────────────────────────
+  locGateWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+    gap: 16,
+  },
+  locIllustration: {
+    marginBottom: 8,
+  },
+  locMapBg: {
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  locPinLg: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  locPinSm: {
+    position: 'absolute',
+  },
+  locGateTitle: {
+    fontSize: 26,
+    fontWeight: '800',
+    textAlign: 'center',
+    letterSpacing: -0.5,
+  },
+  locGateSub: {
+    fontSize: 15,
+    textAlign: 'center',
+    lineHeight: 22,
+    paddingHorizontal: 8,
+  },
+  locGpsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#D85A30',
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 28,
+    width: '100%',
+    marginTop: 4,
+  },
+  locGpsBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  locOrRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    width: '100%',
+  },
+  locOrLine: {
+    flex: 1,
+    height: 1,
+  },
+  locOrText: {
+    fontSize: 13,
+  },
+  locSearchBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    width: '100%',
+  },
+  locSearchText: {
+    fontSize: 15,
+  },
+  // ── Booksy-style category pills ────────────────────────────────────────────
+  categoryPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginRight: 8,
+  },
+  categoryPillEmoji: {
+    fontSize: 15,
+  },
+  categoryPillLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
 })
 
 // ── Suggested People (shared card design) ────────────────────────────────────
@@ -1044,7 +1278,7 @@ function SuggestedCardSkeleton({ theme }: { theme: Theme }) {
 
 // ── Suggested Stylists (Discover page — workers only) ─────────────────────────
 
-function SuggestedStylists({ theme }: { theme: Theme }) {
+function SuggestedStylists({ theme, label = 'Suggested stylists' }: { theme: Theme; label?: string }) {
   const { suggestions, isLoading } = useSuggestedUsers()
   const { storyMap, openViewerForUser } = useStories()
   const [followedIds, setFollowedIds] = React.useState<Set<string>>(new Set())
@@ -1082,7 +1316,7 @@ function SuggestedStylists({ theme }: { theme: Theme }) {
   return (
     <View style={suggestStyles.section}>
       <View style={suggestStyles.sectionHeader}>
-        <Text style={[suggestStyles.sectionTitle, { color: theme.text.primary }]}>Suggested stylists</Text>
+        <Text style={[suggestStyles.sectionTitle, { color: theme.text.primary }]}>{label}</Text>
         <TouchableOpacity onPress={() => router.push('/find-people' as never)} activeOpacity={0.7}>
           <Text style={[suggestStyles.seeAll, { color: theme.brand.primary }]}>See all</Text>
         </TouchableOpacity>

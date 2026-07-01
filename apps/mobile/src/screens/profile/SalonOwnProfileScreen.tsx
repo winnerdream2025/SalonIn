@@ -119,14 +119,26 @@ export default function SalonOwnProfileScreen() {
           >
             My Salon
           </Text>
-          <TouchableOpacity
-            onPress={() => router.push('/salon/edit' as never)}
-            style={[styles.editPill, { backgroundColor: 'rgba(216,90,48,0.10)', borderColor: 'rgba(216,90,48,0.25)' }]}
-            activeOpacity={0.75}
-          >
-            <Ionicons name="pencil" size={13} color="#D85A30" />
-            <Text style={[styles.editPillText, { color: '#D85A30' }]}>Edit</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+            {salon?.id ? (
+              <TouchableOpacity
+                onPress={() => router.push(`/salon/${salon.id}` as never)}
+                style={[styles.editPill, { backgroundColor: 'rgba(0,0,0,0.06)', borderColor: 'rgba(0,0,0,0.10)' }]}
+                activeOpacity={0.75}
+              >
+                <Ionicons name="eye-outline" size={13} color={firstPhoto ? '#FFFFFF' : '#888888'} />
+                <Text style={[styles.editPillText, { color: firstPhoto ? '#FFFFFF' : '#888888' }]}>Preview</Text>
+              </TouchableOpacity>
+            ) : null}
+            <TouchableOpacity
+              onPress={() => router.push('/salon/edit' as never)}
+              style={[styles.editPill, { backgroundColor: 'rgba(216,90,48,0.10)', borderColor: 'rgba(216,90,48,0.25)' }]}
+              activeOpacity={0.75}
+            >
+              <Ionicons name="pencil" size={13} color="#D85A30" />
+              <Text style={[styles.editPillText, { color: '#D85A30' }]}>Edit</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* ── Cover + Logo overlap ── */}

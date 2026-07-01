@@ -165,14 +165,26 @@ export default function WorkerOwnProfileScreen() {
               Profile
             </Text>
           </View>
-          <TouchableOpacity
-            onPress={() => router.push('/worker/edit')}
-            style={[styles.editPill, { backgroundColor: 'rgba(216,90,48,0.10)' }]}
-            activeOpacity={0.75}
-          >
-            <Ionicons name="create-outline" size={14} color="#D85A30" />
-            <Text style={styles.editPillText}>Edit</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+            {profile?.id ? (
+              <TouchableOpacity
+                onPress={() => router.push(`/worker/${profile.id}` as never)}
+                style={[styles.editPill, { backgroundColor: theme.bg.elevated }]}
+                activeOpacity={0.75}
+              >
+                <Ionicons name="eye-outline" size={14} color={theme.text.secondary} />
+                <Text style={[styles.editPillText, { color: theme.text.secondary }]}>Preview</Text>
+              </TouchableOpacity>
+            ) : null}
+            <TouchableOpacity
+              onPress={() => router.push('/worker/edit')}
+              style={[styles.editPill, { backgroundColor: 'rgba(216,90,48,0.10)' }]}
+              activeOpacity={0.75}
+            >
+              <Ionicons name="create-outline" size={14} color="#D85A30" />
+              <Text style={styles.editPillText}>Edit</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* ── Cover strip ────────────────────────────────── */}
@@ -524,6 +536,12 @@ export default function WorkerOwnProfileScreen() {
           <TouchableOpacity style={styles.menuRow} onPress={() => router.push('/booking-settings' as never)} activeOpacity={0.7}>
             <View style={[styles.menuIcon, { backgroundColor: 'rgba(216,90,48,0.10)' }]}><Ionicons name="settings-outline" size={18} color="#D85A30" /></View>
             <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Booking Settings</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
+          </TouchableOpacity>
+          <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />
+          <TouchableOpacity style={styles.menuRow} onPress={() => router.push('/earnings' as never)} activeOpacity={0.7}>
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(29,158,117,0.10)' }]}><Ionicons name="cash-outline" size={18} color="#1D9E75" /></View>
+            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Earnings</Text>
             <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} />
           </TouchableOpacity>
           <View style={[styles.menuDivider, { backgroundColor: theme.border.subtle }]} />

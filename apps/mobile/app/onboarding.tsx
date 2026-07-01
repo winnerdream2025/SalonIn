@@ -11,7 +11,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import * as Location from 'expo-location'
-import { Avatar, Text, Button, useTheme } from '@salonin/ui'
+import { Ionicons } from '@expo/vector-icons'
+import { Avatar, Text, Button, Input, useTheme } from '@salonin/ui'
 import { Availability } from '@salonin/types'
 import { workersApi, parseApiError } from '@salonin/api-client'
 import { SPECIALTY_CATEGORIES, SPECIALTIES_BY_CATEGORY } from '@salonin/config'
@@ -19,9 +20,12 @@ import { reverseGeocodeWithGoogle } from '../src/utils/googlePlaces'
 import { useLocationStore } from '../src/store/locationStore'
 import { useMyWorkerProfile } from '../src/hooks/useWorkerProfile'
 import { useMediaUpload } from '../src/hooks/useMediaUpload'
+import { servicesApi } from '../src/services/booking/booking.api'
 
-const STEP_LABELS = ['Photo', 'Specialties', 'Availability', 'Location'] as const
+const STEP_LABELS = ['Photo', 'Specialties', 'Availability', 'Location', 'First Service'] as const
 const STEP_COUNT = STEP_LABELS.length
+
+const DURATION_OPTIONS = [15, 30, 45, 60, 90, 120] as const
 
 const AVAILABILITY_OPTIONS: Availability[] = [
   Availability.NOW,
@@ -54,6 +58,13 @@ export default function OnboardingScreen() {
   const [availability, setAvailability] = useState<Availability>(Availability.NOW)
   const [locationShared, setLocationShared] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+
+  // Step 4 — first service
+  const [serviceName, setServiceName] = useState('')
+  const [serviceDuration, setServiceDuration] = useState<typeof DURATION_OPTIONS[number]>(60)
+  const [servicePrice, setServicePrice] = useState('')
+  const [isCreatingService, setIsCreatingService] = useState(false)
+  const [serviceCreated, setServiceCreated] = useState(false)
 
   useEffect(() => {
     if (!isLoading && profile && profile.specialties.length > 0) {
@@ -121,18 +132,49 @@ export default function OnboardingScreen() {
     )
   }, [])
 
-  const handleFinish = useCallback(async () => {
+  const handleSaveAndContinue = useCallback(async () => {
     setIsSaving(true)
     try {
       await workersApi.updateProfile({ specialties: selectedSpecialties })
       await workersApi.updateAvailability({ availability })
-      router.replace('/(tabs)')
+      setStep(4)
     } catch (e) {
       Alert.alert('Could not save', parseApiError(e))
     } finally {
       setIsSaving(false)
     }
   }, [selectedSpecialties, availability])
+
+  const handleCreateService = useCallback(async () => {
+    const trimmedName = serviceName.trim()
+    const price = parseFloat(servicePrice.replace(/[^0-9.]/g, ''))
+    if (!trimmedName) {
+      Alert.alert('Service name required', 'Enter a name for your service.')
+      return
+    }
+    if (isNaN(price) || price <= 0) {
+      Alert.alert('Invalid price', 'Enter a valid price greater than 0.')
+      return
+    }
+    setIsCreatingService(true)
+    try {
+      await servicesApi.create({
+        name: trimmedName,
+        duration: serviceDuration,
+        price,
+        currency: 'USD',
+      })
+      setServiceCreated(true)
+    } catch (e) {
+      Alert.alert('Could not create service', parseApiError(e))
+    } finally {
+      setIsCreatingService(false)
+    }
+  }, [serviceName, serviceDuration, servicePrice])
+
+  const handleFinish = useCallback(() => {
+    router.replace('/(tabs)')
+  }, [])
 
   const canAdvanceStep1 = selectedSpecialties.length > 0
   const cityLabel = profile?.city ?? storeCity ?? 'Not set yet'
@@ -304,6 +346,92 @@ export default function OnboardingScreen() {
               )}
             </>
           )}
+
+          {step === 4 && (
+            <>
+              <Text variant="heading" style={styles.heading}>Add your first service</Text>
+              <Text variant="body" color="secondary" style={styles.subheading}>
+                Clients can book you once you have at least one service listed. You can add more anytime.
+              </Text>
+
+              {serviceCreated ? (
+                <View
+                  style={[styles.serviceSuccessCard, { backgroundColor: 'rgba(29,158,117,0.08)', borderColor: '#1D9E75' }]}
+                >
+                  <Ionicons name="checkmark-circle" size={22} color="#1D9E75" />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontWeight: '700', color: '#1D9E75' }}>{serviceName}</Text>
+                    <Text variant="caption" color="secondary">
+                      {serviceDuration} min · ${servicePrice}
+                    </Text>
+                  </View>
+                </View>
+              ) : (
+                <>
+                  <View style={styles.field}>
+                    <Input
+                      label="Service name"
+                      value={serviceName}
+                      onChangeText={setServiceName}
+                      placeholder="e.g. Knotless Braids, Silk Press…"
+                      autoCapitalize="words"
+                    />
+                  </View>
+
+                  <Text variant="label" color="secondary" style={styles.durationLabel}>DURATION</Text>
+                  <View style={styles.durationRow}>
+                    {DURATION_OPTIONS.map((min) => {
+                      const active = serviceDuration === min
+                      return (
+                        <TouchableOpacity
+                          key={min}
+                          onPress={() => setServiceDuration(min)}
+                          activeOpacity={0.8}
+                          style={[
+                            styles.durationPill,
+                            {
+                              backgroundColor: active ? theme.brand.primary : theme.bg.elevated,
+                              borderColor: active ? theme.brand.primary : theme.border.default,
+                            },
+                          ]}
+                        >
+                          <Text
+                            variant="caption"
+                            style={{
+                              color: active ? '#FFFFFF' : theme.text.primary,
+                              fontWeight: active ? '700' : '400',
+                            }}
+                          >
+                            {min < 60 ? `${min}m` : `${min / 60}h`}
+                          </Text>
+                        </TouchableOpacity>
+                      )
+                    })}
+                  </View>
+
+                  <View style={[styles.field, { marginTop: 20 }]}>
+                    <Input
+                      label="Price (USD)"
+                      value={servicePrice}
+                      onChangeText={setServicePrice}
+                      placeholder="e.g. 120"
+                      keyboardType="decimal-pad"
+                    />
+                  </View>
+
+                  <Button
+                    variant="secondary"
+                    fullWidth
+                    loading={isCreatingService}
+                    onPress={() => void handleCreateService()}
+                    disabled={!serviceName.trim() || !servicePrice}
+                  >
+                    Add service
+                  </Button>
+                </>
+              )}
+            </>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -349,10 +477,34 @@ export default function OnboardingScreen() {
               <Button variant="ghost" onPress={() => setStep(2)}>Back</Button>
             </View>
             <View style={styles.footerBtn}>
-              <Button variant="primary" loading={isSaving} onPress={handleFinish}>
-                Finish setup
+              <Button variant="primary" loading={isSaving} onPress={() => void handleSaveAndContinue()}>
+                Next
               </Button>
             </View>
+          </>
+        )}
+
+        {step === 4 && (
+          <>
+            <View style={styles.footerBtn}>
+              <Button variant="ghost" onPress={handleFinish}>
+                {serviceCreated ? 'Done' : 'Skip'}
+              </Button>
+            </View>
+            {!serviceCreated && (
+              <View style={styles.footerBtn}>
+                <Button variant="primary" onPress={handleFinish}>
+                  Finish setup
+                </Button>
+              </View>
+            )}
+            {serviceCreated && (
+              <View style={styles.footerBtn}>
+                <Button variant="primary" onPress={handleFinish}>
+                  Let&apos;s go
+                </Button>
+              </View>
+            )}
           </>
         )}
       </View>
@@ -455,5 +607,25 @@ const styles = StyleSheet.create({
   },
   footerBtn: {
     flex: 1,
+  },
+  field: { marginBottom: 16 },
+  durationLabel: { letterSpacing: 0.8, marginBottom: 10 },
+  durationRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  durationPill: {
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 20,
+    borderWidth: 1,
+    minWidth: 48,
+    alignItems: 'center',
+  },
+  serviceSuccessCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 16,
+    marginBottom: 20,
   },
 })

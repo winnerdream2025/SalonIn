@@ -28,7 +28,7 @@ export default function RegisterScreen() {
       if (isClient) {
         // Persist the user's real name to ClientProfile (backend lazy-creates with email fallback)
         clientProfileApi.update({ name: name.trim() || email.split('@')[0] }).catch(() => {})
-        router.replace('/(tabs)')
+        router.replace('/client-onboarding' as never)
       } else if (role === 'WORKER') {
         router.replace('/onboarding')
       } else {

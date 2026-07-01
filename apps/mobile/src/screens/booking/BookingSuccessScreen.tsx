@@ -46,7 +46,7 @@ export default function BookingSuccessScreen() {
 
   const handleViewBookings = useCallback(() => {
     router.dismissAll()
-    router.push('/(tabs)/bookings' as never)
+    router.push('/(tabs)/jobs' as never)
   }, [])
 
   const handleDone = useCallback(() => {

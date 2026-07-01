@@ -41,7 +41,7 @@ const SPECIALTIES = [{ id: 'All', label: 'All' }, ...ALL_SPECIALTIES]
 
 const SKELETON_COUNT = 5
 
-export default function JobFeedScreen() {
+export default function JobFeedScreen({ hideHeader = false }: { hideHeader?: boolean }) {
   const { bottom } = useSafeAreaInsets()
   const { theme } = useTheme()
   const { storyMap, openViewerForUser } = useStories()
@@ -400,7 +400,7 @@ export default function JobFeedScreen() {
   )
 
   return (
-    <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]} edges={['top']}>
+    <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg.base }]} edges={hideHeader ? [] : ['top']}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -422,7 +422,7 @@ export default function JobFeedScreen() {
           keyExtractor={(item) => item.id}
           ListHeaderComponent={
             <View>
-              {PageHeader}
+              {!hideHeader && PageHeader}
               <SuggestedSalons theme={theme} />
               {SearchAndFilters}
             </View>

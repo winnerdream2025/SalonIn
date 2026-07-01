@@ -227,29 +227,37 @@ export default function TabsLayout() {
     () => (isLoggedIn && chatRequestsLoaded ? unreadCount + pendingCount + notifUnreadCount : 0),
     [isLoggedIn, chatRequestsLoaded, unreadCount, pendingCount, notifUnreadCount],
   )
-  const photoUrl = (user as any)?.photoUrl
+  const photoUrl: string | undefined = undefined
 
   const renderTabBar = useCallback((props: BottomTabBarProps) => <CustomTabBar {...props} />, [])
 
+  const isWorker = role === Role.WORKER && !isClient
+
   const indexOptions = useMemo(
     () => ({
-      tabBarLabel: isSalon ? 'Workers' : 'Discover',
-      tabBarIcon: ({ color, size, focused }: { color: string; size: number; focused: boolean }) => (
-        <Ionicons name={focused ? 'compass' : 'compass-outline'} size={size} color={color} />
-      ),
+      tabBarLabel: isSalon ? 'Workers' : isWorker ? 'Home' : 'Discover',
+      tabBarIcon: ({ color, size, focused }: { color: string; size: number; focused: boolean }) =>
+        isSalon
+          ? <Ionicons name={focused ? 'people' : 'people-outline'} size={size} color={color} />
+          : isWorker
+            ? <Ionicons name={focused ? 'home' : 'home-outline'} size={size} color={color} />
+            : <Ionicons name={focused ? 'compass' : 'compass-outline'} size={size} color={color} />,
     }),
-    [isSalon],
+    [isSalon, isWorker],
   )
 
   const jobsOptions = useMemo(
     () => ({
-      tabBarLabel: isSalon ? 'My Jobs' : 'Jobs',
-      tabBarIcon: ({ color, size, focused }: { color: string; size: number; focused: boolean }) => (
-        <Ionicons name={focused ? 'briefcase' : 'briefcase-outline'} size={size} color={color} />
-      ),
-      href: isClient ? null : undefined,
+      // Clients = Bookings; Workers = Schedule | Job Board split; Salons = My Jobs
+      tabBarLabel: isClient ? 'Bookings' : isSalon ? 'My Jobs' : isWorker ? 'Jobs' : 'Jobs',
+      tabBarIcon: ({ color, size, focused }: { color: string; size: number; focused: boolean }) =>
+        isClient
+          ? <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={size} color={color} />
+          : isWorker
+            ? <Ionicons name={focused ? 'briefcase' : 'briefcase-outline'} size={size} color={color} />
+            : <Ionicons name={focused ? 'briefcase' : 'briefcase-outline'} size={size} color={color} />,
     }),
-    [isSalon, isClient],
+    [isSalon, isClient, isWorker],
   )
 
   const messagesOptions = useMemo(
@@ -267,7 +275,8 @@ export default function TabsLayout() {
 
   const profileOptions = useMemo(
     () => ({
-      tabBarLabel: isClient ? 'Bookings' : isSalon ? 'My Salon' : 'Profile',
+      // Client sees their own profile; salon owners see "My Salon"; workers see "Profile"
+      tabBarLabel: isClient ? 'Profile' : isSalon ? 'My Salon' : 'Profile',
       tabBarIcon: ({ color, size, focused }: { color: string; size: number; focused: boolean }) => (
         <ProfileTabIcon
           color={color}
@@ -278,6 +287,7 @@ export default function TabsLayout() {
           theme={theme}
         />
       ),
+      // Only workers/salons get the pending bookings badge — clients have their own Bookings tab
       tabBarBadge: !isClient && providerPendingCount > 0 ? providerPendingCount : undefined,
     }),
     [isClient, isSalon, photoUrl, theme, providerPendingCount],

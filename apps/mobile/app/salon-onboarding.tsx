@@ -13,19 +13,27 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
-import { Text, Button, Input, useTheme } from '@salonin/ui'
+import { Text, Button, Input, Avatar, useTheme } from '@salonin/ui'
 import { salonsApi } from '@salonin/api-client'
 import { ALL_SPECIALTIES } from '@salonin/config'
 import * as Location from 'expo-location'
+import { reverseGeocodeWithGoogle } from '../src/utils/googlePlaces'
+import { useMediaUpload } from '../src/hooks/useMediaUpload'
 
-const STEP_COUNT = 3
+const STEP_COUNT = 4
 
 const SPECIALTY_OPTIONS = ALL_SPECIALTIES
 
 export default function SalonOnboardingScreen() {
   const { theme } = useTheme()
+  const { pickAndUpload, isUploading } = useMediaUpload({
+    folder: 'uploads',
+    type: 'image',
+    allowsEditing: true,
+  })
 
   const [step, setStep] = useState(0)
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
   const [salonName, setSalonName] = useState('')
   const [bio, setBio] = useState('')
   const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([])
@@ -36,6 +44,17 @@ export default function SalonOnboardingScreen() {
   const [isDetecting, setIsDetecting] = useState(false)
   const [isHiring, setIsHiring] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+
+  const handlePickPhoto = useCallback(async () => {
+    try {
+      const url = await pickAndUpload()
+      if (!url) return
+      setPhotoUrl(url)
+      await salonsApi.updateProfile({ photoUrls: [url] })
+    } catch {
+      Alert.alert('Upload failed', 'Please try again.')
+    }
+  }, [pickAndUpload])
 
   const toggleSpecialty = useCallback((s: string) => {
     setSelectedSpecialties((prev) =>
@@ -54,13 +73,10 @@ export default function SalonOnboardingScreen() {
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
       setLocationLat(pos.coords.latitude)
       setLocationLng(pos.coords.longitude)
-      const [place] = await Location.reverseGeocodeAsync({
-        latitude: pos.coords.latitude,
-        longitude: pos.coords.longitude,
-      })
-      if (place) {
-        if (place.city) setCity(place.city)
-        if (place.region) setState(place.region)
+      const resolved = await reverseGeocodeWithGoogle(pos.coords.latitude, pos.coords.longitude)
+      if (resolved) {
+        setCity(resolved.city ?? '')
+        setState(resolved.state ?? '')
       }
     } catch {
       Alert.alert('Could not detect location', 'Enter your city and state manually.')
@@ -134,7 +150,29 @@ export default function SalonOnboardingScreen() {
             STEP {step + 1} OF {STEP_COUNT}
           </Text>
 
+          {/* Step 0 — Salon photo (new) */}
           {step === 0 && (
+            <>
+              <Text variant="heading" style={styles.heading}>Add a salon photo</Text>
+              <Text variant="body" color="secondary" style={styles.subheading}>
+                A great cover photo helps workers and clients recognise your salon.
+              </Text>
+              <TouchableOpacity
+                style={styles.avatarWrap}
+                onPress={() => { void handlePickPhoto() }}
+                disabled={isUploading}
+                activeOpacity={0.75}
+              >
+                <Avatar uri={photoUrl ?? undefined} name="Salon" size="xl" />
+                <Text variant="caption" color="brand" style={styles.photoHint}>
+                  {isUploading ? 'Uploading…' : photoUrl ? 'Change Photo' : '+ Add Photo'}
+                </Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+          {/* Step 1 — Salon info (was step 0) */}
+          {step === 1 && (
             <>
               <Text variant="heading" style={styles.heading}>Set up your salon</Text>
               <Text variant="body" color="secondary" style={styles.subheading}>
@@ -194,7 +232,8 @@ export default function SalonOnboardingScreen() {
             </>
           )}
 
-          {step === 1 && (
+          {/* Step 2 — Location (was step 1) */}
+          {step === 2 && (
             <>
               <Text variant="heading" style={styles.heading}>Where is your salon?</Text>
               <Text variant="body" color="secondary" style={styles.subheading}>
@@ -246,7 +285,8 @@ export default function SalonOnboardingScreen() {
             </>
           )}
 
-          {step === 2 && (
+          {/* Step 3 — Hiring (was step 2) */}
+          {step === 3 && (
             <>
               <Text variant="heading" style={styles.heading}>Are you hiring?</Text>
               <Text variant="body" color="secondary" style={styles.subheading}>
@@ -294,9 +334,15 @@ export default function SalonOnboardingScreen() {
       </KeyboardAvoidingView>
 
       <View style={[styles.footer, { backgroundColor: theme.bg.base, borderTopColor: theme.border.default }]}>
+        {/* Step 0: photo — always skippable */}
         {step === 0 && (
-          <Button variant="primary" fullWidth onPress={() => setStep(1)}>
-            Continue
+          <Button
+            variant="primary"
+            fullWidth
+            onPress={() => setStep(1)}
+            disabled={isUploading}
+          >
+            {photoUrl ? 'Next' : 'Skip for now'}
           </Button>
         )}
 
@@ -315,6 +361,17 @@ export default function SalonOnboardingScreen() {
           <>
             <View style={styles.footerBtn}>
               <Button variant="ghost" onPress={() => setStep(1)}>Back</Button>
+            </View>
+            <View style={styles.footerBtn}>
+              <Button variant="primary" onPress={() => setStep(3)}>Continue</Button>
+            </View>
+          </>
+        )}
+
+        {step === 3 && (
+          <>
+            <View style={styles.footerBtn}>
+              <Button variant="ghost" onPress={() => setStep(2)}>Back</Button>
             </View>
             <View style={styles.footerBtn}>
               <Button variant="primary" loading={isSaving} onPress={handleFinish}>
@@ -401,5 +458,13 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 18,
     marginBottom: 4,
+  },
+  avatarWrap: {
+    alignItems: 'center',
+    paddingVertical: 28,
+    gap: 10,
+  },
+  photoHint: {
+    marginTop: 4,
   },
 })

@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useState, useMemo } from 'react'
 import {
   View,
   ScrollView,
@@ -6,7 +6,14 @@ import {
   StyleSheet,
   RefreshControl,
   Alert,
+  LayoutAnimation,
+  Platform,
+  UIManager,
 } from 'react-native'
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true)
+}
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
@@ -14,7 +21,12 @@ import { Text, useTheme } from '@salonin/ui'
 import { messagesApi, workersApi, salonsApi } from '@salonin/api-client'
 import { useProviderServices } from '../../services/booking/booking.hooks'
 import { useAuthStore } from '../../store/authStore'
+import { useAuthGateStore } from '../../store/authGateStore'
 import type { ProviderService } from '../../services/booking/booking.types'
+
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()
+}
 
 function formatPrice(price: number, currency: string): string {
   return new Intl.NumberFormat('en-US', {
@@ -44,33 +56,29 @@ function ServiceCard({
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.75}
-      style={[styles.serviceCard, { backgroundColor: theme.bg.surface, borderColor: theme.border.subtle }]}
+      style={styles.serviceRow}
     >
       <View style={styles.serviceInfo}>
-        <Text
-          numberOfLines={1}
-          style={{ fontSize: 15, fontWeight: '700', color: theme.text.primary, marginBottom: 4 }}
-        >
+        <Text numberOfLines={1} style={{ fontSize: 15, fontWeight: '600', color: theme.text.primary }}>
           {service.name}
         </Text>
         {service.description ? (
-          <Text
-            numberOfLines={2}
-            style={{ fontSize: 13, color: theme.text.secondary, lineHeight: 18 }}
-          >
+          <Text numberOfLines={1} style={{ fontSize: 12, color: theme.text.tertiary, marginTop: 2 }}>
             {service.description}
           </Text>
         ) : null}
-        <Text style={{ fontSize: 13, color: theme.text.tertiary, marginTop: 6 }}>
-          {formatDuration(service.duration)}
-        </Text>
       </View>
 
       <View style={styles.serviceMeta}>
-        <Text style={{ fontSize: 16, fontWeight: '800', color: '#D85A30' }}>
-          {formatPrice(service.price, service.currency)}
+        <Text style={{ fontSize: 15, fontWeight: '800', color: theme.text.primary, textAlign: 'right' }}>
+          {formatPrice(service.price, service.currency)}{service.price === 0 ? '' : '+'}
         </Text>
-        <Ionicons name="chevron-forward" size={16} color={theme.text.tertiary} style={{ marginTop: 4 }} />
+        <Text style={{ fontSize: 12, color: theme.text.tertiary, textAlign: 'right', marginTop: 1 }}>
+          {formatDuration(service.duration)}
+        </Text>
+        <TouchableOpacity onPress={onPress} activeOpacity={0.8} style={styles.bookPill}>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>Book</Text>
+        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   )
@@ -78,13 +86,63 @@ function ServiceCard({
 
 function ServiceSkeleton({ theme }: { theme: ReturnType<typeof useTheme>['theme'] }) {
   return (
-    <View style={[styles.serviceCard, { backgroundColor: theme.bg.surface, borderColor: theme.border.subtle }]}>
+    <View style={[styles.serviceRow, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border.subtle }]}>
       <View style={styles.serviceInfo}>
         <View style={[styles.skeletonLine, { width: 160, backgroundColor: theme.border.default }]} />
-        <View style={[styles.skeletonLine, { width: 220, marginTop: 8, backgroundColor: theme.border.default }]} />
-        <View style={[styles.skeletonLine, { width: 80, marginTop: 8, backgroundColor: theme.border.default }]} />
+        <View style={[styles.skeletonLine, { width: 110, marginTop: 8, backgroundColor: theme.border.default }]} />
       </View>
-      <View style={[styles.skeletonLine, { width: 64, height: 20, backgroundColor: theme.border.default }]} />
+      <View style={{ alignItems: 'flex-end', gap: 6 }}>
+        <View style={[styles.skeletonLine, { width: 56, height: 16, backgroundColor: theme.border.default }]} />
+        <View style={[styles.skeletonLine, { width: 64, height: 32, borderRadius: 16, backgroundColor: theme.border.default }]} />
+      </View>
+    </View>
+  )
+}
+
+function CategorySection({
+  category,
+  services,
+  expanded,
+  onToggle,
+  onBook,
+  theme,
+}: {
+  category: string
+  services: ProviderService[]
+  expanded: boolean
+  onToggle: () => void
+  onBook: (svc: ProviderService) => void
+  theme: ReturnType<typeof useTheme>['theme']
+}) {
+  return (
+    <View style={{ marginBottom: 8 }}>
+      <TouchableOpacity
+        onPress={onToggle}
+        activeOpacity={0.75}
+        style={[styles.categoryHeader, { backgroundColor: theme.bg.surface, borderColor: theme.border.subtle }]}
+      >
+        <Text style={[styles.categoryHeaderTitle, { color: theme.text.primary }]}>
+          {category}
+        </Text>
+        <View style={styles.categoryHeaderRight}>
+          <Text style={[styles.categoryCount, { color: theme.text.tertiary }]}>{services.length}</Text>
+          <Text style={[styles.categoryChevron, { color: theme.text.tertiary }]}>
+            {expanded ? '∧' : '∨'}
+          </Text>
+        </View>
+      </TouchableOpacity>
+      {expanded && (
+        <View style={[styles.listContainer, { backgroundColor: theme.bg.surface, borderColor: theme.border.subtle, marginTop: 0, borderTopLeftRadius: 0, borderTopRightRadius: 0 }]}>
+          {services.map((s, idx) => (
+            <React.Fragment key={s.id}>
+              <ServiceCard service={s} onPress={() => onBook(s)} theme={theme} />
+              {idx < services.length - 1 && (
+                <View style={[styles.separator, { backgroundColor: theme.border.subtle }]} />
+              )}
+            </React.Fragment>
+          ))}
+        </View>
+      )}
     </View>
   )
 }
@@ -101,19 +159,41 @@ export default function BookingServicesScreen() {
   const { top, bottom } = useSafeAreaInsets()
 
   const currentUser = useAuthStore((s) => s.user)
+  const showGate = useAuthGateStore((s) => s.show)
   const [isMessaging, setIsMessaging] = useState(false)
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set())
 
   const { services, isLoading, error, refetch } = useProviderServices(
     providerId ?? null,
     providerType ?? 'professional',
   )
 
+  // Group services by category; null category goes into 'Other'
+  const grouped = useMemo(() => {
+    if (services.length === 0) return []
+    const map = new Map<string, ProviderService[]>()
+    for (const s of services) {
+      const key = s.category ? capitalize(s.category) : 'Other'
+      const arr = map.get(key) ?? []
+      arr.push(s)
+      map.set(key, arr)
+    }
+    return Array.from(map.entries())
+  }, [services])
+
+  const toggleCategory = useCallback((cat: string) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
+    setCollapsedCategories((prev) => {
+      const next = new Set(prev)
+      if (next.has(cat)) next.delete(cat)
+      else next.add(cat)
+      return next
+    })
+  }, [])
+
   const handleMessage = useCallback(async () => {
     if (!currentUser) {
-      Alert.alert('Sign in required', 'Please sign in to message this provider.', [
-        { text: 'Sign in', onPress: () => router.push('/(auth)/login' as never) },
-        { text: 'Cancel', style: 'cancel' },
-      ])
+      showGate('/(tabs)/messages', 'Sign in to message this provider')
       return
     }
     setIsMessaging(true)
@@ -143,7 +223,7 @@ export default function BookingServicesScreen() {
     } finally {
       setIsMessaging(false)
     }
-  }, [currentUser, providerId, providerType, providerName])
+  }, [currentUser, showGate, providerId, providerType, providerName])
 
   const handleSelectService = useCallback(
     (service: ProviderService) => {
@@ -168,21 +248,22 @@ export default function BookingServicesScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: theme.bg.base }]}>
-      {/* Header */}
+      {/* Header — StyleSeat "Your appointment with" style */}
       <View style={[styles.header, { paddingTop: top + 8, borderBottomColor: theme.border.subtle }]}>
         <TouchableOpacity onPress={() => router.back()} hitSlop={12} activeOpacity={0.7}>
-          <Ionicons name="arrow-back" size={24} color={theme.text.primary} />
+          <Ionicons name="arrow-back" size={22} color={theme.text.primary} />
         </TouchableOpacity>
-        <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={{ fontSize: 18, fontWeight: '800', color: theme.text.primary, letterSpacing: -0.3 }}>
-            Book a Service
+        <View style={{ flex: 1, alignItems: 'center', marginHorizontal: 12 }}>
+          <Text style={{ fontSize: 11, color: theme.text.tertiary, letterSpacing: 0.3 }}>
+            Your appointment with
           </Text>
-          {providerName ? (
-            <Text numberOfLines={1} style={{ fontSize: 13, color: theme.text.secondary, marginTop: 1 }}>
-              {providerName}
-            </Text>
-          ) : null}
+          <Text numberOfLines={1} style={{ fontSize: 15, fontWeight: '700', color: theme.text.primary, marginTop: 2 }}>
+            {providerName ?? 'Provider'}
+          </Text>
         </View>
+        <TouchableOpacity onPress={() => router.back()} hitSlop={12} activeOpacity={0.7}>
+          <Ionicons name="close" size={22} color={theme.text.secondary} />
+        </TouchableOpacity>
       </View>
 
       {isLoading ? (
@@ -242,25 +323,37 @@ export default function BookingServicesScreen() {
       ) : (
         <ScrollView
           contentContainerStyle={{ padding: 16, paddingBottom: bottom + 24 }}
-          refreshControl={
-            <RefreshControl
-              refreshing={false}
-              onRefresh={refetch}
-              tintColor={theme.text.tertiary}
-            />
-          }
+          refreshControl={<RefreshControl refreshing={false} onRefresh={refetch} tintColor={theme.text.tertiary} />}
         >
-          <Text style={{ fontSize: 13, color: theme.text.tertiary, marginBottom: 12, letterSpacing: 0.2 }}>
-            SELECT A SERVICE
+          <Text style={{ fontSize: 11, color: theme.text.tertiary, letterSpacing: 0.8, paddingHorizontal: 4, paddingBottom: 12 }}>
+            {services.length} {services.length === 1 ? 'SERVICE' : 'SERVICES'}
           </Text>
-          {services.map((s) => (
-            <ServiceCard
-              key={s.id}
-              service={s}
-              onPress={() => handleSelectService(s)}
-              theme={theme}
-            />
-          ))}
+          {grouped.length > 1 ? (
+            // Multiple categories → collapsible sections
+            grouped.map(([cat, svcs]) => (
+              <CategorySection
+                key={cat}
+                category={cat}
+                services={svcs}
+                expanded={!collapsedCategories.has(cat)}
+                onToggle={() => toggleCategory(cat)}
+                onBook={handleSelectService}
+                theme={theme}
+              />
+            ))
+          ) : (
+            // Single / no category → flat list
+            <View style={[styles.listContainer, { backgroundColor: theme.bg.surface, borderColor: theme.border.subtle }]}>
+              {services.map((s, idx) => (
+                <React.Fragment key={s.id}>
+                  <ServiceCard service={s} onPress={() => handleSelectService(s)} theme={theme} />
+                  {idx < services.length - 1 && (
+                    <View style={[styles.separator, { backgroundColor: theme.border.subtle }]} />
+                  )}
+                </React.Fragment>
+              ))}
+            </View>
+          )}
         </ScrollView>
       )}
     </View>
@@ -273,19 +366,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingBottom: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  serviceCard: {
+  listContainer: {
+    marginHorizontal: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  serviceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 10,
-    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
   },
   serviceInfo: { flex: 1, marginRight: 12 },
-  serviceMeta: { alignItems: 'flex-end' },
+  serviceMeta: { alignItems: 'flex-end', gap: 4 },
+  bookPill: {
+    backgroundColor: '#2196A8',
+    borderRadius: 20,
+    paddingHorizontal: 18,
+    paddingVertical: 7,
+    marginTop: 4,
+  },
+  separator: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 16,
+  },
   centeredState: {
     flex: 1,
     alignItems: 'center',
@@ -311,5 +419,33 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     paddingHorizontal: 20,
     paddingVertical: 10,
+  },
+  categoryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 1,
+  },
+  categoryHeaderTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0.1,
+  },
+  categoryHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  categoryCount: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  categoryChevron: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 })

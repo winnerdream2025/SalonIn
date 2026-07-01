@@ -74,7 +74,24 @@ export default function MyApplicationsScreen() {
     return (
       <TouchableOpacity
         style={[styles.item, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}
-        onPress={() => router.push(`/jobs/${item.jobId}` as never)}
+        onPress={() =>
+          router.push({
+            pathname: '/worker/applications/[id]',
+            params: {
+              id: item.id,
+              jobId: item.jobId,
+              jobTitle: item.job.title,
+              salonName: item.job.salon.name,
+              salonPhoto: item.job.salon.photoUrls?.[0] ?? '',
+              status: item.status,
+              appliedAt: String(item.createdAt),
+              specialty: item.job.specialty,
+              payStructure: item.job.payStructure,
+              jobType: item.job.type,
+              city: item.job.city ?? '',
+            },
+          } as never)
+        }
         activeOpacity={0.8}
       >
         <View style={styles.avatarWrap}>

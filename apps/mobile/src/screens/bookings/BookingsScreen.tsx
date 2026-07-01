@@ -11,7 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { router } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { Text, Skeleton, useTheme } from '@salonin/ui'
 import { messagesApi, workersApi, salonsApi, parseApiError } from '@salonin/api-client'
@@ -342,11 +342,16 @@ export default function BookingsScreen() {
   const { theme } = useTheme()
   const { top, bottom } = useSafeAreaInsets()
   const currentUser = useAuthStore((s) => s.user)
+  const { tab: tabParam } = useLocalSearchParams<{ tab?: string }>()
 
-  const [activeTab, setActiveTab]     = useState<BookingTab>('upcoming')
+  const initialTab: BookingTab =
+    tabParam === 'completed' || tabParam === 'cancelled' ? tabParam : 'upcoming'
+
+  const [activeTab, setActiveTab]     = useState<BookingTab>(initialTab)
   const [allBookings, setAllBookings] = useState<BookingResult[]>([])
   const [isLoading, setIsLoading]     = useState(true)
   const [error, setError]             = useState<string | null>(null)
+  const [dismissedNudges, setDismissedNudges] = useState<Set<string>>(new Set())
 
   const load = useCallback(() => {
     if (!currentUser) return
@@ -369,6 +374,18 @@ export default function BookingsScreen() {
     completed: allBookings.filter((b) => classifyStatus(b.status) === 'completed').length,
     cancelled: allBookings.filter((b) => classifyStatus(b.status) === 'cancelled').length,
   }
+
+  // Review nudge: most recently completed booking within 14 days, not yet dismissed
+  const reviewNudgeTarget = React.useMemo(() => {
+    const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000)
+    return allBookings
+      .filter((b) => b.status === 'COMPLETED' && new Date(b.date) >= cutoff && !dismissedNudges.has(b.id))
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0] ?? null
+  }, [allBookings, dismissedNudges])
+
+  const handleDismissNudge = useCallback((id: string) => {
+    setDismissedNudges((prev) => new Set([...prev, id]))
+  }, [])
 
   const [rescheduleTarget,   setRescheduleTarget]   = useState<BookingResult | null>(null)
   const [rebookTarget,       setRebookTarget]       = useState<BookingResult | null>(null)
@@ -622,6 +639,30 @@ export default function BookingsScreen() {
               tintColor={theme.text.tertiary}
             />
           }
+          ListHeaderComponent={
+            reviewNudgeTarget ? (
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => void handleReview(reviewNudgeTarget)}
+                style={[styles.reviewNudge, { backgroundColor: 'rgba(239,159,39,0.10)', borderColor: 'rgba(239,159,39,0.35)' }]}
+              >
+                <Ionicons name="star-outline" size={20} color="#EF9F27" />
+                <View style={{ flex: 1, marginLeft: 10 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: '#EF9F27' }}>How was your appointment?</Text>
+                  <Text style={{ fontSize: 12, color: '#EF9F27', opacity: 0.75, marginTop: 1 }}>
+                    Leave a review for your recent visit
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => handleDismissNudge(reviewNudgeTarget.id)}
+                  hitSlop={12}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="close" size={18} color="#EF9F27" />
+                </TouchableOpacity>
+              </TouchableOpacity>
+            ) : null
+          }
           renderItem={({ item }) => (
             <BookingCard
               item={item}
@@ -637,6 +678,15 @@ export default function BookingsScreen() {
           showsVerticalScrollIndicator={false}
         />
       )}
+
+      {/* New booking FAB */}
+      <TouchableOpacity
+        onPress={() => router.push('/(tabs)' as never)}
+        activeOpacity={0.88}
+        style={[styles.fab, { backgroundColor: '#D85A30', bottom: bottom + 80 }]}
+      >
+        <Ionicons name="add" size={28} color="#fff" />
+      </TouchableOpacity>
 
       {/* Rebook modal */}
       <Modal
@@ -800,6 +850,28 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 22,
     paddingVertical: 12,
+  },
+  reviewNudge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 12,
+    marginBottom: 12,
+  },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.20,
+    shadowRadius: 8,
+    elevation: 8,
   },
   modalRoot: { flex: 1 },
   modalHeader: {

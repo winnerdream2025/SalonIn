@@ -669,7 +669,7 @@ function ProviderBookingsInner({
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
-export default function ProviderBookingsScreen() {
+export default function ProviderBookingsScreen({ hideHeader = false }: { hideHeader?: boolean }) {
   const { theme } = useTheme()
   const { top, bottom } = useSafeAreaInsets()
   const currentUser = useAuthStore((s) => s.user)
@@ -677,9 +677,11 @@ export default function ProviderBookingsScreen() {
   if (!currentUser || (currentUser.role !== Role.WORKER && currentUser.role !== Role.SALON)) {
     return (
       <View style={[styles.screen, { backgroundColor: theme.bg.base }]}>
-        <View style={[styles.header, { paddingTop: top + 8, borderBottomColor: theme.border.subtle }]}>
-          <Text style={styles.pageTitle}>Bookings</Text>
-        </View>
+        {!hideHeader && (
+          <View style={[styles.header, { paddingTop: top + 8, borderBottomColor: theme.border.subtle }]}>
+            <Text style={styles.pageTitle}>Bookings</Text>
+          </View>
+        )}
         <View style={styles.centeredState}>
           <Ionicons name="calendar-outline" size={48} color={theme.text.tertiary} />
           <Text style={{ color: theme.text.secondary, marginTop: 16, textAlign: 'center' }}>
@@ -692,16 +694,18 @@ export default function ProviderBookingsScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: theme.bg.base }]}>
-      <View style={[styles.header, { paddingTop: top + 8, borderBottomColor: theme.border.subtle }]}>
-        <Text style={styles.pageTitle}>Bookings</Text>
-        <TouchableOpacity
-          onPress={() => router.push('/new-booking' as never)}
-          style={[styles.newBookingBtn, { backgroundColor: '#D85A30' }]}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="add" size={20} color="#FFFFFF" />
-        </TouchableOpacity>
-      </View>
+      {!hideHeader && (
+        <View style={[styles.header, { paddingTop: top + 8, borderBottomColor: theme.border.subtle }]}>
+          <Text style={styles.pageTitle}>Bookings</Text>
+          <TouchableOpacity
+            onPress={() => router.push('/new-booking' as never)}
+            style={[styles.newBookingBtn, { backgroundColor: '#D85A30' }]}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="add" size={20} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+      )}
       <ProviderBookingsInner theme={theme} bottom={bottom} />
     </View>
   )

@@ -17,6 +17,9 @@ import type { PortfolioItem, AvailabilitySchedule } from '@salonin/types'
 import { formatExperience } from '@salonin/utils'
 import { useWorkerProfile } from '../../hooks/useWorkerProfile'
 import { useAuthStore } from '../../store/authStore'
+import { useAuthGateStore } from '../../store/authGateStore'
+import { useProviderServices } from '../../services/booking/booking.hooks'
+import { ServiceCard, ServiceCardSkeleton } from '../../components/cards/ServiceCard'
 import { messagesApi, workersApi, salonsApi } from '@salonin/api-client'
 import { useCanReview } from '../../hooks/useReviews'
 import { useStories } from '../../contexts/StoriesContext'
@@ -34,12 +37,18 @@ export default function WorkerProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const { profile, isLoading } = useWorkerProfile(id)
   const currentUser = useAuthStore((s) => s.user)
+  const showGate = useAuthGateStore((s) => s.show)
   const { theme, isDark } = useTheme()
   const { top, bottom } = useSafeAreaInsets()
 
   const isOwner = Boolean(currentUser && profile && currentUser.id === profile.userId)
   const isSalonUser = currentUser?.role === 'SALON'
   const [isMessaging, setIsMessaging] = useState(false)
+
+  const { services: workerServices, isLoading: servicesLoading } = useProviderServices(
+    profile?.id ?? null,
+    'professional',
+  )
   const [isInviting, setIsInviting] = useState(false)
   const [isSaved, setIsSaved] = useState(false)
   const { openViewerForUser } = useStories()
@@ -127,15 +136,7 @@ export default function WorkerProfileScreen() {
 
   const handleBookNow = useCallback(() => {
     if (!currentUser) {
-      Alert.alert(
-        'Sign in to book',
-        'Create a free account to book appointments on My Salon In.',
-        [
-          { text: 'Create account', onPress: () => router.push({ pathname: '/(auth)/register', params: { role: 'WORKER', accountType: 'CLIENT' } } as never) },
-          { text: 'Sign in', onPress: () => router.push('/(auth)/login') },
-          { text: 'Cancel', style: 'cancel' },
-        ],
-      )
+      showGate('/booking/services', 'Sign in to book an appointment')
       return
     }
     router.push({
@@ -146,7 +147,7 @@ export default function WorkerProfileScreen() {
         providerName: profile!.name,
       },
     } as never)
-  }, [currentUser, profile])
+  }, [currentUser, profile, showGate])
 
   if (isLoading) {
     return (
@@ -282,6 +283,51 @@ export default function WorkerProfileScreen() {
                 </View>
               ))}
             </View>
+          </View>
+        )}
+
+        {/* ── Services ── */}
+        {(servicesLoading || workerServices.length > 0) && (
+          <View style={[styles.section, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionLabel, { color: theme.text.tertiary }]}>Services</Text>
+              {profile.acceptsBookings && !isOwner && (
+                <TouchableOpacity onPress={handleBookNow}>
+                  <Text style={[styles.showMore, { color: theme.brand.primary }]}>Book →</Text>
+                </TouchableOpacity>
+              )}
+              {isOwner && (
+                <TouchableOpacity onPress={() => router.push('/manage-services' as never)}>
+                  <Text style={[styles.showMore, { color: theme.brand.primary }]}>Manage</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            {servicesLoading ? (
+              <>
+                <ServiceCardSkeleton theme={theme} />
+                <ServiceCardSkeleton theme={theme} />
+              </>
+            ) : (
+              workerServices.slice(0, 4).map((svc) => (
+                <ServiceCard
+                  key={svc.id}
+                  service={svc}
+                  mode={profile.acceptsBookings && !isOwner ? 'booking' : 'preview'}
+                  onPress={profile.acceptsBookings && !isOwner ? handleBookNow : undefined}
+                  onBook={profile.acceptsBookings && !isOwner ? handleBookNow : undefined}
+                  theme={theme}
+                />
+              ))
+            )}
+            {!servicesLoading && workerServices.length > 4 && (
+              <TouchableOpacity onPress={handleBookNow} activeOpacity={0.75}
+                style={[{ borderWidth: 1, borderRadius: 12, paddingVertical: 9, alignItems: 'center', borderColor: theme.border.default }]}
+              >
+                <Text style={{ fontSize: 13, color: theme.text.secondary, fontWeight: '600' }}>
+                  + {workerServices.length - 4} more services
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 

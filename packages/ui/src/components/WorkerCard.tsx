@@ -221,6 +221,22 @@ function WorkerCardImpl({
             </Text>
           )}
 
+          {/* ── MOBILITY TAGS — key differentiator vs Booksy/StyleSeat ──────── */}
+          {(worker.travelServiceEnabled || worker.homeServiceEnabled) && (
+            <View style={styles.mobilityRow}>
+              {worker.travelServiceEnabled && (
+                <View style={styles.mobilityTagTravel}>
+                  <Text style={styles.mobilityTagText}>🚗 Comes to you</Text>
+                </View>
+              )}
+              {worker.homeServiceEnabled && (
+                <View style={styles.mobilityTagHome}>
+                  <Text style={styles.mobilityTagText}>🏠 Home studio</Text>
+                </View>
+              )}
+            </View>
+          )}
+
           {/* ── WORK PHOTO STRIP ──────────────────────────────────────────── */}
           {hasStrip && (
             <View style={styles.photoStrip}>
@@ -475,6 +491,31 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '500',
     letterSpacing: 0.1,
+  },
+
+  // ── Mobility tags ─────────────────────────────────────────────────────────
+  mobilityRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 4,
+    flexWrap: 'wrap',
+  },
+  mobilityTagTravel: {
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    backgroundColor: 'rgba(21,101,192,0.10)',
+  },
+  mobilityTagHome: {
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    backgroundColor: 'rgba(29,158,117,0.10)',
+  },
+  mobilityTagText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#374151',
   },
 
   // ── Work photo strip ──────────────────────────────────────────────────────
