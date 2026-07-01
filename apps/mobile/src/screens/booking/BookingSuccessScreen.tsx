@@ -4,28 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { Text, useTheme } from '@salonin/ui'
-
-function formatDateDisplay(iso: string): string {
-  const d = new Date(`${iso}T00:00:00`)
-  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
-}
-
-function formatTime12(t: string): string {
-  if (!t || t.includes('AM') || t.includes('PM')) return t ?? ''
-  const [hStr = '0', mStr = '00'] = t.split(':')
-  const h = parseInt(hStr, 10)
-  const period = h < 12 ? 'AM' : 'PM'
-  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h
-  return `${h12}:${mStr} ${period}`
-}
-
-function formatPrice(price: number, currency: string): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 0,
-  }).format(price)
-}
+import { formatTime12, formatLongDate, formatPrice } from '../../utils/formatters'
 
 export default function BookingSuccessScreen() {
   const { theme } = useTheme()
@@ -97,7 +76,7 @@ export default function BookingSuccessScreen() {
             <View style={styles.detailRow}>
               <Ionicons name="calendar-outline" size={16} color={theme.text.tertiary} />
               <Text style={[styles.detailText, { color: theme.text.primary }]}>
-                {formatDateDisplay(date)}
+                {formatLongDate(date)}
               </Text>
             </View>
           ) : null}

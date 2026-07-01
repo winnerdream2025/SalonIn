@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { Text, Button, useTheme } from '@salonin/ui'
 import { clientProfileApi } from '@salonin/api-client'
 import { useAuthStore } from '../../store/authStore'
+import { formatTime12, formatLongDate, formatPrice } from '../../utils/formatters'
 import {
   useCreateBooking,
   useBookingPayment,
@@ -30,27 +31,6 @@ try {
     initPaymentSheet: async () => ({}),
     presentPaymentSheet: async () => ({ error: undefined }),
   })
-}
-
-function formatTime12(hhmm: string): string {
-  const [hStr = '0', mStr = '00'] = hhmm.split(':')
-  const h = parseInt(hStr, 10)
-  const period = h < 12 ? 'AM' : 'PM'
-  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h
-  return `${h12}:${mStr} ${period}`
-}
-
-function formatDateDisplay(iso: string): string {
-  const d = new Date(`${iso}T00:00:00`)
-  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
-}
-
-function formatPrice(price: number, currency: string): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 0,
-  }).format(price)
 }
 
 interface InfoRowProps {
@@ -241,7 +221,7 @@ export default function BookingConfirmScreen() {
           <View style={[styles.divider, { backgroundColor: theme.border.subtle }]} />
           <InfoRow label="Service" value={serviceName ?? ''} theme={theme} />
           <View style={[styles.divider, { backgroundColor: theme.border.subtle }]} />
-          <InfoRow label="Date" value={formatDateDisplay(date ?? '')} theme={theme} />
+          <InfoRow label="Date" value={formatLongDate(date ?? '')} theme={theme} />
           <View style={[styles.divider, { backgroundColor: theme.border.subtle }]} />
           <InfoRow
             label="Time"

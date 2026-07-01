@@ -24,14 +24,7 @@ import { messagesApi, workersApi, salonsApi } from '@salonin/api-client'
 import { useCanReview } from '../../hooks/useReviews'
 import { useStories } from '../../contexts/StoriesContext'
 import { StoryRing } from '../../components/StoryRing'
-
-function formatTime12(t: string): string {
-  const [hStr = '0', mStr = '00'] = t.split(':')
-  const h = parseInt(hStr, 10)
-  const period = h < 12 ? 'AM' : 'PM'
-  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h
-  return `${h12}:${mStr} ${period}`
-}
+import { formatTime12 } from '../../utils/formatters'
 
 export default function WorkerProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()

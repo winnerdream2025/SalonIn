@@ -52,6 +52,7 @@ export default function SalonProfileScreen() {
     currentUser.role === Role.SALON &&
     salon.user?.id === currentUser.id
   )
+  const isSalon = currentUser?.role === Role.SALON
 
   const [isMessaging, setIsMessaging] = useState(false)
   const [activeTab, setActiveTab] = useState<'services' | 'reviews' | 'portfolio' | 'info'>('services')
@@ -468,9 +469,9 @@ export default function SalonProfileScreen() {
                       <ServiceCard
                         key={svc.id}
                         service={svc}
-                        mode={salon.acceptsBookings && !isOwner ? 'booking' : 'preview'}
-                        onPress={salon.acceptsBookings && !isOwner ? () => handleBookService(svc) : undefined}
-                        onBook={salon.acceptsBookings && !isOwner ? () => handleBookService(svc) : undefined}
+                        mode={salon.acceptsBookings && !isOwner && !isSalon ? 'booking' : 'preview'}
+                        onPress={salon.acceptsBookings && !isOwner && !isSalon ? () => handleBookService(svc) : undefined}
+                        onBook={salon.acceptsBookings && !isOwner && !isSalon ? () => handleBookService(svc) : undefined}
                         theme={theme}
                       />
                     ))}
@@ -483,9 +484,9 @@ export default function SalonProfileScreen() {
                 <ServiceCard
                   key={svc.id}
                   service={svc}
-                  mode={salon.acceptsBookings && !isOwner ? 'booking' : 'preview'}
-                  onPress={salon.acceptsBookings && !isOwner ? () => handleBookService(svc) : undefined}
-                  onBook={salon.acceptsBookings && !isOwner ? () => handleBookService(svc) : undefined}
+                  mode={salon.acceptsBookings && !isOwner && !isSalon ? 'booking' : 'preview'}
+                  onPress={salon.acceptsBookings && !isOwner && !isSalon ? () => handleBookService(svc) : undefined}
+                  onBook={salon.acceptsBookings && !isOwner && !isSalon ? () => handleBookService(svc) : undefined}
                   theme={theme}
                 />
               ))
@@ -610,7 +611,7 @@ export default function SalonProfileScreen() {
       </ScrollView>
 
       {/* ── Sticky Book Now CTA ── */}
-      {!isOwner && salon?.acceptsBookings && (
+      {!isOwner && !isSalon && salon?.acceptsBookings && (
         <View
           style={[
             styles.ctaBar,

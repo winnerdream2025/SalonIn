@@ -1,10 +1,15 @@
 export function formatTime12(t: string): string {
-  if (t.includes('AM') || t.includes('PM')) return t
+  if (!t || t.includes('AM') || t.includes('PM')) return t ?? ''
   const [hStr = '0', mStr = '00'] = t.split(':')
   const h = parseInt(hStr, 10)
   const period = h < 12 ? 'AM' : 'PM'
   const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h
   return `${h12}:${mStr} ${period}`
+}
+
+export function formatLongDate(iso: string): string {
+  const d = new Date(`${iso}T00:00:00`)
+  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
 }
 
 export function formatPrice(price: number, currency: string): string {
