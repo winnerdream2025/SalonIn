@@ -111,7 +111,7 @@ export default function DiscoveryFeedScreen() {
   const filterCount = activeWorkerFilterCount(workerFilters)
   const currentUser = useAuthStore((s) => s.user)
   const isSalonUser = currentUser?.role === 'SALON'
-  const isClientUser = (currentUser as any)?.accountType === 'CLIENT'
+  const isClientUser = currentUser?.accountType === 'CLIENT'
   const { storyMap, openViewerForUser } = useStories()
 
   React.useEffect(() => {
@@ -123,7 +123,7 @@ export default function DiscoveryFeedScreen() {
 
   // Auto-request GPS for new CLIENT users who haven't set a location yet
   React.useEffect(() => {
-    const isClient = (currentUser as any)?.accountType === 'CLIENT'
+    const isClient = currentUser?.accountType === 'CLIENT'
     if (isClient && !hasLocation && status === 'idle') {
       void requestLocation()
     }

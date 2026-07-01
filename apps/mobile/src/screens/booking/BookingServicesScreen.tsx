@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { Text, useTheme } from '@salonin/ui'
 import { messagesApi, workersApi, salonsApi } from '@salonin/api-client'
 import { useProviderServices } from '../../services/booking/booking.hooks'
+import { formatPrice, formatDuration } from '../../utils/formatters'
 import { useAuthStore } from '../../store/authStore'
 import { useAuthGateStore } from '../../store/authGateStore'
 import type { ProviderService } from '../../services/booking/booking.types'
@@ -28,20 +29,6 @@ function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()
 }
 
-function formatPrice(price: number, currency: string): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 0,
-  }).format(price)
-}
-
-function formatDuration(minutes: number): string {
-  if (minutes < 60) return `${minutes} min`
-  const h = Math.floor(minutes / 60)
-  const m = minutes % 60
-  return m > 0 ? `${h}h ${m}min` : `${h}h`
-}
 
 function ServiceCard({
   service,

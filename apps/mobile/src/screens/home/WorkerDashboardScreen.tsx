@@ -17,6 +17,7 @@ import { useAuthStore } from '../../store/authStore'
 import { useMyWorkerProfile } from '../../hooks/useWorkerProfile'
 import { useProviderBookings } from '../../services/booking/booking.hooks'
 import { NotificationBell } from '../../components/NotificationBell'
+import { formatTime12, formatRevenue } from '../../utils/formatters'
 import type { BookingResult } from '../../services/booking/booking.types'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -37,22 +38,6 @@ function dayLabel(d: Date): string {
   if (diff === 0) return 'TODAY'
   if (diff === 1) return 'TOMORROW'
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase()
-}
-
-function formatTime12(t: string): string {
-  if (t.includes('AM') || t.includes('PM')) return t
-  const [hStr = '0', mStr = '00'] = t.split(':')
-  const h = parseInt(hStr, 10)
-  const period = h < 12 ? 'AM' : 'PM'
-  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h
-  return `${h12}:${mStr} ${period}`
-}
-
-const CURRENCY_SYMBOL: Record<string, string> = { USD: '$', EUR: '€', GBP: '£', CAD: 'CA$', XOF: 'F' }
-
-function formatRevenue(amount: number, currency = 'USD'): string {
-  const sym = CURRENCY_SYMBOL[currency] ?? '$'
-  return `${sym}${amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
 }
 
 const STATUS_COLORS: Record<string, string> = {

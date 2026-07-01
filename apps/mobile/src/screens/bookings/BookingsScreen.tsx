@@ -12,6 +12,7 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
+import { formatDate, formatTime12, formatPrice } from '../../utils/formatters'
 import { Ionicons } from '@expo/vector-icons'
 import { Text, Skeleton, useTheme } from '@salonin/ui'
 import { messagesApi, workersApi, salonsApi, parseApiError } from '@salonin/api-client'
@@ -29,29 +30,6 @@ function classifyStatus(status: BookingResult['status']): BookingTab {
   if (status === 'PENDING' || status === 'CONFIRMED' || status === 'PENDING_PAYMENT') return 'upcoming'
   if (status === 'CANCELLED' || status === 'NO_SHOW') return 'cancelled'
   return 'completed'
-}
-
-function formatDate(iso: string): string {
-  const d = new Date(`${iso}T00:00:00`)
-  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
-}
-
-
-function formatTime12(t: string): string {
-  if (t.includes('AM') || t.includes('PM')) return t
-  const [hStr = '0', mStr = '00'] = t.split(':')
-  const h = parseInt(hStr, 10)
-  const period = h < 12 ? 'AM' : 'PM'
-  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h
-  return `${h12}:${mStr} ${period}`
-}
-
-function formatPrice(price: number, currency: string): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 0,
-  }).format(price)
 }
 
 function statusColor(status: BookingResult['status']): string {

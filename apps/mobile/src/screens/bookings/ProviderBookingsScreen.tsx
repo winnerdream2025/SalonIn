@@ -18,6 +18,7 @@ import { Role } from '@salonin/types'
 import { messagesApi, parseApiError } from '@salonin/api-client'
 import { useAuthStore } from '../../store/authStore'
 import { useProviderBookings, useBookingActions } from '../../services/booking/booking.hooks'
+import { formatDate, formatTime12, formatPrice } from '../../utils/formatters'
 import { paymentsApi } from '../../services/booking/booking.api'
 import type { BookingResult, BookingStatus } from '../../services/booking/booking.types'
 
@@ -42,30 +43,6 @@ const DATE_FILTER_LABELS: { key: DateFilter; label: string }[] = [
   { key: 'week', label: 'This Week' },
   { key: 'month', label: 'This Month' },
 ]
-
-function formatDate(iso: string): string {
-  const d = new Date(`${iso}T00:00:00`)
-  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
-}
-
-function formatTime12(t: string): string {
-  // If already in AM/PM format, return as-is
-  if (t.includes('AM') || t.includes('PM')) return t
-  const [hStr = '0', mStr = '00'] = t.split(':')
-  const h = parseInt(hStr, 10)
-  const period = h < 12 ? 'AM' : 'PM'
-  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h
-  return `${h12}:${mStr} ${period}`
-}
-
-const priceFormatter = new Intl.NumberFormat('en-US', {
-  style: 'currency',
-  currency: 'USD',
-  minimumFractionDigits: 0,
-})
-function formatPrice(price: number, _currency: string): string {
-  return priceFormatter.format(price)
-}
 
 // ─── Reschedule modal ─────────────────────────────────────────────────────────
 
